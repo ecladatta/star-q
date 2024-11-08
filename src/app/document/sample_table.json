@@ -1,0 +1,688 @@
+{
+  "_index": "corpus_doc_telco100_en",
+  "_id": "645156",
+  "_source": {
+    "identificationMetadata": {
+      "id": "645156",
+      "title": "AirPort Extreme",
+      "url": [
+        "https://en.wikipedia.org/?curid=645156",
+        "https://en.wikipedia.org/wiki/AirPort Extreme"
+      ],
+      "version": 1176331917,
+      "versionDate": "2023-09-21T01:09:02Z",
+      "hash": "2354b8291cc6756d8e768490b79413d9",
+      "wikidata": "Q13567390"
+    },
+    "descriptionMetadata": {
+      "categories": [
+        "CS1 errors: missing title",
+        "CS1 errors: bare URL",
+        "Articles with short description",
+        "Short description matches Wikidata",
+        "Use mdy dates from April 2012",
+        "Articles containing potentially dated statements from 2023",
+        "All articles containing potentially dated statements",
+        "Commons category link is on Wikidata",
+        "Apple Inc. peripherals",
+        "Products and services discontinued in 2018",
+        "Discontinued Apple Inc. products"
+      ],
+      "language": "en",
+      "source": "wikipedia"
+    },
+    "contentMetadata": {
+      "format": "wikitext",
+      "content": "{{Short description|Residential gateway}}\n{{Use mdy dates|date=April 2012}}\n[[File:AirPort Extreme 2007.jpg|thumb|The back of a 2007 AirPort Extreme]]\n[[File:Chipsets.svg|thumb|right|Historical development of some wireless router chipset variants]]\n\nThe '''AirPort Extreme''' is a [[residential gateway]] combining the functions of a [[router (computing)|router]], [[network switch]],  [[wireless access point]] and [[network-attached storage|NAS]] as well as varied other functions, and one of Apple's former [[AirPort]] products. The latest model, the 6th generation, supports [[IEEE 802.11ac|802.11ac]] networking in addition to older standards. Versions of the same system with a built-in network-accessible [[hard drive]] are known as the [[AirPort Time Capsule]].\n\nApple discontinued developing its lineup of wireless routers in 2016, but {{As of|2023|lc=yes}} continues limited hardware and software support.<ref name=AppleVintageObsolete/>\n\n==History==\nThe first AirPort Extreme was announced at the MacWorld expo in San Francisco on January 7, 2003.<ref>{{cite web |url=https://www.apple.com/newsroom/2003/01/07Apple-Delivers-AirPort-Extreme-802-11g-Wireless-Networking/}}</ref> It featured 802.11g wireless technology for the first time in an AirPort base station.\n\nThe name \"AirPort Extreme\" originally referred to any one of Apple's AirPort products that implemented the (then) newly introduced 802.11g Wi-Fi standard, differentiating it from earlier devices that ran the slower 802.11a and b standards. At that time (circa 2003) the gateway part of this lineup was known as the '''AirPort Extreme Base Station'''. With the addition of the even faster Draft-N standards in early 2009 the naming of \"Base Station\" was dropped, and was renamed to AirPort Extreme. Several minor upgrades followed with the wireless-N models, mostly to change antenna and wireless output power. In 2013, a major upgrade changed the physical structure of the device, added 802.11ac support, and added more antennas.\n\nThe AirPort Extreme has gone through three distinct physical forms. The earliest models had a similar plastic housing to the original AirPort Base Station, in a round \"flying saucer\" shape. From 2007 to 2013, the devices took on a flat rounded rectangle shape, similar in layout and size to the [[Mac mini]] or early models of the [[Apple TV]]. The 2013 model had a more vertical form, taller than it was wide.\n\n===Discontinuation===\nIn approximately 2016, Apple disbanded the wireless router team that developed the AirPort Time Capsule and AirPort Extreme router.<ref name=\"Mark Gurman, Bloomberg 2016.11.23\">{{cite news |last1=Gurman |first1=Mark |title=Apple Abandons Development of Wireless Routers |url=https://www.bloombergquint.com/technology/apple-said-to-abandon-development-of-wireless-routers-ivs0ssec |access-date=2021-10-06 |publisher=Bloomberg News |date=November 23, 2016}}</ref> In 2018, Apple formally discontinued both products, exiting the router market.<ref name=\"Mark Gurman, Bloomberg 2018.04.26: official discontinuation\">{{cite news |last1=Gurman |first1=Mark |title=Apple Officially Discontinues Its AirPort Wireless Routers |url=https://www.bloombergquint.com/onweb/apple-officially-discontinues-its-airport-wireless-routers |access-date=2021-10-06 |publisher=Bloomberg News |date=April 27, 2018}}</ref> Bloomberg News noted that \"Apple rarely discontinues product categories\"<ref name=\"Mark Gurman, Bloomberg 2018.04.26: official discontinuation\" /> and that its decision to leave the business was \"a boon for other wireless router makers.\"<ref name=\"Mark Gurman, Bloomberg 2016.11.23\" />\n\n==Features==\n===Overview===\n* Fully featured [[802.11ac]] [[Wi-Fi]] base station\n* [[Sleep Proxy Service]]<ref>{{cite web\n| title       = Mac OS X v10.6: About Wake on Demand (Apple Article HT3774)\n| url         = http://support.apple.com/kb/HT3774\n| publisher   = Apple\n| date        = August 27, 2009\n| access-date = 2021-10-06 \n| quote       = \"Setting up Wake on Demand\", \"Setting up a Bonjour Sleep Proxy\"}}</ref>\n* 4 [[Ethernet]] ports (3 LAN ports, 1 WAN port) \u2014 all ports are [[gigabit Ethernet]] on newer versions\n* USB 2.0 interface for disk and printer sharing\n* Built-in file server ([[Apple Filing Protocol|AFP]] and [[Server Message Block|SMB]])\n* Runs [[VxWorks]] Operating System by WindRiver or a customized version of [[NetBSD]].<ref>{{Cite web|url = http://wifinetnews.com/archives/2007/02/airport_extreme_apple_breaks_90_mbps.html|title = AirPort Extreme: Apple Breaks 90 Mbps|access-date = 2021-10-06|website = wifinetnews.com|archive-url = https://web.archive.org/web/20100206113602/http://wifinetnews.com/archives/2007/02/airport_extreme_apple_breaks_90_mbps.html|archive-date = February 6, 2010|url-status = live}}</ref>\n\n===AirPort Disk===\nThe '''AirPort Disk''' feature allows users to plug a USB hard drive into the AirPort Extreme for use as a [[network-attached storage]] (NAS) device for Mac OS X and Microsoft Windows clients.<ref>{{cite web|url=https://www.apple.com/airportextreme/features/harddrivesharing.html|title=AirPort Extreme \u2013 Sharing|archive-url=https://web.archive.org/web/20130402164644/http://www.apple.com/airportextreme/features/harddrivesharing.html|archive-date=2013-04-02|work=Apple Inc.}}</ref> Users may also connect a USB hub and printer. The performance of USB hard drives attached to an AirPort Extreme is slower than if the drive were connected directly to a computer. This is due to the processor speed on the AirPort Extreme. Depending on the setup and types of reads and writes, performance ranges from 0.5 to 17.5 MB/s for writing and 1.9 to 25.6 MB/s for reading.<ref name=\"AnandTech AirPort Extreme (5th gen) review\">{{cite web|title=Airport Extreme (5th Gen) and Time Capsule (4th Gen) Review \u2013 Faster WiFi|url=http://www.anandtech.com/show/4577/airport-extreme-5th-gen-and-time-capsule-4th-gen-review-faster-wifi-/7|work=Airport Extreme (5th Gen) and Time Capsule (4th Gen) Review|publisher=AnandTech|first= Brian|last=Klug|access-date=2021-10-06}}</ref> Performance for the same disk connected directly to a computer would be 6.6 to 31.6 MB/s for writing and 7.1 to 37.2 MB/s for reading. [[NTFS]]-formatted drives are not supported.\n\n==Models by generation==\n\n===Original generation (2003) ===\n[[File:Early AirPort (2364225930).jpg|thumb|First three AirPort Base Station models, including the AirPort Extreme to the right (Called AirMac Extreme in Japan).]]\nThe original AirPort Extreme Base Station in 2003 was so named because of its support for the 802.11g standard of the day, as well as for its ability to serve up to 50 Macs or PCs simultaneously.<ref>{{Cite web|url = https://www.apple.com/airportextreme/|title = AirPort Extreme|website = Apple.com|archive-url = https://web.archive.org/web/20040608045215/http://www.apple.com/airportextreme/|archive-date = 2004-06-08|url-status = dead}}</ref> One feature found in most models of this generation was an internal 56K dial-up modem, allowing homes that lacked a broadband connection to enjoy wireless connectivity, albeit at dial-up speeds.<ref>{{Cite web|url = https://www.apple.com/airportextreme/specs.html|title = AirPort Extreme \u2013 Technical Specifications|website = Apple.com|archive-url = https://web.archive.org/web/20040608125410/http://www.apple.com/airportextreme/specs.html|archive-date = 2004-06-08|url-status = dead}}</ref> It was the last generation to retain the \"flying saucer\" form factor. Later generations would adopt the short, rounded-square form factor that would be seen until 2013.\n\n===1st generation===\nOn January 9, 2007 the AirPort Extreme began shipping, with support for 802.11n draft specification, and built-in wireless print and storage server.\n\n===2nd generation===\nOn March 19, 2008, Apple released a firmware update for both models of the AirPort Extreme that, according to third-party reports, allowed AirPort Disks to be used in conjunction with [[Time Machine (macOS)|Time Machine]], similar to the functionality provided by [[AirPort Time Capsule]].<ref>{{cite web|title=Time Machine now works with AirPort Extreme's AirDisk feature|website=Engadget.com|date=March 19, 2008|url=https://www.engadget.com/2008-03-19-time-machine-now-works-with-airport-extremes-airdisk-feature.html|first=N.|last=Patel|access-date=2021-10-06}}</ref><ref>{{cite web|title=Update allows Time Machine backups on AirPort Extreme|work=Macworld|date=March 19, 2008|url=http://www.macworld.com/article/1132613/airporttime.html|first=Jim|last=Dalrymple|access-date=2021-10-06}}</ref>\n\n===3rd generation===\nOn March 3, 2009, Apple unveiled a new AirPort Extreme with simultaneous dual-band 802.11 Draft-N radios. This allowed full 802.11 Draft-N 2x2 communication in both 802.11 Draft-N bands at the same time.\n\n===4th generation===\nOn October 20, 2009, Apple unveiled an updated AirPort Extreme with antenna improvements.\n\n===5th generation===\nOn June 21, 2011, Apple unveiled an updated AirPort Extreme, referred to as ''AirPort Extreme 802.11n (5th Generation)''.\n\nThe detailed table of output power comparison between the ''4th generation'' model '''MC340LL/A''' and the ''5th generation'' model '''MD031LL/A''' can be seen below:<ref>[http://fccid.net/number.php?id=146107&fcc=BCGA1354 Test Report \u2013 Previous version] Federal Communications Commission (FCC)</ref><ref>[http://fccid.net/number.php?id=878510&fcc=BCGA1408 Test Report \u2013 Current version] Federal Communications Commission (FCC)</ref>\n\n:{| class=\"wikitable\" border=\"1\" style=\"text-align:center\"\n|-\n!  Frequency range (MHz)\n!  Mode\n!  AirPort Extreme model\n!  Output power (dBm)\n!  Output power (mW)\n!  Comparison (percent)\n!  Difference (percent)\n|-\n|  rowspan=\"6\"| 2412\u20132462\n|  rowspan=\"2\"| 802.11b\n|  4th generation\n|  24.57\n|  286.42\n|  100\n|  rowspan=\"2\" style=\"background:none; color:red\"| -10.3\n|-\n|  5th generation\n|  24.10\n|  257.04\n|  89.7\n|-\n|  rowspan=\"2\"| 802.11g\n|  4th generation\n|  21.56\n|  143.22\n|  100\n|  rowspan=\"2\" style=\"background:none; color:green\"| +114.8\n|-\n|  5th generation\n|  24.88\n|  307.61\n|  214.8\n|-\n|  rowspan=\"2\"| 802.11n HT20\n|  4th generation\n|  21.17\n|  130.92\n|  100\n|  rowspan=\"2\" style=\"background:none; color:green\"| +96.8\n|-\n|  5th generation\n|  24.11\n|  257.63\n|  196.8\n|-\n|  rowspan=\"2\"| 5745\u20135825\n|  rowspan=\"2\"| 802.11a\n|  4th generation\n|  23.07\n|  202.77\n|  100\n|  rowspan=\"2\" style=\"background:none; color:green\"| +61.1\n|-\n|  5th generation\n|  25.14\n|  326.59\n|  161.1\n|-\n|  rowspan=\"2\"| 5745\u20135805\n|  rowspan=\"2\"| 802.11n HT20\n|  4th generation\n|  22.17\n|  164.82\n|  100\n|  rowspan=\"2\" style=\"background:none; color:green\"| +104.6\n|-\n|  5th generation\n|  25.28\n|  337.29\n|  204.6\n|-\n|  rowspan=\"2\"| 5755\u20135795\n|  rowspan=\"2\"| 802.11n HT40\n|  4th generation\n|  21.44\n|  139.32\n|  100\n|  rowspan=\"2\" style=\"background:none; color:green\"| +181.8\n|-\n|  5th generation\n|  25.94\n|  392.64\n|  281.8\n|}\nNote: A 3dB increase is equivalent to a doubling of power output.\n\n===6th generation===\nOn June 10, 2013, Apple unveiled an updated AirPort Extreme, referred to as ''AirPort Extreme 802.11ac (6th Generation)''. The 6th generation AirPort Extreme (and 5th generation AirPort Time Capsule) featured three-stream 802.11ac Wi-Fi technology with a maximum data rate of 1.3Gbit/s, which is nearly three times faster than 802.11n. Time Machine was now supported using an external USB hard drive connected to AirPort Extreme (802.11ac model only).<ref name=AppleBackupDisks>{{cite web|url=https://support.apple.com/en-us/HT202784|title=Backup disks you can use with Time Machine|date=January 29, 2021|work=Apple Inc.}}</ref>\n\n==Comparison chart==\n<div style=\"overflow:auto;\">\n{| class=\"wikitable\" style=\"text-align:center\" border=\"1\"\n|-\n!  Approx. release date\n!  Consumer nickname\n!  AirPort Extreme\n!  Model\n!  Wireless standard\n!  Gigabit Ethernet\n!  Guest network<ref>{{cite web|url=https://support.apple.com/guide/aputility/set-up-a-guest-network-ap22913/mac|title=Set up a guest network in AirPort Utility on Mac|work=Apple Inc.}}</ref>\n!  Radio type\n!  [[802.11n#Number of antennas|MIMO]]\n!  IPv6 router mode***\n!  Time-Machine Backup****\n!  CPU\n!  RAM\n!  FLASH\n|-\n|  January 7, 2003\n|  Original/round\n|  M8799LL/A\n|  A1034\n|  802.11b/g\n|  {{No}}\n|  {{No}}\n|  Single band<br />\n<small>2.4&nbsp;GHz</small>\n|  {{No}}\n|  {{No}}\n|  {{No}}\n|-\n|  January 9, 2007\n|  1st generation\n|  [http://support.apple.com/kb/SP20 MA073LL/A]\n| rowspan=\"2\" |  A1143\n| rowspan=\"3\" |  802.11a/b/g/n<sup>*</sup>\n|  {{No}}\n|  {{No}}\n| rowspan=\"2\" |  Dual band<br />\n<small>2.4&nbsp;GHz or 5&nbsp;GHz</small>\n|  3\u00d73:2\n|  {{No}}\n|  {{No}}\n|  Marvell 1850 step A0 (Feroceon core) [88F5281 Rev 4]\n|  64 MB\n|  16 MB\n|-\n|  August 7, 2007\n|  2nd generation\n|  [http://support.apple.com/kb/SP671 MB053LL/A]\n|  {{Yes}}\n|  {{No}}\n|  3\u00d73:2\n|  {{No}}\n|  {{No}}\n|-\n|  March 3, 2009\n|  3rd generation\n|  [http://support.apple.com/kb/sp509 MB763LL/A]\n|  A1301\n|  {{Yes}}\n|  {{Yes}}\n| rowspan=\"4\" |  Dual band (simultaneous) <br />\n<small>2.4&nbsp;GHz and 5&nbsp;GHz</small>\n|  2\u00d72:2 (in&nbsp;each&nbsp;band)\n|  {{No}}\n|  {{No}}\n|-\n|  October 20, 2009\n|  4th generation\n|  [http://support.apple.com/kb/SP672 MC340AM/A]\n|  A1354<br />\n| rowspan=\"2\" |  802.11a/b/g/n\n|  {{Yes}}\n|  {{Yes}}\n| rowspan=\"3\" |  3\u00d73:3 (in&nbsp;each&nbsp;band)\n|  {{Yes}}, but not over [[point-to-point protocol over Ethernet|PPPoE]]\n|  {{Yes}}, with latest software\n|-\n|  June 21, 2011\n|  5th generation\n|  [http://support.apple.com/kb/sp628 MD031LL/A]\n|  A1408\n|  {{Yes}}\n|  {{Yes}}\n|  {{Yes}}, but not over [[point-to-point protocol over Ethernet|PPPoE]]\n|  {{Yes}}, with latest software\n|  ARM926E-S rev 1 (ARM9E-S core)\n|  128 MB\n|  16 MB\n|-\n|  June 10, 2013\n|  6th generation\n|  [http://support.apple.com/kb/SP680 ME918LL/A]\n|  A1521\n|  802.11a/b/g/n/ac<sup>**</sup>\n|  {{Yes}}\n|  {{Yes}}\n|  {{Yes}}, but not over [[point-to-point protocol over Ethernet|PPPoE]]\n|  {{Yes}}\n|  BCM53019 (dual Cortex-A9)\n|  512 MB\n|  32 MB\n|}</div>\n<nowiki>*</nowiki>802.11n draft-specification support in 1st- to 3rd-generation models.<br />\n<nowiki>**</nowiki>[[802.11ac]] draft-specification support in 6th-generation model.<br />\n<nowiki>***</nowiki>All models support IPv6 tunnel mode.<br />\n<nowiki>****</nowiki>Supported by Apple.<ref name=AppleBackupDisks/>\n\n==Discontinuation and support==\nAccording to a Bloomberg report on November 21, 2016, \"Apple Inc. has disbanded its division that develops wireless routers, another move to try to sharpen the company\u2019s focus on consumer products that generate the bulk of its revenue, according to people familiar with the matter.\"<ref name=\"Mark Gurman, Bloomberg 2016.11.23\"/>\n\nIn an April 2018 statement to [[Apple_community#9to5Mac|9to5Mac]],<ref>{{cite web|title=Apple officially discontinues AirPort router line, no plans for future hardware|url=https://9to5mac.com/2018/04/26/apple-airport-cancellation/|website=9to5Mac|first=Zac|last=Hall|date=April 26, 2018|access-date=2010-10-06}}</ref> Apple announced the discontinuation of its AirPort line, effectively leaving the consumer router market. Apple continued supporting the AirPort Extreme.<ref name=AppleVintageObsolete>{{cite web|title=Vintage and obsolete products|url=https://support.apple.com/en-us/HT201624|website=Apple|access-date=2021-10-06}}</ref><ref>{{cite web |title=Update the firmware on your AirPort base station |url=https://support.apple.com/en-us/HT201519 |website=Apple Support |date=June 21, 2019| access-date=2021-10-06 |language=en}}</ref>\n\n==See also==\n{{Commons category|AirPort Extreme}}\n*[[List of router firmware projects]]\n*[[AirPort Express]]\n\n==Notes==\n{{reflist|2}}\n\n{{Wi-Fi base stations by Apple}}\n{{Apple hardware}}\n\n[[Category:Apple Inc. peripherals]]\n[[Category:Products and services discontinued in 2018]]\n[[Category:Discontinued Apple Inc. products]]",
+      "text": "The AirPort Extreme is a residential gateway combining the functions of a router, network switch, wireless access point and NAS as well as varied other functions, and one of Apple's former AirPort products. The latest model, the 6th generation, supports 802.11ac networking in addition to older standards. Versions of the same system with a built-in network-accessible hard drive are known as the AirPort Time Capsule. Apple discontinued developing its lineup of wireless routers in 2016, but as of 2023[update] continues limited hardware and software support. The first AirPort Extreme was announced at the MacWorld expo in San Francisco on January 7, 2003. It featured 802.11g wireless technology for the first time in an AirPort base station. The name \"AirPort Extreme\" originally referred to any one of Apple's AirPort products that implemented the (then) newly introduced 802.11g Wi-Fi standard, differentiating it from earlier devices that ran the slower 802.11a and b standards. At that time (circa 2003) the gateway part of this lineup was known as the AirPort Extreme Base Station. With the addition of the even faster Draft-N standards in early 2009 the naming of \"Base Station\" was dropped, and was renamed to AirPort Extreme. Several minor upgrades followed with the wireless-N models, mostly to change antenna and wireless output power. In 2013, a major upgrade changed the physical structure of the device, added 802.11ac support, and added more antennas. The AirPort Extreme has gone through three distinct physical forms. The earliest models had a similar plastic housing to the original AirPort Base Station, in a round \"flying saucer\" shape. From 2007 to 2013, the devices took on a flat rounded rectangle shape, similar in layout and size to the Mac mini or early models of the Apple TV. The 2013 model had a more vertical form, taller than it was wide. In approximately 2016, Apple disbanded the wireless router team that developed the AirPort Time Capsule and AirPort Extreme router. In 2018, Apple formally discontinued both products, exiting the router market. Bloomberg News noted that \"Apple rarely discontinues product categories\" and that its decision to leave the business was \"a boon for other wireless router makers.\" Fully featured 802.11ac Wi-Fi base station Sleep Proxy Service 4 Ethernet ports (3 LAN ports, 1 WAN port) \u2014 all ports are gigabit Ethernet on newer versions USB 2.0 interface for disk and printer sharing Built-in file server (AFP and SMB) Runs VxWorks Operating System by WindRiver or a customized version of NetBSD. The AirPort Disk feature allows users to plug a USB hard drive into the AirPort Extreme for use as a network-attached storage (NAS) device for Mac OS X and Microsoft Windows clients. Users may also connect a USB hub and printer. The performance of USB hard drives attached to an AirPort Extreme is slower than if the drive were connected directly to a computer. This is due to the processor speed on the AirPort Extreme. Depending on the setup and types of reads and writes, performance ranges from 0.5 to 17.5 MB/s for writing and 1.9 to 25.6 MB/s for reading. Performance for the same disk connected directly to a computer would be 6.6 to 31.6 MB/s for writing and 7.1 to 37.2 MB/s for reading. NTFS-formatted drives are not supported. The original AirPort Extreme Base Station in 2003 was so named because of its support for the 802.11g standard of the day, as well as for its ability to serve up to 50 Macs or PCs simultaneously. One feature found in most models of this generation was an internal 56K dial-up modem, allowing homes that lacked a broadband connection to enjoy wireless connectivity, albeit at dial-up speeds. It was the last generation to retain the \"flying saucer\" form factor. Later generations would adopt the short, rounded-square form factor that would be seen until 2013. On January 9, 2007 the AirPort Extreme began shipping, with support for 802.11n draft specification, and built-in wireless print and storage server. On March 19, 2008, Apple released a firmware update for both models of the AirPort Extreme that, according to third-party reports, allowed AirPort Disks to be used in conjunction with Time Machine, similar to the functionality provided by AirPort Time Capsule. On March 3, 2009, Apple unveiled a new AirPort Extreme with simultaneous dual-band 802.11 Draft-N radios. This allowed full 802.11 Draft-N 2x2 communication in both 802.11 Draft-N bands at the same time. On October 20, 2009, Apple unveiled an updated AirPort Extreme with antenna improvements. On June 21, 2011, Apple unveiled an updated AirPort Extreme, referred to as AirPort Extreme 802.11n (5th Generation). The detailed table of output power comparison between the 4th generation model MC340LL/A and the 5th generation model MD031LL/A can be seen below: Note: A 3dB increase is equivalent to a doubling of power output. On June 10, 2013, Apple unveiled an updated AirPort Extreme, referred to as AirPort Extreme 802.11ac (6th Generation). The 6th generation AirPort Extreme (and 5th generation AirPort Time Capsule) featured three-stream 802.11ac Wi-Fi technology with a maximum data rate of 1.3Gbit/s, which is nearly three times faster than 802.11n. Time Machine was now supported using an external USB hard drive connected to AirPort Extreme (802.11ac model only). *802.11n draft-specification support in 1st- to 3rd-generation models. **802.11ac draft-specification support in 6th-generation model. ***All models support IPv6 tunnel mode. ****Supported by Apple. According to a Bloomberg report on November 21, 2016, \"Apple Inc. has disbanded its division that develops wireless routers, another move to try to sharpen the company\u2019s focus on consumer products that generate the bulk of its revenue, according to people familiar with the matter.\" In an April 2018 statement to 9to5Mac, Apple announced the discontinuation of its AirPort line, effectively leaving the consumer router market. Apple continued supporting the AirPort Extreme. Wikimedia Commons has media related to AirPort Extreme. List of router firmware projects AirPort Express \"Vintage and obsolete products\". Apple. Retrieved October 6, 2021. https://www.apple.com/newsroom/2003/01/07Apple-Delivers-AirPort-Extreme-802-11g-Wireless-Networking/. {{cite web}}: Missing or empty |title= (help) Gurman, Mark (November 23, 2016). \"Apple Abandons Development of Wireless Routers\". Bloomberg News. Retrieved October 6, 2021. Gurman, Mark (April 27, 2018). \"Apple Officially Discontinues Its AirPort Wireless Routers\". Bloomberg News. Retrieved October 6, 2021. \"Mac OS X v10.6: About Wake on Demand (Apple Article HT3774)\". Apple. August 27, 2009. Retrieved October 6, 2021. Setting up Wake on Demand\", \"Setting up a Bonjour Sleep Proxy \"AirPort Extreme: Apple Breaks 90 Mbps\". wifinetnews.com. Archived from the original on February 6, 2010. Retrieved October 6, 2021. \"AirPort Extreme \u2013 Sharing\". Apple Inc. Archived from the original on April 2, 2013. Klug, Brian. \"Airport Extreme (5th Gen) and Time Capsule (4th Gen) Review \u2013 Faster WiFi\". Airport Extreme (5th Gen) and Time Capsule (4th Gen) Review. AnandTech. Retrieved October 6, 2021. \"AirPort Extreme\". Apple.com. Archived from the original on June 8, 2004. \"AirPort Extreme \u2013 Technical Specifications\". Apple.com. Archived from the original on June 8, 2004. Patel, N. (March 19, 2008). \"Time Machine now works with AirPort Extreme's AirDisk feature\". Engadget.com. Retrieved October 6, 2021. Dalrymple, Jim (March 19, 2008). \"Update allows Time Machine backups on AirPort Extreme\". Macworld. Retrieved October 6, 2021. Test Report \u2013 Previous version Federal Communications Commission (FCC) Test Report \u2013 Current version Federal Communications Commission (FCC) \"Backup disks you can use with Time Machine\". Apple Inc. January 29, 2021. \"Set up a guest network in AirPort Utility on Mac\". Apple Inc. Hall, Zac (April 26, 2018). \"Apple officially discontinues AirPort router line, no plans for future hardware\". 9to5Mac. Retrieved October 6, 2010. \"Update the firmware on your AirPort base station\". Apple Support. June 21, 2019. Retrieved October 6, 2021."
+    },
+    "collectMetadata": {
+      "requestedDate": "2023-10-16T00:00:00",
+      "ingestedDate": "2023-10-22T07:22:50.191757"
+    },
+    "extractionMetadata": [
+      {
+        "id": "WikitextExtractor",
+        "linkExtractionDate": "2023-10-22T07:22:50.194939",
+        "links": [
+          {
+            "fragment": null,
+            "link": "File:AirPort_Extreme_2007.jpg",
+            "text": "thumb|The back of a 2007 AirPort Extreme",
+            "title": "File:AirPort Extreme 2007.jpg"
+          },
+          {
+            "fragment": null,
+            "link": "File:Chipsets.svg",
+            "text": "thumb|right|Historical development of some wireless router chipset variants",
+            "title": "File:Chipsets.svg"
+          },
+          {
+            "fragment": null,
+            "link": "Residential_gateway",
+            "text": null,
+            "title": "residential gateway"
+          },
+          {
+            "fragment": null,
+            "link": "Router_(computing)",
+            "text": "router",
+            "title": "router (computing)"
+          },
+          {
+            "fragment": null,
+            "link": "Network_switch",
+            "text": null,
+            "title": "network switch"
+          },
+          {
+            "fragment": null,
+            "link": "Wireless_access_point",
+            "text": null,
+            "title": "wireless access point"
+          },
+          {
+            "fragment": null,
+            "link": "Network-attached_storage",
+            "text": "NAS",
+            "title": "network-attached storage"
+          },
+          {
+            "fragment": null,
+            "link": "AirPort",
+            "text": null,
+            "title": "AirPort"
+          },
+          {
+            "fragment": null,
+            "link": "IEEE_802.11ac",
+            "text": "802.11ac",
+            "title": "IEEE 802.11ac"
+          },
+          {
+            "fragment": null,
+            "link": "Hard_drive",
+            "text": null,
+            "title": "hard drive"
+          },
+          {
+            "fragment": null,
+            "link": "AirPort_Time_Capsule",
+            "text": null,
+            "title": "AirPort Time Capsule"
+          },
+          {
+            "fragment": null,
+            "link": "Mac_mini",
+            "text": null,
+            "title": "Mac mini"
+          },
+          {
+            "fragment": null,
+            "link": "Apple_TV",
+            "text": null,
+            "title": "Apple TV"
+          },
+          {
+            "fragment": null,
+            "link": "802.11ac",
+            "text": null,
+            "title": "802.11ac"
+          },
+          { "fragment": null, "link": "Wi-Fi", "text": null, "title": "Wi-Fi" },
+          {
+            "fragment": null,
+            "link": "Sleep_Proxy_Service",
+            "text": null,
+            "title": "Sleep Proxy Service"
+          },
+          {
+            "fragment": null,
+            "link": "Ethernet",
+            "text": null,
+            "title": "Ethernet"
+          },
+          {
+            "fragment": null,
+            "link": "Gigabit_Ethernet",
+            "text": null,
+            "title": "gigabit Ethernet"
+          },
+          {
+            "fragment": null,
+            "link": "Apple_Filing_Protocol",
+            "text": "AFP",
+            "title": "Apple Filing Protocol"
+          },
+          {
+            "fragment": null,
+            "link": "Server_Message_Block",
+            "text": "SMB",
+            "title": "Server Message Block"
+          },
+          {
+            "fragment": null,
+            "link": "VxWorks",
+            "text": null,
+            "title": "VxWorks"
+          },
+          {
+            "fragment": null,
+            "link": "NetBSD",
+            "text": null,
+            "title": "NetBSD"
+          },
+          {
+            "fragment": null,
+            "link": "Network-attached_storage",
+            "text": null,
+            "title": "network-attached storage"
+          },
+          { "fragment": null, "link": "NTFS", "text": null, "title": "NTFS" },
+          {
+            "fragment": null,
+            "link": "File:Early_AirPort_(2364225930).jpg",
+            "text": "thumb|First three AirPort Base Station models, including the AirPort Extreme to the right (Called AirMac Extreme in Japan).",
+            "title": "File:Early AirPort (2364225930).jpg"
+          },
+          {
+            "fragment": null,
+            "link": "Time_Machine_(macOS)",
+            "text": "Time Machine",
+            "title": "Time Machine (macOS)"
+          },
+          {
+            "fragment": null,
+            "link": "AirPort_Time_Capsule",
+            "text": null,
+            "title": "AirPort Time Capsule"
+          },
+          {
+            "fragment": "Number of antennas",
+            "link": "802.11n",
+            "text": "MIMO",
+            "title": "802.11n"
+          },
+          {
+            "fragment": null,
+            "link": "Point-to-point_protocol_over_Ethernet",
+            "text": "PPPoE",
+            "title": "point-to-point protocol over Ethernet"
+          },
+          {
+            "fragment": null,
+            "link": "Point-to-point_protocol_over_Ethernet",
+            "text": "PPPoE",
+            "title": "point-to-point protocol over Ethernet"
+          },
+          {
+            "fragment": null,
+            "link": "Point-to-point_protocol_over_Ethernet",
+            "text": "PPPoE",
+            "title": "point-to-point protocol over Ethernet"
+          },
+          {
+            "fragment": null,
+            "link": "802.11ac",
+            "text": null,
+            "title": "802.11ac"
+          },
+          {
+            "fragment": "9to5Mac",
+            "link": "Apple_community",
+            "text": "9to5Mac",
+            "title": "Apple_community"
+          },
+          {
+            "fragment": null,
+            "link": "List_of_router_firmware_projects",
+            "text": null,
+            "title": "List of router firmware projects"
+          },
+          {
+            "fragment": null,
+            "link": "AirPort_Express",
+            "text": null,
+            "title": "AirPort Express"
+          },
+          {
+            "fragment": null,
+            "link": "Category:Apple_Inc._peripherals",
+            "text": null,
+            "title": "Category:Apple Inc. peripherals"
+          },
+          {
+            "fragment": null,
+            "link": "Category:Products_and_services_discontinued_in_2018",
+            "text": null,
+            "title": "Category:Products and services discontinued in 2018"
+          },
+          {
+            "fragment": null,
+            "link": "Category:Discontinued_Apple_Inc._products",
+            "text": null,
+            "title": "Category:Discontinued Apple Inc. products"
+          }
+        ],
+        "nbLinks": 38,
+        "nbTables": 2,
+        "nbTexts": 18,
+        "tableExtractionDate": "2023-10-22T07:22:50.194939",
+        "tables": [
+          {
+            "endOffset": 10869,
+            "startOffset": 9464,
+            "tableCaption": null,
+            "tableContent": "{| class=\"wikitable\" border=\"1\" style=\"text-align:center\"\n|-\n!  Frequency range (MHz)\n!  Mode\n!  AirPort Extreme model\n!  Output power (dBm)\n!  Output power (mW)\n!  Comparison (percent)\n!  Difference (percent)\n|-\n|  rowspan=\"6\"| 2412\u20132462\n|  rowspan=\"2\"| 802.11b\n|  4th generation\n|  24.57\n|  286.42\n|  100\n|  rowspan=\"2\" style=\"background:none; color:red\"| -10.3\n|-\n|  5th generation\n|  24.10\n|  257.04\n|  89.7\n|-\n|  rowspan=\"2\"| 802.11g\n|  4th generation\n|  21.56\n|  143.22\n|  100\n|  rowspan=\"2\" style=\"background:none; color:green\"| +114.8\n|-\n|  5th generation\n|  24.88\n|  307.61\n|  214.8\n|-\n|  rowspan=\"2\"| 802.11n HT20\n|  4th generation\n|  21.17\n|  130.92\n|  100\n|  rowspan=\"2\" style=\"background:none; color:green\"| +96.8\n|-\n|  5th generation\n|  24.11\n|  257.63\n|  196.8\n|-\n|  rowspan=\"2\"| 5745\u20135825\n|  rowspan=\"2\"| 802.11a\n|  4th generation\n|  23.07\n|  202.77\n|  100\n|  rowspan=\"2\" style=\"background:none; color:green\"| +61.1\n|-\n|  5th generation\n|  25.14\n|  326.59\n|  161.1\n|-\n|  rowspan=\"2\"| 5745\u20135805\n|  rowspan=\"2\"| 802.11n HT20\n|  4th generation\n|  22.17\n|  164.82\n|  100\n|  rowspan=\"2\" style=\"background:none; color:green\"| +104.6\n|-\n|  5th generation\n|  25.28\n|  337.29\n|  204.6\n|-\n|  rowspan=\"2\"| 5755\u20135795\n|  rowspan=\"2\"| 802.11n HT40\n|  4th generation\n|  21.44\n|  139.32\n|  100\n|  rowspan=\"2\" style=\"background:none; color:green\"| +181.8\n|-\n|  5th generation\n|  25.94\n|  392.64\n|  281.8\n|}",
+            "tableData": [
+              [
+                "Frequency range (MHz)",
+                "Mode",
+                "AirPort Extreme model",
+                "Output power (dBm)",
+                "Output power (mW)",
+                "Comparison (percent)",
+                "Difference (percent)"
+              ],
+              [
+                "2412\u20132462",
+                "802.11b",
+                "4th generation",
+                "24.57",
+                "286.42",
+                "100",
+                "-10.3"
+              ],
+              [
+                "2412\u20132462",
+                "802.11b",
+                "5th generation",
+                "24.10",
+                "257.04",
+                "89.7",
+                "-10.3"
+              ],
+              [
+                "2412\u20132462",
+                "802.11g",
+                "4th generation",
+                "21.56",
+                "143.22",
+                "100",
+                "+114.8"
+              ],
+              [
+                "2412\u20132462",
+                "802.11g",
+                "5th generation",
+                "24.88",
+                "307.61",
+                "214.8",
+                "+114.8"
+              ],
+              [
+                "2412\u20132462",
+                "802.11n HT20",
+                "4th generation",
+                "21.17",
+                "130.92",
+                "100",
+                "+96.8"
+              ],
+              [
+                "2412\u20132462",
+                "802.11n HT20",
+                "5th generation",
+                "24.11",
+                "257.63",
+                "196.8",
+                "+96.8"
+              ],
+              [
+                "5745\u20135825",
+                "802.11a",
+                "4th generation",
+                "23.07",
+                "202.77",
+                "100",
+                "+61.1"
+              ],
+              [
+                "5745\u20135825",
+                "802.11a",
+                "5th generation",
+                "25.14",
+                "326.59",
+                "161.1",
+                "+61.1"
+              ],
+              [
+                "5745\u20135805",
+                "802.11n HT20",
+                "4th generation",
+                "22.17",
+                "164.82",
+                "100",
+                "+104.6"
+              ],
+              [
+                "5745\u20135805",
+                "802.11n HT20",
+                "5th generation",
+                "25.28",
+                "337.29",
+                "204.6",
+                "+104.6"
+              ],
+              [
+                "5755\u20135795",
+                "802.11n HT40",
+                "4th generation",
+                "21.44",
+                "139.32",
+                "100",
+                "+181.8"
+              ],
+              [
+                "5755\u20135795",
+                "802.11n HT40",
+                "5th generation",
+                "25.94",
+                "392.64",
+                "281.8",
+                "+181.8"
+              ]
+            ],
+            "tableNum": 0
+          },
+          {
+            "endOffset": 13933,
+            "startOffset": 11638,
+            "tableCaption": null,
+            "tableContent": "{| class=\"wikitable\" style=\"text-align:center\" border=\"1\"\n|-\n!  Approx. release date\n!  Consumer nickname\n!  AirPort Extreme\n!  Model\n!  Wireless standard\n!  Gigabit Ethernet\n!  Guest network<ref>{{cite web|url=https://support.apple.com/guide/aputility/set-up-a-guest-network-ap22913/mac|title=Set up a guest network in AirPort Utility on Mac|work=Apple Inc.}}</ref>\n!  Radio type\n!  [[802.11n#Number of antennas|MIMO]]\n!  IPv6 router mode***\n!  Time-Machine Backup****\n!  CPU\n!  RAM\n!  FLASH\n|-\n|  January 7, 2003\n|  Original/round\n|  M8799LL/A\n|  A1034\n|  802.11b/g\n|  {{No}}\n|  {{No}}\n|  Single band<br />\n<small>2.4&nbsp;GHz</small>\n|  {{No}}\n|  {{No}}\n|  {{No}}\n|-\n|  January 9, 2007\n|  1st generation\n|  [http://support.apple.com/kb/SP20 MA073LL/A]\n| rowspan=\"2\" |  A1143\n| rowspan=\"3\" |  802.11a/b/g/n<sup>*</sup>\n|  {{No}}\n|  {{No}}\n| rowspan=\"2\" |  Dual band<br />\n<small>2.4&nbsp;GHz or 5&nbsp;GHz</small>\n|  3\u00d73:2\n|  {{No}}\n|  {{No}}\n|  Marvell 1850 step A0 (Feroceon core) [88F5281 Rev 4]\n|  64 MB\n|  16 MB\n|-\n|  August 7, 2007\n|  2nd generation\n|  [http://support.apple.com/kb/SP671 MB053LL/A]\n|  {{Yes}}\n|  {{No}}\n|  3\u00d73:2\n|  {{No}}\n|  {{No}}\n|-\n|  March 3, 2009\n|  3rd generation\n|  [http://support.apple.com/kb/sp509 MB763LL/A]\n|  A1301\n|  {{Yes}}\n|  {{Yes}}\n| rowspan=\"4\" |  Dual band (simultaneous) <br />\n<small>2.4&nbsp;GHz and 5&nbsp;GHz</small>\n|  2\u00d72:2 (in&nbsp;each&nbsp;band)\n|  {{No}}\n|  {{No}}\n|-\n|  October 20, 2009\n|  4th generation\n|  [http://support.apple.com/kb/SP672 MC340AM/A]\n|  A1354<br />\n| rowspan=\"2\" |  802.11a/b/g/n\n|  {{Yes}}\n|  {{Yes}}\n| rowspan=\"3\" |  3\u00d73:3 (in&nbsp;each&nbsp;band)\n|  {{Yes}}, but not over [[point-to-point protocol over Ethernet|PPPoE]]\n|  {{Yes}}, with latest software\n|-\n|  June 21, 2011\n|  5th generation\n|  [http://support.apple.com/kb/sp628 MD031LL/A]\n|  A1408\n|  {{Yes}}\n|  {{Yes}}\n|  {{Yes}}, but not over [[point-to-point protocol over Ethernet|PPPoE]]\n|  {{Yes}}, with latest software\n|  ARM926E-S rev 1 (ARM9E-S core)\n|  128 MB\n|  16 MB\n|-\n|  June 10, 2013\n|  6th generation\n|  [http://support.apple.com/kb/SP680 ME918LL/A]\n|  A1521\n|  802.11a/b/g/n/ac<sup>**</sup>\n|  {{Yes}}\n|  {{Yes}}\n|  {{Yes}}, but not over [[point-to-point protocol over Ethernet|PPPoE]]\n|  {{Yes}}\n|  BCM53019 (dual Cortex-A9)\n|  512 MB\n|  32 MB\n|}",
+            "tableData": [
+              [
+                "Approx. release date",
+                "Consumer nickname",
+                "AirPort Extreme",
+                "Model",
+                "Wireless standard",
+                "Gigabit Ethernet",
+                "Guest network",
+                "Radio type",
+                "MIMO",
+                "IPv6 router mode***",
+                "Time-Machine Backup****",
+                "CPU",
+                "RAM",
+                "FLASH"
+              ],
+              [
+                "January 7, 2003",
+                "Original/round",
+                "M8799LL/A",
+                "A1034",
+                "802.11b/g",
+                "",
+                "",
+                "Single band\n2.4\u00a0GHz",
+                "",
+                "",
+                "",
+                "",
+                "",
+                ""
+              ],
+              [
+                "January 9, 2007",
+                "1st generation",
+                "MA073LL/A",
+                "A1143",
+                "802.11a/b/g/n*",
+                "",
+                "",
+                "Dual band\n2.4\u00a0GHz or 5\u00a0GHz",
+                "3\u00d73:2",
+                "",
+                "",
+                "Marvell 1850 step A0 (Feroceon core) [88F5281 Rev 4]",
+                "64 MB",
+                "16 MB"
+              ],
+              [
+                "August 7, 2007",
+                "2nd generation",
+                "MB053LL/A",
+                "A1143",
+                "802.11a/b/g/n*",
+                "",
+                "",
+                "Dual band\n2.4\u00a0GHz or 5\u00a0GHz",
+                "3\u00d73:2",
+                "",
+                "",
+                "",
+                "",
+                ""
+              ],
+              [
+                "March 3, 2009",
+                "3rd generation",
+                "MB763LL/A",
+                "A1301",
+                "802.11a/b/g/n*",
+                "",
+                "",
+                "Dual band (simultaneous) \n2.4\u00a0GHz and 5\u00a0GHz",
+                "2\u00d72:2 (in\u00a0each\u00a0band)",
+                "",
+                "",
+                "",
+                "",
+                ""
+              ],
+              [
+                "October 20, 2009",
+                "4th generation",
+                "MC340AM/A",
+                "A1354",
+                "802.11a/b/g/n",
+                "",
+                "",
+                "Dual band (simultaneous) \n2.4\u00a0GHz and 5\u00a0GHz",
+                "3\u00d73:3 (in\u00a0each\u00a0band)",
+                ", but not over PPPoE",
+                ", with latest software",
+                "",
+                "",
+                ""
+              ],
+              [
+                "June 21, 2011",
+                "5th generation",
+                "MD031LL/A",
+                "A1408",
+                "802.11a/b/g/n",
+                "",
+                "",
+                "Dual band (simultaneous) \n2.4\u00a0GHz and 5\u00a0GHz",
+                "3\u00d73:3 (in\u00a0each\u00a0band)",
+                ", but not over PPPoE",
+                ", with latest software",
+                "ARM926E-S rev 1 (ARM9E-S core)",
+                "128 MB",
+                "16 MB"
+              ],
+              [
+                "June 10, 2013",
+                "6th generation",
+                "ME918LL/A",
+                "A1521",
+                "802.11a/b/g/n/ac**",
+                "",
+                "",
+                "Dual band (simultaneous) \n2.4\u00a0GHz and 5\u00a0GHz",
+                "3\u00d73:3 (in\u00a0each\u00a0band)",
+                ", but not over PPPoE",
+                "",
+                "BCM53019 (dual Cortex-A9)",
+                "512 MB",
+                "32 MB"
+              ]
+            ],
+            "tableNum": 1
+          }
+        ],
+        "technology": "WikitextExtractor",
+        "textExtractionDate": "2023-10-22T07:22:50.194939",
+        "texts": [
+          {
+            "endOffset": 949,
+            "index": 0,
+            "level": 0,
+            "startOffset": 0,
+            "title": null,
+            "value": "{{Short description|Residential gateway}}\n{{Use mdy dates|date=April 2012}}\n[[File:AirPort Extreme 2007.jpg|thumb|The back of a 2007 AirPort Extreme]]\n[[File:Chipsets.svg|thumb|right|Historical development of some wireless router chipset variants]]\n\nThe AirPort Extreme is a [[residential gateway]] combining the functions of a [[router (computing)|router]], [[network switch]],  [[wireless access point]] and [[network-attached storage|NAS]] as well as varied other functions, and one of Apple's former [[AirPort]] products. The latest model, the 6th generation, supports [[IEEE 802.11ac|802.11ac]] networking in addition to older standards. Versions of the same system with a built-in network-accessible [[hard drive]] are known as the [[AirPort Time Capsule]].\n\nApple discontinued developing its lineup of wireless routers in 2016, but {{As of|2023|lc=yes}} continues limited hardware and software support.<ref name=AppleVintageObsolete/>"
+          },
+          {
+            "endOffset": 3625,
+            "index": 1,
+            "level": 2,
+            "startOffset": 949,
+            "title": "History",
+            "value": "The first AirPort Extreme was announced at the MacWorld expo in San Francisco on January 7, 2003.<ref>{{cite web |url=https://www.apple.com/newsroom/2003/01/07Apple-Delivers-AirPort-Extreme-802-11g-Wireless-Networking/}}</ref> It featured 802.11g wireless technology for the first time in an AirPort base station.\n\nThe name \"AirPort Extreme\" originally referred to any one of Apple's AirPort products that implemented the (then) newly introduced 802.11g Wi-Fi standard, differentiating it from earlier devices that ran the slower 802.11a and b standards. At that time (circa 2003) the gateway part of this lineup was known as the AirPort Extreme Base Station. With the addition of the even faster Draft-N standards in early 2009 the naming of \"Base Station\" was dropped, and was renamed to AirPort Extreme. Several minor upgrades followed with the wireless-N models, mostly to change antenna and wireless output power. In 2013, a major upgrade changed the physical structure of the device, added 802.11ac support, and added more antennas.\n\nThe AirPort Extreme has gone through three distinct physical forms. The earliest models had a similar plastic housing to the original AirPort Base Station, in a round \"flying saucer\" shape. From 2007 to 2013, the devices took on a flat rounded rectangle shape, similar in layout and size to the [[Mac mini]] or early models of the [[Apple TV]]. The 2013 model had a more vertical form, taller than it was wide."
+          },
+          {
+            "endOffset": 3625,
+            "index": 2,
+            "level": 3,
+            "startOffset": 2419,
+            "title": "Discontinuation",
+            "value": "In approximately 2016, Apple disbanded the wireless router team that developed the AirPort Time Capsule and AirPort Extreme router.<ref name=\"Mark Gurman, Bloomberg 2016.11.23\">{{cite news |last1=Gurman |first1=Mark |title=Apple Abandons Development of Wireless Routers |url=https://www.bloombergquint.com/technology/apple-said-to-abandon-development-of-wireless-routers-ivs0ssec |access-date=2021-10-06 |publisher=Bloomberg News |date=November 23, 2016}}</ref> In 2018, Apple formally discontinued both products, exiting the router market.<ref name=\"Mark Gurman, Bloomberg 2018.04.26: official discontinuation\">{{cite news |last1=Gurman |first1=Mark |title=Apple Officially Discontinues Its AirPort Wireless Routers |url=https://www.bloombergquint.com/onweb/apple-officially-discontinues-its-airport-wireless-routers |access-date=2021-10-06 |publisher=Bloomberg News |date=April 27, 2018}}</ref> Bloomberg News noted that \"Apple rarely discontinues product categories\"<ref name=\"Mark Gurman, Bloomberg 2018.04.26: official discontinuation\" /> and that its decision to leave the business was \"a boon for other wireless router makers.\"<ref name=\"Mark Gurman, Bloomberg 2016.11.23\" />"
+          },
+          {
+            "endOffset": 6226,
+            "index": 3,
+            "level": 2,
+            "startOffset": 3625,
+            "title": "Features",
+            "value": ""
+          },
+          {
+            "endOffset": 4771,
+            "index": 4,
+            "level": 3,
+            "startOffset": 3638,
+            "title": "Overview",
+            "value": "* Fully featured [[802.11ac]] [[Wi-Fi]] base station\n* [[Sleep Proxy Service]]<ref>{{cite web\n| title       = Mac OS X v10.6: About Wake on Demand (Apple Article HT3774)\n| url         = http://support.apple.com/kb/HT3774\n| publisher   = Apple\n| date        = August 27, 2009\n| access-date = 2021-10-06 \n| quote       = \"Setting up Wake on Demand\", \"Setting up a Bonjour Sleep Proxy\"}}</ref>\n* 4 [[Ethernet]] ports (3 LAN ports, 1 WAN port) \u2014 all ports are [[gigabit Ethernet]] on newer versions\n* USB 2.0 interface for disk and printer sharing\n* Built-in file server ([[Apple Filing Protocol|AFP]] and [[Server Message Block|SMB]])\n* Runs [[VxWorks]] Operating System by WindRiver or a customized version of [[NetBSD]].<ref>{{Cite web|url = http://wifinetnews.com/archives/2007/02/airport_extreme_apple_breaks_90_mbps.html|title = AirPort Extreme: Apple Breaks 90 Mbps|access-date = 2021-10-06|website = wifinetnews.com|archive-url = https://web.archive.org/web/20100206113602/http://wifinetnews.com/archives/2007/02/airport_extreme_apple_breaks_90_mbps.html|archive-date = February 6, 2010|url-status = live}}</ref>"
+          },
+          {
+            "endOffset": 6226,
+            "index": 5,
+            "level": 3,
+            "startOffset": 4771,
+            "title": "AirPort Disk",
+            "value": "The AirPort Disk feature allows users to plug a USB hard drive into the AirPort Extreme for use as a [[network-attached storage]] (NAS) device for Mac OS X and Microsoft Windows clients.<ref>{{cite web|url=https://www.apple.com/airportextreme/features/harddrivesharing.html|title=AirPort Extreme \u2013 Sharing|archive-url=https://web.archive.org/web/20130402164644/http://www.apple.com/airportextreme/features/harddrivesharing.html|archive-date=2013-04-02|work=Apple Inc.}}</ref> Users may also connect a USB hub and printer. The performance of USB hard drives attached to an AirPort Extreme is slower than if the drive were connected directly to a computer. This is due to the processor speed on the AirPort Extreme. Depending on the setup and types of reads and writes, performance ranges from 0.5 to 17.5 MB/s for writing and 1.9 to 25.6 MB/s for reading.<ref name=\"AnandTech AirPort Extreme (5th gen) review\">{{cite web|title=Airport Extreme (5th Gen) and Time Capsule (4th Gen) Review \u2013 Faster WiFi|url=http://www.anandtech.com/show/4577/airport-extreme-5th-gen-and-time-capsule-4th-gen-review-faster-wifi-/7|work=Airport Extreme (5th Gen) and Time Capsule (4th Gen) Review|publisher=AnandTech|first= Brian|last=Klug|access-date=2021-10-06}}</ref> Performance for the same disk connected directly to a computer would be 6.6 to 31.6 MB/s for writing and 7.1 to 37.2 MB/s for reading. [[NTFS]]-formatted drives are not supported."
+          },
+          {
+            "endOffset": 11588,
+            "index": 6,
+            "level": 2,
+            "startOffset": 6226,
+            "title": "Models by generation",
+            "value": ""
+          },
+          {
+            "endOffset": 7556,
+            "index": 7,
+            "level": 3,
+            "startOffset": 6252,
+            "title": "Original generation (2003)",
+            "value": "[[File:Early AirPort (2364225930).jpg|thumb|First three AirPort Base Station models, including the AirPort Extreme to the right (Called AirMac Extreme in Japan).]]\nThe original AirPort Extreme Base Station in 2003 was so named because of its support for the 802.11g standard of the day, as well as for its ability to serve up to 50 Macs or PCs simultaneously.<ref>{{Cite web|url = https://www.apple.com/airportextreme/|title = AirPort Extreme|website = Apple.com|archive-url = https://web.archive.org/web/20040608045215/http://www.apple.com/airportextreme/|archive-date = 2004-06-08|url-status = dead}}</ref> One feature found in most models of this generation was an internal 56K dial-up modem, allowing homes that lacked a broadband connection to enjoy wireless connectivity, albeit at dial-up speeds.<ref>{{Cite web|url = https://www.apple.com/airportextreme/specs.html|title = AirPort Extreme \u2013 Technical Specifications|website = Apple.com|archive-url = https://web.archive.org/web/20040608125410/http://www.apple.com/airportextreme/specs.html|archive-date = 2004-06-08|url-status = dead}}</ref> It was the last generation to retain the \"flying saucer\" form factor. Later generations would adopt the short, rounded-square form factor that would be seen until 2013."
+          },
+          {
+            "endOffset": 7727,
+            "index": 8,
+            "level": 3,
+            "startOffset": 7556,
+            "title": "1st generation",
+            "value": "On January 9, 2007 the AirPort Extreme began shipping, with support for 802.11n draft specification, and built-in wireless print and storage server."
+          },
+          {
+            "endOffset": 8546,
+            "index": 9,
+            "level": 3,
+            "startOffset": 7727,
+            "title": "2nd generation",
+            "value": "On March 19, 2008, Apple released a firmware update for both models of the AirPort Extreme that, according to third-party reports, allowed AirPort Disks to be used in conjunction with [[Time Machine (macOS)|Time Machine]], similar to the functionality provided by [[AirPort Time Capsule]].<ref>{{cite web|title=Time Machine now works with AirPort Extreme's AirDisk feature|website=Engadget.com|date=March 19, 2008|url=https://www.engadget.com/2008-03-19-time-machine-now-works-with-airport-extremes-airdisk-feature.html|first=N.|last=Patel|access-date=2021-10-06}}</ref><ref>{{cite web|title=Update allows Time Machine backups on AirPort Extreme|work=Macworld|date=March 19, 2008|url=http://www.macworld.com/article/1132613/airporttime.html|first=Jim|last=Dalrymple|access-date=2021-10-06}}</ref>"
+          },
+          {
+            "endOffset": 8772,
+            "index": 10,
+            "level": 3,
+            "startOffset": 8546,
+            "title": "3rd generation",
+            "value": "On March 3, 2009, Apple unveiled a new AirPort Extreme with simultaneous dual-band 802.11 Draft-N radios. This allowed full 802.11 Draft-N 2x2 communication in both 802.11 Draft-N bands at the same time."
+          },
+          {
+            "endOffset": 8884,
+            "index": 11,
+            "level": 3,
+            "startOffset": 8772,
+            "title": "4th generation",
+            "value": "On October 20, 2009, Apple unveiled an updated AirPort Extreme with antenna improvements."
+          },
+          {
+            "endOffset": 10937,
+            "index": 12,
+            "level": 3,
+            "startOffset": 8884,
+            "title": "5th generation",
+            "value": "On June 21, 2011, Apple unveiled an updated AirPort Extreme, referred to as AirPort Extreme 802.11n (5th Generation).\n\nThe detailed table of output power comparison between the 4th generation model MC340LL/A and the 5th generation model MD031LL/A can be seen below:<ref>Test Report \u2013 Previous version Federal Communications Commission (FCC)</ref><ref>Test Report \u2013 Current version Federal Communications Commission (FCC)</ref>\n\n:\nNote: A 3dB increase is equivalent to a doubling of power output."
+          },
+          {
+            "endOffset": 11588,
+            "index": 13,
+            "level": 3,
+            "startOffset": 10937,
+            "title": "6th generation",
+            "value": "On June 10, 2013, Apple unveiled an updated AirPort Extreme, referred to as AirPort Extreme 802.11ac (6th Generation). The 6th generation AirPort Extreme (and 5th generation AirPort Time Capsule) featured three-stream 802.11ac Wi-Fi technology with a maximum data rate of 1.3Gbit/s, which is nearly three times faster than 802.11n. Time Machine was now supported using an external USB hard drive connected to AirPort Extreme (802.11ac model only).<ref name=AppleBackupDisks>{{cite web|url=https://support.apple.com/en-us/HT202784|title=Backup disks you can use with Time Machine|date=January 29, 2021|work=Apple Inc.}}</ref>"
+          },
+          {
+            "endOffset": 14258,
+            "index": 14,
+            "level": 2,
+            "startOffset": 11588,
+            "title": "Comparison chart",
+            "value": "<div style=\"overflow:auto;\">\n</div>\n<nowiki>*</nowiki>802.11n draft-specification support in 1st- to 3rd-generation models.<br />\n<nowiki>**</nowiki>[[802.11ac]] draft-specification support in 6th-generation model.<br />\n<nowiki>***</nowiki>All models support IPv6 tunnel mode.<br />\n<nowiki>****</nowiki>Supported by Apple.<ref name=AppleBackupDisks/>"
+          },
+          {
+            "endOffset": 15465,
+            "index": 15,
+            "level": 2,
+            "startOffset": 14258,
+            "title": "Discontinuation and support",
+            "value": "According to a Bloomberg report on November 21, 2016, \"Apple Inc. has disbanded its division that develops wireless routers, another move to try to sharpen the company\u2019s focus on consumer products that generate the bulk of its revenue, according to people familiar with the matter.\"<ref name=\"Mark Gurman, Bloomberg 2016.11.23\"/>\n\nIn an April 2018 statement to [[Apple_community#9to5Mac|9to5Mac]],<ref>{{cite web|title=Apple officially discontinues AirPort router line, no plans for future hardware|url=https://9to5mac.com/2018/04/26/apple-airport-cancellation/|website=9to5Mac|first=Zac|last=Hall|date=April 26, 2018|access-date=2010-10-06}}</ref> Apple announced the discontinuation of its AirPort line, effectively leaving the consumer router market. Apple continued supporting the AirPort Extreme.<ref name=AppleVintageObsolete>{{cite web|title=Vintage and obsolete products|url=https://support.apple.com/en-us/HT201624|website=Apple|access-date=2021-10-06}}</ref><ref>{{cite web |title=Update the firmware on your AirPort base station |url=https://support.apple.com/en-us/HT201519 |website=Apple Support |date=June 21, 2019| access-date=2021-10-06 |language=en}}</ref>"
+          },
+          {
+            "endOffset": 15575,
+            "index": 16,
+            "level": 2,
+            "startOffset": 15465,
+            "title": "See also",
+            "value": "{{Commons category|AirPort Extreme}}\n*[[List of router firmware projects]]\n*[[AirPort Express]]"
+          },
+          {
+            "endOffset": 15790,
+            "index": 17,
+            "level": 2,
+            "startOffset": 15575,
+            "title": "Notes",
+            "value": "{{reflist|2}}\n\n{{Wi-Fi base stations by Apple}}\n{{Apple hardware}}\n\n[[Category:Apple Inc. peripherals]]\n[[Category:Products and services discontinued in 2018]]\n[[Category:Discontinued Apple Inc. products]]"
+          }
+        ]
+      }
+    ],
+    "statsMetadata": { "textSize": 11565 }
+  }
+}

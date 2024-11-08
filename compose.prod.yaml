@@ -1,0 +1,9 @@
+services:
+  next-app:
+    container_name: next-app
+    build:
+      context: .
+      dockerfile: prod.Dockerfile
+    restart: unless-stopped
+    ports:
+      - 3000:3000
