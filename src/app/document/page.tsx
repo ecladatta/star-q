@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { selectionIsBackwards, selectionIsEmpty } from '@/lib/utils'
+import { cn, selectionIsBackwards, selectionIsEmpty } from '@/lib/utils'
 import sortBy from 'lodash.sortby'
 import { BoxIcon, LinkIcon, UserIcon } from 'lucide-react'
 import Link from 'next/link'
@@ -502,9 +502,10 @@ export default function DocumentAnnotation() {
           </Card>
 
           <div
-            className={`fixed bottom-0 left-1/2 -translate-x-1/2 transition-transform duration-300 ${
-              hasAnyTags ? 'translate-y-0' : 'translate-y-full'
-            } w-full sm:w-2/3 sm:max-w-screen-sm`}
+            className={cn(
+              'fixed bottom-0 left-1/2 w-full -translate-x-1/2 transition-transform duration-300 sm:w-2/3 sm:max-w-screen-sm',
+              hasAnyTags ? 'translate-y-0' : 'translate-y-full',
+            )}
           >
             <Card className="mb-6 rounded-none sm:rounded-xl">
               <CardHeader className="flex flex-row pb-4">
