@@ -50,6 +50,7 @@ function Split(props: { start: number, end: number, content: string, mark?: bool
   return (
     <span
       role="button"
+      className="whitespace-pre-wrap"
       tabIndex={0}
       data-start={props.start}
       data-end={props.end}
