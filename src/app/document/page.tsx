@@ -518,15 +518,15 @@ export default function DocumentAnnotationPage() {
                     }
                   }
                 >
-                  <span className="font-semibold text-orange-500">{ann.subject.entity?.label ?? ann.subject.annotation.value}</span>
+                  <span className="font-semibold text-orange-500">{ann.subject.annotation.value}</span>
                   {' '}
                   &rarr;
                   {' '}
-                  <span className="font-semibold text-blue-500">{ann.predicate.entity?.label ?? ann.predicate.annotation.value}</span>
+                  <span className="font-semibold text-blue-500">{ann.predicate.annotation.value}</span>
                   {' '}
                   &rarr;
                   {' '}
-                  <span className="font-semibold text-green-500">{ann.object.entity?.label ?? ann.object.annotation.value}</span>
+                  <span className="font-semibold text-green-500">{ann.object.annotation.value}</span>
                 </button>
               </li>
             ))}
