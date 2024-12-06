@@ -117,7 +117,7 @@ export default function DocumentAnnotation() {
     left: 0,
     visible: false,
   })
-  const [documentAnnotations, setDocumentAnnotations] = useState<({ annotations: Annotation[], value: string | string[][] })[]>([])
+  const [annotationRecords, setAnnotationRecords] = useState<({ annotations: Annotation[], value: string | string[][] })[]>([])
   const [selectedOffset, setSelectedOffset] = useState({ start: 0, end: 0 })
   const [currentElementIndex, setCurrentElementIndex] = useState<number | null>(null)
   const [combinedElements, setCombinedElements] = useState<CombinedElement[]>([])
@@ -199,7 +199,7 @@ export default function DocumentAnnotation() {
     if (currentElementType === 'table' && !tableSelection)
       return // Ensure a cell is selected
 
-    setDocumentAnnotations((prev) => {
+    setAnnotationRecords((prev) => {
       const updatedAnnotations = [...prev]
       const currentAnnotations = updatedAnnotations[currentElementIndex].annotations
 
@@ -260,14 +260,14 @@ export default function DocumentAnnotation() {
   }
 
   const resetAnnotations = useCallback(() => {
-    setDocumentAnnotations(combinedElements.map(el => ({ annotations: [], value: el.value })))
+    setAnnotationRecords(combinedElements.map(el => ({ annotations: [], value: el.value })))
   }, [combinedElements])
 
   const createAnnotation = () => {
     // Save the annotation
-    const subjectTag = documentAnnotations.find(doc => doc.annotations.some(annotation => annotation.tag === 'subject'))?.annotations.find(annotation => annotation.tag === 'subject')
-    const predicateTag = documentAnnotations.find(doc => doc.annotations.some(annotation => annotation.tag === 'predicate'))?.annotations.find(annotation => annotation.tag === 'predicate')
-    const objectTag = documentAnnotations.find(doc => doc.annotations.some(annotation => annotation.tag === 'object'))?.annotations.find(annotation => annotation.tag === 'object')
+    const subjectTag = annotationRecords.find(doc => doc.annotations.some(annotation => annotation.tag === 'subject'))?.annotations.find(annotation => annotation.tag === 'subject')
+    const predicateTag = annotationRecords.find(doc => doc.annotations.some(annotation => annotation.tag === 'predicate'))?.annotations.find(annotation => annotation.tag === 'predicate')
+    const objectTag = annotationRecords.find(doc => doc.annotations.some(annotation => annotation.tag === 'object'))?.annotations.find(annotation => annotation.tag === 'object')
 
     // @TODO: Send the annotation to the server
     // eslint-disable-next-line no-console
@@ -295,7 +295,7 @@ export default function DocumentAnnotation() {
   }
 
   const handleSplitClick = (textIndex: number, { start, end }: { start: number, end: number }) => {
-    setDocumentAnnotations((prev) => {
+    setAnnotationRecords((prev) => {
       const updatedAnnotations = [...prev]
       const splitIndex = updatedAnnotations[textIndex].annotations.findIndex(s => s.start === start && s.end === end)
       if (splitIndex >= 0) {
@@ -344,7 +344,7 @@ export default function DocumentAnnotation() {
   }, [resetAnnotations])
 
   const renderElement = (element: CombinedElement) => {
-    if (!documentAnnotations[element.index]) {
+    if (!annotationRecords[element.index]) {
       return null
     }
 
@@ -352,7 +352,7 @@ export default function DocumentAnnotation() {
       const index = element.index
       const rawText = element.value
 
-      const splits = splitWithOffsets(rawText, 'text', documentAnnotations[index].annotations)
+      const splits = splitWithOffsets(rawText, 'text', annotationRecords[index].annotations)
 
       return (
         <div key={index} className="mb-4">
@@ -378,7 +378,7 @@ export default function DocumentAnnotation() {
 
       const splits = tableData.map((row, rowIndex) =>
         row.map((cell, cellIndex) => {
-          const cellAnnotations = documentAnnotations[index].annotations.filter(
+          const cellAnnotations = annotationRecords[index].annotations.filter(
             annotation => annotation.row === rowIndex && annotation.cell === cellIndex,
           )
           return splitWithOffsets(cell, 'table', cellAnnotations)
@@ -433,11 +433,11 @@ export default function DocumentAnnotation() {
     return element
   }
 
-  const hasAllTags = ['subject', 'predicate', 'object'].every(tag => documentAnnotations.some(doc => doc.annotations.some(annotation => annotation.tag === tag)))
-  const hasAnyTags = documentAnnotations.some(doc => doc.annotations.some(annotation => ['subject', 'predicate', 'object'].includes(annotation.tag)))
-  const subjectTag = documentAnnotations.find(doc => doc.annotations.some(annotation => annotation.tag === 'subject'))?.annotations.find(annotation => annotation.tag === 'subject')
-  const predicateTag = documentAnnotations.find(doc => doc.annotations.some(annotation => annotation.tag === 'predicate'))?.annotations.find(annotation => annotation.tag === 'predicate')
-  const objectTag = documentAnnotations.find(doc => doc.annotations.some(annotation => annotation.tag === 'object'))?.annotations.find(annotation => annotation.tag === 'object')
+  const hasAllTags = ['subject', 'predicate', 'object'].every(tag => annotationRecords.some(doc => doc.annotations.some(annotation => annotation.tag === tag)))
+  const hasAnyTags = annotationRecords.some(doc => doc.annotations.some(annotation => ['subject', 'predicate', 'object'].includes(annotation.tag)))
+  const subjectTag = annotationRecords.find(doc => doc.annotations.some(annotation => annotation.tag === 'subject'))?.annotations.find(annotation => annotation.tag === 'subject')
+  const predicateTag = annotationRecords.find(doc => doc.annotations.some(annotation => annotation.tag === 'predicate'))?.annotations.find(annotation => annotation.tag === 'predicate')
+  const objectTag = annotationRecords.find(doc => doc.annotations.some(annotation => annotation.tag === 'object'))?.annotations.find(annotation => annotation.tag === 'object')
 
   return (
     <div className="flex">
