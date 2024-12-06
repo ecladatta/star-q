@@ -66,6 +66,7 @@ export default function AnnotationTool() {
               <TableRow>
                 <TableHead>Corpus Name</TableHead>
                 <TableHead>Document Count</TableHead>
+                <TableHead>Annotation Count</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -73,6 +74,7 @@ export default function AnnotationTool() {
               <TableRow>
                 <TableCell>Sample Corpus 1</TableCell>
                 <TableCell>15</TableCell>
+                <TableCell>0</TableCell>
                 <TableCell>
                   <div className="flex space-x-2">
                     <Button variant="outline" size="sm" onClick={handleImportClick}>
