@@ -12,7 +12,8 @@ export type MarkProps = {
 function Mark(props: MarkProps) {
   return (
     <button
-      style={{ backgroundColor: props.color || '#84d2ff', padding: '0 4px', border: 'none', cursor: 'pointer' }}
+      type="button"
+      style={{ backgroundColor: props.color || 'lightgrey', padding: '0 4px', border: 'none', cursor: 'pointer' }}
       data-start={props.start}
       data-end={props.end}
       onClick={() => props.onClick({ start: props.start, end: props.end })}

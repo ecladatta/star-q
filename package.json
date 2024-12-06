@@ -31,6 +31,7 @@
     "sonner": "^1.7.0",
     "tailwind-merge": "^2.5.4",
     "tailwindcss-animate": "^1.0.7",
+    "uuid": "^11.0.3",
     "wikibase-sdk": "^10.2.1",
     "wtf_wikipedia": "^10.3.2"
   },

@@ -1,130 +1,68 @@
 'use client'
+import type { Offset } from '@/lib/utils'
 import { EntitySelector } from '@/components/entity-selector'
 import { Button } from '@/components/ui/button'
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { TYPE_TO_COLOR } from '@/lib/constants'
 import { cn, selectionIsBackwards, selectionIsEmpty } from '@/lib/utils'
-import sortBy from 'lodash.sortby'
 import { BoxIcon, LinkIcon, UserIcon } from 'lucide-react'
 import Link from 'next/link'
 import React, { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
+import { v4 as uuidv4 } from 'uuid'
 // @ts-expect-error - no types available
 import wtf from 'wtf_wikipedia'
-import Mark from './mark'
+import CombinedElement from './combined-element'
 import sampleTable from './sample_table.json'
 
-export type TextElement = {
-  type: 'text'
+export type TextOrTableElement = {
+  elementIndex: number
+  type: 'text' | 'table'
   startOffset: number
   endOffset: number
-  value: string
+  value: string | string[][]
   data: any
-  index: number
 }
 
-export type TableElement = {
-  type: 'table'
-  startOffset: number
-  endOffset: number
-  value: string[][]
-  data: any
-  index: number
-}
-
-export type CombinedElement = TextElement | TableElement
-
-const TYPE_TO_COLOR = {
-  subject: '#FFE4B5',
-  predicate: '#ADD8E6',
-  object: '#90EE90',
-}
-
-function Split(props: { start: number, end: number, content: string, mark?: boolean, onClick: (arg0: any) => any },
-) {
-  if (props.mark)
-    return <Mark {...props} />
-
-  return (
-    <span
-      role="button"
-      className="whitespace-pre-wrap"
-      tabIndex={0}
-      data-start={props.start}
-      data-end={props.end}
-      onClick={() => props.onClick({ start: props.start, end: props.end })}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          props.onClick({ start: props.start, end: props.end })
-        }
-      }}
-    >
-      {props.content}
-    </span>
-  )
-}
-
-function splitWithOffsets(text: string, source: 'text' | 'table', offsets: { start: number, end: number, row?: number, cell?: number }[]) {
-  let lastEnd = 0
-  const splits = []
-
-  for (const offset of sortBy(offsets, o => o.start)) {
-    const { start, end } = offset
-    if (lastEnd < start) {
-      splits.push({
-        start: lastEnd,
-        end: start,
-        source,
-        content: text.slice(lastEnd, start),
-      })
-    }
-    splits.push({
-      ...offset,
-      mark: true,
-      source,
-      content: text.slice(start, end),
-    })
-    lastEnd = end
-  }
-  if (lastEnd < text.length) {
-    splits.push({
-      start: lastEnd,
-      end: text.length,
-      source,
-      content: text.slice(lastEnd, text.length),
-    })
-  }
-
-  return splits
-}
-
-type Annotation = {
+export type Annotation = {
   value: string
-  start: number
-  end: number
+  offset: Offset
   type: string
+  elementIndex: number
   tag: 'subject' | 'predicate' | 'object'
-  color: string
-  row?: number
-  cell?: number
 }
 
-export default function DocumentAnnotation() {
+export type DocumentAnnotation = {
+  id: string
+  subject: { id: string, annotation: Annotation, entity: { label: string, value: string } | null }
+  predicate: { id: string, annotation: Annotation, entity: { label: string, value: string } | null }
+  object: { id: string, annotation: Annotation, entity: { label: string, value: string } | null }
+}
+
+export type DocumentElement = {
+  annotations: Annotation[]
+  value: string | string[][]
+}
+
+export default function DocumentAnnotationPage() {
+  const [documentAnnotations, setDocumentAnnotations] = useState<DocumentAnnotation[]>([])
   const [popoverPosition, setPopoverPosition] = useState({
     top: 0,
     left: 0,
     visible: false,
   })
-  const [annotationRecords, setAnnotationRecords] = useState<({ annotations: Annotation[], value: string | string[][] })[]>([])
+
+  const [documentElements, setDocumentElements] = useState<DocumentElement[]>([])
   const [selectedOffset, setSelectedOffset] = useState({ start: 0, end: 0 })
   const [currentElementIndex, setCurrentElementIndex] = useState<number | null>(null)
-  const [combinedElements, setCombinedElements] = useState<CombinedElement[]>([])
+  const [combinedElements, setCombinedElements] = useState<TextOrTableElement[]>([])
   const [tableSelection, setTableSelection] = useState<{ rowIndex: number, cellIndex: number } | null>(null)
   const [selectedSubject, setSelectedSubject] = useState<{ label: string, value: string } | null>(null)
   const [selectedPredicate, setSelectedPredicate] = useState<{ label: string, value: string } | null>(null)
   const [selectedObject, setSelectedObject] = useState<{ label: string, value: string } | null>(null)
+  const [editingAnnotation, setEditingAnnotation] = useState<string | null>(null)
 
   const handleTextSelection = (index: number) => {
     setCurrentElementIndex(index)
@@ -199,7 +137,7 @@ export default function DocumentAnnotation() {
     if (currentElementType === 'table' && !tableSelection)
       return // Ensure a cell is selected
 
-    setAnnotationRecords((prev) => {
+    setDocumentElements((prev) => {
       const updatedAnnotations = [...prev]
       const currentAnnotations = updatedAnnotations[currentElementIndex].annotations
 
@@ -212,25 +150,25 @@ export default function DocumentAnnotation() {
 
       // Check for overlaps
       const newAnnotation: Annotation = {
-        ...selectedOffset,
+        offset: selectedOffset,
         value: value.slice(selectedOffset.start, selectedOffset.end),
         type: currentElementType,
         tag: type,
-        color: TYPE_TO_COLOR[type],
+        elementIndex: currentElementIndex,
       }
       if (currentElementType === 'table' && tableSelection) {
-        newAnnotation.row = tableSelection.rowIndex
-        newAnnotation.cell = tableSelection.cellIndex
+        newAnnotation.offset.row = tableSelection.rowIndex
+        newAnnotation.offset.cell = tableSelection.cellIndex
       }
       const hasOverlap = currentAnnotations.some((annotation) => {
         if (currentElementType === 'text') {
-          return newAnnotation.start < annotation.end && newAnnotation.end > annotation.start
+          return newAnnotation.offset.start < annotation.offset.end && newAnnotation.offset.end > annotation.offset.start
         } else if (currentElementType === 'table' && tableSelection) {
           return (
-            newAnnotation.row === annotation.row
-            && newAnnotation.cell === annotation.cell
-            && newAnnotation.start < annotation.end
-            && newAnnotation.end > annotation.start
+            newAnnotation.offset.row === annotation.offset.row
+            && newAnnotation.offset.cell === annotation.offset.cell
+            && newAnnotation.offset.start < annotation.offset.end
+            && newAnnotation.offset.end > annotation.offset.start
           )
         }
         return false
@@ -247,7 +185,7 @@ export default function DocumentAnnotation() {
         updatedAnnotations[currentElementIndex] = {
           ...updatedAnnotations[currentElementIndex],
           annotations: currentAnnotations.filter(annotation =>
-            !(newAnnotation.start < annotation.end && newAnnotation.end > annotation.start),
+            !(newAnnotation.offset.start < annotation.offset.end && newAnnotation.offset.end > annotation.offset.start),
           ).concat(newAnnotation),
         }
       }
@@ -260,44 +198,83 @@ export default function DocumentAnnotation() {
   }
 
   const resetAnnotations = useCallback(() => {
-    setAnnotationRecords(combinedElements.map(el => ({ annotations: [], value: el.value })))
+    setDocumentElements(combinedElements.map(el => ({ annotations: [], ...el })))
   }, [combinedElements])
 
   const createAnnotation = () => {
     // Save the annotation
-    const subjectTag = annotationRecords.find(doc => doc.annotations.some(annotation => annotation.tag === 'subject'))?.annotations.find(annotation => annotation.tag === 'subject')
-    const predicateTag = annotationRecords.find(doc => doc.annotations.some(annotation => annotation.tag === 'predicate'))?.annotations.find(annotation => annotation.tag === 'predicate')
-    const objectTag = annotationRecords.find(doc => doc.annotations.some(annotation => annotation.tag === 'object'))?.annotations.find(annotation => annotation.tag === 'object')
+    const subjectTag = documentElements.find(doc => doc.annotations.some(annotation => annotation.tag === 'subject'))?.annotations.find(annotation => annotation.tag === 'subject')
+    const predicateTag = documentElements.find(doc => doc.annotations.some(annotation => annotation.tag === 'predicate'))?.annotations.find(annotation => annotation.tag === 'predicate')
+    const objectTag = documentElements.find(doc => doc.annotations.some(annotation => annotation.tag === 'object'))?.annotations.find(annotation => annotation.tag === 'object')
+
+    if (!subjectTag || !predicateTag || !objectTag) {
+      toast.error('Please select entities for each subject, predicate, and object.')
+      return
+    }
 
     // @TODO: Send the annotation to the server
-    // eslint-disable-next-line no-console
-    console.log('Annotation:', {
-      subject: {
-        tag: subjectTag,
-        entity: selectedSubject,
-      },
-      predicate: {
-        tag: predicateTag,
-        entity: selectedPredicate,
-      },
-      object: {
-        tag: objectTag,
-        entity: selectedObject,
-      },
-    })
+    if (editingAnnotation) {
+      setDocumentAnnotations(prev => prev.map((ann) => {
+        if (ann.id === editingAnnotation) {
+          return {
+            ...ann,
+            subject: {
+              ...ann.subject,
+              annotation: subjectTag,
+              entity: selectedSubject,
+            },
+            predicate: {
+              ...ann.predicate,
+              annotation: predicateTag,
+              entity: selectedPredicate,
+            },
+            object: {
+              ...ann.object,
+              annotation: objectTag,
+              entity: selectedObject,
+            },
+          }
+        }
+        return ann
+      }))
+      setEditingAnnotation(null)
+      toast.success('Annotation updated!')
+    } else {
+      setDocumentAnnotations(prev => [
+        ...prev,
+        {
+          id: uuidv4(),
+          subject: {
+            id: uuidv4(),
+            annotation: subjectTag,
+            entity: selectedSubject,
+          },
+          predicate: {
+            id: uuidv4(),
+            annotation: predicateTag,
+            entity: selectedPredicate,
+          },
+          object: {
+            id: uuidv4(),
+            annotation: objectTag,
+            entity: selectedObject,
+          },
+        },
+      ])
+
+      toast.success('Annotation created!')
+    }
 
     // Remove all annotations
     resetAnnotations()
     // Reset selection and popover
     setPopoverPosition(prev => ({ ...prev, visible: false }))
-
-    toast.success('Annotation created!')
   }
 
   const handleSplitClick = (textIndex: number, { start, end }: { start: number, end: number }) => {
-    setAnnotationRecords((prev) => {
+    setDocumentElements((prev) => {
       const updatedAnnotations = [...prev]
-      const splitIndex = updatedAnnotations[textIndex].annotations.findIndex(s => s.start === start && s.end === end)
+      const splitIndex = updatedAnnotations[textIndex].annotations.findIndex(s => s.offset.start === start && s.offset.end === end)
       if (splitIndex >= 0) {
         updatedAnnotations[textIndex] = {
           ...updatedAnnotations[textIndex],
@@ -331,10 +308,7 @@ export default function DocumentAnnotation() {
           ...table,
         },
       })),
-    ].sort((a, b) => a.startOffset - b.startOffset).map((element, index) => ({
-      ...element,
-      index,
-    }))
+    ].sort((a, b) => a.startOffset - b.startOffset).map((el, index) => ({ ...el, elementIndex: index }))
 
     setCombinedElements(els)
   }, [])
@@ -343,105 +317,15 @@ export default function DocumentAnnotation() {
     resetAnnotations()
   }, [resetAnnotations])
 
-  const renderElement = (element: CombinedElement) => {
-    if (!annotationRecords[element.index]) {
-      return null
-    }
-
-    if (element.type === 'text') {
-      const index = element.index
-      const rawText = element.value
-
-      const splits = splitWithOffsets(rawText, 'text', annotationRecords[index].annotations)
-
-      return (
-        <div key={index} className="mb-4">
-          {React.createElement(element.data.level ? `h${element.data.level}` : 'div', { className: 'mb-2 font-semibold' }, element.data.title)}
-          <div
-            className="text-lg leading-relaxed"
-            role="textbox"
-            tabIndex={0}
-            onMouseUp={() => handleTextSelection(index)}
-            onKeyUp={e => e.key === 'Enter' && handleTextSelection(index)}
-          >
-            {splits
-              .filter(split => split.source === 'text')
-              .map(split => (
-                <Split key={`${split.start}-${split.end}`} {...split} onClick={() => handleSplitClick(index, split)} />
-              ))}
-          </div>
-        </div>
-      )
-    } else if (element.type === 'table') {
-      const index = element.index
-      const tableData = element.value
-
-      const splits = tableData.map((row, rowIndex) =>
-        row.map((cell, cellIndex) => {
-          const cellAnnotations = annotationRecords[index].annotations.filter(
-            annotation => annotation.row === rowIndex && annotation.cell === cellIndex,
-          )
-          return splitWithOffsets(cell, 'table', cellAnnotations)
-        }),
-      )
-
-      return (
-        <div key={index} className="mb-6">
-          <Table>
-            <TableHeader>
-              {splits.slice(0, 1).map((row, rowIndex) => (
-                <TableRow key={rowIndex}>
-                  {row.map((cellSplits, cellIndex) => (
-                    <TableHead
-                      key={cellIndex}
-                      role="button"
-                      tabIndex={0}
-                      onMouseUp={() => handleTableSelection(index, 0, cellIndex)}
-                      onKeyUp={e => e.key === 'Enter' && handleTableSelection(index, 0, cellIndex)}
-                    >
-                      {cellSplits.map(split => (
-                        <Split key={`${split.start}-${split.end}`} {...split} onClick={() => handleSplitClick(index, split)} />
-                      ))}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              {splits.slice(1).map((row, rowIndex) => (
-                <TableRow key={rowIndex}>
-                  {row.map((cellSplits, cellIndex) => (
-                    <TableCell
-                      key={cellIndex}
-                      role="button"
-                      tabIndex={0}
-                      onMouseUp={() => handleTableSelection(index, rowIndex + 1, cellIndex)}
-                      onKeyUp={e => e.key === 'Enter' && handleTableSelection(index, rowIndex + 1, cellIndex)}
-                    >
-                      {cellSplits.map(split => (
-                        <Split key={`${split.start}-${split.end}`} {...split} onClick={() => handleSplitClick(index, split)} />
-                      ))}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )
-    }
-    return element
-  }
-
-  const hasAllTags = ['subject', 'predicate', 'object'].every(tag => annotationRecords.some(doc => doc.annotations.some(annotation => annotation.tag === tag)))
-  const hasAnyTags = annotationRecords.some(doc => doc.annotations.some(annotation => ['subject', 'predicate', 'object'].includes(annotation.tag)))
-  const subjectTag = annotationRecords.find(doc => doc.annotations.some(annotation => annotation.tag === 'subject'))?.annotations.find(annotation => annotation.tag === 'subject')
-  const predicateTag = annotationRecords.find(doc => doc.annotations.some(annotation => annotation.tag === 'predicate'))?.annotations.find(annotation => annotation.tag === 'predicate')
-  const objectTag = annotationRecords.find(doc => doc.annotations.some(annotation => annotation.tag === 'object'))?.annotations.find(annotation => annotation.tag === 'object')
+  const hasAllTags = ['subject', 'predicate', 'object'].every(tag => documentElements.some(doc => doc.annotations.some(annotation => annotation.tag === tag)))
+  const hasAnyTags = documentElements.some(doc => doc.annotations.some(annotation => ['subject', 'predicate', 'object'].includes(annotation.tag)))
+  const subjectTag = documentElements.find(doc => doc.annotations.some(annotation => annotation.tag === 'subject'))?.annotations.find(annotation => annotation.tag === 'subject')
+  const predicateTag = documentElements.find(doc => doc.annotations.some(annotation => annotation.tag === 'predicate'))?.annotations.find(annotation => annotation.tag === 'predicate')
+  const objectTag = documentElements.find(doc => doc.annotations.some(annotation => annotation.tag === 'object'))?.annotations.find(annotation => annotation.tag === 'object')
 
   return (
     <div className="flex">
-      <aside className="fixed hidden h-full w-[280px] bg-gray-100 px-8 pt-4 sm:block">
+      <aside className="fixed hidden h-full w-[280px] bg-gray-100 px-8 pt-4 lg:block">
         <h2 className="mb-4 mt-8 text-xl font-bold">Documents in Corpus</h2>
         <ul>
           <li className="mb-3">
@@ -463,8 +347,8 @@ export default function DocumentAnnotation() {
           </Button>
         </div>
       </aside>
-      <main className="ml-0 min-w-0 flex-1 sm:ml-[280px]">
-        <div className="container mx-auto p-12">
+      <main className="ml-0 min-w-0 flex-1 md:mr-[280px] lg:ml-[280px]">
+        <div className="container mx-auto p-4 lg:p-12">
           <Link href="/"><h1 className="mb-6 text-3xl font-bold">ECLADATTA Annotation Tool</h1></Link>
           <div className="mb-4">
             <h2 className="text-2xl font-bold">
@@ -496,7 +380,14 @@ export default function DocumentAnnotation() {
             </CardHeader>
             <CardContent>
               {combinedElements.map(element => (
-                <React.Fragment key={`${element.startOffset}-${element.endOffset}`}>{renderElement(element)}</React.Fragment>
+                <CombinedElement
+                  key={`${element.startOffset}-${element.endOffset}`}
+                  {...element}
+                  handleSplitClick={handleSplitClick}
+                  handleTableSelection={handleTableSelection}
+                  handleTextSelection={handleTextSelection}
+                  documentElements={documentElements}
+                />
               ))}
             </CardContent>
           </Card>
@@ -515,7 +406,7 @@ export default function DocumentAnnotation() {
                 </div>
                 <div className="ml-auto">
                   <Button onClick={createAnnotation} disabled={!hasAllTags}>
-                    Create Annotation
+                    {editingAnnotation ? 'Update Annotation' : 'Create Annotation'}
                   </Button>
                 </div>
               </CardHeader>
@@ -589,6 +480,59 @@ export default function DocumentAnnotation() {
           )}
         </div>
       </main>
+      <aside className="fixed right-0 hidden h-full w-[280px] bg-gray-100 md:block">
+        <div className="flex h-full flex-col px-8 pt-4">
+          <h2 className="mb-4 mt-8 text-xl font-bold">Annotations</h2>
+          <ul className="flex-1 space-y-3 overflow-y-auto pb-4">
+            {documentAnnotations.map(ann => (
+              <li key={ann.id} className="mb-3">
+                <button
+                  type="button"
+                  className="w-full rounded-md bg-white p-2 text-left shadow hover:bg-gray-50"
+                  onClick={
+                    () => {
+                      setEditingAnnotation(ann.id)
+
+                      setSelectedSubject(ann.subject.entity)
+                      setSelectedPredicate(ann.predicate.entity)
+                      setSelectedObject(ann.object.entity)
+
+                      setDocumentElements((prevElement) => {
+                        const updatedElement: DocumentElement[]
+                          = prevElement.map(el => ({ ...el, annotations: [] })) // Reset all annotations
+                        // Add the selected annotations
+                        updatedElement[ann.subject.annotation.elementIndex].annotations = [
+                          ...updatedElement[ann.subject.annotation.elementIndex].annotations,
+                          ann.subject.annotation,
+                        ]
+                        updatedElement[ann.predicate.annotation.elementIndex].annotations = [
+                          ...updatedElement[ann.predicate.annotation.elementIndex].annotations,
+                          ann.predicate.annotation,
+                        ]
+                        updatedElement[ann.object.annotation.elementIndex].annotations = [
+                          ...updatedElement[ann.object.annotation.elementIndex].annotations,
+                          ann.object.annotation,
+                        ]
+                        return updatedElement
+                      })
+                    }
+                  }
+                >
+                  <span className="font-semibold text-orange-500">{ann.subject.entity?.label ?? ann.subject.annotation.value}</span>
+                  {' '}
+                  &rarr;
+                  {' '}
+                  <span className="font-semibold text-blue-500">{ann.predicate.entity?.label ?? ann.predicate.annotation.value}</span>
+                  {' '}
+                  &rarr;
+                  {' '}
+                  <span className="font-semibold text-green-500">{ann.object.entity?.label ?? ann.object.annotation.value}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </aside>
     </div>
   )
 }

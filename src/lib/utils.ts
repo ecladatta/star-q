@@ -1,4 +1,5 @@
 import { type ClassValue, clsx } from 'clsx'
+import sortBy from 'lodash.sortby'
 import { twMerge } from 'tailwind-merge'
 
 export function cn(...inputs: ClassValue[]) {
@@ -26,4 +27,45 @@ export function selectionIsBackwards(selection: Selection) {
     backward = true
 
   return backward
+}
+
+export type Offset = {
+  start: number
+  end: number
+  row?: number
+  cell?: number
+}
+
+export function splitWithOffsets(text: string, source: 'text' | 'table', offsets: Offset[]) {
+  let lastEnd = 0
+  const splits = []
+
+  for (const offset of sortBy(offsets, o => o.start)) {
+    const { start, end } = offset
+    if (lastEnd < start) {
+      splits.push({
+        start: lastEnd,
+        end: start,
+        source,
+        content: text.slice(lastEnd, start),
+      })
+    }
+    splits.push({
+      ...offset,
+      mark: true,
+      source,
+      content: text.slice(start, end),
+    })
+    lastEnd = end
+  }
+  if (lastEnd < text.length) {
+    splits.push({
+      start: lastEnd,
+      end: text.length,
+      source,
+      content: text.slice(lastEnd, text.length),
+    })
+  }
+
+  return splits
 }
