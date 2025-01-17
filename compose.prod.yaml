@@ -1,3 +1,8 @@
+name: annotation-tool
+
+volumes:
+  postgres-data:
+
 services:
   next-app:
     container_name: next-app
@@ -7,3 +12,12 @@ services:
     restart: unless-stopped
     ports:
       - 3000:3000
+  postgres:
+    image: postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: myusername
+      POSTGRES_PASSWORD: mypassword
+      POSTGRES_DB: mydatabase
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
