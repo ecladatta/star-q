@@ -12,7 +12,7 @@ const wdk = WBK({
   sparqlEndpoint: 'https://query.wikidata.org/sparql',
 })
 
-async function searchEntity(type: 'subject' | 'predicate' | 'object', searchTerm: string) {
+async function searchEntity(type: 'subject' | 'predicate' | 'object', searchTerm: string): Promise<{ id: string, label: string, description: string }[]> {
   const url = wdk.searchEntities({
     search: searchTerm,
     language: 'en',
@@ -29,13 +29,16 @@ async function searchEntity(type: 'subject' | 'predicate' | 'object', searchTerm
   }))
 }
 
+type EntityType = 'subject' | 'predicate' | 'object'
+type EntityValue = { label: string, value: string, custom: boolean }
+
 export function EntitySelector({ type, value, onValueChange }: {
-  type: 'subject' | 'predicate' | 'object'
-  value: { label: string, value: string } | null
-  onValueChange: (arg0: { label: string, value: string } | null) => any
+  type: EntityType
+  value: EntityValue | null
+  onValueChange: (arg0: EntityValue | null) => any
 }) {
   const [open, setOpen] = useState(false)
-  const [searchEntities, setSearchEntities] = useState<{ label: string, value: string, custom?: boolean }[]>([])
+  const [searchEntities, setSearchEntities] = useState<EntityValue[]>([])
   const [searchTerm, setSearchTerm] = useState('')
 
   return (
@@ -58,10 +61,11 @@ export function EntitySelector({ type, value, onValueChange }: {
           onChange={async (e: React.ChangeEvent<HTMLInputElement>) => {
             const searchTerm = e.target.value
             setSearchTerm(searchTerm)
-            const results = await searchEntity(type, searchTerm) as { id: string, label: string }[]
+            const results = await searchEntity(type, searchTerm)
             setSearchEntities(results.map(result => ({
               label: result.label,
               value: result.id,
+              custom: false,
             })))
           }}
           shouldFilter={false}
@@ -94,9 +98,11 @@ export function EntitySelector({ type, value, onValueChange }: {
                     {value.value}
                     )
                   </span>
-                  <Link href={`https://www.wikidata.org/wiki/${value.value.startsWith('P') ? 'Property:' : ''}${value.value}`} target="_blank" rel="noopener noreferrer" className="ml-auto text-xs text-blue-500 underline" onClick={e => e.stopPropagation()}>
-                    View
-                  </Link>
+                  {value.value && (
+                    <Link href={`https://www.wikidata.org/wiki/${value.value?.startsWith('P') ? 'Property:' : ''}${value.value}`} target="_blank" rel="noopener noreferrer" className="ml-auto text-xs text-blue-500 underline" onClick={e => e.stopPropagation()}>
+                      View
+                    </Link>
+                  )}
                 </CommandItem>
               )}
               {searchEntities.map(entity => (
@@ -121,9 +127,15 @@ export function EntitySelector({ type, value, onValueChange }: {
                     {entity.value}
                     )
                   </span>
-                  <Link href={`https://www.wikidata.org/wiki/${entity.value.startsWith('P') ? 'Property:' : ''}${entity.value}`} target="_blank" rel="noopener noreferrer" className="ml-auto text-xs text-blue-500 underline" onClick={e => e.stopPropagation()}>
-                    View
-                  </Link>
+                  {entity.custom
+                    ? (
+                        <span className="ml-auto text-xs text-muted-foreground">Custom</span>
+                      )
+                    : (
+                        <Link href={`https://www.wikidata.org/wiki/${entity.value.startsWith('P') ? 'Property:' : ''}${entity.value}`} target="_blank" rel="noopener noreferrer" className="ml-auto text-xs text-blue-500 underline" onClick={e => e.stopPropagation()}>
+                          View
+                        </Link>
+                      )}
                 </CommandItem>
               ))}
               {searchTerm && !searchEntities.some(entity => entity.value === searchTerm) && (
@@ -132,7 +144,7 @@ export function EntitySelector({ type, value, onValueChange }: {
                   value="create-new"
                   onSelect={() => {
                     if (!searchEntities.some(entity => entity.value === searchTerm)) {
-                      const newEntity = { label: searchTerm, value: searchTerm }
+                      const newEntity = { label: searchTerm, value: searchTerm, custom: true }
                       onValueChange(newEntity)
                       setSearchEntities([...searchEntities, newEntity])
                     }

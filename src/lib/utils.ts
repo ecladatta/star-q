@@ -32,8 +32,8 @@ export function selectionIsBackwards(selection: Selection) {
 export type Offset = {
   start: number
   end: number
-  row?: number
-  cell?: number
+  row?: number | null
+  cell?: number | null
 }
 
 export function splitWithOffsets(text: string, source: 'text' | 'table', offsets: Offset[]) {
@@ -68,4 +68,50 @@ export function splitWithOffsets(text: string, source: 'text' | 'table', offsets
   }
 
   return splits
+}
+
+export type JsonFileType = 'json' | 'jsonlines' | 'unknown'
+
+export async function determineJsonType(content: string): Promise<JsonFileType> {
+  // Try parsing as a classic JSON file
+  try {
+    const parsedJson = JSON.parse(content)
+    if (typeof parsedJson === 'object') {
+      return 'json'
+    }
+  } catch {
+    // Not a classic JSON, continue to check for JSON Lines
+  }
+
+  // Check if it is a JSON Lines file
+  const lines = content.split('\n').filter(line => line.trim() !== '')
+  const allLinesAreJson = lines.every((line) => {
+    try {
+      // console.log('line:', line)
+      JSON.parse(line.trim())
+      return true
+    } catch {
+      return false
+    }
+  })
+
+  if (allLinesAreJson) {
+    return 'jsonlines'
+  }
+
+  return 'unknown'
+}
+
+export class UnsupportedFileTypeError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'UnsupportedFileTypeError'
+  }
+}
+
+export class InvalidJsonLinesError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'InvalidJsonLinesError'
+  }
 }

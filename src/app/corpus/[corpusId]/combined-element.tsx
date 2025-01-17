@@ -1,4 +1,4 @@
-import type { DocumentElement } from './page'
+import type { DocumentElement } from './corpus-view'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { TYPE_TO_COLOR } from '@/lib/constants'
 import { splitWithOffsets } from '@/lib/utils'
@@ -16,16 +16,16 @@ export type CombinedElementProps = {
   documentElements: DocumentElement[]
 }
 
-function CombinedElement({ elementIndex, value, type, data, handleTextSelection, handleTableSelection, handleSplitClick, documentElements: annotationRecords }: CombinedElementProps) {
-  if (!annotationRecords[elementIndex]) {
+function CombinedElement({ elementIndex, value, type, data, handleTextSelection, handleTableSelection, handleSplitClick, documentElements }: CombinedElementProps) {
+  if (!documentElements[elementIndex]) {
     return null
   }
 
   if (type === 'text') {
     const rawText = value as string
 
-    const splits = splitWithOffsets(rawText, 'text', annotationRecords[elementIndex].annotations.map(
-      annotation => ({ start: annotation.offset.start, end: annotation.offset.end, row: annotation.offset.row, cell: annotation.offset.cell }),
+    const splits = splitWithOffsets(rawText, 'text', documentElements[elementIndex].components.map(
+      annotation => ({ start: annotation.annotationStart, end: annotation.annotationEnd, row: annotation.annotationRow, cell: annotation.annotationCell }),
     ))
 
     return (
@@ -45,7 +45,7 @@ function CombinedElement({ elementIndex, value, type, data, handleTextSelection,
                 key={`${split.start}-${split.end}`}
                 {...split}
                 onClick={() => handleSplitClick(elementIndex, split)}
-                color={TYPE_TO_COLOR[annotationRecords[elementIndex].annotations.find(annotation => annotation.offset.start === split.start)?.tag as keyof typeof TYPE_TO_COLOR]}
+                color={TYPE_TO_COLOR[documentElements[elementIndex].components.find(annotation => annotation.annotationStart === split.start)?.annotationTag as keyof typeof TYPE_TO_COLOR]}
               />
             ))}
         </div>
@@ -56,10 +56,10 @@ function CombinedElement({ elementIndex, value, type, data, handleTextSelection,
 
     const splits = tableData.map((row, rowIndex) =>
       row.map((cell, cellIndex) => {
-        const cellAnnotations = annotationRecords[elementIndex].annotations.filter(
-          annotation => annotation.offset.row === rowIndex && annotation.offset.cell === cellIndex,
+        const cellAnnotations = documentElements[elementIndex].components.filter(
+          annotation => annotation.annotationRow === rowIndex && annotation.annotationCell === cellIndex,
         )
-        return splitWithOffsets(cell, 'table', cellAnnotations.map(annotation => ({ start: annotation.offset.start, end: annotation.offset.end })))
+        return splitWithOffsets(cell, 'table', cellAnnotations.map(annotation => ({ start: annotation.annotationStart, end: annotation.annotationEnd })))
       }),
     )
 
@@ -82,12 +82,12 @@ function CombinedElement({ elementIndex, value, type, data, handleTextSelection,
                         key={`${split.start}-${split.end}`}
                         {...split}
                         onClick={() => handleSplitClick(elementIndex, split)}
-                        color={TYPE_TO_COLOR[annotationRecords[elementIndex].annotations.find(annotation =>
-                          annotation.offset.row === rowIndex
-                          && annotation.offset.cell === cellIndex
-                          && annotation.offset.start === split.start
-                          && annotation.offset.end === split.end,
-                        )?.tag as keyof typeof TYPE_TO_COLOR]}
+                        color={TYPE_TO_COLOR[documentElements[elementIndex].components.find(annotation =>
+                          annotation.annotationRow === rowIndex
+                          && annotation.annotationCell === cellIndex
+                          && annotation.annotationStart === split.start
+                          && annotation.annotationEnd === split.end,
+                        )?.annotationTag as keyof typeof TYPE_TO_COLOR]}
                       />
                     ))}
                   </TableHead>
@@ -111,12 +111,12 @@ function CombinedElement({ elementIndex, value, type, data, handleTextSelection,
                         key={`${split.start}-${split.end}`}
                         {...split}
                         onClick={() => handleSplitClick(elementIndex, split)}
-                        color={TYPE_TO_COLOR[annotationRecords[elementIndex].annotations.find(annotation =>
-                          annotation.offset.row === rowIndex + 1
-                          && annotation.offset.cell === cellIndex
-                          && annotation.offset.start === split.start
-                          && annotation.offset.end === split.end,
-                        )?.tag as keyof typeof TYPE_TO_COLOR]}
+                        color={TYPE_TO_COLOR[documentElements[elementIndex].components.find(annotation =>
+                          annotation.annotationRow === rowIndex + 1
+                          && annotation.annotationCell === cellIndex
+                          && annotation.annotationStart === split.start
+                          && annotation.annotationEnd === split.end,
+                        )?.annotationTag as keyof typeof TYPE_TO_COLOR]}
                       />
                     ))}
                   </TableCell>

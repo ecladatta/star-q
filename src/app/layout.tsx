@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { TooltipProvider } from '@radix-ui/react-tooltip'
 import localFont from 'next/font/local'
 import { Toaster } from 'sonner'
 import './globals.css'
@@ -29,8 +30,10 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <Toaster position="top-center" />
-        {children}
+        <TooltipProvider>
+          <Toaster position="top-center" />
+          {children}
+        </TooltipProvider>
       </body>
     </html>
   )
