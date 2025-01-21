@@ -93,7 +93,6 @@ export default function CorpusView({ corpus, documents, document, annotations }:
     left: 0,
     visible: false,
   })
-
   const [documentElements, setDocumentElements] = useState<DocumentElement[]>([])
   const [selectedOffset, setSelectedOffset] = useState({ start: 0, end: 0 })
   const [currentElementIndex, setCurrentElementIndex] = useState<number | null>(null)
@@ -365,9 +364,21 @@ export default function CorpusView({ corpus, documents, document, annotations }:
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [resetAnnotations])
 
-  const subjectTag = documentElements.find(doc => doc.components.some(annotation => annotation.annotationTag === 'subject'))?.components.find(annotation => annotation.annotationTag === 'subject')
-  const predicateTag = documentElements.find(doc => doc.components.some(annotation => annotation.annotationTag === 'predicate'))?.components.find(annotation => annotation.annotationTag === 'predicate')
-  const objectTag = documentElements.find(doc => doc.components.some(annotation => annotation.annotationTag === 'object'))?.components.find(annotation => annotation.annotationTag === 'object')
+  const subjectTag = documentElements
+    .find(doc => doc.components.some(annotation => annotation.annotationTag === 'subject'))
+    ?.components
+    .find(annotation => annotation.annotationTag === 'subject')
+
+  const predicateTag = documentElements
+    .find(doc => doc.components.some(annotation => annotation.annotationTag === 'predicate'))
+    ?.components
+    .find(annotation => annotation.annotationTag === 'predicate')
+
+  const objectTag = documentElements
+    .find(doc => doc.components.some(annotation => annotation.annotationTag === 'object'))
+    ?.components
+    .find(annotation => annotation.annotationTag === 'object')
+
   const hasAnyTags = Boolean(subjectTag || predicateTag || objectTag)
   const hasAllTags = Boolean(subjectTag && predicateTag && objectTag)
 
