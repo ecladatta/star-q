@@ -4,7 +4,7 @@ import { getAnnotations, getCorpus, getDocuments } from '@/actions/corpusActions
 // @TODO: Define the model for the export
 type ExportModel = any
 
-export async function GET(request: NextRequest, { params }: { params: { corpusId: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ corpusId: string }> }) {
   const { corpusId } = await params
 
   const corpus = await getCorpus(corpusId)
