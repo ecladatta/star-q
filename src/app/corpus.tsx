@@ -81,18 +81,18 @@ export function Corpuses({ corpuses }: CorpusesProps) {
   }
 
   const confirmDelete = async () => {
-    if (corpusToDelete) {
-      setIsDeleting(true)
-      await deleteCorpus(corpusToDelete.id)
-      setIsDeleting(false)
-      setCorpusToDelete(null)
+    if (!corpusToDelete) {
+      return
     }
+    setIsDeleting(true)
+    await deleteCorpus(corpusToDelete.id)
+    setCorpusToDelete(null)
+    setIsDeleting(false)
   }
 
   return (
     <main className="ml-0 min-w-0">
       <div className="container mx-auto p-12">
-        <Link href="/"><h1 className="mb-6 text-3xl font-bold">ECLADATTA Annotation Tool</h1></Link>
         <div className="flex flex-col">
           <h2 className="mb-4 text-2xl font-semibold">Corpus Management</h2>
           <div className="mb-4">
@@ -236,7 +236,7 @@ export function Corpuses({ corpuses }: CorpusesProps) {
                 <strong>{corpusToDelete?.title}</strong>
                 "?
               </p>
-              <p>This action cannot be undone and will:</p>
+              <p>This action cannot be undone and will also:</p>
               <ul className="ml-4 list-inside list-disc">
                 <li>Delete all documents attached to this corpus</li>
                 <li>Delete all annotations attached to this corpus</li>
