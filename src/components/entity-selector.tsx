@@ -96,7 +96,7 @@ export function EntitySelector({ type, value, onValueChange }: {
                     {value.value}
                     )
                   </span>
-                  {value.value && (
+                  {value.value && !value.custom && (
                     <Link href={`https://www.wikidata.org/wiki/${value.value?.startsWith('P') ? 'Property:' : ''}${value.value}`} target="_blank" rel="noopener noreferrer" className="ml-auto text-xs text-blue-500 underline" onClick={e => e.stopPropagation()}>
                       View
                     </Link>
