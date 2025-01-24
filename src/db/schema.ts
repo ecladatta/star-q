@@ -1,3 +1,4 @@
+import type { DocumentData } from '@/app/corpus/[corpusId]/corpus-view'
 import type { InferSelectModel } from 'drizzle-orm'
 import { randomUUID } from 'node:crypto'
 import { boolean, integer, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
@@ -14,11 +15,12 @@ export type Corpus = InferSelectModel<typeof corpus>
 export const document = pgTable('document', {
   id: uuid('id').primaryKey().$defaultFn(() => randomUUID()),
   corpusId: uuid('corpus_id').references(() => corpus.id, { onDelete: 'cascade' }).notNull(),
+  type: text('type').notNull().$type<'text/x-wiki' | 'text/plain'>(),
   title: text('title').notNull(),
-  raw: jsonb('raw').notNull(),
+  raw: jsonb('raw').$type<DocumentData>().notNull(),
   completedAt: timestamp('completed_at'),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
 })
 export type Document = InferSelectModel<typeof document>
 

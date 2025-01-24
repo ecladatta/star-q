@@ -338,7 +338,7 @@ export default function CorpusView({ corpus, documents, document, annotations }:
         type: 'text' as const,
         startOffset: text.startOffset,
         endOffset: text.endOffset,
-        value: wtf(text.value).text(),
+        value: document.type === 'text/x-wiki' ? wtf(text.value).text() : text.value,
         data: {
           ...text,
         },

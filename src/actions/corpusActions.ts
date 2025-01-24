@@ -1,9 +1,9 @@
 'use server'
-import type { DocumentAnnotation, Entity } from '@/app/corpus/[corpusId]/corpus-view'
+import type { DocumentAnnotation, DocumentData, Entity } from '@/app/corpus/[corpusId]/corpus-view'
 import type { AnnotationComponent, Document } from '@/db/schema'
 import { db } from '@/db/drizzle'
 import { annotation, annotationComponent, corpus, document } from '@/db/schema'
-import { determineJsonType, InvalidJsonLinesError, UnsupportedFileTypeError } from '@/lib/utils'
+import { determineImportType, InvalidJsonLinesError, UnsupportedFileTypeError } from '@/lib/utils'
 import { count, desc, eq, getTableColumns } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { revalidatePath } from 'next/cache'
@@ -41,35 +41,127 @@ export async function importDocuments(corpusId: string, formData: FormData) {
   }
 
   const content = await file.text()
-  const jsonType = await determineJsonType(content)
-
-  if (jsonType !== 'jsonlines') {
-    throw new UnsupportedFileTypeError('Unsupported JSON format')
+  const importType = await determineImportType(content)
+  if (importType === 'unknown') {
+    throw new UnsupportedFileTypeError('File format is not supported')
   }
 
-  const lines = content.split('\n').filter(line => line.trim() !== '')
-  const documents = lines.map((line) => {
-    const parsedJson = JSON.parse(line)
-    if (!('_index' in parsedJson)) {
-      throw new InvalidJsonLinesError('JSON Lines file must have a "_index" field in each line')
-    }
-    return {
-      corpusId,
-      title: parsedJson._source.identificationMetadata.title,
-      raw: parsedJson,
-    }
-  })
+  const importedDocumentsIds: string[] = []
 
-  await db.transaction(async (trx) => {
-    for (const doc of documents) {
-      await trx.insert(document).values(doc)
+  if (importType === 'corpuswalker') {
+    const lines = content.split('\n').filter(line => line.trim() !== '')
+    for (const line of lines) {
+      const parsedJson = JSON.parse(line)
+      if (!('_index' in parsedJson)) {
+        throw new InvalidJsonLinesError('JSON Lines file must have a "_index" field in each line')
+      }
+
+      const [documentId] = await db.insert(document).values({
+        corpusId,
+        title: parsedJson._source.identificationMetadata.title,
+        type: 'text/x-wiki',
+        raw: parsedJson as DocumentData,
+      }).returning({ id: document.id })
+      importedDocumentsIds.push(documentId.id)
     }
-  })
+  } else if (importType === 'labelstudio') {
+    const parsedJson = JSON.parse(content)
+    for (const item of parsedJson) {
+      // Convert Label Studio format to Corpus Walker format
+      const raw: DocumentData = {
+        _source: {
+          identificationMetadata: {
+            title: item.id,
+            versionDate: item.created_at,
+            wikidata: '',
+            url: [],
+          },
+          extractionMetadata: [{
+            texts: [{
+              startOffset: 0,
+              endOffset: item.data.text.length,
+              value: item.data.text,
+            }],
+            tables: [],
+          }],
+        },
+      }
+
+      const [documentId] = await db.insert(document).values({
+        corpusId,
+        title: item.id,
+        type: 'text/plain',
+        raw,
+      }).returning({ id: document.id })
+      importedDocumentsIds.push(documentId.id)
+
+      if (item.data.label) {
+        for (const label of item.data.label) {
+          const { start, end, text } = label
+          const subjectAnnotation: AnnotationComponent = {
+            id: Math.random().toString(),
+            annotationStart: start,
+            annotationEnd: end,
+            annotationValue: text,
+            annotationType: 'text',
+            annotationTag: 'subject',
+            elementIndex: 0,
+            annotationCell: null,
+            annotationRow: null,
+            entityCustom: true,
+            entityLabel: label.labels[0],
+            entityValue: label.labels[0],
+          }
+          const predicateAnnotation: AnnotationComponent = {
+            id: Math.random().toString(),
+            annotationStart: start,
+            annotationEnd: end,
+            annotationValue: text,
+            annotationType: 'text',
+            annotationTag: 'predicate',
+            elementIndex: 0,
+            annotationCell: null,
+            annotationRow: null,
+            entityCustom: true,
+            entityLabel: label.labels[0],
+            entityValue: label.labels[0],
+          }
+          const objectAnnotation: AnnotationComponent = {
+            id: Math.random().toString(),
+            annotationStart: start,
+            annotationEnd: end,
+            annotationValue: text,
+            annotationType: 'text',
+            annotationTag: 'object',
+            elementIndex: 0,
+            annotationCell: null,
+            annotationRow: null,
+            entityCustom: true,
+            entityLabel: label.labels[0],
+            entityValue: label.labels[0],
+          }
+          addAnnotation(documentId.id, subjectAnnotation, {
+            label: label.labels[0],
+            value: label.labels[0],
+            custom: true,
+          }, predicateAnnotation, {
+            label: label.labels[0],
+            value: label.labels[0],
+            custom: true,
+          }, objectAnnotation, {
+            label: label.labels[0],
+            value: label.labels[0],
+            custom: true,
+          })
+        }
+      }
+    }
+  }
 
   revalidatePath('/')
 
   return {
-    count: documents.length,
+    count: importedDocumentsIds.length,
   }
 }
 

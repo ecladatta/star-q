@@ -107,6 +107,34 @@ export async function determineJsonType(content: string): Promise<JsonFileType> 
   return 'unknown'
 }
 
+export type ImportType = 'corpuswalker' | 'labelstudio' | 'unknown'
+
+export async function determineImportType(content: string): Promise<ImportType> {
+  const jsonType = await determineJsonType(content)
+  if (jsonType === 'jsonlines') {
+    // Check if it's a Corpus Walker JSON Lines file
+    try {
+      const firstLine = JSON.parse(content.split('\n')[0])
+      if ('_index' in firstLine) {
+        return 'corpuswalker'
+      }
+    } catch {}
+  } else if (jsonType === 'json') {
+    // Check if it is a Label Studio JSON file
+    try {
+      const parsedJson = JSON.parse(content)
+      if (!Array.isArray(parsedJson) || !parsedJson.length) {
+        return 'unknown'
+      }
+      if (!parsedJson[0].data || !parsedJson[0].annotations) {
+        return 'unknown'
+      }
+      return 'labelstudio'
+    } catch {}
+  }
+  return 'unknown'
+}
+
 export class UnsupportedFileTypeError extends Error {
   constructor(message: string) {
     super(message)
