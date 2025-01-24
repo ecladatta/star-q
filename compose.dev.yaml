@@ -15,7 +15,7 @@ services:
       - ./next-app/public:/app/public
     restart: unless-stopped
     ports:
-      - ${PORT:-3000}:3000
+      - ${CONTAINER_PORT:-3000}:3000
   postgres:
     image: postgres
     restart: unless-stopped

@@ -5,13 +5,14 @@ volumes:
 
 services:
   next-app:
-    container_name: next-app
     build:
       context: .
       dockerfile: prod.Dockerfile
     restart: unless-stopped
+    env_file:
+      - .env
     ports:
-      - ${PORT:-3000}:3000
+      - ${CONTAINER_PORT:-3000}:3000
   postgres:
     image: postgres
     restart: unless-stopped
