@@ -62,18 +62,38 @@ export function Corpuses({ corpuses }: CorpusesProps) {
     }
   }
 
-  const handleExportClick = () => {
+  const handleExportClick = async (corpus: Corpus) => {
     setIsExporting(true)
     setProgress(0)
-    const interval = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval)
-          return 100
-        }
-        return prev + Math.random() * 5
+    try {
+      const response = await fetch(`/api/corpus/${corpus.id}/export`, {
+        method: 'GET',
       })
-    }, 100)
+      const reader = response.body?.getReader()
+      if (!reader)
+        throw new Error('No reader available')
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done)
+          break
+
+        const chunk = new TextDecoder().decode(value)
+        const data = JSON.parse(chunk)
+
+        if (data.progress) {
+          setProgress(data.progress)
+        }
+
+        if (data.downloadUrl) {
+          window.location.href = data.downloadUrl
+          break
+        }
+      }
+    } catch (error) {
+      console.error('Export failed:', error)
+      setIsExporting(false)
+    }
   }
 
   const handleDeleteClick = (corpus: Corpus) => {
@@ -168,7 +188,7 @@ export function Corpuses({ corpuses }: CorpusesProps) {
                               style={{ display: 'none' }}
                               onChange={event => handleFileChange(corpus, event)}
                             />
-                            <Button variant="outline" size="sm" onClick={handleExportClick}>
+                            <Button variant="outline" size="sm" onClick={() => handleExportClick(corpus)}>
                               <FileDown className="size-4" />
                               {' '}
                               Export
