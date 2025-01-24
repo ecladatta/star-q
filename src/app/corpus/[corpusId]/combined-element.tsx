@@ -1,3 +1,4 @@
+import type { Offset } from '@/lib/utils'
 import type { DocumentElement } from './corpus-view'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { TYPE_TO_COLOR } from '@/lib/constants'
@@ -12,24 +13,31 @@ export type CombinedElementProps = {
   data: { title: string, level?: number }
   handleTextSelection: (index: number) => void
   handleTableSelection: (index: number, row: number, cell: number) => void
-  handleSplitClick: (index: number, split: { start: number, end: number }) => void
+  handleSplitClick: (split: Offset) => void
   documentElements: DocumentElement[]
 }
 
 function CombinedElement({ elementIndex, value, type, data, handleTextSelection, handleTableSelection, handleSplitClick, documentElements }: CombinedElementProps) {
-  if (!documentElements[elementIndex]) {
+  const element = documentElements[elementIndex]
+  if (!element) {
     return null
   }
 
   if (type === 'text') {
     const rawText = value as string
 
-    const splits = splitWithOffsets(rawText, 'text', documentElements[elementIndex].components.map(
-      annotation => ({ start: annotation.annotationStart, end: annotation.annotationEnd, row: annotation.annotationRow, cell: annotation.annotationCell }),
+    const splits = splitWithOffsets(rawText, 'text', element.components.map(
+      component => ({
+        start: component.annotationStart,
+        end: component.annotationEnd,
+        row: component.annotationRow,
+        cell: component.annotationCell,
+        componentId: component.id,
+      }),
     ))
 
     return (
-      <div key={elementIndex} className="mb-4">
+      <div key={elementIndex} className="mb-4" id={`element-${elementIndex}`}>
         {React.createElement(data.level ? `h${data.level}` : 'div', { className: 'mb-2 font-semibold' }, data.title)}
         <div
           className="text-lg leading-relaxed"
@@ -42,10 +50,10 @@ function CombinedElement({ elementIndex, value, type, data, handleTextSelection,
             .filter(split => split.source === 'text')
             .map(split => (
               <Split
-                key={`${split.start}-${split.end}`}
+                key={`text-split-${split.componentId}-${split.start}-${split.end}`}
                 {...split}
-                onClick={() => handleSplitClick(elementIndex, split)}
-                color={TYPE_TO_COLOR[documentElements[elementIndex].components.find(annotation => annotation.annotationStart === split.start)?.annotationTag as keyof typeof TYPE_TO_COLOR]}
+                onClick={() => handleSplitClick(split)}
+                color={TYPE_TO_COLOR[element.components.find(annotation => annotation.annotationStart === split.start)?.annotationTag as keyof typeof TYPE_TO_COLOR]}
               />
             ))}
         </div>
@@ -56,15 +64,19 @@ function CombinedElement({ elementIndex, value, type, data, handleTextSelection,
 
     const splits = tableData.map((row, rowIndex) =>
       row.map((cell, cellIndex) => {
-        const cellAnnotations = documentElements[elementIndex].components.filter(
+        const cellAnnotations = element.components.filter(
           annotation => annotation.annotationRow === rowIndex && annotation.annotationCell === cellIndex,
         )
-        return splitWithOffsets(cell, 'table', cellAnnotations.map(annotation => ({ start: annotation.annotationStart, end: annotation.annotationEnd })))
+        return splitWithOffsets(cell, 'table', cellAnnotations.map(annotation => ({
+          start: annotation.annotationStart,
+          end: annotation.annotationEnd,
+          id: annotation.id,
+        })))
       }),
     )
 
     return (
-      <div key={elementIndex} className="mb-6">
+      <div key={elementIndex} className="mb-6" id={`element-${elementIndex}`}>
         <Table>
           <TableHeader>
             {splits.slice(0, 1).map((row, rowIndex) => (
@@ -72,17 +84,17 @@ function CombinedElement({ elementIndex, value, type, data, handleTextSelection,
                 {row.map((cellSplits, cellIndex) => (
                   <TableHead
                     key={cellIndex}
-                    role="button"
+                    role="textbox"
                     tabIndex={0}
                     onMouseUp={() => handleTableSelection(elementIndex, 0, cellIndex)}
                     onKeyUp={e => e.key === 'Enter' && handleTableSelection(elementIndex, 0, cellIndex)}
                   >
                     {cellSplits.map(split => (
                       <Split
-                        key={`${split.start}-${split.end}`}
+                        key={`table-header-split-${split.componentId}-${split.start}-${split.end}`}
                         {...split}
-                        onClick={() => handleSplitClick(elementIndex, split)}
-                        color={TYPE_TO_COLOR[documentElements[elementIndex].components.find(annotation =>
+                        onClick={() => handleSplitClick(split)}
+                        color={TYPE_TO_COLOR[element.components.find(annotation =>
                           annotation.annotationRow === rowIndex
                           && annotation.annotationCell === cellIndex
                           && annotation.annotationStart === split.start
@@ -101,17 +113,16 @@ function CombinedElement({ elementIndex, value, type, data, handleTextSelection,
                 {row.map((cellSplits, cellIndex) => (
                   <TableCell
                     key={cellIndex}
-                    role="button"
-                    tabIndex={0}
+                    role="textbox"
                     onMouseUp={() => handleTableSelection(elementIndex, rowIndex + 1, cellIndex)}
                     onKeyUp={e => e.key === 'Enter' && handleTableSelection(elementIndex, rowIndex + 1, cellIndex)}
                   >
                     {cellSplits.map(split => (
                       <Split
-                        key={`${split.start}-${split.end}`}
+                        key={`table-row-split-${split.componentId}-${split.start}-${split.end}`}
                         {...split}
-                        onClick={() => handleSplitClick(elementIndex, split)}
-                        color={TYPE_TO_COLOR[documentElements[elementIndex].components.find(annotation =>
+                        onClick={() => handleSplitClick(split)}
+                        color={TYPE_TO_COLOR[element.components.find(annotation =>
                           annotation.annotationRow === rowIndex + 1
                           && annotation.annotationCell === cellIndex
                           && annotation.annotationStart === split.start

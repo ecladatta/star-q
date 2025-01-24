@@ -34,6 +34,7 @@ export type Offset = {
   end: number
   row?: number | null
   cell?: number | null
+  componentId?: string
 }
 
 export function splitWithOffsets(text: string, source: 'text' | 'table', offsets: Offset[]) {
@@ -41,9 +42,10 @@ export function splitWithOffsets(text: string, source: 'text' | 'table', offsets
   const splits = []
 
   for (const offset of sortBy(offsets, o => o.start)) {
-    const { start, end } = offset
+    const { componentId, start, end } = offset
     if (lastEnd < start) {
       splits.push({
+        componentId,
         start: lastEnd,
         end: start,
         source,
@@ -51,7 +53,9 @@ export function splitWithOffsets(text: string, source: 'text' | 'table', offsets
       })
     }
     splits.push({
-      ...offset,
+      componentId,
+      start,
+      end,
       mark: true,
       source,
       content: text.slice(start, end),
@@ -60,6 +64,7 @@ export function splitWithOffsets(text: string, source: 'text' | 'table', offsets
   }
   if (lastEnd < text.length) {
     splits.push({
+      componentId: undefined,
       start: lastEnd,
       end: text.length,
       source,

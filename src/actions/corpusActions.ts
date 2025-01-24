@@ -127,7 +127,6 @@ async function upsertAnnotationComponent(
 }
 
 export async function addAnnotation(
-  corpusId: string,
   documentId: string,
   subjectAnnotation: AnnotationComponent,
   subjectEntity: Entity | null,

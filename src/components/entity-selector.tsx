@@ -48,11 +48,9 @@ export function EntitySelector({ type, value, onValueChange }: {
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between"
+          className="flex w-full items-center truncate text-left"
         >
-          {value
-            ? searchEntities.find(framework => framework.value === value.value)?.label
-            : 'Select entity...'}
+          <div className="flex-1 truncate">{value ? value.label : <span className="text-muted-foreground">Search entities...</span>}</div>
           <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>

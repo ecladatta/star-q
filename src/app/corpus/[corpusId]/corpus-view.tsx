@@ -1,10 +1,12 @@
 'use client'
 import type { AnnotationComponent, Corpus, Document } from '@/db/schema'
 
+import type { Offset } from '@/lib/utils'
 import { addAnnotation, deleteAnnotation, getAnnotationById, updateAnnotation } from '@/actions/corpusActions'
 import { EntitySelector } from '@/components/entity-selector'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -101,10 +103,16 @@ export default function CorpusView({ corpus, documents, document, annotations }:
   const [selectedSubject, setSelectedSubject] = useState<Entity | null>(null)
   const [selectedPredicate, setSelectedPredicate] = useState<Entity | null>(null)
   const [selectedObject, setSelectedObject] = useState<Entity | null>(null)
-  const [editingAnnotationId, setEditingAnnotationId] = useState<string | null>(null)
   const [documentData] = useState<DocumentData | undefined>(document?.raw as (DocumentData | undefined))
   const [annotationFormLoading, setAnnotationFormLoading] = useState(false)
   const [isDeletingAnnotation, setIsDeletingAnnotation] = useState(false)
+  const [currentAnnotation, setCurrentAnnotation] = useState<{
+    id?: string
+    subject?: DocumentAnnotationComponent
+    predicate?: DocumentAnnotationComponent
+    object?: DocumentAnnotationComponent
+  } | null>(null)
+  const [showAnnotations, setShowAnnotations] = useState(true)
 
   const handleTextSelection = (index: number) => {
     setCurrentElementIndex(index)
@@ -179,104 +187,112 @@ export default function CorpusView({ corpus, documents, document, annotations }:
     if (currentElementType === 'table' && !tableSelection)
       return // Ensure a cell is selected
 
-    setDocumentElements((prev) => {
-      const updatedDocumentElements = [...prev]
-      const currentComponents = updatedDocumentElements[currentElementIndex].components
+    let value = ''
+    if (currentElementType === 'text') {
+      value = documentElements[currentElementIndex].value as string
+    } else if (currentElementType === 'table' && tableSelection) {
+      value = (documentElements[currentElementIndex].value)[tableSelection.rowIndex][tableSelection.cellIndex]
+    }
 
-      let value = ''
-      if (currentElementType === 'text') {
-        value = updatedDocumentElements[currentElementIndex].value as string
-      } else if (currentElementType === 'table' && tableSelection) {
-        value = (updatedDocumentElements[currentElementIndex].value)[tableSelection.rowIndex][tableSelection.cellIndex]
-      }
+    const newComponent: AnnotationComponent = {
+      id: Math.random().toString(),
+      entityLabel: null,
+      entityValue: null,
+      entityCustom: null,
+      annotationStart: selectedOffset.start,
+      annotationEnd: selectedOffset.end,
+      annotationRow: tableSelection?.rowIndex ?? null,
+      annotationCell: tableSelection?.cellIndex ?? null,
+      annotationValue: value.slice(selectedOffset.start, selectedOffset.end),
+      annotationType: currentElementType,
+      annotationTag: type,
+      elementIndex: currentElementIndex,
+    }
 
-      // Check for overlaps
-      const newComponent: AnnotationComponent = {
-        id: Math.random().toString(),
-        documentId: document?.id ?? null,
-        entityLabel: null,
-        entityValue: null,
-        entityCustom: null,
-        annotationStart: selectedOffset.start,
-        annotationEnd: selectedOffset.end,
-        annotationRow: tableSelection?.rowIndex ?? null,
-        annotationCell: tableSelection?.cellIndex ?? null,
-        annotationValue: value.slice(selectedOffset.start, selectedOffset.end),
-        annotationType: currentElementType,
-        annotationTag: type,
-        elementIndex: currentElementIndex,
-      }
-      if (currentElementType === 'table' && tableSelection) {
-        newComponent.annotationRow = tableSelection.rowIndex
-        newComponent.annotationCell = tableSelection.cellIndex
-      }
-
-      const hasOverlap = currentComponents.some((annotation) => {
-        if (currentElementType === 'text') {
-          return newComponent.annotationStart < annotation.annotationEnd && newComponent.annotationEnd > annotation.annotationStart
-        } else if (currentElementType === 'table' && tableSelection) {
-          return (
-            newComponent.annotationRow === annotation.annotationRow
-            && newComponent.annotationCell === annotation.annotationCell
-            && newComponent.annotationStart < annotation.annotationEnd
-            && newComponent.annotationEnd > annotation.annotationStart
-          )
-        }
-        return false
-      })
-
-      if (!hasOverlap) {
-        // No overlap, add the new annotation
-        updatedDocumentElements[currentElementIndex] = {
-          ...updatedDocumentElements[currentElementIndex],
-          components: [...currentComponents, newComponent],
-        }
-      } else {
-        // Remove overlapping annotations and add the new annotation
-        updatedDocumentElements[currentElementIndex] = {
-          ...updatedDocumentElements[currentElementIndex],
-          components: currentComponents.filter(annotation =>
-            !(newComponent.annotationStart < annotation.annotationEnd && newComponent.annotationEnd > annotation.annotationStart),
-          ).concat(newComponent),
-        }
-      }
-
-      return updatedDocumentElements
-    })
+    setCurrentAnnotation(prev => ({
+      ...prev,
+      [type]: newComponent,
+    }))
 
     // Reset selection and popover
     setPopoverPosition(prev => ({ ...prev, visible: false }))
   }
 
   const resetAnnotations = useCallback(() => {
-    setDocumentElements(combinedElements.map(el => ({ components: [], ...el })))
-  }, [combinedElements])
+    setDocumentElements(combinedElements.map((el) => {
+      const components = documentAnnotations.flatMap((ann) => {
+        if (!showAnnotations && ann.id !== currentAnnotation?.id)
+          return []
+        const elements = []
+        const annotation = ann.id === currentAnnotation?.id ? currentAnnotation : ann
+        if (annotation.subject?.elementIndex === el.elementIndex)
+          elements.push(annotation.subject)
+        if (annotation.predicate?.elementIndex === el.elementIndex)
+          elements.push(annotation.predicate)
+        if (annotation.object?.elementIndex === el.elementIndex)
+          elements.push(annotation.object)
+        return elements
+      })
+
+      if (currentAnnotation) {
+        if (currentAnnotation.subject?.elementIndex === el.elementIndex && !components.includes(currentAnnotation.subject))
+          components.push(currentAnnotation.subject)
+        if (currentAnnotation.predicate?.elementIndex === el.elementIndex && !components.includes(currentAnnotation.predicate))
+          components.push(currentAnnotation.predicate)
+        if (currentAnnotation.object?.elementIndex === el.elementIndex && !components.includes(currentAnnotation.object))
+          components.push(currentAnnotation.object)
+      }
+
+      return { ...el, components }
+    }))
+
+    if (currentAnnotation) {
+      setSelectedSubject(currentAnnotation.subject && currentAnnotation.subject.entityValue
+        ? {
+            label: currentAnnotation.subject.entityLabel || '',
+            value: currentAnnotation.subject.entityValue || '',
+            custom: currentAnnotation.subject.entityCustom || false,
+          }
+        : null)
+      setSelectedPredicate(currentAnnotation.predicate && currentAnnotation.predicate.entityValue
+        ? {
+            label: currentAnnotation.predicate.entityLabel || '',
+            value: currentAnnotation.predicate.entityValue || '',
+            custom: currentAnnotation.predicate.entityCustom || false,
+          }
+        : null)
+      setSelectedObject(currentAnnotation.object && currentAnnotation.object.entityValue
+        ? {
+            label: currentAnnotation.object.entityLabel || '',
+            value: currentAnnotation.object.entityValue || '',
+            custom: currentAnnotation.object.entityCustom || false,
+          }
+        : null)
+    }
+  }, [combinedElements, documentAnnotations, currentAnnotation, showAnnotations])
 
   const onClickCreateAnnotation = async () => {
-    if (!document) {
+    if (!document || !currentAnnotation) {
       return
     }
 
-    // Save the annotation
-    const subjectTag = documentElements.find(doc => doc.components.some(annotation => annotation.annotationTag === 'subject'))?.components.find(annotation => annotation.annotationTag === 'subject')
-    const predicateTag = documentElements.find(doc => doc.components.some(annotation => annotation.annotationTag === 'predicate'))?.components.find(annotation => annotation.annotationTag === 'predicate')
-    const objectTag = documentElements.find(doc => doc.components.some(annotation => annotation.annotationTag === 'object'))?.components.find(annotation => annotation.annotationTag === 'object')
+    const { subject, predicate, object } = currentAnnotation
 
-    if (!subjectTag || !predicateTag || !objectTag) {
+    if (!subject || !predicate || !object) {
       toast.error('Please select entities for each subject, predicate, and object.')
       return
     }
 
     setAnnotationFormLoading(true)
 
-    if (editingAnnotationId) {
-      await updateAnnotation(editingAnnotationId, subjectTag, selectedSubject, predicateTag, selectedPredicate, objectTag, selectedObject)
-      const updatedAnnotation = await getAnnotationById(editingAnnotationId)
-      setDocumentAnnotations(prev => prev.map(ann => (ann.id === editingAnnotationId ? updatedAnnotation : ann)))
-      setEditingAnnotationId(null)
+    if (currentAnnotation.id) {
+      await updateAnnotation(currentAnnotation.id, subject, selectedSubject, predicate, selectedPredicate, object, selectedObject)
+      const updatedAnnotation = await getAnnotationById(currentAnnotation.id)
+      setDocumentAnnotations(prev => prev.map(ann => (ann.id === currentAnnotation.id ? updatedAnnotation : ann)))
+      setCurrentAnnotation(null)
       toast.success('Annotation updated!')
     } else {
-      const annotationId = await addAnnotation(corpus.id, document.id, subjectTag, selectedSubject, predicateTag, selectedPredicate, objectTag, selectedObject)
+      const annotationId = await addAnnotation(document.id, subject, selectedSubject, predicate, selectedPredicate, object, selectedObject)
       const newAnnotation = await getAnnotationById(annotationId)
       setDocumentAnnotations(prev => [
         ...prev,
@@ -289,41 +305,33 @@ export default function CorpusView({ corpus, documents, document, annotations }:
     resetAnnotations()
     // Reset selection and popover
     setPopoverPosition(prev => ({ ...prev, visible: false }))
+    setCurrentAnnotation(null)
 
     setAnnotationFormLoading(false)
   }
 
   const onClickDeleteAnnotation = async () => {
-    if (editingAnnotationId) {
+    if (currentAnnotation?.id) {
       setIsDeletingAnnotation(true)
-      await deleteAnnotation(editingAnnotationId)
-      setDocumentAnnotations(prev => prev.filter(ann => ann.id !== editingAnnotationId))
+      await deleteAnnotation(currentAnnotation.id)
+      setDocumentAnnotations(prev => prev.filter(ann => ann.id !== currentAnnotation.id))
       resetAnnotations()
-      setEditingAnnotationId(null)
+      setCurrentAnnotation(null)
       setIsDeletingAnnotation(false)
       toast.success('Annotation deleted!')
     }
   }
 
-  const handleSplitClick = (textIndex: number, { start, end }: { start: number, end: number }) => {
-    setDocumentElements((prev) => {
-      const updatedAnnotations = [...prev]
-      const splitIndex = updatedAnnotations[textIndex].components.findIndex(s => s.annotationStart === start && s.annotationEnd === end)
-      if (splitIndex >= 0) {
-        updatedAnnotations[textIndex] = {
-          ...updatedAnnotations[textIndex],
-          components: [
-            ...updatedAnnotations[textIndex].components.slice(0, splitIndex),
-            ...updatedAnnotations[textIndex].components.slice(splitIndex + 1),
-          ],
-        }
-      }
-      return updatedAnnotations
-    })
+  const handleSplitClick = ({ componentId }: Offset) => {
+    const ann = documentAnnotations.find(ann => ann.subjectId === componentId || ann.predicateId === componentId || ann.objectId === componentId)
+    if (!ann) {
+      return
+    }
+    setCurrentAnnotation(ann)
   }
 
   useEffect(() => {
-    if (!documentData?._source)
+    if (!document || !documentData?._source)
       return
     const els = [
       ...documentData._source.extractionMetadata[0].texts.map((text: any) => ({
@@ -347,7 +355,7 @@ export default function CorpusView({ corpus, documents, document, annotations }:
     ].sort((a, b) => a.startOffset - b.startOffset).map((el, index) => ({ ...el, elementIndex: index }))
 
     setCombinedElements(els)
-  }, [documentData])
+  }, [document, documentData])
 
   useEffect(() => {
     resetAnnotations()
@@ -356,7 +364,7 @@ export default function CorpusView({ corpus, documents, document, annotations }:
   useLayoutEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        resetAnnotations()
+        setCurrentAnnotation(null)
       }
     }
 
@@ -364,20 +372,9 @@ export default function CorpusView({ corpus, documents, document, annotations }:
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [resetAnnotations])
 
-  const subjectTag = documentElements
-    .find(doc => doc.components.some(annotation => annotation.annotationTag === 'subject'))
-    ?.components
-    .find(annotation => annotation.annotationTag === 'subject')
-
-  const predicateTag = documentElements
-    .find(doc => doc.components.some(annotation => annotation.annotationTag === 'predicate'))
-    ?.components
-    .find(annotation => annotation.annotationTag === 'predicate')
-
-  const objectTag = documentElements
-    .find(doc => doc.components.some(annotation => annotation.annotationTag === 'object'))
-    ?.components
-    .find(annotation => annotation.annotationTag === 'object')
+  const subjectTag = currentAnnotation?.subject
+  const predicateTag = currentAnnotation?.predicate
+  const objectTag = currentAnnotation?.object
 
   const hasAnyTags = Boolean(subjectTag || predicateTag || objectTag)
   const hasAllTags = Boolean(subjectTag && predicateTag && objectTag)
@@ -467,7 +464,7 @@ export default function CorpusView({ corpus, documents, document, annotations }:
                 <CardContent>
                   {combinedElements.map(element => (
                     <CombinedElement
-                      key={`${element.startOffset}-${element.endOffset}`}
+                      key={`element-${element.startOffset}-${element.endOffset}`}
                       {...element}
                       handleSplitClick={handleSplitClick}
                       handleTableSelection={handleTableSelection}
@@ -493,7 +490,7 @@ export default function CorpusView({ corpus, documents, document, annotations }:
                   <CardDescription>Select entities for each subject, predicate, and object.</CardDescription>
                 </div>
                 <div className="ml-auto flex gap-2">
-                  {editingAnnotationId && (
+                  {currentAnnotation?.id && (
                     <Popover>
                       <Tooltip delayDuration={200}>
                         <PopoverTrigger asChild>
@@ -523,7 +520,7 @@ export default function CorpusView({ corpus, documents, document, annotations }:
                     </Popover>
                   )}
                   <Tooltip delayDuration={200}>
-                    <TooltipTrigger>
+                    <TooltipTrigger asChild>
                       <Button className="bg-green-600 text-green-50 hover:bg-green-700 focus-visible:ring-green-500" onClick={onClickCreateAnnotation} disabled={!hasAllTags || annotationFormLoading || isDeletingAnnotation}>
                         {annotationFormLoading ? <Loader2Icon className="animate-spin" /> : <SaveIcon />}
                       </Button>
@@ -533,8 +530,13 @@ export default function CorpusView({ corpus, documents, document, annotations }:
                     </TooltipContent>
                   </Tooltip>
                   <Tooltip delayDuration={200}>
-                    <TooltipTrigger>
-                      <Button variant="ghost" onClick={resetAnnotations}>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        onClick={() => {
+                          setCurrentAnnotation(null)
+                        }}
+                      >
                         ✕
                       </Button>
                     </TooltipTrigger>
@@ -547,15 +549,75 @@ export default function CorpusView({ corpus, documents, document, annotations }:
               <CardContent>
                 <div className="grid grid-cols-3 gap-3">
                   <div>
-                    <div className="mb-1 truncate rounded-md px-2 py-0.5 text-sm font-semibold" style={{ backgroundColor: TYPE_TO_COLOR.subject }}>{subjectTag?.annotationValue ?? '\u00A0'}</div>
+                    <div className="mb-1 flex items-center justify-between truncate rounded-md px-2 py-0.5 text-sm font-semibold" style={{ backgroundColor: TYPE_TO_COLOR.subject }}>
+                      <Tooltip delayDuration={200}>
+                        <TooltipTrigger className="truncate">
+                          {subjectTag?.annotationValue ?? '\u00A0'}
+                        </TooltipTrigger>
+                        {subjectTag?.annotationValue && (
+                          <TooltipContent>
+                            {subjectTag.annotationValue}
+                          </TooltipContent>
+                        )}
+                      </Tooltip>
+                      {subjectTag && (
+                        <button
+                          type="button"
+                          className="ml-2 shrink-0"
+                          onClick={() => setCurrentAnnotation(prev => ({ ...prev, subject: undefined }))}
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
                     <EntitySelector type="subject" value={selectedSubject} onValueChange={setSelectedSubject} />
                   </div>
                   <div>
-                    <div className="mb-1 truncate rounded-md px-2 py-0.5 text-sm font-semibold" style={{ backgroundColor: TYPE_TO_COLOR.predicate }}>{predicateTag?.annotationValue ?? '\u00A0'}</div>
+                    <div className="mb-1 flex items-center justify-between truncate rounded-md px-2 py-0.5 text-sm font-semibold" style={{ backgroundColor: TYPE_TO_COLOR.predicate }}>
+                      <Tooltip delayDuration={200}>
+                        <TooltipTrigger className="truncate">
+                          {predicateTag?.annotationValue ?? '\u00A0'}
+                        </TooltipTrigger>
+                        {predicateTag?.annotationValue && (
+                          <TooltipContent>
+                            {predicateTag.annotationValue}
+                          </TooltipContent>
+                        )}
+                      </Tooltip>
+                      {predicateTag && (
+                        <button
+                          type="button"
+                          className="ml-2"
+                          onClick={() => setCurrentAnnotation(prev => ({ ...prev, predicate: undefined }))}
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
                     <EntitySelector type="predicate" value={selectedPredicate} onValueChange={setSelectedPredicate} />
                   </div>
                   <div>
-                    <div className="mb-1 truncate rounded-md px-2 py-0.5 text-sm font-semibold" style={{ backgroundColor: TYPE_TO_COLOR.object }}>{objectTag?.annotationValue ?? '\u00A0'}</div>
+                    <div className="mb-1 flex items-center justify-between truncate rounded-md px-2 py-0.5 text-sm font-semibold" style={{ backgroundColor: TYPE_TO_COLOR.object }}>
+                      <Tooltip delayDuration={200}>
+                        <TooltipTrigger className="truncate">
+                          {objectTag?.annotationValue ?? '\u00A0'}
+                        </TooltipTrigger>
+                        {objectTag?.annotationValue && (
+                          <TooltipContent>
+                            {objectTag.annotationValue}
+                          </TooltipContent>
+                        )}
+                      </Tooltip>
+                      {objectTag && (
+                        <button
+                          type="button"
+                          className="ml-2"
+                          onClick={() => setCurrentAnnotation(prev => ({ ...prev, object: undefined }))}
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
                     <EntitySelector type="object" value={selectedObject} onValueChange={setSelectedObject} />
                   </div>
                 </div>
@@ -616,8 +678,21 @@ export default function CorpusView({ corpus, documents, document, annotations }:
       </main>
       {documentAnnotations.length > 0 && (
         <aside className="fixed right-0 hidden h-full w-[280px] bg-gray-100 md:block">
-          <div className="flex h-full flex-col px-8 pt-4">
-            <h2 className="mb-4 mt-8 text-xl font-bold">Annotations</h2>
+          <div className="flex h-full flex-col p-6">
+            <h2 className="mb-4 text-xl font-bold">Annotations</h2>
+            <div className="mb-4 flex items-center gap-1">
+              <Checkbox
+                id="show-annotations"
+                checked={showAnnotations}
+                onCheckedChange={checked => setShowAnnotations(checked === true)}
+              />
+              <label
+                htmlFor="show-annotations"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                Highlight annotations in doc
+              </label>
+            </div>
             <ScrollArea>
               <ul className="space-y-3 pb-4">
                 {documentAnnotations.map(ann => (
@@ -627,54 +702,17 @@ export default function CorpusView({ corpus, documents, document, annotations }:
                       className="w-full rounded-md bg-white p-2 text-left shadow hover:bg-gray-50"
                       onClick={
                         () => {
-                          if (ann.id === editingAnnotationId) {
-                            setEditingAnnotationId(null)
-                            resetAnnotations()
+                          if (ann.id === currentAnnotation?.id) {
+                            setCurrentAnnotation(null)
                             return
                           }
 
-                          setEditingAnnotationId(ann.id)
+                          setCurrentAnnotation(ann)
 
-                          if (ann.subject.entityLabel && ann.subject.entityValue) {
-                            setSelectedSubject({
-                              label: ann.subject.entityLabel,
-                              value: ann.subject.entityValue,
-                              custom: ann.subject.entityCustom ?? false,
-                            })
+                          const element = window.document.getElementById(`element-${ann.subject.elementIndex}`)
+                          if (element) {
+                            element.scrollIntoView({ behavior: 'smooth', block: 'center' })
                           }
-                          if (ann.predicate.entityLabel && ann.predicate.entityValue) {
-                            setSelectedPredicate({
-                              label: ann.predicate.entityLabel,
-                              value: ann.predicate.entityValue,
-                              custom: ann.predicate.entityCustom ?? false,
-                            })
-                          }
-                          if (ann.object.entityLabel && ann.object.entityValue) {
-                            setSelectedObject({
-                              label: ann.object.entityLabel,
-                              value: ann.object.entityValue,
-                              custom: ann.object.entityCustom ?? false,
-                            })
-                          }
-
-                          setDocumentElements((prevElement) => {
-                            const updatedElement: DocumentElement[]
-                              = prevElement.map(el => ({ ...el, components: [] })) // Reset all annotations
-                            // Add the selected annotations
-                            updatedElement[ann.subject.elementIndex].components = [
-                              ...updatedElement[ann.subject.elementIndex].components,
-                              ann.subject,
-                            ]
-                            updatedElement[ann.predicate.elementIndex].components = [
-                              ...updatedElement[ann.predicate.elementIndex].components,
-                              ann.predicate,
-                            ]
-                            updatedElement[ann.object.elementIndex].components = [
-                              ...updatedElement[ann.object.elementIndex].components,
-                              ann.object,
-                            ]
-                            return updatedElement
-                          })
                         }
                       }
                     >
