@@ -92,7 +92,6 @@ export async function determineJsonType(content: string): Promise<JsonFileType> 
   const lines = content.split('\n').filter(line => line.trim() !== '')
   const allLinesAreJson = lines.every((line) => {
     try {
-      // console.log('line:', line)
       JSON.parse(line.trim())
       return true
     } catch {
