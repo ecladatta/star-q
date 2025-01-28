@@ -9,6 +9,8 @@ services:
       context: .
       dockerfile: prod.Dockerfile
     restart: unless-stopped
+    depends_on:
+      - migrate
     env_file:
       - .env
     ports:
