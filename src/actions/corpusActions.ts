@@ -268,6 +268,7 @@ export async function updateAnnotation(
     upsertAnnotationComponent(subjectAnnotation, subjectEntity, annotationData.subject.id),
     upsertAnnotationComponent(predicateAnnotation, predicateEntity, annotationData.predicate.id),
     upsertAnnotationComponent(objectAnnotation, objectEntity, annotationData.object.id),
+    db.update(annotation).set({ updatedAt: new Date() }).where(eq(annotation.id, id)),
   ])
 
   revalidatePath(`/document/${annotationData.documentId}`)
