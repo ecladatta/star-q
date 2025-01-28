@@ -8,7 +8,6 @@ export default {
   })],
   callbacks: {
     authorized: async ({ auth }) => {
-      console.log('checking if user is authorized', auth, !!auth)
       // Logged in users are authenticated, otherwise redirect to login page
       return !!auth
     },
