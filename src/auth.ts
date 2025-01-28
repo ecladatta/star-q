@@ -12,9 +12,9 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
     ...authConfig.callbacks,
     async session({ token, session }) {
       if (token) {
-        session.user.id = token.id
+        session.user.id = token.id as string
         session.user.name = token.name
-        session.user.email = token.email
+        session.user.email = token.email as string
         session.user.image = token.picture
       }
 
