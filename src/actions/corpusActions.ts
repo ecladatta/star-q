@@ -1,6 +1,7 @@
 'use server'
 import type { DocumentAnnotation, DocumentData, Entity } from '@/app/corpus/[corpusId]/corpus-view'
 import type { AnnotationComponent, Document } from '@/db/schema'
+import { auth } from '@/auth'
 import { db } from '@/db/drizzle'
 import { annotation, annotationComponent, corpus, document } from '@/db/schema'
 import { determineImportType, InvalidJsonLinesError, UnsupportedFileTypeError } from '@/lib/utils'
@@ -227,6 +228,12 @@ export async function addAnnotation(
   objectAnnotation: AnnotationComponent,
   objectEntity: Entity | null,
 ) {
+  const session = await auth()
+  const userId = session?.user?.id
+  if (!userId) {
+    throw new Error('User not authenticated')
+  }
+
   const [subjectId, predicateId, objectId] = await Promise.all([
     upsertAnnotationComponent(subjectAnnotation, subjectEntity),
     upsertAnnotationComponent(predicateAnnotation, predicateEntity),
@@ -238,6 +245,7 @@ export async function addAnnotation(
     subjectId,
     predicateId,
     objectId,
+    userId,
   }).returning({ id: annotation.id })
 
   revalidatePath(`/document/${documentId}`)

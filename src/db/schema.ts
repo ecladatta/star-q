@@ -130,5 +130,6 @@ export const annotation = pgTable('annotation', {
   subjectId: uuid('subject_id').references(() => annotationComponent.id).notNull(),
   predicateId: uuid('predicate_id').references(() => annotationComponent.id).notNull(),
   objectId: uuid('object_id').references(() => annotationComponent.id).notNull(),
+  userId: text('user_id').references(() => users.id, { onDelete: 'set null' }),
 })
 export type Annotation = InferSelectModel<typeof annotation>
