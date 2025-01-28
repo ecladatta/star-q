@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { auth, signOut } from '@/auth'
+import { auth, signIn, signOut } from '@/auth'
 import { Button } from '@/components/ui/button'
 import { TooltipProvider } from '@radix-ui/react-tooltip'
 import localFont from 'next/font/local'
@@ -56,23 +56,35 @@ async function Header() {
             </h1>
           </div>
           <div className="flex items-center gap-4">
-            {session && (
-              <span className="text-sm">
-                {session.user?.name}
-                {' '}
-                {session.user?.email && `(${session.user.email})`}
-              </span>
-            )}
-            <form
-              action={async () => {
-                'use server'
-                await signOut()
-              }}
-            >
-              <Button variant="outline" type="submit">
-                Sign out
-              </Button>
-            </form>
+            {session
+              ? (
+                  <>
+                    <span className="text-sm">
+                      {session.user?.name}
+                      {' '}
+                      {session.user?.email && `(${session.user.email})`}
+                    </span>
+                    <form
+                      action={async () => {
+                        'use server'
+                        await signOut()
+                      }}
+                    >
+                      <Button variant="outline" type="submit">
+                        Sign out
+                      </Button>
+                    </form>
+                  </>
+                )
+              : (
+                  <form action={async () => {
+                    'use server'
+                    await signIn()
+                  }}
+                  >
+                    <Button variant="outline" type="submit">Sign in</Button>
+                  </form>
+                )}
           </div>
         </div>
       </nav>

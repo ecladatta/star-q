@@ -15,6 +15,13 @@
       "when": 1737719120986,
       "tag": "0001_swift_blizzard",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1738073784438,
+      "tag": "0002_skinny_jean_grey",
+      "breakpoints": true
     }
   ]
 }

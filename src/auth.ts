@@ -1,15 +1,45 @@
+import { DrizzleAdapter } from '@auth/drizzle-adapter'
+import { eq } from 'drizzle-orm'
 import NextAuth from 'next-auth'
-import GitHub from 'next-auth/providers/github'
+import authConfig from './auth.config'
+import { db } from './db/drizzle'
+import { users } from './db/schema'
 
-export const { handlers, signIn, signOut, auth } = NextAuth({
-  providers: [GitHub({
-    clientId: process.env.GITHUB_ID,
-    clientSecret: process.env.GITHUB_SECRET,
-  })],
+export const { auth, handlers, signIn, signOut } = NextAuth({
+  ...authConfig,
+  adapter: DrizzleAdapter(db),
   callbacks: {
-    authorized: async ({ auth }) => {
-      // Logged in users are authenticated, otherwise redirect to login page
-      return !!auth
+    ...authConfig.callbacks,
+    async session({ token, session }) {
+      if (token) {
+        session.user.id = token.id
+        session.user.name = token.name
+        session.user.email = token.email
+        session.user.image = token.picture
+      }
+
+      return session
+    },
+    async jwt({ token, user }) {
+      const [dbUser] = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, token.email || ''))
+        .limit(1)
+
+      if (!dbUser) {
+        if (user) {
+          token.id = user?.id
+        }
+        return token
+      }
+
+      return {
+        id: dbUser.id,
+        name: dbUser.name,
+        email: dbUser.email,
+        picture: dbUser.image,
+      }
     },
   },
 })
