@@ -285,40 +285,49 @@ export default function CorpusView({ corpus, documents, document, annotations }:
 
     setAnnotationFormLoading(true)
 
-    if (currentAnnotation.id) {
-      await updateAnnotation(currentAnnotation.id, subject, selectedSubject, predicate, selectedPredicate, object, selectedObject)
-      const updatedAnnotation = await getAnnotationById(currentAnnotation.id)
-      setDocumentAnnotations(prev => prev.map(ann => (ann.id === currentAnnotation.id ? updatedAnnotation : ann)))
+    try {
+      if (currentAnnotation.id) {
+        await updateAnnotation(currentAnnotation.id, subject, selectedSubject, predicate, selectedPredicate, object, selectedObject)
+        const updatedAnnotation = await getAnnotationById(currentAnnotation.id)
+        setDocumentAnnotations(prev => prev.map(ann => (ann.id === currentAnnotation.id ? updatedAnnotation : ann)))
+        setCurrentAnnotation(null)
+        toast.success('Annotation updated!')
+      } else {
+        const annotationId = await addAnnotation(document.id, subject, selectedSubject, predicate, selectedPredicate, object, selectedObject)
+        const newAnnotation = await getAnnotationById(annotationId)
+        setDocumentAnnotations(prev => [
+          ...prev,
+          newAnnotation,
+        ])
+        toast.success('Annotation created!')
+      }
+    } catch (error: any) {
+      toast.error(`Failed to save annotation: ${error?.message || 'Something went wrong'}`)
+    } finally {
+      // Remove all annotations
+      resetAnnotations()
+      // Reset selection and popover
+      setPopoverPosition(prev => ({ ...prev, visible: false }))
       setCurrentAnnotation(null)
-      toast.success('Annotation updated!')
-    } else {
-      const annotationId = await addAnnotation(document.id, subject, selectedSubject, predicate, selectedPredicate, object, selectedObject)
-      const newAnnotation = await getAnnotationById(annotationId)
-      setDocumentAnnotations(prev => [
-        ...prev,
-        newAnnotation,
-      ])
-      toast.success('Annotation created!')
+
+      setAnnotationFormLoading(false)
     }
-
-    // Remove all annotations
-    resetAnnotations()
-    // Reset selection and popover
-    setPopoverPosition(prev => ({ ...prev, visible: false }))
-    setCurrentAnnotation(null)
-
-    setAnnotationFormLoading(false)
   }
 
   const onClickDeleteAnnotation = async () => {
     if (currentAnnotation?.id) {
       setIsDeletingAnnotation(true)
-      await deleteAnnotation(currentAnnotation.id)
-      setDocumentAnnotations(prev => prev.filter(ann => ann.id !== currentAnnotation.id))
-      resetAnnotations()
-      setCurrentAnnotation(null)
-      setIsDeletingAnnotation(false)
-      toast.success('Annotation deleted!')
+      try {
+        await deleteAnnotation(currentAnnotation.id)
+        setDocumentAnnotations(prev => prev.filter(ann => ann.id !== currentAnnotation.id))
+        resetAnnotations()
+        setCurrentAnnotation(null)
+        toast.success('Annotation deleted!')
+      } catch (error: any) {
+        toast.error(`Failed to delete annotation: ${error?.message || 'Something went wrong'}`)
+      } finally {
+        setIsDeletingAnnotation(false)
+      }
     }
   }
 

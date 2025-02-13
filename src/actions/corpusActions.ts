@@ -12,6 +12,12 @@ import { revalidatePath } from 'next/cache'
 const ACCEPTED_TYPES = ['application/json']
 
 export async function getCorpuses() {
+  const session = await auth()
+  const userId = session?.user?.id
+  if (!userId) {
+    throw new Error('User not authenticated')
+  }
+
   return db.select({
     ...getTableColumns(corpus),
     documentsCount: count(document.id),
@@ -25,16 +31,34 @@ export async function getCorpuses() {
 }
 
 export async function addCorpus(title: string) {
+  const session = await auth()
+  const userId = session?.user?.id
+  if (!userId) {
+    throw new Error('User not authenticated')
+  }
+
   await db.insert(corpus).values({ title })
   revalidatePath('/')
 }
 
 export async function deleteCorpus(id: string) {
+  const session = await auth()
+  const userId = session?.user?.id
+  if (!userId) {
+    throw new Error('User not authenticated')
+  }
+
   await db.delete(corpus).where(eq(corpus.id, id))
   revalidatePath('/')
 }
 
 export async function importDocuments(corpusId: string, formData: FormData) {
+  const session = await auth()
+  const userId = session?.user?.id
+  if (!userId) {
+    throw new Error('User not authenticated')
+  }
+
   const file = formData.get('file') as File
 
   if (!file || !ACCEPTED_TYPES.includes(file.type)) {
@@ -167,11 +191,23 @@ export async function importDocuments(corpusId: string, formData: FormData) {
 }
 
 export async function getCorpus(id: string) {
+  const session = await auth()
+  const userId = session?.user?.id
+  if (!userId) {
+    throw new Error('User not authenticated')
+  }
+
   const [data] = await db.select().from(corpus).where(eq(corpus.id, id))
   return data
 }
 
 export async function getDocuments(corpusId: string): Promise<(Document & { annotationsCount: number })[]> {
+  const session = await auth()
+  const userId = session?.user?.id
+  if (!userId) {
+    throw new Error('User not authenticated')
+  }
+
   return db.select({
     ...getTableColumns(document),
     annotationsCount: count(annotation.id),
@@ -183,16 +219,34 @@ export async function getDocuments(corpusId: string): Promise<(Document & { anno
 }
 
 export async function getDocument(id: string): Promise<Document> {
+  const session = await auth()
+  const userId = session?.user?.id
+  if (!userId) {
+    throw new Error('User not authenticated')
+  }
+
   const [data] = await db.select().from(document).where(eq(document.id, id))
   return data
 }
 
 export async function markDocumentAsCompleted(id: string, value: Date | null) {
+  const session = await auth()
+  const userId = session?.user?.id
+  if (!userId) {
+    throw new Error('User not authenticated')
+  }
+
   await db.update(document).set({ completedAt: value }).where(eq(document.id, id))
   revalidatePath('/')
 }
 
 export async function deleteDocument(id: string) {
+  const session = await auth()
+  const userId = session?.user?.id
+  if (!userId) {
+    throw new Error('User not authenticated')
+  }
+
   await db.delete(document).where(eq(document.id, id))
   revalidatePath('/')
 }
@@ -202,6 +256,12 @@ async function upsertAnnotationComponent(
   entity: Entity | null,
   existingId?: string,
 ) {
+  const session = await auth()
+  const userId = session?.user?.id
+  if (!userId) {
+    throw new Error('User not authenticated')
+  }
+
   const values = {
     ...component,
     id: undefined,
@@ -262,6 +322,12 @@ export async function updateAnnotation(
   objectAnnotation: AnnotationComponent,
   objectEntity: Entity | null,
 ) {
+  const session = await auth()
+  const userId = session?.user?.id
+  if (!userId) {
+    throw new Error('User not authenticated')
+  }
+
   const annotationData = await getAnnotationById(id)
 
   await Promise.all([
@@ -275,6 +341,12 @@ export async function updateAnnotation(
 }
 
 export async function getAnnotations(documentId: string): Promise<DocumentAnnotation[]> {
+  const session = await auth()
+  const userId = session?.user?.id
+  if (!userId) {
+    throw new Error('User not authenticated')
+  }
+
   const component1 = alias(annotationComponent, 'component1')
   const component2 = alias(annotationComponent, 'component2')
   const component3 = alias(annotationComponent, 'component3')
@@ -297,6 +369,12 @@ export async function getAnnotations(documentId: string): Promise<DocumentAnnota
 }
 
 export async function getAnnotationById(id: string): Promise<DocumentAnnotation> {
+  const session = await auth()
+  const userId = session?.user?.id
+  if (!userId) {
+    throw new Error('User not authenticated')
+  }
+
   const component1 = alias(annotationComponent, 'component1')
   const component2 = alias(annotationComponent, 'component2')
   const component3 = alias(annotationComponent, 'component3')
@@ -322,6 +400,12 @@ export async function getAnnotationById(id: string): Promise<DocumentAnnotation>
 }
 
 export async function deleteAnnotation(id: string) {
+  const session = await auth()
+  const userId = session?.user?.id
+  if (!userId) {
+    throw new Error('User not authenticated')
+  }
+
   const annotationData = await getAnnotationById(id)
 
   await db.transaction(async (trx) => {
