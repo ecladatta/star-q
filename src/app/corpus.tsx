@@ -31,34 +31,34 @@ export function Corpuses({ corpuses }: CorpusesProps) {
   const [corpusToImport, setCorpusToImport] = useState<Corpus | null>(null)
   const [importedCount, setImportedCount] = useState(0)
 
-  const handleImportClick = () => {
+  const handleImportClick = (corpus: Corpus) => {
+    setCorpusToImport(corpus)
     fileInputRef.current?.click()
   }
 
-  const handleFileChange = async (corpus: Corpus, event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
-    if (file) {
-      setUploadError(null)
-      setShowImportDialog(true)
-      setIsImporting(true)
-      setCorpusToImport(corpus)
-      const formData = new FormData()
-      formData.append('file', file)
-      try {
-        const { count } = await importDocuments(corpus.id, formData)
+    try {
+      if (file && corpusToImport) {
+        setUploadError(null)
+        setShowImportDialog(true)
+        setIsImporting(true)
+        const formData = new FormData()
+        formData.append('file', file)
+        const { count } = await importDocuments(corpusToImport.id, formData)
         setImportedCount(count)
-      } catch (err) {
-        if (err instanceof UnsupportedFileTypeError) {
-          setUploadError('Unsupported file type. Please upload a JSON file.')
-        } else if (err instanceof InvalidJsonLinesError) {
-          setUploadError('Invalid JSON lines format. Please check the file and try again.')
-        } else {
-          setUploadError('Failed to upload the file. Please try again.')
-        }
-      } finally {
-        setIsImporting(false)
-        fileInputRef.current!.value = ''
       }
+    } catch (err) {
+      if (err instanceof UnsupportedFileTypeError) {
+        setUploadError('Unsupported file type. Please upload a JSON file.')
+      } else if (err instanceof InvalidJsonLinesError) {
+        setUploadError('Invalid JSON lines format. Please check the file and try again.')
+      } else {
+        setUploadError('Failed to upload the file. Please try again.')
+      }
+    } finally {
+      setIsImporting(false)
+      fileInputRef.current!.value = ''
     }
   }
 
@@ -177,7 +177,7 @@ export function Corpuses({ corpuses }: CorpusesProps) {
                                 Open
                               </Button>
                             </Link>
-                            <Button variant="outline" size="sm" onClick={handleImportClick}>
+                            <Button variant="outline" size="sm" onClick={() => handleImportClick(corpus)}>
                               <FileUp className="size-4" />
                               {' '}
                               Import
@@ -186,7 +186,7 @@ export function Corpuses({ corpuses }: CorpusesProps) {
                               type="file"
                               ref={fileInputRef}
                               style={{ display: 'none' }}
-                              onChange={event => handleFileChange(corpus, event)}
+                              onChange={handleFileChange}
                             />
                             <Button variant="outline" size="sm" onClick={() => handleExportClick(corpus)}>
                               <FileDown className="size-4" />
