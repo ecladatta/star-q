@@ -12,7 +12,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { TYPE_TO_COLOR } from '@/lib/constants'
 import { cn, selectionIsBackwards, selectionIsEmpty } from '@/lib/utils'
-import { BoxIcon, LinkIcon, Loader2Icon, SaveIcon, Trash2Icon, UserIcon } from 'lucide-react'
+import { ArrowLeftRightIcon, BoxIcon, LinkIcon, Loader2Icon, SaveIcon, Trash2Icon, UserIcon } from 'lucide-react'
 import Link from 'next/link'
 import React, { useCallback, useEffect, useLayoutEffect, useState } from 'react'
 import { toast } from 'sonner'
@@ -486,7 +486,7 @@ export default function CorpusView({ corpus, documents, document, annotations }:
 
           <div
             className={cn(
-              'fixed bottom-0 left-1/2 w-full -translate-x-1/2 transition-transform duration-300 sm:w-2/3 sm:max-w-screen-sm',
+              'fixed bottom-0 left-1/2 z-10 w-full max-w-screen-md -translate-x-1/2 transition-transform duration-300 md:w-3/4 lg:w-2/3',
               hasAnyTags ? 'translate-y-0' : 'translate-y-full',
             )}
           >
@@ -630,36 +630,64 @@ export default function CorpusView({ corpus, documents, document, annotations }:
                         </button>
                       )}
                     </div>
-                    <EntitySelector
-                      type="predicate"
-                      value={
-                        currentAnnotation?.predicate?.entityValue
-                          ? {
-                              label: currentAnnotation.predicate.entityLabel || '',
-                              value: currentAnnotation.predicate.entityValue,
-                              custom: currentAnnotation.predicate.entityCustom || false,
-                              datatype: currentAnnotation.predicate.entityDatatype || null,
-                            }
-                          : null
-                      }
-                      onValueChange={(newValue) => {
-                        setCurrentAnnotation((prev) => {
-                          if (!prev?.predicate)
-                            return prev
-                          return {
-                            ...prev,
-                            predicate: {
-                              ...prev.predicate,
-                              entityLabel: newValue?.label || null,
-                              entityValue: newValue?.value || null,
-                              entityCustom: newValue?.custom || false,
-                              entityDatatype: newValue?.datatype || null,
-                            },
+                    <div className="flex min-w-0 items-center gap-1">
+                      <div className="min-w-0 flex-1">
+                        <EntitySelector
+                          type="predicate"
+                          value={
+                            currentAnnotation?.predicate?.entityValue
+                              ? {
+                                  label: currentAnnotation.predicate.entityLabel || '',
+                                  value: currentAnnotation.predicate.entityValue,
+                                  custom: currentAnnotation.predicate.entityCustom || false,
+                                  datatype: currentAnnotation.predicate.entityDatatype || null,
+                                }
+                              : null
                           }
-                        })
-                      }}
-                      text={currentAnnotation?.predicate?.annotationValue ?? ''}
-                    />
+                          onValueChange={(newValue) => {
+                            setCurrentAnnotation((prev) => {
+                              if (!prev?.predicate)
+                                return prev
+                              return {
+                                ...prev,
+                                predicate: {
+                                  ...prev.predicate,
+                                  entityLabel: newValue?.label || null,
+                                  entityValue: newValue?.value || null,
+                                  entityCustom: newValue?.custom || false,
+                                  entityDatatype: newValue?.datatype || null,
+                                },
+                              }
+                            })
+                          }}
+                          text={currentAnnotation?.predicate?.annotationValue ?? ''}
+                        />
+                      </div>
+                      <Tooltip delayDuration={200}>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className="px-2"
+                            onClick={() => {
+                              setCurrentAnnotation((prev) => {
+                                if (!prev?.subject || !prev?.object)
+                                  return prev
+                                return {
+                                  ...prev,
+                                  subject: prev.object,
+                                  object: prev.subject,
+                                }
+                              })
+                            }}
+                          >
+                            <ArrowLeftRightIcon className="size-5" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          Swap subject and object
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
                   </div>
                   <div>
                     <div className="mb-1 flex items-center justify-between truncate rounded-md px-2 py-0.5 text-sm font-semibold" style={{ backgroundColor: TYPE_TO_COLOR.object }}>
