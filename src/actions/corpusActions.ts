@@ -8,6 +8,7 @@ import { determineImportType, InvalidJsonLinesError, UnsupportedFileTypeError } 
 import { count, desc, eq, getTableColumns } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { revalidatePath } from 'next/cache'
+import { v4 as uuidv4 } from 'uuid'
 
 const ACCEPTED_TYPES = ['application/json']
 
@@ -124,7 +125,7 @@ export async function importDocuments(corpusId: string, formData: FormData) {
         for (const label of item.data.label) {
           const { start, end, text } = label
           const subjectAnnotation: AnnotationComponent = {
-            id: Math.random().toString(),
+            id: uuidv4(),
             annotationStart: start,
             annotationEnd: end,
             annotationValue: text,
@@ -139,7 +140,7 @@ export async function importDocuments(corpusId: string, formData: FormData) {
             entityValue: label.labels[0],
           }
           const predicateAnnotation: AnnotationComponent = {
-            id: Math.random().toString(),
+            id: uuidv4(),
             annotationStart: start,
             annotationEnd: end,
             annotationValue: text,
@@ -154,7 +155,7 @@ export async function importDocuments(corpusId: string, formData: FormData) {
             entityValue: label.labels[0],
           }
           const objectAnnotation: AnnotationComponent = {
-            id: Math.random().toString(),
+            id: uuidv4(),
             annotationStart: start,
             annotationEnd: end,
             annotationValue: text,

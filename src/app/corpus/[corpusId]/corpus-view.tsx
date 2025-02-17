@@ -16,6 +16,7 @@ import { ArrowLeftRightIcon, BoxIcon, LinkIcon, Loader2Icon, SaveIcon, Trash2Ico
 import Link from 'next/link'
 import React, { useCallback, useEffect, useLayoutEffect, useState } from 'react'
 import { toast } from 'sonner'
+import { v4 as uuidv4 } from 'uuid'
 // @ts-expect-error - no types available
 import wtf from 'wtf_wikipedia'
 import CombinedElement from './combined-element'
@@ -214,7 +215,7 @@ export default function CorpusView({ corpus, documents, document, annotations }:
     }
 
     const newComponent: AnnotationComponent = {
-      id: Math.random().toString(),
+      id: uuidv4(),
       entityLabel: null,
       entityValue: null,
       entityCustom: null,
