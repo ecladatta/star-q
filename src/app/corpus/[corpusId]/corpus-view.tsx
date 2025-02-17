@@ -390,6 +390,7 @@ export default function CorpusView({ corpus, documents, document, annotations }:
   useLayoutEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        e.preventDefault()
         setCurrentAnnotation(null)
       }
     }
