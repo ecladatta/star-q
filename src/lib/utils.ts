@@ -1,5 +1,4 @@
 import { type ClassValue, clsx } from 'clsx'
-import sortBy from 'lodash.sortby'
 import { twMerge } from 'tailwind-merge'
 
 export function cn(...inputs: ClassValue[]) {
@@ -32,44 +31,76 @@ export function selectionIsBackwards(selection: Selection) {
 export type Offset = {
   start: number
   end: number
-  row?: number | null
-  cell?: number | null
+  row?: number
+  cell?: number
   componentId?: string
 }
 
-export function splitWithOffsets(text: string, source: 'text' | 'table', offsets: Offset[]) {
-  let lastEnd = 0
-  const splits = []
+export type SplitComponent = {
+  start: number
+  end: number
+  content: string
+  mark?: boolean
+  componentId?: string
+  source?: string
+  row?: number
+  cell?: number
+}
 
-  for (const offset of sortBy(offsets, o => o.start)) {
-    const { componentId, start, end } = offset
-    if (lastEnd < start) {
-      splits.push({
-        componentId,
-        start: lastEnd,
-        end: start,
-        source,
-        content: text.slice(lastEnd, start),
-      })
-    }
-    splits.push({
-      componentId,
-      start,
-      end,
-      mark: true,
-      source,
-      content: text.slice(start, end),
-    })
-    lastEnd = end
+export function splitWithOffsets(
+  text: string,
+  source: string,
+  offsets: Array<Offset & { componentId?: string }>,
+): SplitComponent[] {
+  if (!text || !offsets.length) {
+    return [{ start: 0, end: text.length, content: text, source }]
   }
-  if (lastEnd < text.length) {
-    splits.push({
-      componentId: undefined,
-      start: lastEnd,
-      end: text.length,
-      source,
-      content: text.slice(lastEnd, text.length),
-    })
+
+  // Sort offsets by start position and then by end position (longer spans first)
+  const sortedOffsets = [...offsets].sort((a, b) => {
+    if (a.start !== b.start)
+      return a.start - b.start
+    return b.end - a.end // Longer spans come first
+  })
+
+  const splits: SplitComponent[] = []
+  let currentIndex = 0
+
+  while (currentIndex < text.length) {
+    // Find all annotations that include the current index
+    const activeAnnotations = sortedOffsets.filter(
+      offset => offset.start <= currentIndex && offset.end > currentIndex,
+    )
+
+    if (activeAnnotations.length === 0) {
+      // No active annotations, find the next one
+      const nextOffset = sortedOffsets.find(offset => offset.start > currentIndex)
+      const end = nextOffset ? nextOffset.start : text.length
+
+      if (end > currentIndex) {
+        splits.push({
+          start: currentIndex,
+          end,
+          content: text.slice(currentIndex, end),
+          source,
+        })
+      }
+      currentIndex = end
+    } else {
+      // Use the longest active annotation (which comes first due to our sorting)
+      const annotation = activeAnnotations[0]
+      splits.push({
+        start: annotation.start,
+        end: annotation.end,
+        content: text.slice(annotation.start, annotation.end),
+        mark: true,
+        componentId: annotation.componentId,
+        source,
+        row: annotation.row,
+        cell: annotation.cell,
+      })
+      currentIndex = annotation.end
+    }
   }
 
   return splits

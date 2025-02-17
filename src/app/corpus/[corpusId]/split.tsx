@@ -8,14 +8,13 @@ function Split(props: {
   mark?: boolean
   onClick: (arg0: any) => any
 }) {
-  if (props.mark)
+  if (props.mark) {
     return <Mark {...props} />
+  }
 
   return (
     <span
-      role="button"
       className="whitespace-pre-wrap"
-      tabIndex={0}
       data-start={props.start}
       data-end={props.end}
     >

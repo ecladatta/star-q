@@ -11,18 +11,28 @@ export type MarkProps = {
 
 function Mark(props: MarkProps) {
   return (
-    <button
-      type="button"
-      style={{ backgroundColor: props.color || 'lightgrey', padding: '0 4px', border: 'none', cursor: 'pointer' }}
+    <span
+      role="button"
+      tabIndex={0}
+      style={{
+        backgroundColor: props.color || 'lightgrey',
+        whiteSpace: 'pre-wrap',
+      }}
+      className="cursor-pointer px-1"
       data-start={props.start}
       data-end={props.end}
       onClick={() => props.onClick({ start: props.start, end: props.end })}
+      onKeyUp={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          props.onClick({ start: props.start, end: props.end })
+        }
+      }}
     >
       {props.content}
       {props.tag && (
-        <span style={{ fontSize: '0.7em', fontWeight: 500, marginLeft: 6 }}>{props.tag}</span>
+        <span className="ml-1.5 select-none text-[0.7em] font-medium">{props.tag}</span>
       )}
-    </button>
+    </span>
   )
 }
 

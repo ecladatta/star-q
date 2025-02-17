@@ -121,26 +121,42 @@ export default function CorpusView({ corpus, documents, document, annotations }:
     setCurrentElementIndex(index)
 
     const selection = window.getSelection()
-
-    if (!selection || selectionIsEmpty(selection))
+    if (!selection || selection.rangeCount === 0)
       return
 
-    const anchorParent = selection.anchorNode?.parentElement
-    const focusParent = selection.focusNode?.parentElement
-
-    if (anchorParent !== focusParent)
-      return // Prevent selecting over multiple parents
-
-    let start = Number.parseInt(anchorParent?.getAttribute('data-start') || '0', 10) + selection.anchorOffset
-    let end = Number.parseInt(focusParent?.getAttribute('data-start') || '0', 10) + selection.focusOffset
-
-    if (selectionIsBackwards(selection)) {
-      [start, end] = [end, start]
-    }
-
-    setSelectedOffset({ start, end })
-
     const range = selection.getRangeAt(0)
+    if (range.collapsed)
+      return
+
+    // Get the start and end nodes
+    const startNode = range.startContainer.nodeType === Node.TEXT_NODE
+      ? range.startContainer.parentElement
+      : range.startContainer
+    const endNode = range.endContainer.nodeType === Node.TEXT_NODE
+      ? range.endContainer.parentElement
+      : range.endContainer
+
+    // Get the start and end offsets from the closest elements with data attributes
+    const startElement = startNode instanceof Element
+      ? startNode.closest('[data-start]')
+      : startNode?.parentElement?.closest('[data-start]')
+    const endElement = endNode instanceof Element
+      ? endNode.closest('[data-start]')
+      : endNode?.parentElement?.closest('[data-start]')
+
+    if (!startElement || !endElement)
+      return
+
+    // Calculate the absolute offsets
+    const start = Number.parseInt(startElement.getAttribute('data-start') || '0', 10) + range.startOffset
+    const end = Number.parseInt(endElement.getAttribute('data-start') || '0', 10) + range.endOffset
+
+    // Handle backwards selection
+    const finalStart = Math.min(start, end)
+    const finalEnd = Math.max(start, end)
+
+    setSelectedOffset({ start: finalStart, end: finalEnd })
+
     const rect = range.getBoundingClientRect()
     setPopoverPosition({
       top: rect.top + window.scrollY - 80,

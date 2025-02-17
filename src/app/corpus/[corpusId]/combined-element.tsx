@@ -30,8 +30,8 @@ function CombinedElement({ elementIndex, value, type, data, handleTextSelection,
       component => ({
         start: component.annotationStart,
         end: component.annotationEnd,
-        row: component.annotationRow,
-        cell: component.annotationCell,
+        row: component.annotationRow ?? undefined,
+        cell: component.annotationCell ?? undefined,
         componentId: component.id,
       }),
     ))
