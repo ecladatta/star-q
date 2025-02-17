@@ -83,7 +83,7 @@ export function EntitySelector({ type, value, onValueChange }: {
             aria-expanded={open}
             className="flex w-full items-center truncate text-left"
           >
-            <div className="flex-1 truncate">{value ? value.label : <span className="text-muted-foreground">Search entities...</span>}</div>
+            <div className="flex-1 truncate">{value ? value.label : <span className="text-muted-foreground">Search entity...</span>}</div>
             <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
           </Button>
           {value?.custom && (
