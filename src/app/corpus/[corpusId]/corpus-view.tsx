@@ -106,9 +106,6 @@ export default function CorpusView({ corpus, documents, document, annotations }:
   const [currentElementIndex, setCurrentElementIndex] = useState<number | null>(null)
   const [combinedElements, setCombinedElements] = useState<TextOrTableElement[]>([])
   const [tableSelection, setTableSelection] = useState<{ rowIndex: number, cellIndex: number } | null>(null)
-  const [selectedSubject, setSelectedSubject] = useState<Entity | null>(null)
-  const [selectedPredicate, setSelectedPredicate] = useState<Entity | null>(null)
-  const [selectedObject, setSelectedObject] = useState<Entity | null>(null)
   const [documentData] = useState<DocumentData | undefined>(document?.raw as (DocumentData | undefined))
   const [annotationFormLoading, setAnnotationFormLoading] = useState(false)
   const [isDeletingAnnotation, setIsDeletingAnnotation] = useState(false)
@@ -252,33 +249,6 @@ export default function CorpusView({ corpus, documents, document, annotations }:
 
       return { ...el, components }
     }))
-
-    if (currentAnnotation) {
-      setSelectedSubject(currentAnnotation.subject && currentAnnotation.subject.entityValue
-        ? {
-            label: currentAnnotation.subject.entityLabel || '',
-            value: currentAnnotation.subject.entityValue || '',
-            custom: currentAnnotation.subject.entityCustom || false,
-            datatype: currentAnnotation.subject.entityDatatype || null,
-          }
-        : null)
-      setSelectedPredicate(currentAnnotation.predicate && currentAnnotation.predicate.entityValue
-        ? {
-            label: currentAnnotation.predicate.entityLabel || '',
-            value: currentAnnotation.predicate.entityValue || '',
-            custom: currentAnnotation.predicate.entityCustom || false,
-            datatype: currentAnnotation.predicate.entityDatatype || null,
-          }
-        : null)
-      setSelectedObject(currentAnnotation.object && currentAnnotation.object.entityValue
-        ? {
-            label: currentAnnotation.object.entityLabel || '',
-            value: currentAnnotation.object.entityValue || '',
-            custom: currentAnnotation.object.entityCustom || false,
-            datatype: currentAnnotation.object.entityDatatype || null,
-          }
-        : null)
-    }
   }, [combinedElements, documentAnnotations, currentAnnotation, showAnnotations])
 
   const onClickCreateAnnotation = async () => {
@@ -296,6 +266,24 @@ export default function CorpusView({ corpus, documents, document, annotations }:
     setAnnotationFormLoading(true)
 
     try {
+      const selectedSubject: Entity = {
+        label: subject.entityLabel || '',
+        value: subject.entityValue || '',
+        custom: subject.entityCustom || false,
+        datatype: subject.entityDatatype || null,
+      }
+      const selectedPredicate: Entity = {
+        label: predicate.entityLabel || '',
+        value: predicate.entityValue || '',
+        custom: predicate.entityCustom || false,
+        datatype: predicate.entityDatatype || null,
+      }
+      const selectedObject: Entity = {
+        label: object.entityLabel || '',
+        value: object.entityValue || '',
+        custom: object.entityCustom || false,
+        datatype: object.entityDatatype || null,
+      }
       if (currentAnnotation.id) {
         await updateAnnotation(currentAnnotation.id, subject, selectedSubject, predicate, selectedPredicate, object, selectedObject)
         const updatedAnnotation = await getAnnotationById(currentAnnotation.id)
@@ -589,7 +577,35 @@ export default function CorpusView({ corpus, documents, document, annotations }:
                         </button>
                       )}
                     </div>
-                    <EntitySelector type="subject" value={selectedSubject} onValueChange={setSelectedSubject} />
+                    <EntitySelector
+                      type="subject"
+                      value={
+                        currentAnnotation?.subject?.entityValue
+                          ? {
+                              label: currentAnnotation.subject.entityLabel || '',
+                              value: currentAnnotation.subject.entityValue,
+                              custom: currentAnnotation.subject.entityCustom || false,
+                              datatype: currentAnnotation.subject.entityDatatype || null,
+                            }
+                          : null
+                      }
+                      onValueChange={(newValue) => {
+                        setCurrentAnnotation((prev) => {
+                          if (!prev?.subject)
+                            return prev
+                          return {
+                            ...prev,
+                            subject: {
+                              ...prev.subject,
+                              entityLabel: newValue?.label || null,
+                              entityValue: newValue?.value || null,
+                              entityCustom: newValue?.custom || false,
+                              entityDatatype: newValue?.datatype || null,
+                            },
+                          }
+                        })
+                      }}
+                    />
                   </div>
                   <div>
                     <div className="mb-1 flex items-center justify-between truncate rounded-md px-2 py-0.5 text-sm font-semibold" style={{ backgroundColor: TYPE_TO_COLOR.predicate }}>
@@ -613,7 +629,35 @@ export default function CorpusView({ corpus, documents, document, annotations }:
                         </button>
                       )}
                     </div>
-                    <EntitySelector type="predicate" value={selectedPredicate} onValueChange={setSelectedPredicate} />
+                    <EntitySelector
+                      type="predicate"
+                      value={
+                        currentAnnotation?.predicate?.entityValue
+                          ? {
+                              label: currentAnnotation.predicate.entityLabel || '',
+                              value: currentAnnotation.predicate.entityValue,
+                              custom: currentAnnotation.predicate.entityCustom || false,
+                              datatype: currentAnnotation.predicate.entityDatatype || null,
+                            }
+                          : null
+                      }
+                      onValueChange={(newValue) => {
+                        setCurrentAnnotation((prev) => {
+                          if (!prev?.predicate)
+                            return prev
+                          return {
+                            ...prev,
+                            predicate: {
+                              ...prev.predicate,
+                              entityLabel: newValue?.label || null,
+                              entityValue: newValue?.value || null,
+                              entityCustom: newValue?.custom || false,
+                              entityDatatype: newValue?.datatype || null,
+                            },
+                          }
+                        })
+                      }}
+                    />
                   </div>
                   <div>
                     <div className="mb-1 flex items-center justify-between truncate rounded-md px-2 py-0.5 text-sm font-semibold" style={{ backgroundColor: TYPE_TO_COLOR.object }}>
@@ -637,7 +681,35 @@ export default function CorpusView({ corpus, documents, document, annotations }:
                         </button>
                       )}
                     </div>
-                    <EntitySelector type="object" value={selectedObject} onValueChange={setSelectedObject} />
+                    <EntitySelector
+                      type="object"
+                      value={
+                        currentAnnotation?.object?.entityValue
+                          ? {
+                              label: currentAnnotation.object.entityLabel || '',
+                              value: currentAnnotation.object.entityValue,
+                              custom: currentAnnotation.object.entityCustom || false,
+                              datatype: currentAnnotation.object.entityDatatype || null,
+                            }
+                          : null
+                      }
+                      onValueChange={(newValue) => {
+                        setCurrentAnnotation((prev) => {
+                          if (!prev?.object)
+                            return prev
+                          return {
+                            ...prev,
+                            object: {
+                              ...prev.object,
+                              entityLabel: newValue?.label || null,
+                              entityValue: newValue?.value || null,
+                              entityCustom: newValue?.custom || false,
+                              entityDatatype: newValue?.datatype || null,
+                            },
+                          }
+                        })
+                      }}
+                    />
                   </div>
                 </div>
               </CardContent>
