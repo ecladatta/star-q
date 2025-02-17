@@ -4,7 +4,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from '@/lib/utils'
 import { Calendar1Icon, CalendarClockIcon, CalendarIcon, Check, ChevronsUpDown, ClockIcon, FilterIcon, GlobeIcon, ToggleLeftIcon, TypeIcon } from 'lucide-react'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import WBK from 'wikibase-sdk'
 import { Button } from './ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
@@ -64,14 +64,32 @@ const TYPES_ICONS: Record<EntityDatatype, ReactNode> = {
   url: <GlobeIcon className="size-5" />,
 }
 
-export function EntitySelector({ type, value, onValueChange }: {
+export function EntitySelector({ type, value, onValueChange, text }: {
   type: EntityType
   value: Entity | null
   onValueChange: (arg0: Entity | null) => any
+  text?: string
 }) {
   const [open, setOpen] = useState(false)
   const [searchEntities, setSearchEntities] = useState<Entity[]>([])
   const [searchTerm, setSearchTerm] = useState('')
+
+  useEffect(() => {
+    if (text && !value?.value) {
+      searchEntity(type, text).then((results) => {
+        setSearchEntities(results.map(result => ({
+          label: result.label,
+          value: result.id,
+          custom: false,
+          datatype: null,
+        })))
+      })
+    }
+  }, [text, type, value])
+
+  useEffect(() => {
+    setSearchTerm('')
+  }, [text])
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -135,6 +153,8 @@ export function EntitySelector({ type, value, onValueChange }: {
           <CommandInput
             placeholder="Search entity..."
             className="flex-1"
+            value={searchTerm}
+            onValueChange={value => setSearchTerm(value)}
           />
           <CommandList>
             <CommandEmpty>No entities found.</CommandEmpty>

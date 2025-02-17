@@ -605,6 +605,7 @@ export default function CorpusView({ corpus, documents, document, annotations }:
                           }
                         })
                       }}
+                      text={currentAnnotation?.subject?.annotationValue ?? ''}
                     />
                   </div>
                   <div>
@@ -657,6 +658,7 @@ export default function CorpusView({ corpus, documents, document, annotations }:
                           }
                         })
                       }}
+                      text={currentAnnotation?.predicate?.annotationValue ?? ''}
                     />
                   </div>
                   <div>
@@ -709,6 +711,7 @@ export default function CorpusView({ corpus, documents, document, annotations }:
                           }
                         })
                       }}
+                      text={currentAnnotation?.object?.annotationValue ?? ''}
                     />
                   </div>
                 </div>
