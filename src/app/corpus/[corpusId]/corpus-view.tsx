@@ -12,7 +12,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { TYPE_TO_COLOR } from '@/lib/constants'
 import { cn, selectionIsBackwards, selectionIsEmpty } from '@/lib/utils'
-import { ArrowLeftRightIcon, BoxIcon, LinkIcon, Loader2Icon, SaveIcon, Trash2Icon, UserIcon } from 'lucide-react'
+import { ArrowLeftRightIcon, BoxIcon, CopyIcon, EditIcon, LinkIcon, Loader2Icon, SaveIcon, Trash2Icon, UserIcon } from 'lucide-react'
 import Link from 'next/link'
 import React, { useCallback, useEffect, useLayoutEffect, useState } from 'react'
 import { toast } from 'sonner'
@@ -90,6 +90,13 @@ export type DocumentData = {
   }
 }
 
+type PopoverState = {
+  top: number
+  left: number
+  annotation: DocumentAnnotation | null
+  visible: boolean
+}
+
 export default function CorpusView({ corpus, documents, document, annotations }: {
   corpus: Corpus
   documents: (Document & { annotationsCount: number })[]
@@ -97,9 +104,10 @@ export default function CorpusView({ corpus, documents, document, annotations }:
   annotations?: DocumentAnnotation[]
 }) {
   const [documentAnnotations, setDocumentAnnotations] = useState<DocumentAnnotation[]>(annotations || [])
-  const [popoverPosition, setPopoverPosition] = useState({
+  const [popoverState, setPopoverState] = useState<PopoverState>({
     top: 0,
     left: 0,
+    annotation: null,
     visible: false,
   })
   const [documentElements, setDocumentElements] = useState<DocumentElement[]>([])
@@ -159,9 +167,10 @@ export default function CorpusView({ corpus, documents, document, annotations }:
     setSelectedOffset({ start: finalStart, end: finalEnd })
 
     const rect = range.getBoundingClientRect()
-    setPopoverPosition({
+    setPopoverState({
       top: rect.top + window.scrollY - 80,
       left: rect.left + window.scrollX,
+      annotation: null,
       visible: true,
     })
   }
@@ -192,11 +201,12 @@ export default function CorpusView({ corpus, documents, document, annotations }:
 
     const range = selection.getRangeAt(0)
     const rect = range.getBoundingClientRect()
-    setPopoverPosition({
+    setPopoverState(prev => ({
+      ...prev,
       top: rect.top + window.scrollY - 80,
       left: rect.left + window.scrollX,
       visible: true,
-    })
+    }))
   }
 
   const handleMentionAssociation = useCallback((type: EntityType) => {
@@ -236,7 +246,7 @@ export default function CorpusView({ corpus, documents, document, annotations }:
     }))
 
     // Reset selection and popover
-    setPopoverPosition(prev => ({ ...prev, visible: false }))
+    setPopoverState(prev => ({ ...prev, visible: false }))
 
     // Clear selection
     window.getSelection()?.removeAllRanges()
@@ -325,7 +335,7 @@ export default function CorpusView({ corpus, documents, document, annotations }:
       // Remove all annotations
       resetAnnotations()
       // Reset selection and popover
-      setPopoverPosition(prev => ({ ...prev, visible: false }))
+      setPopoverState(prev => ({ ...prev, visible: false }))
       setCurrentAnnotation(null)
 
       setAnnotationFormLoading(false)
@@ -354,7 +364,17 @@ export default function CorpusView({ corpus, documents, document, annotations }:
     if (!ann) {
       return
     }
-    setCurrentAnnotation(ann)
+    const selection = window.getSelection()
+    if (!selection)
+      return
+    const rect = selection.getRangeAt(0).getClientRects()[0]
+
+    setPopoverState({
+      top: rect.top + window.scrollY - 80,
+      left: rect.left + window.scrollX,
+      visible: true,
+      annotation: ann,
+    })
   }
 
   useEffect(() => {
@@ -395,7 +415,7 @@ export default function CorpusView({ corpus, documents, document, annotations }:
         setCurrentAnnotation(null)
       }
 
-      if (popoverPosition.visible && ['s', 'p', 'o'].includes(e.key.toLowerCase())) {
+      if (popoverState.visible && ['s', 'p', 'o'].includes(e.key.toLowerCase())) {
         e.preventDefault()
         switch (e.key.toLowerCase()) {
           case 's':
@@ -415,7 +435,7 @@ export default function CorpusView({ corpus, documents, document, annotations }:
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [resetAnnotations, handleMentionAssociation, popoverPosition.visible])
+  }, [resetAnnotations, handleMentionAssociation, popoverState.visible])
 
   const subjectTag = currentAnnotation?.subject
   const predicateTag = currentAnnotation?.predicate
@@ -786,51 +806,82 @@ export default function CorpusView({ corpus, documents, document, annotations }:
           </div>
 
           {/* Popover for Selection */}
-          {popoverPosition.visible && (
+          {popoverState.visible && (
             <Popover
-              open={popoverPosition.visible}
-              onOpenChange={() => setPopoverPosition(prev => ({ ...prev, visible: false }))}
+              open={popoverState.visible}
+              onOpenChange={() => setPopoverState(prev => ({ ...prev, visible: false }))}
             >
               <PopoverTrigger asChild>
                 <div
                   style={{
                     position: 'absolute',
-                    top: popoverPosition.top,
-                    left: popoverPosition.left,
+                    top: popoverState.top,
+                    left: popoverState.left,
                     zIndex: 1000,
                   }}
                 />
               </PopoverTrigger>
               <PopoverContent className="w-auto">
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    className="border-orange-400 focus-visible:ring-orange-500"
-                    onClick={() => handleMentionAssociation('subject')}
-                  >
-                    <UserIcon />
-                    {' '}
-                    Subject
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="border-blue-400 focus-visible:ring-blue-500"
-                    onClick={() => handleMentionAssociation('predicate')}
-                  >
-                    <LinkIcon />
-                    {' '}
-                    Predicate
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="border-green-400 focus-visible:ring-green-500"
-                    onClick={() => handleMentionAssociation('object')}
-                  >
-                    <BoxIcon />
-                    {' '}
-                    Object
-                  </Button>
-                </div>
+                {popoverState.annotation
+                  ? (
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setCurrentAnnotation(popoverState.annotation)
+                            setPopoverState(prev => ({ ...prev, visible: false }))
+                          }}
+                        >
+                          <EditIcon />
+                          Edit
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setCurrentAnnotation({
+                              subject: popoverState.annotation?.subject,
+                              predicate: popoverState.annotation?.predicate,
+                              object: popoverState.annotation?.object,
+                            })
+                            setPopoverState(prev => ({ ...prev, visible: false }))
+                          }}
+                        >
+                          <CopyIcon />
+                          Duplicate
+                        </Button>
+                      </div>
+                    )
+                  : (
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          className="border-orange-400 focus-visible:ring-orange-500"
+                          onClick={() => handleMentionAssociation('subject')}
+                        >
+                          <UserIcon />
+                          {' '}
+                          Subject
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="border-blue-400 focus-visible:ring-blue-500"
+                          onClick={() => handleMentionAssociation('predicate')}
+                        >
+                          <LinkIcon />
+                          {' '}
+                          Predicate
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="border-green-400 focus-visible:ring-green-500"
+                          onClick={() => handleMentionAssociation('object')}
+                        >
+                          <BoxIcon />
+                          {' '}
+                          Object
+                        </Button>
+                      </div>
+                    )}
               </PopoverContent>
             </Popover>
           )}

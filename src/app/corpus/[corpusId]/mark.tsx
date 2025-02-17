@@ -6,7 +6,7 @@ export type MarkProps = {
   end: number
   tag?: string
   color?: string
-  onClick: (arg0: any) => any
+  onClick: ({ start, end }: { start: number, end: number }) => void
 }
 
 function Mark(props: MarkProps) {
