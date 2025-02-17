@@ -198,7 +198,7 @@ export default function CorpusView({ corpus, documents, document, annotations }:
     })
   }
 
-  const handleMentionAssociation = (type: EntityType) => {
+  const handleMentionAssociation = useCallback((type: EntityType) => {
     if (currentElementIndex === null)
       return // Ensure a text block is selected
 
@@ -239,7 +239,7 @@ export default function CorpusView({ corpus, documents, document, annotations }:
 
     // Clear selection
     window.getSelection()?.removeAllRanges()
-  }
+  }, [currentElementIndex, combinedElements, tableSelection, documentElements, selectedOffset])
 
   const resetAnnotations = useCallback(() => {
     setDocumentElements(combinedElements.map((el) => {
