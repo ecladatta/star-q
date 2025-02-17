@@ -393,11 +393,28 @@ export default function CorpusView({ corpus, documents, document, annotations }:
         e.preventDefault()
         setCurrentAnnotation(null)
       }
+
+      if (popoverPosition.visible && ['s', 'p', 'o'].includes(e.key.toLowerCase())) {
+        e.preventDefault()
+        switch (e.key.toLowerCase()) {
+          case 's':
+            handleMentionAssociation('subject')
+            break
+          case 'p':
+            handleMentionAssociation('predicate')
+            break
+          case 'o':
+            handleMentionAssociation('object')
+            break
+          default:
+            break
+        }
+      }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [resetAnnotations])
+  }, [resetAnnotations, handleMentionAssociation, popoverPosition.visible])
 
   const subjectTag = currentAnnotation?.subject
   const predicateTag = currentAnnotation?.predicate
