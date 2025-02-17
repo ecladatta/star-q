@@ -220,6 +220,9 @@ export default function CorpusView({ corpus, documents, document, annotations }:
 
     // Reset selection and popover
     setPopoverPosition(prev => ({ ...prev, visible: false }))
+
+    // Clear selection
+    window.getSelection()?.removeAllRanges()
   }
 
   const resetAnnotations = useCallback(() => {
