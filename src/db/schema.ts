@@ -1,4 +1,4 @@
-import type { DocumentData } from '@/app/corpus/[corpusId]/corpus-view'
+import type { DocumentData, EntityDatatype } from '@/app/corpus/[corpusId]/corpus-view'
 import type { InferSelectModel } from 'drizzle-orm'
 import type { AdapterAccountType } from 'next-auth/adapters'
 import { randomUUID } from 'node:crypto'
@@ -113,6 +113,7 @@ export const annotationComponent = pgTable('annotation_component', {
   entityLabel: text('entity_label'),
   entityValue: text('entity_value'),
   entityCustom: boolean('entity_custom'),
+  entityDatatype: text('entity_datatype').$type<EntityDatatype>(),
   annotationStart: integer('annotation_start').notNull(),
   annotationEnd: integer('annotation_end').notNull(),
   annotationRow: integer('annotation_row'),

@@ -29,10 +29,15 @@ export type TextOrTableElement = {
   data: any
 }
 
+export type EntityType = 'subject' | 'predicate' | 'object'
+
+export type EntityDatatype = 'integer' | 'decimal' | 'boolean' | 'string' | 'date' | 'time' | 'datetime' | 'year' | 'month' | 'day' | 'url'
+
 export type Entity = {
   label: string
   value: string
   custom: boolean
+  datatype: EntityDatatype | null
 }
 
 export type DocumentAnnotationComponent = {
@@ -40,6 +45,7 @@ export type DocumentAnnotationComponent = {
   entityLabel: string | null
   entityValue: string | null
   entityCustom: boolean | null
+  entityDatatype: EntityDatatype | null
   annotationStart: number
   annotationEnd: number
   annotationRow: number | null
@@ -179,7 +185,7 @@ export default function CorpusView({ corpus, documents, document, annotations }:
     })
   }
 
-  const handleMentionAssociation = (type: 'subject' | 'predicate' | 'object') => {
+  const handleMentionAssociation = (type: EntityType) => {
     if (currentElementIndex === null)
       return // Ensure a text block is selected
 
@@ -199,6 +205,7 @@ export default function CorpusView({ corpus, documents, document, annotations }:
       entityLabel: null,
       entityValue: null,
       entityCustom: null,
+      entityDatatype: null,
       annotationStart: selectedOffset.start,
       annotationEnd: selectedOffset.end,
       annotationRow: tableSelection?.rowIndex ?? null,
@@ -252,6 +259,7 @@ export default function CorpusView({ corpus, documents, document, annotations }:
             label: currentAnnotation.subject.entityLabel || '',
             value: currentAnnotation.subject.entityValue || '',
             custom: currentAnnotation.subject.entityCustom || false,
+            datatype: currentAnnotation.subject.entityDatatype || null,
           }
         : null)
       setSelectedPredicate(currentAnnotation.predicate && currentAnnotation.predicate.entityValue
@@ -259,6 +267,7 @@ export default function CorpusView({ corpus, documents, document, annotations }:
             label: currentAnnotation.predicate.entityLabel || '',
             value: currentAnnotation.predicate.entityValue || '',
             custom: currentAnnotation.predicate.entityCustom || false,
+            datatype: currentAnnotation.predicate.entityDatatype || null,
           }
         : null)
       setSelectedObject(currentAnnotation.object && currentAnnotation.object.entityValue
@@ -266,6 +275,7 @@ export default function CorpusView({ corpus, documents, document, annotations }:
             label: currentAnnotation.object.entityLabel || '',
             value: currentAnnotation.object.entityValue || '',
             custom: currentAnnotation.object.entityCustom || false,
+            datatype: currentAnnotation.object.entityDatatype || null,
           }
         : null)
     }

@@ -134,6 +134,7 @@ export async function importDocuments(corpusId: string, formData: FormData) {
             annotationCell: null,
             annotationRow: null,
             entityCustom: true,
+            entityDatatype: 'string',
             entityLabel: label.labels[0],
             entityValue: label.labels[0],
           }
@@ -148,6 +149,7 @@ export async function importDocuments(corpusId: string, formData: FormData) {
             annotationCell: null,
             annotationRow: null,
             entityCustom: true,
+            entityDatatype: 'string',
             entityLabel: label.labels[0],
             entityValue: label.labels[0],
           }
@@ -162,6 +164,7 @@ export async function importDocuments(corpusId: string, formData: FormData) {
             annotationCell: null,
             annotationRow: null,
             entityCustom: true,
+            entityDatatype: 'string',
             entityLabel: label.labels[0],
             entityValue: label.labels[0],
           }
@@ -169,14 +172,17 @@ export async function importDocuments(corpusId: string, formData: FormData) {
             label: label.labels[0],
             value: label.labels[0],
             custom: true,
+            datatype: 'string',
           }, predicateAnnotation, {
             label: label.labels[0],
             value: label.labels[0],
             custom: true,
+            datatype: 'string',
           }, objectAnnotation, {
             label: label.labels[0],
             value: label.labels[0],
             custom: true,
+            datatype: 'string',
           })
         }
       }
@@ -268,6 +274,7 @@ async function upsertAnnotationComponent(
     entityLabel: entity?.label,
     entityValue: entity?.value,
     entityCustom: entity?.custom,
+    entityDatatype: entity?.datatype,
   }
 
   if (existingId) {

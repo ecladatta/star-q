@@ -1,0 +1,1 @@
+ALTER TABLE "annotation_component" ADD COLUMN "entity_datatype" text;

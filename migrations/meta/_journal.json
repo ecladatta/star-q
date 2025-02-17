@@ -36,6 +36,13 @@
       "when": 1738076908167,
       "tag": "0004_nostalgic_rogue",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1739787387071,
+      "tag": "0005_mean_the_stranger",
+      "breakpoints": true
     }
   ]
 }
