@@ -53,7 +53,7 @@ function CombinedElement({ elementIndex, value, type, data, handleTextSelection,
                 key={`text-split-${split.componentId}-${split.start}-${split.end}`}
                 {...split}
                 onClick={() => handleSplitClick(split)}
-                color={TYPE_TO_COLOR[element.components.find(annotation => annotation.annotationStart === split.start)?.annotationTag as keyof typeof TYPE_TO_COLOR]}
+                color={TYPE_TO_COLOR[element.components.find(annotation => annotation.id === split.componentId)?.annotationTag as keyof typeof TYPE_TO_COLOR]}
               />
             ))}
         </div>
@@ -71,6 +71,7 @@ function CombinedElement({ elementIndex, value, type, data, handleTextSelection,
           start: annotation.annotationStart,
           end: annotation.annotationEnd,
           id: annotation.id,
+          componentId: annotation.id,
         })))
       }),
     )
@@ -95,10 +96,7 @@ function CombinedElement({ elementIndex, value, type, data, handleTextSelection,
                         {...split}
                         onClick={() => handleSplitClick(split)}
                         color={TYPE_TO_COLOR[element.components.find(annotation =>
-                          annotation.annotationRow === rowIndex
-                          && annotation.annotationCell === cellIndex
-                          && annotation.annotationStart === split.start
-                          && annotation.annotationEnd === split.end,
+                          annotation.id === split.componentId,
                         )?.annotationTag as keyof typeof TYPE_TO_COLOR]}
                       />
                     ))}
@@ -123,10 +121,7 @@ function CombinedElement({ elementIndex, value, type, data, handleTextSelection,
                         {...split}
                         onClick={() => handleSplitClick(split)}
                         color={TYPE_TO_COLOR[element.components.find(annotation =>
-                          annotation.annotationRow === rowIndex + 1
-                          && annotation.annotationCell === cellIndex
-                          && annotation.annotationStart === split.start
-                          && annotation.annotationEnd === split.end,
+                          annotation.id === split.componentId,
                         )?.annotationTag as keyof typeof TYPE_TO_COLOR]}
                       />
                     ))}
