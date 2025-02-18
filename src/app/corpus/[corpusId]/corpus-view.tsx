@@ -12,7 +12,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { TYPE_TO_COLOR } from '@/lib/constants'
 import { cn, selectionIsBackwards, selectionIsEmpty } from '@/lib/utils'
-import { ArrowLeftRightIcon, BoxIcon, CopyIcon, EditIcon, LinkIcon, Loader2Icon, SaveIcon, Trash2Icon, UserIcon } from 'lucide-react'
+import { ArrowLeftRightIcon, BoxIcon, EditIcon, LinkIcon, Loader2Icon, SaveIcon, Trash2Icon, UserIcon } from 'lucide-react'
 import Link from 'next/link'
 import React, { useCallback, useEffect, useLayoutEffect, useState } from 'react'
 import { toast } from 'sonner'
@@ -93,6 +93,7 @@ type PopoverState = {
   top: number
   left: number
   annotation: DocumentAnnotation | null
+  componentId: string | undefined | null
   visible: boolean
 }
 
@@ -107,6 +108,7 @@ export default function CorpusView({ corpus, documents, document, annotations }:
     top: 0,
     left: 0,
     annotation: null,
+    componentId: null,
     visible: false,
   })
   const [documentElements, setDocumentElements] = useState<DocumentElement[]>([])
@@ -170,6 +172,7 @@ export default function CorpusView({ corpus, documents, document, annotations }:
       top: rect.top + window.scrollY - 80,
       left: rect.left + window.scrollX,
       annotation: null,
+      componentId: null,
       visible: true,
     })
   }
@@ -204,11 +207,44 @@ export default function CorpusView({ corpus, documents, document, annotations }:
       ...prev,
       top: rect.top + window.scrollY - 80,
       left: rect.left + window.scrollX,
+      annotation: null,
       visible: true,
     }))
   }
 
   const handleMentionAssociation = useCallback((type: EntityType) => {
+    if (popoverState.annotation && popoverState.componentId) {
+      const { annotation, componentId } = popoverState
+      const componentMapping = {
+        [annotation.subjectId]: annotation.subject,
+        [annotation.predicateId]: annotation.predicate,
+        [annotation.objectId]: annotation.object,
+      }
+      const component = componentMapping[componentId]
+      if (component) {
+        setCurrentAnnotation(prev => ({
+          ...prev,
+          [type]: {
+            id: uuidv4(),
+            entityLabel: null,
+            entityValue: null,
+            entityCustom: null,
+            entityDatatype: null,
+            annotationStart: component.annotationStart,
+            annotationEnd: component.annotationEnd,
+            annotationRow: component.annotationRow,
+            annotationCell: component.annotationCell,
+            annotationValue: component.annotationValue,
+            annotationType: component.annotationType,
+            annotationTag: type,
+            elementIndex: currentElementIndex,
+          },
+        }))
+        setPopoverState(prev => ({ ...prev, visible: false }))
+      }
+      return
+    }
+
     if (currentElementIndex === null)
       return // Ensure a text block is selected
 
@@ -249,7 +285,7 @@ export default function CorpusView({ corpus, documents, document, annotations }:
 
     // Clear selection
     window.getSelection()?.removeAllRanges()
-  }, [currentElementIndex, combinedElements, tableSelection, documentElements, selectedOffset])
+  }, [currentElementIndex, popoverState, combinedElements, tableSelection, documentElements, selectedOffset])
 
   const resetAnnotations = useCallback(() => {
     setDocumentElements(combinedElements.map((el) => {
@@ -373,6 +409,7 @@ export default function CorpusView({ corpus, documents, document, annotations }:
       left: rect.left + window.scrollX,
       visible: true,
       annotation: ann,
+      componentId,
     })
   }
 
@@ -821,66 +858,47 @@ export default function CorpusView({ corpus, documents, document, annotations }:
                 />
               </PopoverTrigger>
               <PopoverContent className="w-auto">
-                {popoverState.annotation
-                  ? (
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            setCurrentAnnotation(popoverState.annotation)
-                            setPopoverState(prev => ({ ...prev, visible: false }))
-                          }}
-                        >
-                          <EditIcon />
-                          Edit
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            setCurrentAnnotation({
-                              subject: popoverState.annotation?.subject,
-                              predicate: popoverState.annotation?.predicate,
-                              object: popoverState.annotation?.object,
-                            })
-                            setPopoverState(prev => ({ ...prev, visible: false }))
-                          }}
-                        >
-                          <CopyIcon />
-                          Duplicate
-                        </Button>
-                      </div>
-                    )
-                  : (
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          className="border-orange-400 focus-visible:ring-orange-500"
-                          onClick={() => handleMentionAssociation('subject')}
-                        >
-                          <UserIcon />
-                          {' '}
-                          Subject
-                        </Button>
-                        <Button
-                          variant="outline"
-                          className="border-blue-400 focus-visible:ring-blue-500"
-                          onClick={() => handleMentionAssociation('predicate')}
-                        >
-                          <LinkIcon />
-                          {' '}
-                          Predicate
-                        </Button>
-                        <Button
-                          variant="outline"
-                          className="border-green-400 focus-visible:ring-green-500"
-                          onClick={() => handleMentionAssociation('object')}
-                        >
-                          <BoxIcon />
-                          {' '}
-                          Object
-                        </Button>
-                      </div>
-                    )}
+                <div className="flex gap-2">
+                  {popoverState.annotation && (
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setCurrentAnnotation(popoverState.annotation)
+                        setPopoverState(prev => ({ ...prev, visible: false }))
+                      }}
+                    >
+                      <EditIcon />
+                      Edit
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    className="border-orange-400 focus-visible:ring-orange-500"
+                    onClick={() => handleMentionAssociation('subject')}
+                  >
+                    <UserIcon />
+                    {' '}
+                    Subject
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="border-blue-400 focus-visible:ring-blue-500"
+                    onClick={() => handleMentionAssociation('predicate')}
+                  >
+                    <LinkIcon />
+                    {' '}
+                    Predicate
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="border-green-400 focus-visible:ring-green-500"
+                    onClick={() => handleMentionAssociation('object')}
+                  >
+                    <BoxIcon />
+                    {' '}
+                    Object
+                  </Button>
+                </div>
               </PopoverContent>
             </Popover>
           )}
