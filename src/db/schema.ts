@@ -119,7 +119,7 @@ export const annotationComponent = pgTable('annotation_component', {
   annotationRow: integer('annotation_row'),
   annotationCell: integer('annotation_cell'),
   annotationValue: text('annotation_value').notNull(),
-  annotationType: text('annotation_type').notNull(),
+  annotationType: text('annotation_type').$type<'text' | 'table'>().notNull(),
   annotationTag: text('annotation_tag').notNull(),
   elementIndex: integer('element_index').notNull(),
 })

@@ -51,7 +51,7 @@ export type DocumentAnnotationComponent = {
   annotationRow: number | null
   annotationCell: number | null
   annotationValue: string
-  annotationType: string
+  annotationType: 'text' | 'table'
   annotationTag: string
   elementIndex: number
 }
