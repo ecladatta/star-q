@@ -1,4 +1,4 @@
-import { getAnnotations, getCorpus, getDocument, getDocuments } from '@/actions/corpusActions'
+import { getAnnotations, getCorpus, getDocument, getDocumentsMetadata } from '@/actions/corpusActions'
 import CorpusView from '../../corpus/[corpusId]/corpus-view'
 
 export default async function DocumentPage({ params }: { params: Promise<{ documentId: string }> }) {
@@ -10,8 +10,8 @@ export default async function DocumentPage({ params }: { params: Promise<{ docum
   }
 
   const corpus = await getCorpus(document.corpusId)
-  const documents = await getDocuments(document.corpusId)
+  const documentsList = await getDocumentsMetadata(document.corpusId)
   const annotations = await getAnnotations(documentId)
 
-  return <CorpusView corpus={corpus} documents={documents} document={document} annotations={annotations} />
+  return <CorpusView corpus={corpus} documents={documentsList} document={document} annotations={annotations} />
 }

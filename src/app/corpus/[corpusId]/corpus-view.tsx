@@ -1,6 +1,6 @@
 'use client'
+import type { DocumentMetadata } from '@/actions/corpusActions'
 import type { AnnotationComponent, Corpus, Document } from '@/db/schema'
-
 import type { Offset } from '@/lib/utils'
 import { addAnnotation, deleteAnnotation, getAnnotationById, updateAnnotation } from '@/actions/corpusActions'
 import { EntitySelector } from '@/components/entity-selector'
@@ -99,7 +99,7 @@ type PopoverState = {
 
 export default function CorpusView({ corpus, documents, document, annotations }: {
   corpus: Corpus
-  documents: (Document & { annotationsCount: number })[]
+  documents: DocumentMetadata[]
   document?: Document
   annotations?: DocumentAnnotation[]
 }) {

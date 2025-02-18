@@ -1,6 +1,5 @@
 'use client'
-
-import type { Document } from '@/db/schema'
+import type { DocumentMetadata } from '@/actions/corpusActions'
 import type {
   Column,
   ColumnDef,
@@ -39,9 +38,9 @@ import { toast } from 'sonner'
 declare module '@tanstack/react-table' {
   // eslint-disable-next-line unused-imports/no-unused-vars, ts/consistent-type-definitions
   interface TableMeta<TData extends RowData> {
-    filteredDocuments: Document[]
-    handleMarkCompleted: (doc: Document) => void
-    setDocumentToDelete: (doc: Document) => void
+    filteredDocuments: DocumentMetadata[]
+    handleMarkCompleted: (doc: DocumentMetadata) => void
+    setDocumentToDelete: (doc: DocumentMetadata) => void
   }
 }
 
@@ -53,9 +52,9 @@ type DataTableColumnHeaderProps<TData, TValue> = {
 type DataTableProps<TData, TValue> = {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
-  filteredDocuments: Document[]
-  setDocumentToDelete: (doc: Document) => void
-  handleMarkCompleted: (doc: Document) => void
+  filteredDocuments: DocumentMetadata[]
+  setDocumentToDelete: (doc: DocumentMetadata) => void
+  handleMarkCompleted: (doc: DocumentMetadata) => void
 }
 
 type DataTablePaginationProps<TData> = {
@@ -222,7 +221,7 @@ function DataTablePagination<TData>({
   )
 }
 
-const columns: ColumnDef<Document & { annotationsCount: number }, any>[] = [
+const columns: ColumnDef<DocumentMetadata, any>[] = [
   {
     id: 'select',
     header: ({ table }) => (
@@ -354,19 +353,19 @@ function DataTableColumnHeader<TData, TValue>({
   )
 }
 
-export default function DocumentsTable({ documents }: { documents: (Document & { annotationsCount: number })[] }) {
+export default function DocumentsTable({ documents }: { documents: DocumentMetadata[] }) {
   const [search, setSearch] = useState('')
   const [showOnlyNotCompleted, setShowOnlyNotCompleted] = useState(false)
-  const [documentToDelete, setDocumentToDelete] = useState<Document | null>(null)
+  const [documentToDelete, setDocumentToDelete] = useState<DocumentMetadata | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
   const filteredDocuments = documents.filter((doc) => {
-    const matchesSearch = doc.title.toLowerCase().includes(search.toLowerCase())
+    const matchesSearch = doc.title?.toLowerCase().includes(search.toLowerCase())
     const isNotCompleted = !doc.completedAt
     return matchesSearch && (!showOnlyNotCompleted || isNotCompleted)
   })
 
-  const handleMarkCompleted = async (document: Document) => {
+  const handleMarkCompleted = async (document: DocumentMetadata) => {
     await markDocumentAsCompleted(document.id, document.completedAt ? null : new Date())
     toast.success(document.completedAt ? 'Document marked as not completed' : 'Document marked as completed')
   }

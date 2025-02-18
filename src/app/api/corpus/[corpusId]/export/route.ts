@@ -1,5 +1,5 @@
 import type { NextRequest } from 'next/server'
-import { getAnnotations, getCorpus, getDocuments } from '@/actions/corpusActions'
+import { getAnnotations, getCorpus, getDocumentsMetadata } from '@/actions/corpusActions'
 
 // @TODO: Define the model for the export
 type ExportModel = any
@@ -8,7 +8,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const { corpusId } = await params
 
   const corpus = await getCorpus(corpusId)
-  const documents = await getDocuments(corpusId)
+  const documents = await getDocumentsMetadata(corpusId)
 
   const corpusData: ExportModel = {
     id: corpus.id,

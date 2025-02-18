@@ -12,6 +12,8 @@ import { v4 as uuidv4 } from 'uuid'
 
 const ACCEPTED_TYPES = ['application/json']
 
+export type DocumentMetadata = Omit<Document, 'raw'> & { annotationsCount: number }
+
 export async function getCorpuses() {
   const session = await auth()
   const userId = session?.user?.id
@@ -208,15 +210,16 @@ export async function getCorpus(id: string) {
   return data
 }
 
-export async function getDocuments(corpusId: string): Promise<(Document & { annotationsCount: number })[]> {
+export async function getDocumentsMetadata(corpusId: string): Promise<DocumentMetadata[]> {
   const session = await auth()
   const userId = session?.user?.id
   if (!userId) {
     throw new Error('User not authenticated')
   }
 
+  const { raw, ...documentColumns } = getTableColumns(document)
   return db.select({
-    ...getTableColumns(document),
+    ...documentColumns,
     annotationsCount: count(annotation.id),
   })
     .from(document)
