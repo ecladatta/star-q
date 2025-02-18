@@ -17,7 +17,6 @@ import Link from 'next/link'
 import React, { useCallback, useEffect, useLayoutEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { v4 as uuidv4 } from 'uuid'
-// @ts-expect-error - no types available
 import wtf from 'wtf_wikipedia'
 import CombinedElement from './combined-element'
 

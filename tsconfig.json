@@ -16,6 +16,7 @@
     "strict": true,
     "strictNullChecks": true,
     "noEmit": true,
+    "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true,
