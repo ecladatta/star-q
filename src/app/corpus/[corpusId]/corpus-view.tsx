@@ -451,7 +451,7 @@ export default function CorpusView({ corpus, documents, document, annotations }:
         setCurrentAnnotation(null)
       }
 
-      if (popoverState.visible && ['s', 'p', 'o'].includes(e.key.toLowerCase())) {
+      if (popoverState.visible && ['s', 'p', 'o', 'e'].includes(e.key.toLowerCase())) {
         e.preventDefault()
         switch (e.key.toLowerCase()) {
           case 's':
@@ -463,6 +463,13 @@ export default function CorpusView({ corpus, documents, document, annotations }:
           case 'o':
             handleMentionAssociation('object')
             break
+          case 'e':
+            // Edit the annotation
+            if (popoverState.annotation) {
+              setCurrentAnnotation(popoverState.annotation)
+              setPopoverState(prev => ({ ...prev, visible: false }))
+            }
+            break
           default:
             break
         }
@@ -471,7 +478,7 @@ export default function CorpusView({ corpus, documents, document, annotations }:
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [resetAnnotations, handleMentionAssociation, popoverState.visible])
+  }, [resetAnnotations, handleMentionAssociation, popoverState.visible, popoverState.annotation])
 
   const subjectTag = currentAnnotation?.subject
   const predicateTag = currentAnnotation?.predicate
