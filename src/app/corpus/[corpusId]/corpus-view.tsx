@@ -594,7 +594,7 @@ export default function CorpusView({ corpus, documents, document, annotations }:
             <Card className="mb-6 rounded-none sm:rounded-xl">
               <CardHeader className="flex flex-row pb-4">
                 <div>
-                  <CardTitle>Finalize your annotation</CardTitle>
+                  <CardTitle>{currentAnnotation?.id ? 'Editing annotation' : 'Finalize your new annotation'}</CardTitle>
                   <CardDescription>Select entities for each subject, predicate, and object.</CardDescription>
                 </div>
                 <div className="ml-auto flex gap-2">
