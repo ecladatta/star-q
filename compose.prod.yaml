@@ -16,7 +16,7 @@ services:
     ports:
       - ${CONTAINER_PORT:-3000}:3000
   postgres:
-    image: postgres
+    image: postgres:17
     restart: unless-stopped
     environment:
       POSTGRES_USER: myusername
