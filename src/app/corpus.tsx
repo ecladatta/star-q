@@ -4,7 +4,6 @@ import { addCorpus, deleteCorpus, importDocuments } from '@/actions/corpusAction
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Progress } from '@/components/ui/progress'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { InvalidJsonLinesError, UnsupportedFileTypeError } from '@/lib/utils'
 import { FileDown, FileUp, FolderOpen, Loader2, PlusCircle, Trash2 } from 'lucide-react'
@@ -20,7 +19,6 @@ export function Corpuses({ corpuses }: CorpusesProps) {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const [isExporting, setIsExporting] = useState(false)
-  const [progress, setProgress] = useState(0)
   const [newCorpusName, setNewCorpusName] = useState('')
   const [isAdding, setIsAdding] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -64,34 +62,11 @@ export function Corpuses({ corpuses }: CorpusesProps) {
 
   const handleExportClick = async (corpus: Corpus) => {
     setIsExporting(true)
-    setProgress(0)
     try {
-      const response = await fetch(`/api/corpus/${corpus.id}/export`, {
-        method: 'GET',
-      })
-      const reader = response.body?.getReader()
-      if (!reader)
-        throw new Error('No reader available')
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done)
-          break
-
-        const chunk = new TextDecoder().decode(value)
-        const data = JSON.parse(chunk)
-
-        if (data.progress) {
-          setProgress(data.progress)
-        }
-
-        if (data.downloadUrl) {
-          window.location.href = data.downloadUrl
-          break
-        }
-      }
+      window.open(`/api/corpus/${corpus.id}/export`, '_blank')
     } catch (error) {
       console.error('Export failed:', error)
+    } finally {
       setIsExporting(false)
     }
   }
@@ -232,17 +207,10 @@ export function Corpuses({ corpuses }: CorpusesProps) {
           </DialogHeader>
           <div className="p-4">
             <h2 className="mb-4 text-xl font-semibold">Exporting documents...</h2>
-            <div className="flex items-center">
-              <Progress value={progress} className="flex-1" />
-              <span className="ml-2 w-10 text-right">
-                {progress.toFixed()}
-                %
-              </span>
-            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsExporting(false)}>Cancel</Button>
-            <Button type="submit" disabled={progress < 100}>Download</Button>
+            <Button type="submit" disabled={isExporting}>Download</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
