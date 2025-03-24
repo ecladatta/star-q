@@ -5,7 +5,7 @@ import { auth } from '@/auth'
 import { db } from '@/db/drizzle'
 import { annotation, annotationComponent, corpus, document } from '@/db/schema'
 import { determineImportType, InvalidJsonLinesError, UnsupportedFileTypeError } from '@/lib/utils'
-import { count, desc, eq, getTableColumns } from 'drizzle-orm'
+import { count, countDistinct, desc, eq, getTableColumns } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { revalidatePath } from 'next/cache'
 import { v4 as uuidv4 } from 'uuid'
@@ -23,7 +23,7 @@ export async function getCorpuses() {
 
   return db.select({
     ...getTableColumns(corpus),
-    documentsCount: count(document.id),
+    documentsCount: countDistinct(document.id),
     annotationsCount: count(annotation.id),
   })
     .from(corpus)
