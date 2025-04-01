@@ -10,8 +10,6 @@ import { alias } from 'drizzle-orm/pg-core'
 import { revalidatePath } from 'next/cache'
 import { v4 as uuidv4 } from 'uuid'
 
-const ACCEPTED_TYPES = ['application/json']
-
 export type DocumentMetadata = Omit<Document, 'raw'> & { annotationsCount: number }
 
 export async function getCorpuses() {
@@ -64,8 +62,8 @@ export async function importDocuments(corpusId: string, formData: FormData) {
 
   const file = formData.get('file') as File
 
-  if (!file || !ACCEPTED_TYPES.includes(file.type)) {
-    throw new UnsupportedFileTypeError('File type is not supported')
+  if (!file) {
+    throw new Error('File not found')
   }
 
   const content = await file.text()
@@ -79,14 +77,14 @@ export async function importDocuments(corpusId: string, formData: FormData) {
   if (importType === 'corpuswalker') {
     const lines = content.split('\n').filter(line => line.trim() !== '')
     for (const line of lines) {
-      const parsedJson = JSON.parse(line)
+      const parsedJson = JSON.parse(line) as DocumentData
       if (!('_index' in parsedJson)) {
         throw new InvalidJsonLinesError('JSON Lines file must have a "_index" field in each line')
       }
 
       const [documentId] = await db.insert(document).values({
         corpusId,
-        title: parsedJson._source.identificationMetadata.title,
+        title: parsedJson._source.identificationMetadata.title || parsedJson._source.identificationMetadata.id,
         type: 'text/x-wiki',
         raw: parsedJson as DocumentData,
       }).returning({ id: document.id })
@@ -99,8 +97,10 @@ export async function importDocuments(corpusId: string, formData: FormData) {
       const raw: DocumentData = {
         _source: {
           identificationMetadata: {
+            id: item.id,
             title: item.id,
             versionDate: item.created_at,
+            hash: item.id,
             wikidata: '',
             url: [],
           },

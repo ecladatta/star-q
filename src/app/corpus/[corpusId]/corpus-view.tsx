@@ -77,14 +77,16 @@ export type DocumentElement = {
 export type DocumentData = {
   _source: {
     identificationMetadata: {
-      title: string
+      id: string
       versionDate: string
-      wikidata: string
-      url: string[]
+      hash: string
+      title?: string
+      wikidata?: string
+      url?: string | string[]
     }
     extractionMetadata: {
-      texts: { startOffset: number, endOffset: number, value: string }[]
-      tables: { startOffset: number, endOffset: number, tableData: string[][] }[]
+      texts: { startOffset?: number, endOffset?: number, value: string }[]
+      tables: { startOffset?: number, endOffset?: number, tableData: string[][] }[]
     }[]
   }
 }
@@ -572,7 +574,7 @@ export default function CorpusView({ corpus, documents, document, annotations }:
                 <CardContent>
                   {combinedElements.map(element => (
                     <CombinedElement
-                      key={`element-${element.startOffset}-${element.endOffset}`}
+                      key={`element-${element.elementIndex}`}
                       {...element}
                       handleSplitClick={handleSplitClick}
                       handleTableSelection={handleTableSelection}
