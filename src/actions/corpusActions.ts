@@ -85,7 +85,6 @@ export async function importDocuments(corpusId: string, formData: FormData) {
       const [documentId] = await db.insert(document).values({
         corpusId,
         title: parsedJson._source.identificationMetadata.title || parsedJson._source.identificationMetadata.id,
-        type: 'text/x-wiki',
         raw: parsedJson as DocumentData,
       }).returning({ id: document.id })
       importedDocumentsIds.push(documentId.id)
@@ -105,6 +104,7 @@ export async function importDocuments(corpusId: string, formData: FormData) {
             url: [],
           },
           extractionMetadata: [{
+            technology: null,
             texts: [{
               startOffset: 0,
               endOffset: item.data.text.length,
@@ -118,7 +118,6 @@ export async function importDocuments(corpusId: string, formData: FormData) {
       const [documentId] = await db.insert(document).values({
         corpusId,
         title: item.id,
-        type: 'text/plain',
         raw,
       }).returning({ id: document.id })
       importedDocumentsIds.push(documentId.id)

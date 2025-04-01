@@ -85,6 +85,7 @@ export type DocumentData = {
       url?: string | string[]
     }
     extractionMetadata: {
+      technology: string | null
       texts: { startOffset?: number, endOffset?: number, value: string }[]
       tables: { startOffset?: number, endOffset?: number, tableData: string[][] }[]
     }[]
@@ -423,7 +424,7 @@ export default function CorpusView({ corpus, documents, document, annotations }:
         type: 'text' as const,
         startOffset: text.startOffset,
         endOffset: text.endOffset,
-        value: document.type === 'text/x-wiki' ? wtf(text.value).text() : text.value,
+        value: documentData._source.extractionMetadata[0].technology === 'WikitextExtractor' ? wtf(text.value).text() : text.value,
         data: {
           ...text,
         },

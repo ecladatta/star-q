@@ -43,6 +43,13 @@
       "when": 1739787387071,
       "tag": "0005_mean_the_stranger",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1743518673003,
+      "tag": "0006_sleepy_nocturne",
+      "breakpoints": true
     }
   ]
 }

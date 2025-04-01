@@ -99,7 +99,6 @@ export type Corpus = InferSelectModel<typeof corpus>
 export const document = pgTable('document', {
   id: uuid('id').primaryKey().$defaultFn(() => randomUUID()),
   corpusId: uuid('corpus_id').references(() => corpus.id, { onDelete: 'cascade' }).notNull(),
-  type: text('type').notNull().$type<'text/x-wiki' | 'text/plain'>(),
   title: text('title').notNull(),
   raw: jsonb('raw').$type<DocumentData>().notNull(),
   completedAt: timestamp('completed_at'),
