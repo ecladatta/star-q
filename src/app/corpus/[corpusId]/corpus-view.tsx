@@ -537,7 +537,7 @@ export default function CorpusView({ corpus, documents, document, annotations }:
           </ScrollArea>
         </aside>
       )}
-      <main className="ml-0 min-w-0 flex-1 md:mr-[280px] lg:ml-[280px]">
+      <main className={cn('ml-0 min-w-0 flex-1 lg:ml-[280px]', documentAnnotations.length > 0 && 'md:mr-[280px]')}>
         <div className="container mx-auto p-6 lg:px-12">
           <h1 className="mb-6 text-3xl font-bold">
             Corpus:
