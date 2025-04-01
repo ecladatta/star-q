@@ -515,7 +515,10 @@ export default function CorpusView({ corpus, documents, document, annotations }:
                   className={cn('mb-3 px-8', doc.id === document?.id && 'font-semibold text-blue-500')}
                 >
                   <Link href={`/document/${doc.id}`} className="flex flex-col gap-0">
-                    <span>
+                    <span
+                      className="max-w-[220px] truncate break-all"
+                      title={doc.title}
+                    >
                       {i + 1}
                       .
                       {' '}
