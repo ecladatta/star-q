@@ -1,5 +1,6 @@
 import type { Offset } from '@/lib/utils'
 import type { DocumentElement } from './corpus-view'
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { TYPE_TO_COLOR } from '@/lib/constants'
 import { splitWithOffsets } from '@/lib/utils'
@@ -17,7 +18,16 @@ export type CombinedElementProps = {
   documentElements: DocumentElement[]
 }
 
-function CombinedElement({ elementIndex, value, type, data, handleTextSelection, handleTableSelection, handleSplitClick, documentElements }: CombinedElementProps) {
+function CombinedElement({
+  elementIndex,
+  value,
+  type,
+  data,
+  handleTextSelection,
+  handleTableSelection,
+  handleSplitClick,
+  documentElements,
+}: CombinedElementProps) {
   const element = documentElements[elementIndex]
   if (!element) {
     return null
@@ -78,59 +88,69 @@ function CombinedElement({ elementIndex, value, type, data, handleTextSelection,
 
     return (
       <div key={elementIndex} className="mb-6" id={`element-${elementIndex}`}>
-        <Table>
-          <TableHeader>
-            {splits.slice(0, 1).map((row, rowIndex) => (
-              <TableRow key={rowIndex}>
-                {row.map((cellSplits, cellIndex) => (
-                  <TableHead
-                    key={cellIndex}
-                    role="textbox"
-                    tabIndex={0}
-                    onMouseUp={() => handleTableSelection(elementIndex, 0, cellIndex)}
-                    onKeyUp={e => e.key === 'Enter' && handleTableSelection(elementIndex, 0, cellIndex)}
-                  >
-                    {cellSplits.map(split => (
-                      <Split
-                        key={`table-header-split-${split.componentId}-${split.start}-${split.end}`}
-                        {...split}
-                        onClick={() => handleSplitClick(split)}
-                        color={TYPE_TO_COLOR[element.components.find(annotation =>
-                          annotation.id === split.componentId,
-                        )?.annotationTag as keyof typeof TYPE_TO_COLOR]}
-                      />
-                    ))}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody>
-            {splits.slice(1).map((row, rowIndex) => (
-              <TableRow key={rowIndex}>
-                {row.map((cellSplits, cellIndex) => (
-                  <TableCell
-                    key={cellIndex}
-                    role="textbox"
-                    onMouseUp={() => handleTableSelection(elementIndex, rowIndex + 1, cellIndex)}
-                    onKeyUp={e => e.key === 'Enter' && handleTableSelection(elementIndex, rowIndex + 1, cellIndex)}
-                  >
-                    {cellSplits.map(split => (
-                      <Split
-                        key={`table-row-split-${split.componentId}-${split.start}-${split.end}`}
-                        {...split}
-                        onClick={() => handleSplitClick(split)}
-                        color={TYPE_TO_COLOR[element.components.find(annotation =>
-                          annotation.id === split.componentId,
-                        )?.annotationTag as keyof typeof TYPE_TO_COLOR]}
-                      />
-                    ))}
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        {data.title && <div className="mb-2 font-semibold">{data.title}</div>}
+        <ScrollArea className="flex max-h-[60vh] w-full flex-col overflow-y-auto rounded-xl border">
+          <Table>
+            <TableHeader className="bg-muted/50">
+              {splits.slice(0, 1).map((row, rowIndex) => (
+                <TableRow key={rowIndex} className="hover:bg-muted/20">
+                  {row.map((cellSplits, cellIndex) => (
+                    <TableHead
+                      key={cellIndex}
+                      role="textbox"
+                      tabIndex={0}
+                      className="p-3 font-medium transition-colors"
+                      onMouseUp={() => handleTableSelection(elementIndex, 0, cellIndex)}
+                      onKeyUp={e => e.key === 'Enter' && handleTableSelection(elementIndex, 0, cellIndex)}
+                      aria-label={`Table header ${cellIndex + 1}`}
+                    >
+                      {cellSplits.map(split => (
+                        <Split
+                          key={`table-header-split-${split.componentId}-${split.start}-${split.end}`}
+                          {...split}
+                          onClick={() => handleSplitClick(split)}
+                          color={TYPE_TO_COLOR[element.components.find(annotation =>
+                            annotation.id === split.componentId,
+                          )?.annotationTag as keyof typeof TYPE_TO_COLOR]}
+                        />
+                      ))}
+                    </TableHead>
+                  ))}
+                </TableRow>
+              ))}
+            </TableHeader>
+            <TableBody>
+              {splits.slice(1).map((row, rowIndex) => (
+                <TableRow key={rowIndex} className="border-b hover:bg-muted/10">
+                  {row.map((cellSplits, cellIndex) => (
+                    <TableCell
+                      key={cellIndex}
+                      role="textbox"
+                      tabIndex={0}
+                      className="p-3 transition-colors"
+                      onMouseUp={() => handleTableSelection(elementIndex, rowIndex + 1, cellIndex)}
+                      onKeyUp={e => e.key === 'Enter' && handleTableSelection(elementIndex, rowIndex + 1, cellIndex)}
+                      aria-label={`Row ${rowIndex + 1}, Column ${cellIndex + 1}`}
+                    >
+                      {cellSplits.map(split => (
+                        <Split
+                          key={`table-row-split-${split.componentId}-${split.start}-${split.end}`}
+                          {...split}
+                          onClick={() => handleSplitClick(split)}
+                          color={TYPE_TO_COLOR[element.components.find(annotation =>
+                            annotation.id === split.componentId,
+                          )?.annotationTag as keyof typeof TYPE_TO_COLOR]}
+                        />
+                      ))}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          <ScrollBar orientation="vertical" />
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
       </div>
     )
   }
