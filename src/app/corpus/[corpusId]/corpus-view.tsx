@@ -551,24 +551,43 @@ export default function CorpusView({ corpus, documents, document, annotations }:
                 <h2 className="text-2xl font-bold">
                   {documentData._source.identificationMetadata.title}
                 </h2>
-                <p className="text-sm text-muted-foreground">
-                  <strong>Version Date:</strong>
-                  {' '}
-                  {documentData._source.identificationMetadata.versionDate}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  <strong>Wikidata: </strong>
-                  {' '}
-                  <Link href={`https://www.wikidata.org/wiki/${documentData._source.identificationMetadata.wikidata}`} target="_blank" rel="noopener noreferrer" className="ml-1 text-blue-500 underline">
-                    {documentData._source.identificationMetadata.wikidata}
-                  </Link>
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  <strong>Wikipedia: </strong>
-                  <a href={documentData._source.identificationMetadata.url.slice(-1)[0]} target="_blank" rel="noopener noreferrer" className="ml-1 text-blue-500 underline">
-                    {documentData._source.identificationMetadata.url.slice(-1)[0]}
-                  </a>
-                </p>
+                {documentData._source.identificationMetadata.versionDate && (
+                  <p className="text-sm text-muted-foreground">
+                    <strong>Version Date:</strong>
+                    {' '}
+                    {documentData._source.identificationMetadata.versionDate}
+                  </p>
+                )}
+                {documentData._source.identificationMetadata.wikidata && (
+                  <p className="text-sm text-muted-foreground">
+                    <strong>Wikidata: </strong>
+                    {' '}
+                    <Link href={`https://www.wikidata.org/wiki/${documentData._source.identificationMetadata.wikidata}`} target="_blank" rel="noopener noreferrer" className="ml-1 text-blue-500 underline">
+                      {documentData._source.identificationMetadata.wikidata}
+                    </Link>
+                  </p>
+                )}
+                {documentData._source.identificationMetadata.url && (
+                  <p className="text-sm text-muted-foreground">
+                    <strong>URL: </strong>
+                    {Array.isArray(documentData._source.identificationMetadata.url)
+                      ? (
+                          documentData._source.identificationMetadata.url.map((url, i) => (
+                            <React.Fragment key={url}>
+                              {i > 0 && ', '}
+                              <Link href={url} target="_blank" rel="noopener noreferrer" className="ml-1 text-blue-500 underline">
+                                {url}
+                              </Link>
+                            </React.Fragment>
+                          ))
+                        )
+                      : (
+                          <Link href={documentData._source.identificationMetadata.url} target="_blank" rel="noopener noreferrer" className="ml-1 text-blue-500 underline">
+                            {documentData._source.identificationMetadata.url}
+                          </Link>
+                        )}
+                  </p>
+                )}
               </div>
               <Card className="mb-6">
                 <CardHeader>
