@@ -1,5 +1,7 @@
 import type { NextRequest } from 'next/server'
-import { getAnnotations, getCorpus, getDocumentsMetadata } from '@/actions/corpusActions'
+import { getAnnotations } from '@/actions/annotation/annotationActions'
+import { getCorpus } from '@/actions/corpus/corpusActions'
+import { getDocumentsMetadata } from '@/actions/document/documentActions'
 
 // @TODO: Define the model for the export
 type ExportModel = any

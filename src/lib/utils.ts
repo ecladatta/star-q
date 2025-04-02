@@ -138,9 +138,18 @@ export async function determineJsonType(content: string): Promise<JsonFileType> 
   return 'unknown'
 }
 
-export type ImportType = 'corpuswalker' | 'labelstudio' | 'unknown'
+export type ImportType = 'corpuswalker' | 'labelstudio' | 'irit-zip' | 'unknown'
 
-export async function determineImportType(content: string): Promise<ImportType> {
+export async function determineImportType(content: string, fileName?: string): Promise<ImportType> {
+  // Check if file is a zip file based on name
+  if (fileName?.toLowerCase().endsWith('.zip')) {
+    // Check if it's an IRIT zip format (assuming naming convention or content pattern)
+    if (fileName.toLowerCase().includes('irit') || fileName.toLowerCase().includes('iswc')) {
+      return 'irit-zip'
+    }
+    // For future: other zip format detection logic could go here
+  }
+
   const jsonType = await determineJsonType(content)
   if (jsonType === 'jsonlines') {
     // Check if it's a Corpus Walker JSON Lines file

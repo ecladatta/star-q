@@ -1,6 +1,7 @@
 'use client'
 import type { Corpus } from '@/db/schema'
-import { addCorpus, deleteCorpus, importDocuments } from '@/actions/corpusActions'
+import { addCorpus, deleteCorpus } from '@/actions/corpus/corpusActions'
+import { importDocuments } from '@/actions/imports/importActions'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -219,12 +220,11 @@ export function Corpuses({ corpuses }: CorpusesProps) {
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
-              <p>
-                Are you sure you want to delete the corpus "
-                <strong>{corpusToDelete?.title}</strong>
-                "?
-              </p>
-              <p>This action cannot be undone and will also:</p>
+              Are you sure you want to delete the corpus "
+              <strong>{corpusToDelete?.title}</strong>
+              "?
+              <br />
+              This action cannot be undone and will also:
               <ul className="ml-4 list-inside list-disc">
                 <li>Delete all documents attached to this corpus</li>
                 <li>Delete all annotations attached to this corpus</li>

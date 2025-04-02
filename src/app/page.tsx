@@ -1,4 +1,4 @@
-import { getCorpuses } from '@/actions/corpusActions'
+import { getCorpuses } from '@/actions/corpus/corpusActions'
 import { Corpuses } from './corpus'
 
 export default async function CorpusesPage() {

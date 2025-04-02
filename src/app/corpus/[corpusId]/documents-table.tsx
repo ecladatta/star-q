@@ -1,5 +1,5 @@
 'use client'
-import type { DocumentMetadata } from '@/actions/corpusActions'
+import type { DocumentMetadata } from '@/actions/corpus/corpusActions'
 import type {
   Column,
   ColumnDef,
@@ -7,7 +7,7 @@ import type {
   SortingState,
   Table as TableType,
 } from '@tanstack/react-table'
-import { deleteDocument, markDocumentAsCompleted } from '@/actions/corpusActions'
+import { deleteDocument, getRawDocumentData, markDocumentAsCompleted } from '@/actions/document/documentActions'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -20,6 +20,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+
 import { cn } from '@/lib/utils'
 import {
   flexRender,
@@ -28,8 +29,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
-
-import { ArrowDown, ArrowUp, ChevronLeftIcon, ChevronRightIcon, ChevronsLeftIcon, ChevronsRightIcon, ChevronsUpDown, FilePenIcon, Loader2, MoreHorizontalIcon, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, CheckCircleIcon, ChevronLeftIcon, ChevronRightIcon, ChevronsLeftIcon, ChevronsRightIcon, ChevronsUpDown, DownloadIcon, FilePenIcon, Loader2, Loader2Icon, MoreHorizontalIcon, Trash2, Trash2Icon } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 import * as React from 'react'
@@ -221,6 +221,39 @@ function DataTablePagination<TData>({
   )
 }
 
+// Add a function to handle downloads
+async function downloadRawDocumentData(id: string, title: string) {
+  try {
+    const rawData = await getRawDocumentData(id)
+    if (!rawData) {
+      toast.error('Couldn\'t fetch document data')
+      return
+    }
+
+    // Create a Blob with the JSON data
+    const blob = new Blob([JSON.stringify(rawData, null, 2)], { type: 'application/json' })
+
+    // Create a URL for the Blob
+    const url = URL.createObjectURL(blob)
+
+    // Create a temporary anchor element to trigger the download
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${title.replace(/\s+/g, '_')}_raw.json`
+    document.body.appendChild(a)
+    a.click()
+
+    // Clean up
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+
+    toast.success('Document data downloaded successfully')
+  } catch (error) {
+    console.error('Error downloading document data:', error)
+    toast.error('Failed to download document data')
+  }
+}
+
 const columns: ColumnDef<DocumentMetadata, any>[] = [
   {
     id: 'select',
@@ -290,13 +323,30 @@ const columns: ColumnDef<DocumentMetadata, any>[] = [
           <DropdownMenuContent align="start">
             <DropdownMenuItem onClick={() => table.options.meta?.handleMarkCompleted(row.original)}>
               {row.original.completedAt
-                ? 'Mark as not completed'
-                : 'Mark as completed'}
+                ? (
+                    <>
+                      <Loader2Icon className="mr-2 size-4" />
+                      Mark as not completed
+                    </>
+                  )
+                : (
+                    <>
+                      <CheckCircleIcon className="mr-2 size-4" />
+                      Mark as completed
+                    </>
+                  )}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => downloadRawDocumentData(row.original.id, row.original.title)}
+            >
+              <DownloadIcon className="mr-2 size-4" />
+              Download Raw Data
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => table.options.meta?.setDocumentToDelete(row.original)}
               className="font-bold text-red-600"
             >
+              <Trash2Icon className="mr-2 size-4" />
               Delete
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -410,12 +460,11 @@ export default function DocumentsTable({ documents }: { documents: DocumentMetad
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
-              <p>
-                Are you sure you want to delete the document "
-                <strong>{documentToDelete?.title}</strong>
-                "?
-              </p>
-              <p>This action cannot be undone and will also:</p>
+              Are you sure you want to delete the document "
+              <strong>{documentToDelete?.title}</strong>
+              "?
+              <br />
+              This action cannot be undone and will also:
               <ul className="ml-4 list-inside list-disc">
                 <li>Delete all annotations attached to this document</li>
               </ul>

@@ -1,4 +1,4 @@
-import { getDocumentsMetadata } from '@/actions/corpusActions'
+import { getDocumentsMetadata } from '@/actions/document/documentActions'
 import React from 'react'
 import DocumentsTable from './documents-table'
 
