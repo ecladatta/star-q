@@ -10,7 +10,7 @@ import type {
 import { deleteDocument, getRawDocumentData, markDocumentAsCompleted } from '@/actions/document/documentActions'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -459,17 +459,20 @@ export default function DocumentsTable({ documents }: { documents: DocumentMetad
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
-            <DialogDescription>
+          </DialogHeader>
+          <div className="text-sm text-gray-600">
+            <p>
               Are you sure you want to delete the document "
               <strong>{documentToDelete?.title}</strong>
               "?
-              <br />
+            </p>
+            <p>
               This action cannot be undone and will also:
               <ul className="ml-4 list-inside list-disc">
                 <li>Delete all annotations attached to this document</li>
               </ul>
-            </DialogDescription>
-          </DialogHeader>
+            </p>
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDocumentToDelete(null)}>Cancel</Button>
             <Button variant="destructive" onClick={confirmDelete} disabled={isDeleting}>

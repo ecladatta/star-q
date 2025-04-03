@@ -203,8 +203,6 @@ export function Corpuses({ corpuses }: CorpusesProps) {
         <DialogContent className="m-0 size-full max-w-full p-0 sm:h-auto sm:max-w-[800px] sm:rounded-lg sm:p-6 sm:shadow-lg">
           <DialogHeader>
             <DialogTitle></DialogTitle>
-            <DialogDescription>
-            </DialogDescription>
           </DialogHeader>
           <div className="p-4">
             <h2 className="mb-4 text-xl font-semibold">Exporting documents...</h2>
@@ -219,18 +217,21 @@ export function Corpuses({ corpuses }: CorpusesProps) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
-            <DialogDescription>
+          </DialogHeader>
+          <div className="text-sm text-gray-600">
+            <p>
               Are you sure you want to delete the corpus "
               <strong>{corpusToDelete?.title}</strong>
               "?
-              <br />
+            </p>
+            <p>
               This action cannot be undone and will also:
               <ul className="ml-4 list-inside list-disc">
                 <li>Delete all documents attached to this corpus</li>
                 <li>Delete all annotations attached to this corpus</li>
               </ul>
-            </DialogDescription>
-          </DialogHeader>
+            </p>
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCorpusToDelete(null)}>Cancel</Button>
             <Button variant="destructive" onClick={confirmDelete} disabled={isDeleting}>
