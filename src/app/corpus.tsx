@@ -1,6 +1,6 @@
 'use client'
 import type { Corpus } from '@/db/schema'
-import { addCorpus, deleteCorpus } from '@/actions/corpus/corpusActions'
+import { addCorpus, deleteCorpus, duplicateCorpus } from '@/actions/corpus/corpusActions'
 import { importDocuments } from '@/actions/imports/importActions'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -8,7 +8,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { InvalidJsonLinesError, UnsupportedFileTypeError } from '@/lib/utils'
-import { FileDownIcon, FileUpIcon, FolderOpenIcon, Loader2Icon, MoreHorizontalIcon, PlusCircleIcon, Trash2Icon } from 'lucide-react'
+import { CopyIcon, FileDownIcon, FileUpIcon, FolderOpenIcon, Loader2Icon, MoreHorizontalIcon, PlusCircleIcon, Trash2Icon } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useRef, useState } from 'react'
@@ -24,7 +24,10 @@ export function Corpuses({ corpuses }: CorpusesProps) {
   const [newCorpusName, setNewCorpusName] = useState('')
   const [isAdding, setIsAdding] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isDuplicating, setIsDuplicating] = useState(false)
   const [corpusToDelete, setCorpusToDelete] = useState<Corpus | null>()
+  const [corpusToDuplicate, setCorpusToDuplicate] = useState<(Corpus & { documentsCount: number, annotationsCount: number }) | null>(null)
+  const [newDuplicateTitle, setNewDuplicateTitle] = useState('')
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [isImporting, setIsImporting] = useState(false)
   const [showImportDialog, setShowImportDialog] = useState(false)
@@ -85,6 +88,28 @@ export function Corpuses({ corpuses }: CorpusesProps) {
     await deleteCorpus(corpusToDelete.id)
     setCorpusToDelete(null)
     setIsDeleting(false)
+  }
+
+  const handleDuplicateClick = (corpus: Corpus & { documentsCount: number, annotationsCount: number }) => {
+    setCorpusToDuplicate(corpus)
+    setNewDuplicateTitle(`${corpus.title} (copy)`)
+  }
+
+  const confirmDuplicate = async () => {
+    if (!corpusToDuplicate || !newDuplicateTitle.trim()) {
+      return
+    }
+    try {
+      setIsDuplicating(true)
+      await duplicateCorpus(corpusToDuplicate.id, newDuplicateTitle)
+      setCorpusToDuplicate(null)
+      setNewDuplicateTitle('')
+      router.refresh()
+    } catch (error) {
+      console.error('Duplication failed:', error)
+    } finally {
+      setIsDuplicating(false)
+    }
   }
 
   return (
@@ -173,6 +198,13 @@ export function Corpuses({ corpuses }: CorpusesProps) {
                                   <FolderOpenIcon className="mr-2 size-4" />
                                   Open
                                 </a>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleDuplicateClick(corpus)}
+                                disabled={isDuplicating}
+                              >
+                                <CopyIcon className="mr-2 size-4" />
+                                {isDuplicating ? 'Duplicating...' : 'Duplicate'}
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleImportClick(corpus)}>
                                 <FileUpIcon className="mr-2 size-4" />
@@ -295,6 +327,63 @@ export function Corpuses({ corpuses }: CorpusesProps) {
                 View documents
               </Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={!!corpusToDuplicate} onOpenChange={open => !open && setCorpusToDuplicate(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Duplicate Corpus</DialogTitle>
+            <DialogDescription>
+              Create a copy of this corpus with all its documents and annotations.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="text-sm text-gray-600">
+              <p>
+                You are about to duplicate the corpus "
+                <strong>{corpusToDuplicate?.title}</strong>
+                ".
+              </p>
+              <p className="mt-2">
+                This will copy:
+              </p>
+              <ul className="ml-4 list-inside list-disc">
+                <li>
+                  {corpusToDuplicate?.documentsCount}
+                  {' '}
+                  documents
+                </li>
+                <li>
+                  {corpusToDuplicate?.annotationsCount}
+                  {' '}
+                  annotations
+                </li>
+              </ul>
+            </div>
+            <div className="mt-4">
+              <label htmlFor="new-corpus-name" className="block text-sm font-medium text-gray-700">
+                New corpus name
+              </label>
+              <Input
+                id="new-corpus-name"
+                value={newDuplicateTitle}
+                onChange={e => setNewDuplicateTitle(e.target.value)}
+                className="mt-1"
+                placeholder="Enter a name for the new corpus"
+                required
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCorpusToDuplicate(null)}>Cancel</Button>
+            <Button
+              onClick={confirmDuplicate}
+              disabled={isDuplicating || !newDuplicateTitle.trim()}
+            >
+              {isDuplicating ? <Loader2Icon className="mr-2 size-4 animate-spin" /> : <CopyIcon className="mr-2 size-4" />}
+              {isDuplicating ? 'Duplicating...' : 'Duplicate'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
