@@ -245,11 +245,11 @@ export function Corpuses({ corpuses }: CorpusesProps) {
             </p>
             <p>
               This action cannot be undone and will also:
-              <ul className="ml-4 list-inside list-disc">
-                <li>Delete all documents attached to this corpus</li>
-                <li>Delete all annotations attached to this corpus</li>
-              </ul>
             </p>
+            <ul className="ml-4 list-inside list-disc">
+              <li>Delete all documents attached to this corpus</li>
+              <li>Delete all annotations attached to this corpus</li>
+            </ul>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCorpusToDelete(null)}>Cancel</Button>

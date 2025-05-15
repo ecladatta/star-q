@@ -545,10 +545,10 @@ export default function DocumentsTable({
             </p>
             <p>
               This action cannot be undone and will also:
-              <ul className="ml-4 list-inside list-disc">
-                <li>Delete all annotations attached to this document</li>
-              </ul>
             </p>
+            <ul className="ml-4 list-inside list-disc">
+              <li>Delete all annotations attached to this document</li>
+            </ul>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDocumentToDelete(null)}>
