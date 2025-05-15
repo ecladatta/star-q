@@ -4,10 +4,11 @@ import { addCorpus, deleteCorpus } from '@/actions/corpus/corpusActions'
 import { importDocuments } from '@/actions/imports/importActions'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { InvalidJsonLinesError, UnsupportedFileTypeError } from '@/lib/utils'
-import { FileDownIcon, FileUpIcon, FolderOpenIcon, Loader2Icon, PlusCircleIcon, Trash2Icon } from 'lucide-react'
+import { FileDownIcon, FileUpIcon, FolderOpenIcon, Loader2Icon, MoreHorizontalIcon, PlusCircleIcon, Trash2Icon } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useRef, useState } from 'react'
@@ -140,52 +141,70 @@ export function Corpuses({ corpuses }: CorpusesProps) {
                   </TableHeader>
                   <TableBody>
                     {corpuses.map(corpus => (
-                      <TableRow key={corpus.id}>
-                        <TableCell>{corpus.title}</TableCell>
-                        <TableCell>{corpus.documentsCount}</TableCell>
-                        <TableCell>{corpus.annotationsCount}</TableCell>
-                        <TableCell>
-                          <div className="flex space-x-2">
-                            <Link href={`/corpus/${corpus.id}`}>
-                              <Button variant="outline" size="sm">
-                                <FolderOpenIcon className="size-4" />
-                                {' '}
-                                Open
+                      <TableRow
+                        key={corpus.id}
+                        className="group hover:bg-muted/50"
+                      >
+                        <TableCell className="p-0">
+                          <Link href={`/corpus/${corpus.id}`} className="block size-full p-4">
+                            {corpus.title}
+                          </Link>
+                        </TableCell>
+                        <TableCell className="p-0">
+                          <Link href={`/corpus/${corpus.id}`} className="block size-full p-4">
+                            {corpus.documentsCount}
+                          </Link>
+                        </TableCell>
+                        <TableCell className="p-0">
+                          <Link href={`/corpus/${corpus.id}`} className="block size-full p-4">
+                            {corpus.annotationsCount}
+                          </Link>
+                        </TableCell>
+                        <TableCell onClick={e => e.stopPropagation()}>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreHorizontalIcon className="size-4" />
                               </Button>
-                            </Link>
-                            <Button variant="outline" size="sm" onClick={() => handleImportClick(corpus)}>
-                              <FileUpIcon className="size-4" />
-                              {' '}
-                              Import
-                            </Button>
-                            <input
-                              type="file"
-                              ref={fileInputRef}
-                              style={{ display: 'none' }}
-                              onChange={handleFileChange}
-                            />
-                            <Button variant="outline" size="sm" onClick={() => handleExportClick(corpus)}>
-                              <FileDownIcon className="size-4" />
-                              {' '}
-                              Export
-                            </Button>
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => handleDeleteClick(corpus)}
-                              disabled={isDeleting && corpusToDelete?.id === corpus.id}
-                            >
-                              {isDeleting && corpusToDelete?.id === corpus.id
-                                ? (
-                                    <Loader2Icon className="size-4 animate-spin" />
-                                  )
-                                : (
-                                    <Trash2Icon className="size-4" />
-                                  )}
-                              {' '}
-                              Delete
-                            </Button>
-                          </div>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem asChild>
+                                <a href={`/corpus/${corpus.id}`}>
+                                  <FolderOpenIcon className="mr-2 size-4" />
+                                  Open
+                                </a>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleImportClick(corpus)}>
+                                <FileUpIcon className="mr-2 size-4" />
+                                Import
+                              </DropdownMenuItem>
+                              <input
+                                type="file"
+                                ref={fileInputRef}
+                                style={{ display: 'none' }}
+                                onChange={handleFileChange}
+                              />
+                              <DropdownMenuItem onClick={() => handleExportClick(corpus)}>
+                                <FileDownIcon className="mr-2 size-4" />
+                                Export
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => handleDeleteClick(corpus)}
+                                disabled={isDeleting && corpusToDelete?.id === corpus.id}
+                                className="text-red-600 focus:text-red-600"
+                              >
+                                {isDeleting && corpusToDelete?.id === corpus.id
+                                  ? (
+                                      <Loader2Icon className="mr-2 size-4 animate-spin" />
+                                    )
+                                  : (
+                                      <Trash2Icon className="mr-2 size-4" />
+                                    )}
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     ))}
