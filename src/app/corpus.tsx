@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { InvalidJsonLinesError, UnsupportedFileTypeError } from '@/lib/utils'
-import { FileDown, FileUp, FolderOpen, Loader2, PlusCircle, Trash2 } from 'lucide-react'
+import { FileDownIcon, FileUpIcon, FolderOpenIcon, Loader2Icon, PlusCircleIcon, Trash2Icon } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useRef, useState } from 'react'
@@ -117,10 +117,10 @@ export function Corpuses({ corpuses }: CorpusesProps) {
               >
                 {isAdding
                   ? (
-                      <Loader2 className="size-4 animate-spin" />
+                      <Loader2Icon className="size-4 animate-spin" />
                     )
                   : (
-                      <PlusCircle className="size-4" />
+                      <PlusCircleIcon className="size-4" />
                     )}
                 {' '}
                 {isAdding ? 'Creating corpus..' : 'Create Corpus'}
@@ -148,13 +148,13 @@ export function Corpuses({ corpuses }: CorpusesProps) {
                           <div className="flex space-x-2">
                             <Link href={`/corpus/${corpus.id}`}>
                               <Button variant="outline" size="sm">
-                                <FolderOpen className="size-4" />
+                                <FolderOpenIcon className="size-4" />
                                 {' '}
                                 Open
                               </Button>
                             </Link>
                             <Button variant="outline" size="sm" onClick={() => handleImportClick(corpus)}>
-                              <FileUp className="size-4" />
+                              <FileUpIcon className="size-4" />
                               {' '}
                               Import
                             </Button>
@@ -165,7 +165,7 @@ export function Corpuses({ corpuses }: CorpusesProps) {
                               onChange={handleFileChange}
                             />
                             <Button variant="outline" size="sm" onClick={() => handleExportClick(corpus)}>
-                              <FileDown className="size-4" />
+                              <FileDownIcon className="size-4" />
                               {' '}
                               Export
                             </Button>
@@ -177,10 +177,10 @@ export function Corpuses({ corpuses }: CorpusesProps) {
                             >
                               {isDeleting && corpusToDelete?.id === corpus.id
                                 ? (
-                                    <Loader2 className="size-4 animate-spin" />
+                                    <Loader2Icon className="size-4 animate-spin" />
                                   )
                                 : (
-                                    <Trash2 className="size-4" />
+                                    <Trash2Icon className="size-4" />
                                   )}
                               {' '}
                               Delete
@@ -235,7 +235,7 @@ export function Corpuses({ corpuses }: CorpusesProps) {
           <DialogFooter>
             <Button variant="outline" onClick={() => setCorpusToDelete(null)}>Cancel</Button>
             <Button variant="destructive" onClick={confirmDelete} disabled={isDeleting}>
-              {isDeleting ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+              {isDeleting ? <Loader2Icon className="size-4 animate-spin" /> : <Trash2Icon className="size-4" />}
               Delete
             </Button>
           </DialogFooter>
@@ -252,7 +252,7 @@ export function Corpuses({ corpuses }: CorpusesProps) {
           <div>
             {isImporting && (
               <div className="flex items-center space-x-2">
-                <Loader2 className="size-8 animate-spin" />
+                <Loader2Icon className="size-8 animate-spin" />
                 <span>Importing...</span>
               </div>
             )}

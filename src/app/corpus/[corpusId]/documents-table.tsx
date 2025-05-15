@@ -7,10 +7,20 @@ import type {
   SortingState,
   Table as TableType,
 } from '@tanstack/react-table'
-import { deleteDocument, getRawDocumentData, markDocumentAsCompleted } from '@/actions/document/documentActions'
+import {
+  deleteDocument,
+  getRawDocumentData,
+  markDocumentAsCompleted,
+} from '@/actions/document/documentActions'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,8 +28,21 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 
 import { cn } from '@/lib/utils'
 import {
@@ -29,7 +52,21 @@ import {
   getSortedRowModel,
   useReactTable,
 } from '@tanstack/react-table'
-import { ArrowDown, ArrowUp, CheckCircleIcon, ChevronLeftIcon, ChevronRightIcon, ChevronsLeftIcon, ChevronsRightIcon, ChevronsUpDown, DownloadIcon, FilePenIcon, Loader2, Loader2Icon, MoreHorizontalIcon, Trash2, Trash2Icon } from 'lucide-react'
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  CheckCircleIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ChevronsLeftIcon,
+  ChevronsRightIcon,
+  ChevronsUpDownIcon,
+  DownloadIcon,
+  FilePenIcon,
+  Loader2Icon,
+  MoreHorizontalIcon,
+  Trash2Icon,
+} from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 import * as React from 'react'
@@ -98,7 +135,10 @@ function DataTable<TData, TValue>({
                   <TableHead key={header.id}>
                     {header.isPlaceholder
                       ? null
-                      : flexRender(header.column.columnDef.header, header.getContext())}
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext(),
+                        )}
                   </TableHead>
                 ))}
               </TableRow>
@@ -111,7 +151,10 @@ function DataTable<TData, TValue>({
                     <TableRow key={row.id}>
                       {row.getVisibleCells().map(cell => (
                         <TableCell key={cell.id}>
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext(),
+                          )}
                         </TableCell>
                       ))}
                     </TableRow>
@@ -119,7 +162,10 @@ function DataTable<TData, TValue>({
                 )
               : (
                   <TableRow>
-                    <TableCell colSpan={columns.length} className="h-24 text-center">
+                    <TableCell
+                      colSpan={columns.length}
+                      className="h-24 text-center"
+                    >
                       No documents found.
                     </TableCell>
                   </TableRow>
@@ -231,7 +277,9 @@ async function downloadRawDocumentData(id: string, title: string) {
     }
 
     // Create a Blob with the JSON data
-    const blob = new Blob([JSON.stringify(rawData, null, 2)], { type: 'application/json' })
+    const blob = new Blob([JSON.stringify(rawData, null, 2)], {
+      type: 'application/json',
+    })
 
     // Create a URL for the Blob
     const url = URL.createObjectURL(blob)
@@ -288,7 +336,9 @@ const columns: ColumnDef<DocumentMetadata, any>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Annotations" />
     ),
-    cell: ({ row }) => <div>{JSON.stringify(row.original.annotationsCount)}</div>,
+    cell: ({ row }) => (
+      <div>{JSON.stringify(row.original.annotationsCount)}</div>
+    ),
   },
   {
     accessorKey: 'completedAt',
@@ -296,9 +346,7 @@ const columns: ColumnDef<DocumentMetadata, any>[] = [
       <DataTableColumnHeader column={column} title="Completed" />
     ),
     cell: ({ row }) => (
-      <div>
-        {row.original.completedAt?.toLocaleString() ?? 'No'}
-      </div>
+      <div>{row.original.completedAt?.toLocaleString() ?? 'No'}</div>
     ),
   },
   {
@@ -321,7 +369,10 @@ const columns: ColumnDef<DocumentMetadata, any>[] = [
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">
-            <DropdownMenuItem onClick={() => table.options.meta?.handleMarkCompleted(row.original)}>
+            <DropdownMenuItem
+              onClick={() =>
+                table.options.meta?.handleMarkCompleted(row.original)}
+            >
               {row.original.completedAt
                 ? (
                     <>
@@ -337,13 +388,15 @@ const columns: ColumnDef<DocumentMetadata, any>[] = [
                   )}
             </DropdownMenuItem>
             <DropdownMenuItem
-              onClick={() => downloadRawDocumentData(row.original.id, row.original.title)}
+              onClick={() =>
+                downloadRawDocumentData(row.original.id, row.original.title)}
             >
               <DownloadIcon className="mr-2 size-4" />
               Download Raw Data
             </DropdownMenuItem>
             <DropdownMenuItem
-              onClick={() => table.options.meta?.setDocumentToDelete(row.original)}
+              onClick={() =>
+                table.options.meta?.setDocumentToDelete(row.original)}
               className="font-bold text-red-600"
             >
               <Trash2Icon className="mr-2 size-4" />
@@ -377,24 +430,24 @@ function DataTableColumnHeader<TData, TValue>({
             <span>{title}</span>
             {column.getIsSorted() === 'desc'
               ? (
-                  <ArrowDown />
+                  <ArrowDownIcon />
                 )
               : column.getIsSorted() === 'asc'
                 ? (
-                    <ArrowUp />
+                    <ArrowUpIcon />
                   )
                 : (
-                    <ChevronsUpDown />
+                    <ChevronsUpDownIcon />
                   )}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
           <DropdownMenuItem onClick={() => column.toggleSorting(false)}>
-            <ArrowUp className="size-3.5 text-muted-foreground/70" />
+            <ArrowUpIcon className="size-3.5 text-muted-foreground/70" />
             Asc
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => column.toggleSorting(true)}>
-            <ArrowDown className="size-3.5 text-muted-foreground/70" />
+            <ArrowDownIcon className="size-3.5 text-muted-foreground/70" />
             Desc
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -403,21 +456,35 @@ function DataTableColumnHeader<TData, TValue>({
   )
 }
 
-export default function DocumentsTable({ documents }: { documents: DocumentMetadata[] }) {
+export default function DocumentsTable({
+  documents,
+}: {
+  documents: DocumentMetadata[]
+}) {
   const [search, setSearch] = useState('')
   const [showOnlyNotCompleted, setShowOnlyNotCompleted] = useState(false)
-  const [documentToDelete, setDocumentToDelete] = useState<DocumentMetadata | null>(null)
+  const [documentToDelete, setDocumentToDelete]
+    = useState<DocumentMetadata | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
 
   const filteredDocuments = documents.filter((doc) => {
-    const matchesSearch = doc.title?.toLowerCase().includes(search.toLowerCase())
+    const matchesSearch = doc.title
+      ?.toLowerCase()
+      .includes(search.toLowerCase())
     const isNotCompleted = !doc.completedAt
     return matchesSearch && (!showOnlyNotCompleted || isNotCompleted)
   })
 
   const handleMarkCompleted = async (document: DocumentMetadata) => {
-    await markDocumentAsCompleted(document.id, document.completedAt ? null : new Date())
-    toast.success(document.completedAt ? 'Document marked as not completed' : 'Document marked as completed')
+    await markDocumentAsCompleted(
+      document.id,
+      document.completedAt ? null : new Date(),
+    )
+    toast.success(
+      document.completedAt
+        ? 'Document marked as not completed'
+        : 'Document marked as completed',
+    )
   }
 
   const confirmDelete = async () => {
@@ -444,7 +511,8 @@ export default function DocumentsTable({ documents }: { documents: DocumentMetad
           <Checkbox
             id="show-only-not-completed"
             checked={showOnlyNotCompleted}
-            onCheckedChange={checked => setShowOnlyNotCompleted(checked === true)}
+            onCheckedChange={checked =>
+              setShowOnlyNotCompleted(checked === true)}
           />
           <label
             htmlFor="show-only-not-completed"
@@ -454,8 +522,17 @@ export default function DocumentsTable({ documents }: { documents: DocumentMetad
           </label>
         </div>
       </div>
-      <DataTable columns={columns} data={filteredDocuments} filteredDocuments={filteredDocuments} setDocumentToDelete={setDocumentToDelete} handleMarkCompleted={handleMarkCompleted} />
-      <Dialog open={!!documentToDelete} onOpenChange={() => setDocumentToDelete(null)}>
+      <DataTable
+        columns={columns}
+        data={filteredDocuments}
+        filteredDocuments={filteredDocuments}
+        setDocumentToDelete={setDocumentToDelete}
+        handleMarkCompleted={handleMarkCompleted}
+      />
+      <Dialog
+        open={!!documentToDelete}
+        onOpenChange={() => setDocumentToDelete(null)}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
@@ -474,9 +551,21 @@ export default function DocumentsTable({ documents }: { documents: DocumentMetad
             </p>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDocumentToDelete(null)}>Cancel</Button>
-            <Button variant="destructive" onClick={confirmDelete} disabled={isDeleting}>
-              {isDeleting ? <Loader2 className="size-4 animate-spin" /> : <Trash2 className="size-4" />}
+            <Button variant="outline" onClick={() => setDocumentToDelete(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting
+                ? (
+                    <Loader2Icon className="size-4 animate-spin" />
+                  )
+                : (
+                    <Trash2Icon className="size-4" />
+                  )}
               Delete
             </Button>
           </DialogFooter>

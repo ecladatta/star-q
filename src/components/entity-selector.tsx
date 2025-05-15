@@ -2,7 +2,7 @@ import type { Entity, EntityDatatype, EntityType } from '@/app/corpus/[corpusId]
 import type { ReactNode } from 'react'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { cn } from '@/lib/utils'
-import { Calendar1Icon, CalendarClockIcon, CalendarIcon, Check, ChevronsUpDown, ClockIcon, FilterIcon, GlobeIcon, ToggleLeftIcon, TypeIcon } from 'lucide-react'
+import { Calendar1Icon, CalendarClockIcon, CalendarIcon, CheckIcon, ChevronsUpDownIcon, ClockIcon, FilterIcon, GlobeIcon, ToggleLeftIcon, TypeIcon } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import WBK from 'wikibase-sdk'
@@ -102,7 +102,7 @@ export function EntitySelector({ type, value, onValueChange, text }: {
             className="flex w-full items-center truncate text-left"
           >
             <div className="flex-1 truncate">{value ? value.label : <span className="text-muted-foreground">Search entity...</span>}</div>
-            <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
+            <ChevronsUpDownIcon className="ml-2 size-4 shrink-0 opacity-50" />
           </Button>
           {value?.custom && (
             <Select
@@ -169,7 +169,7 @@ export function EntitySelector({ type, value, onValueChange, text }: {
                   }}
                   className="flex rounded-none border-b"
                 >
-                  <Check
+                  <CheckIcon
                     className={cn(
                       'size-4',
                       value?.value === value.value ? '' : 'hidden',
@@ -198,7 +198,7 @@ export function EntitySelector({ type, value, onValueChange, text }: {
                   }}
                   className="flex"
                 >
-                  <Check
+                  <CheckIcon
                     className={cn(
                       'size-4',
                       value?.value === entity.value ? '' : 'hidden',
