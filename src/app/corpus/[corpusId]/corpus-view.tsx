@@ -119,7 +119,7 @@ export default function CorpusView({ corpus, documents, document, annotations }:
   const [currentElementIndex, setCurrentElementIndex] = useState<number | null>(null)
   const [combinedElements, setCombinedElements] = useState<TextOrTableElement[]>([])
   const [tableSelection, setTableSelection] = useState<{ rowIndex: number, cellIndex: number } | null>(null)
-  const [documentData] = useState<DocumentData | undefined>(document?.raw as (DocumentData | undefined))
+  const documentData = document?.raw as (DocumentData | undefined)
   const [annotationFormLoading, setAnnotationFormLoading] = useState(false)
   const [isDeletingAnnotation, setIsDeletingAnnotation] = useState(false)
   const [currentAnnotation, setCurrentAnnotation] = useState<{
@@ -417,7 +417,11 @@ export default function CorpusView({ corpus, documents, document, annotations }:
   }
 
   useEffect(() => {
-    if (!document || !documentData?._source)
+    setDocumentAnnotations(annotations || [])
+  }, [annotations])
+
+  useEffect(() => {
+    if (!documentData?._source)
       return
     const els = [
       ...documentData._source.extractionMetadata[0].texts.map((text: any) => ({
@@ -441,7 +445,7 @@ export default function CorpusView({ corpus, documents, document, annotations }:
     ].sort((a, b) => a.startOffset - b.startOffset).map((el, index) => ({ ...el, elementIndex: index }))
 
     setCombinedElements(els)
-  }, [document, documentData])
+  }, [documentData])
 
   useEffect(() => {
     resetAnnotations()
