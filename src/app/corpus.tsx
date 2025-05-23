@@ -36,13 +36,24 @@ export function Corpuses({ corpuses }: CorpusesProps) {
 
   const handleImportClick = (corpus: Corpus) => {
     setCorpusToImport(corpus)
-    fileInputRef.current?.click()
+    setUploadError(null)
+    // Reset the file input value to ensure change event fires even for the same file
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+    setTimeout(() => {
+      fileInputRef.current?.click()
+    }, 0)
   }
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
+    if (!file) {
+      return
+    }
+
     try {
-      if (file && corpusToImport) {
+      if (corpusToImport) {
         setUploadError(null)
         setShowImportDialog(true)
         setIsImporting(true)
@@ -53,7 +64,7 @@ export function Corpuses({ corpuses }: CorpusesProps) {
       }
     } catch (err) {
       if (err instanceof UnsupportedFileTypeError) {
-        setUploadError('Unsupported file type. Please upload a JSON file.')
+        setUploadError('Unsupported file type. Please upload a JSON or ZIP file.')
       } else if (err instanceof InvalidJsonLinesError) {
         setUploadError('Invalid JSON lines format. Please check the file and try again.')
       } else {
@@ -61,7 +72,10 @@ export function Corpuses({ corpuses }: CorpusesProps) {
       }
     } finally {
       setIsImporting(false)
-      fileInputRef.current!.value = ''
+      // Reset the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
     }
   }
 
@@ -210,12 +224,6 @@ export function Corpuses({ corpuses }: CorpusesProps) {
                                 <FileUpIcon className="mr-2 size-4" />
                                 Import
                               </DropdownMenuItem>
-                              <input
-                                type="file"
-                                ref={fileInputRef}
-                                style={{ display: 'none' }}
-                                onChange={handleFileChange}
-                              />
                               <DropdownMenuItem onClick={() => handleExportClick(corpus)}>
                                 <FileDownIcon className="mr-2 size-4" />
                                 Export
@@ -387,6 +395,13 @@ export function Corpuses({ corpuses }: CorpusesProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <input
+        type="file"
+        ref={fileInputRef}
+        style={{ display: 'none' }}
+        accept=".json,.jsonl,.zip"
+        onChange={handleFileChange}
+      />
     </main>
   )
 }
