@@ -1,6 +1,6 @@
 'use client'
 import type { Corpus } from '@/db/schema'
-import { addCorpus, deleteCorpus, duplicateCorpus } from '@/actions/corpus/corpusActions'
+import { addCorpus, deleteCorpus, duplicateCorpus, renameCorpus } from '@/actions/corpus/corpusActions'
 import { importDocuments } from '@/actions/imports/importActions'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -8,7 +8,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { InvalidJsonLinesError, UnsupportedFileTypeError } from '@/lib/utils'
-import { CopyIcon, FileDownIcon, FileUpIcon, FolderOpenIcon, Loader2Icon, MoreHorizontalIcon, PlusCircleIcon, Trash2Icon } from 'lucide-react'
+import { CopyIcon, EditIcon, FileDownIcon, FileUpIcon, FolderOpenIcon, Loader2Icon, MoreHorizontalIcon, PlusCircleIcon, Trash2Icon } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useRef, useState } from 'react'
@@ -25,9 +25,12 @@ export function Corpuses({ corpuses }: CorpusesProps) {
   const [isAdding, setIsAdding] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isDuplicating, setIsDuplicating] = useState(false)
+  const [isRenaming, setIsRenaming] = useState(false)
   const [corpusToDelete, setCorpusToDelete] = useState<Corpus | null>()
   const [corpusToDuplicate, setCorpusToDuplicate] = useState<(Corpus & { documentsCount: number, annotationsCount: number }) | null>(null)
   const [newDuplicateTitle, setNewDuplicateTitle] = useState('')
+  const [corpusToRename, setCorpusToRename] = useState<Corpus | null>(null)
+  const [newRenameTitle, setNewRenameTitle] = useState('')
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [isImporting, setIsImporting] = useState(false)
   const [showImportDialog, setShowImportDialog] = useState(false)
@@ -126,6 +129,28 @@ export function Corpuses({ corpuses }: CorpusesProps) {
     }
   }
 
+  const handleRenameClick = (corpus: Corpus) => {
+    setCorpusToRename(corpus)
+    setNewRenameTitle(corpus.title)
+  }
+
+  const confirmRename = async () => {
+    if (!corpusToRename || !newRenameTitle.trim()) {
+      return
+    }
+    try {
+      setIsRenaming(true)
+      await renameCorpus(corpusToRename.id, newRenameTitle)
+      setCorpusToRename(null)
+      setNewRenameTitle('')
+      router.refresh()
+    } catch (error) {
+      console.error('Rename failed:', error)
+    } finally {
+      setIsRenaming(false)
+    }
+  }
+
   return (
     <main className="ml-0 min-w-0">
       <div className="container mx-auto p-12">
@@ -212,6 +237,13 @@ export function Corpuses({ corpuses }: CorpusesProps) {
                                   <FolderOpenIcon className="mr-2 size-4" />
                                   Open
                                 </a>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleRenameClick(corpus)}
+                                disabled={isRenaming}
+                              >
+                                <EditIcon className="mr-2 size-4" />
+                                {isRenaming ? 'Renaming...' : 'Rename'}
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => handleDuplicateClick(corpus)}
@@ -391,6 +423,41 @@ export function Corpuses({ corpuses }: CorpusesProps) {
             >
               {isDuplicating ? <Loader2Icon className="mr-2 size-4 animate-spin" /> : <CopyIcon className="mr-2 size-4" />}
               {isDuplicating ? 'Duplicating...' : 'Duplicate'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={!!corpusToRename} onOpenChange={open => !open && setCorpusToRename(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename Corpus</DialogTitle>
+            <DialogDescription>
+              Enter a new name for this corpus.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="mt-4">
+              <label htmlFor="rename-corpus-name" className="block text-sm font-medium text-gray-700">
+                Corpus name
+              </label>
+              <Input
+                id="rename-corpus-name"
+                value={newRenameTitle}
+                onChange={e => setNewRenameTitle(e.target.value)}
+                className="mt-1"
+                placeholder="Enter the new corpus name"
+                required
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCorpusToRename(null)}>Cancel</Button>
+            <Button
+              onClick={confirmRename}
+              disabled={isRenaming || !newRenameTitle.trim()}
+            >
+              {isRenaming ? <Loader2Icon className="mr-2 size-4 animate-spin" /> : <EditIcon className="mr-2 size-4" />}
+              {isRenaming ? 'Renaming...' : 'Rename'}
             </Button>
           </DialogFooter>
         </DialogContent>

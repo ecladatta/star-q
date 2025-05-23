@@ -123,3 +123,14 @@ export async function duplicateCorpus(id: string, newTitle?: string) {
   revalidatePath('/')
   return newCorpus
 }
+
+export async function renameCorpus(id: string, newTitle: string) {
+  const session = await auth()
+  const userId = session?.user?.id
+  if (!userId) {
+    throw new Error('User not authenticated')
+  }
+
+  await db.update(corpus).set({ title: newTitle }).where(eq(corpus.id, id))
+  revalidatePath('/')
+}
