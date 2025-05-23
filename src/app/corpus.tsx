@@ -131,7 +131,7 @@ export function Corpuses({ corpuses }: CorpusesProps) {
 
   const handleRenameClick = (corpus: Corpus) => {
     setCorpusToRename(corpus)
-    setNewRenameTitle(corpus.title)
+    setNewRenameTitle(corpus.title || '')
   }
 
   const confirmRename = async () => {
