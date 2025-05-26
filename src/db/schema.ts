@@ -96,6 +96,18 @@ export const corpus = pgTable('corpus', {
 })
 export type Corpus = InferSelectModel<typeof corpus>
 
+export const corpusCustomEntity = pgTable('corpus_custom_entity', {
+  id: uuid('id').primaryKey().$defaultFn(() => randomUUID()),
+  corpusId: uuid('corpus_id').references(() => corpus.id, { onDelete: 'cascade' }).notNull(),
+  label: text('label').notNull(),
+  value: text('value').notNull(),
+  datatype: text('datatype').$type<EntityDatatype>().notNull().default('string'),
+  entityType: text('entity_type').$type<'subject' | 'predicate' | 'object'>().notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+})
+export type CorpusCustomEntity = InferSelectModel<typeof corpusCustomEntity>
+
 export const document = pgTable('document', {
   id: uuid('id').primaryKey().$defaultFn(() => randomUUID()),
   corpusId: uuid('corpus_id').references(() => corpus.id, { onDelete: 'cascade' }).notNull(),
@@ -112,6 +124,7 @@ export const annotationComponent = pgTable('annotation_component', {
   entityLabel: text('entity_label'),
   entityValue: text('entity_value'),
   entityCustom: boolean('entity_custom'),
+  entityCustomId: uuid('entity_custom_id').references(() => corpusCustomEntity.id, { onDelete: 'set null' }),
   entityDatatype: text('entity_datatype').$type<EntityDatatype>(),
   annotationStart: integer('annotation_start').notNull(),
   annotationEnd: integer('annotation_end').notNull(),
@@ -127,9 +140,9 @@ export type AnnotationComponent = InferSelectModel<typeof annotationComponent>
 export const annotation = pgTable('annotation', {
   id: uuid('id').defaultRandom().primaryKey(),
   documentId: uuid('document_id').references(() => document.id, { onDelete: 'cascade' }).notNull(),
-  subjectId: uuid('subject_id').references(() => annotationComponent.id).notNull(),
-  predicateId: uuid('predicate_id').references(() => annotationComponent.id).notNull(),
-  objectId: uuid('object_id').references(() => annotationComponent.id).notNull(),
+  subjectId: uuid('subject_id').references(() => annotationComponent.id, { onDelete: 'cascade' }).notNull(),
+  predicateId: uuid('predicate_id').references(() => annotationComponent.id, { onDelete: 'cascade' }).notNull(),
+  objectId: uuid('object_id').references(() => annotationComponent.id, { onDelete: 'cascade' }).notNull(),
   userId: text('user_id').references(() => users.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),

@@ -37,7 +37,9 @@ export type Entity = {
   label: string
   value: string
   custom: boolean
+  customId: string | null
   datatype: EntityDatatype | null
+  type: EntityType
 }
 
 export type DocumentAnnotationComponent = {
@@ -45,6 +47,7 @@ export type DocumentAnnotationComponent = {
   entityLabel: string | null
   entityValue: string | null
   entityCustom: boolean | null
+  entityCustomId: string | null
   entityDatatype: EntityDatatype | null
   annotationStart: number
   annotationEnd: number
@@ -266,6 +269,7 @@ export default function CorpusView({ corpus, documents, document, annotations }:
       id: uuidv4(),
       entityLabel: null,
       entityValue: null,
+      entityCustomId: null,
       entityCustom: null,
       entityDatatype: null,
       annotationStart: selectedOffset.start,
@@ -338,19 +342,25 @@ export default function CorpusView({ corpus, documents, document, annotations }:
         label: subject.entityLabel || '',
         value: subject.entityValue || '',
         custom: subject.entityCustom || false,
+        customId: subject.entityCustomId || null,
         datatype: subject.entityDatatype || null,
+        type: 'subject',
       }
       const selectedPredicate: Entity = {
         label: predicate.entityLabel || '',
         value: predicate.entityValue || '',
         custom: predicate.entityCustom || false,
+        customId: predicate.entityCustomId || null,
         datatype: predicate.entityDatatype || null,
+        type: 'predicate',
       }
       const selectedObject: Entity = {
         label: object.entityLabel || '',
         value: object.entityValue || '',
         custom: object.entityCustom || false,
+        customId: object.entityCustomId || null,
         datatype: object.entityDatatype || null,
+        type: 'object',
       }
       if (currentAnnotation.id) {
         await updateAnnotation(currentAnnotation.id, subject, selectedSubject, predicate, selectedPredicate, object, selectedObject)
@@ -494,6 +504,22 @@ export default function CorpusView({ corpus, documents, document, annotations }:
   const hasAnyTags = Boolean(subjectTag || predicateTag || objectTag)
   const hasAllTags = Boolean(subjectTag && predicateTag && objectTag)
 
+  // Helper function to get entity data
+  const getEntityValue = (component: DocumentAnnotationComponent | undefined, entityType: EntityType): Entity | null => {
+    if (!component?.entityValue)
+      return null
+
+    // Return the stored entity data
+    return {
+      label: component.entityLabel || '',
+      value: component.entityValue,
+      custom: component.entityCustom || false,
+      customId: component.entityCustomId || null,
+      datatype: component.entityDatatype || null,
+      type: entityType,
+    }
+  }
+
   return (
     <div className="flex">
       {documentData && (
@@ -547,7 +573,9 @@ export default function CorpusView({ corpus, documents, document, annotations }:
           <h1 className="mb-6 text-3xl font-bold">
             Corpus:
             {' '}
-            {corpus.title}
+            <Link href={`/corpus/${corpus.id}`} className="underline">
+              {corpus.title}
+            </Link>
           </h1>
           {documentData
           && (
@@ -709,16 +737,7 @@ export default function CorpusView({ corpus, documents, document, annotations }:
                     </div>
                     <EntitySelector
                       type="subject"
-                      value={
-                        currentAnnotation?.subject?.entityValue
-                          ? {
-                              label: currentAnnotation.subject.entityLabel || '',
-                              value: currentAnnotation.subject.entityValue,
-                              custom: currentAnnotation.subject.entityCustom || false,
-                              datatype: currentAnnotation.subject.entityDatatype || null,
-                            }
-                          : null
-                      }
+                      value={getEntityValue(currentAnnotation?.subject, 'subject')}
                       onValueChange={(newValue) => {
                         setCurrentAnnotation((prev) => {
                           if (!prev?.subject)
@@ -730,12 +749,14 @@ export default function CorpusView({ corpus, documents, document, annotations }:
                               entityLabel: newValue?.label || null,
                               entityValue: newValue?.value || null,
                               entityCustom: newValue?.custom || false,
+                              entityCustomId: newValue?.customId || null,
                               entityDatatype: newValue?.datatype || null,
                             },
                           }
                         })
                       }}
                       text={currentAnnotation?.subject?.annotationValue ?? ''}
+                      corpusId={corpus.id}
                     />
                   </div>
                   <div>
@@ -764,16 +785,7 @@ export default function CorpusView({ corpus, documents, document, annotations }:
                       <div className="min-w-0 flex-1">
                         <EntitySelector
                           type="predicate"
-                          value={
-                            currentAnnotation?.predicate?.entityValue
-                              ? {
-                                  label: currentAnnotation.predicate.entityLabel || '',
-                                  value: currentAnnotation.predicate.entityValue,
-                                  custom: currentAnnotation.predicate.entityCustom || false,
-                                  datatype: currentAnnotation.predicate.entityDatatype || null,
-                                }
-                              : null
-                          }
+                          value={getEntityValue(currentAnnotation?.predicate, 'predicate')}
                           onValueChange={(newValue) => {
                             setCurrentAnnotation((prev) => {
                               if (!prev?.predicate)
@@ -785,12 +797,14 @@ export default function CorpusView({ corpus, documents, document, annotations }:
                                   entityLabel: newValue?.label || null,
                                   entityValue: newValue?.value || null,
                                   entityCustom: newValue?.custom || false,
+                                  entityCustomId: newValue?.customId || null,
                                   entityDatatype: newValue?.datatype || null,
                                 },
                               }
                             })
                           }}
                           text={currentAnnotation?.predicate?.annotationValue ?? ''}
+                          corpusId={corpus.id}
                         />
                       </div>
                       <Tooltip delayDuration={200}>
@@ -843,16 +857,7 @@ export default function CorpusView({ corpus, documents, document, annotations }:
                     </div>
                     <EntitySelector
                       type="object"
-                      value={
-                        currentAnnotation?.object?.entityValue
-                          ? {
-                              label: currentAnnotation.object.entityLabel || '',
-                              value: currentAnnotation.object.entityValue,
-                              custom: currentAnnotation.object.entityCustom || false,
-                              datatype: currentAnnotation.object.entityDatatype || null,
-                            }
-                          : null
-                      }
+                      value={getEntityValue(currentAnnotation?.object, 'object')}
                       onValueChange={(newValue) => {
                         setCurrentAnnotation((prev) => {
                           if (!prev?.object)
@@ -864,12 +869,14 @@ export default function CorpusView({ corpus, documents, document, annotations }:
                               entityLabel: newValue?.label || null,
                               entityValue: newValue?.value || null,
                               entityCustom: newValue?.custom || false,
+                              entityCustomId: newValue?.customId || null,
                               entityDatatype: newValue?.datatype || null,
                             },
                           }
                         })
                       }}
                       text={currentAnnotation?.object?.annotationValue ?? ''}
+                      corpusId={corpus.id}
                     />
                   </div>
                 </div>

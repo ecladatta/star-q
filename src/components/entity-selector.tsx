@@ -1,10 +1,12 @@
 import type { Entity, EntityDatatype, EntityType } from '@/app/corpus/[corpusId]/corpus-view'
 import type { ReactNode } from 'react'
+import { addCorpusCustomEntity, searchCorpusCustomEntities } from '@/actions/corpus/corpusActions'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { cn } from '@/lib/utils'
 import { Calendar1Icon, CalendarClockIcon, CalendarIcon, CheckIcon, ChevronsUpDownIcon, ClockIcon, FilterIcon, GlobeIcon, ToggleLeftIcon, TypeIcon } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 import WBK from 'wikibase-sdk'
 import { Button } from './ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
@@ -15,21 +17,62 @@ const wdk = WBK({
   sparqlEndpoint: 'https://query.wikidata.org/sparql',
 })
 
-async function searchEntity(type: EntityType, searchTerm: string): Promise<{ id: string, label: string, description: string }[]> {
-  const url = wdk.searchEntities({
-    search: searchTerm,
-    language: 'en',
-    limit: 5,
-    type: type === 'predicate' ? 'property' : 'item',
-  })
+async function searchEntities(type: EntityType, searchTerm: string, corpusId?: string): Promise<Entity[]> {
+  // Search both Wikidata and custom entities in parallel
+  const promises: Promise<Entity[]>[] = []
 
-  const response = await fetch(url)
-  const data = await response.json()
-  return data.search.map((result: any) => ({
-    id: result.id,
-    label: result.label,
-    description: result.description,
-  }))
+  // Wikidata search
+  const wikidataPromise = (async () => {
+    try {
+      const url = wdk.searchEntities({
+        search: searchTerm,
+        language: 'en',
+        limit: 5,
+        type: type === 'predicate' ? 'property' : 'item',
+      })
+
+      const response = await fetch(url)
+      const data = await response.json()
+      return data.search.map((result: any) => ({
+        label: result.label,
+        value: result.id,
+        custom: false,
+        customId: null,
+        datatype: null,
+        type,
+      }))
+    } catch (error) {
+      console.error('Wikidata search error:', error)
+      return []
+    }
+  })()
+
+  promises.push(wikidataPromise)
+
+  // Custom entities search
+  if (corpusId) {
+    const customPromise = (async () => {
+      try {
+        const results = await searchCorpusCustomEntities(corpusId, searchTerm, type)
+        return results.map(entity => ({
+          label: entity.label,
+          value: entity.value,
+          custom: true,
+          customId: entity.id,
+          datatype: entity.datatype,
+          type,
+        }))
+      } catch (error) {
+        console.error('Custom entities search error:', error)
+        return []
+      }
+    })()
+
+    promises.push(customPromise)
+  }
+
+  const results = await Promise.all(promises)
+  return results.flat()
 }
 
 const TYPES_ICONS: Record<EntityDatatype, ReactNode> = {
@@ -64,32 +107,53 @@ const TYPES_ICONS: Record<EntityDatatype, ReactNode> = {
   url: <GlobeIcon className="size-5" />,
 }
 
-export function EntitySelector({ type, value, onValueChange, text }: {
+export function EntitySelector({ type, value, onValueChange, text, corpusId }: {
   type: EntityType
   value: Entity | null
   onValueChange: (arg0: Entity | null) => any
   text?: string
+  corpusId?: string
 }) {
   const [open, setOpen] = useState(false)
-  const [searchEntities, setSearchEntities] = useState<Entity[]>([])
+  const [searchResults, setSearchResults] = useState<Entity[]>([])
   const [searchTerm, setSearchTerm] = useState('')
+  const [isSearching, setIsSearching] = useState(false)
 
   useEffect(() => {
     if (text && !value?.value) {
-      searchEntity(type, text).then((results) => {
-        setSearchEntities(results.map(result => ({
-          label: result.label,
-          value: result.id,
-          custom: false,
-          datatype: null,
-        })))
+      setIsSearching(true)
+      searchEntities(type, text, corpusId).then((results) => {
+        setSearchResults(results)
+        setIsSearching(false)
       })
     }
-  }, [text, type, value])
+  }, [text, type, value, corpusId])
 
   useEffect(() => {
     setSearchTerm('')
   }, [text])
+
+  const handleSearch = async (term: string) => {
+    if (!term.trim()) {
+      setSearchResults([])
+      return
+    }
+
+    setIsSearching(true)
+    try {
+      const results = await searchEntities(type, term, corpusId)
+      setSearchResults(results)
+    } catch (error) {
+      console.error('Search error:', error)
+      setSearchResults([])
+    } finally {
+      setIsSearching(false)
+    }
+  }
+
+  // Separate custom and Wikidata entities
+  const customEntities = searchResults.filter(entity => entity.custom)
+  const wikidataEntities = searchResults.filter(entity => !entity.custom)
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -101,14 +165,16 @@ export function EntitySelector({ type, value, onValueChange, text }: {
             aria-expanded={open}
             className="flex w-full items-center truncate text-left"
           >
-            <div className="flex-1 truncate">{value ? value.label : <span className="text-muted-foreground">Search entity...</span>}</div>
+            <div className="flex-1 truncate">
+              {value ? value.label : <span className="text-muted-foreground">Search entity...</span>}
+            </div>
             <ChevronsUpDownIcon className="ml-2 size-4 shrink-0 opacity-50" />
           </Button>
           {value?.custom && (
             <Select
               value={value.datatype || undefined}
-              onValueChange={(type: EntityDatatype) => {
-                onValueChange({ ...value, datatype: type })
+              onValueChange={(datatype: EntityDatatype) => {
+                onValueChange({ ...value, datatype })
               }}
             >
               <SelectTrigger className="w-auto px-2 [&>svg]:hidden">
@@ -132,34 +198,21 @@ export function EntitySelector({ type, value, onValueChange, text }: {
         </div>
       </PopoverTrigger>
       <PopoverContent className="p-0">
-        <Command
-          onChange={async (e: React.ChangeEvent<HTMLInputElement>) => {
-            const searchTerm = e.target.value
-            if (!searchTerm) {
-              setSearchEntities([])
-              return
-            }
-            setSearchTerm(searchTerm)
-            const results = await searchEntity(type, searchTerm)
-            setSearchEntities(results.map(result => ({
-              label: result.label,
-              value: result.id,
-              custom: false,
-              datatype: null,
-            })))
-          }}
-          shouldFilter={false}
-        >
+        <Command shouldFilter={false}>
           <CommandInput
             placeholder="Search entity..."
             className="flex-1"
-            value={searchTerm}
-            onValueChange={value => setSearchTerm(value)}
+            onValueChange={(value) => {
+              setSearchTerm(value)
+              handleSearch(value)
+            }}
           />
-          <CommandList>
+          <CommandList className={isSearching ? 'opacity-50' : ''}>
             <CommandEmpty>No entities found.</CommandEmpty>
-            <CommandGroup>
-              {value && !searchEntities.some(entity => entity.value === value.value) && (
+
+            {/* Current value if not in search results */}
+            {value && !searchResults.some(entity => entity.value === value.value) && (
+              <CommandGroup heading="Current Selection">
                 <CommandItem
                   key={value.value}
                   value={value.value}
@@ -169,67 +222,134 @@ export function EntitySelector({ type, value, onValueChange, text }: {
                   }}
                   className="flex rounded-none border-b"
                 >
-                  <CheckIcon
-                    className={cn(
-                      'size-4',
-                      value?.value === value.value ? '' : 'hidden',
-                    )}
-                  />
+                  <CheckIcon className="size-4" />
                   <span>{value.label}</span>
                   <span className="text-xs text-muted-foreground">
                     (
                     {value.value}
                     )
                   </span>
-                  {value.value && !value.custom && (
-                    <Link href={`https://www.wikidata.org/wiki/${value.value?.startsWith('P') ? 'Property:' : ''}${value.value}`} target="_blank" rel="noopener noreferrer" className="ml-auto text-xs text-blue-500 underline" onClick={e => e.stopPropagation()}>
-                      View
-                    </Link>
-                  )}
-                </CommandItem>
-              )}
-              {searchEntities.map(entity => (
-                <CommandItem
-                  key={entity.value}
-                  value={entity.value}
-                  onSelect={() => {
-                    onValueChange(entity)
-                    setOpen(false)
-                  }}
-                  className="flex"
-                >
-                  <CheckIcon
-                    className={cn(
-                      'size-4',
-                      value?.value === entity.value ? '' : 'hidden',
-                    )}
-                  />
-                  <span>{entity.label}</span>
-                  <span className="text-xs text-muted-foreground">
-                    (
-                    {entity.value}
-                    )
-                  </span>
-                  {entity.custom
+                  {value.custom
                     ? (
-                        <span className="ml-auto text-xs text-muted-foreground">Custom</span>
+                        <span className="ml-auto text-xs text-purple-600">Corpus</span>
                       )
                     : (
-                        <Link href={`https://www.wikidata.org/wiki/${entity.value.startsWith('P') ? 'Property:' : ''}${entity.value}`} target="_blank" rel="noopener noreferrer" className="ml-auto text-xs text-blue-500 underline" onClick={e => e.stopPropagation()}>
+                        <Link
+                          href={`https://www.wikidata.org/wiki/${value.value?.startsWith('P') ? 'Property:' : ''}${value.value}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="ml-auto text-xs text-blue-500 underline"
+                          onClick={e => e.stopPropagation()}
+                        >
                           View
                         </Link>
                       )}
                 </CommandItem>
-              ))}
-              {searchTerm && !searchEntities.some(entity => entity.value === searchTerm) && (
+              </CommandGroup>
+            )}
+
+            {/* Custom entities */}
+            {customEntities.length > 0 && (
+              <CommandGroup heading="Corpus Custom Entities">
+                {customEntities.map(entity => (
+                  <CommandItem
+                    key={entity.value}
+                    value={entity.value}
+                    onSelect={() => {
+                      onValueChange(entity)
+                      setOpen(false)
+                    }}
+                    className="flex"
+                  >
+                    <CheckIcon
+                      className={cn(
+                        'size-4',
+                        value?.value === entity.value ? '' : 'hidden',
+                      )}
+                    />
+                    <span>{entity.label}</span>
+                    <span className="text-xs text-muted-foreground">
+                      (
+                      {entity.value}
+                      )
+                    </span>
+                    <span className="ml-auto text-xs text-purple-600">Corpus</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+
+            {/* Wikidata entities */}
+            {wikidataEntities.length > 0 && (
+              <CommandGroup heading={customEntities.length > 0 ? 'Wikidata Entities' : undefined}>
+                {wikidataEntities.map(entity => (
+                  <CommandItem
+                    key={entity.value}
+                    value={entity.value}
+                    onSelect={() => {
+                      onValueChange(entity)
+                      setOpen(false)
+                    }}
+                    className="flex"
+                  >
+                    <CheckIcon
+                      className={cn(
+                        'size-4',
+                        value?.value === entity.value ? '' : 'hidden',
+                      )}
+                    />
+                    <span>{entity.label}</span>
+                    <span className="text-xs text-muted-foreground">
+                      (
+                      {entity.value}
+                      )
+                    </span>
+                    <Link
+                      href={`https://www.wikidata.org/wiki/${entity.value.startsWith('P') ? 'Property:' : ''}${entity.value}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="ml-auto text-xs text-blue-500 underline"
+                      onClick={e => e.stopPropagation()}
+                    >
+                      View
+                    </Link>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+
+            {/* Create new custom entity option */}
+            {searchTerm && !searchResults.some(entity => entity.value === searchTerm) && corpusId && (
+              <CommandGroup>
                 <CommandItem
                   key="create-new"
                   value="create-new"
-                  onSelect={() => {
-                    if (!searchEntities.some(entity => entity.value === searchTerm)) {
-                      const newEntity = { label: searchTerm, value: searchTerm, custom: true, datatype: 'string' as EntityDatatype }
+                  onSelect={async () => {
+                    try {
+                      // Create the entity in the database
+                      const customId = await addCorpusCustomEntity(
+                        corpusId,
+                        searchTerm,
+                        searchTerm,
+                        'string', // Default datatype
+                        type,
+                      )
+
+                      const newEntity: Entity = {
+                        label: searchTerm,
+                        value: searchTerm,
+                        custom: true,
+                        customId,
+                        datatype: 'string',
+                        type,
+                      }
+
                       onValueChange(newEntity)
-                      setSearchEntities([...searchEntities, newEntity])
+                      toast.success('Custom entity created!')
+                    } catch (error) {
+                      console.error('Failed to create custom entity:', error)
+                      toast.error('Failed to create custom entity. Please try again.')
+                      return
                     }
                     setOpen(false)
                   }}
@@ -241,8 +361,8 @@ export function EntitySelector({ type, value, onValueChange, text }: {
                     "
                   </span>
                 </CommandItem>
-              )}
-            </CommandGroup>
+              </CommandGroup>
+            )}
           </CommandList>
         </Command>
       </PopoverContent>

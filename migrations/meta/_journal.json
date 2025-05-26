@@ -50,6 +50,27 @@
       "when": 1743518673003,
       "tag": "0006_sleepy_nocturne",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1748266906565,
+      "tag": "0007_gifted_luke_cage",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1748268161444,
+      "tag": "0008_fair_siren",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1748274578700,
+      "tag": "0009_strong_starfox",
+      "breakpoints": true
     }
   ]
 }

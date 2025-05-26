@@ -1,0 +1,2 @@
+ALTER TABLE "annotation_component" ADD COLUMN "entity_custom_id" uuid;--> statement-breakpoint
+ALTER TABLE "annotation_component" ADD CONSTRAINT "annotation_component_entity_custom_id_corpus_custom_entity_id_fk" FOREIGN KEY ("entity_custom_id") REFERENCES "public"."corpus_custom_entity"("id") ON DELETE set null ON UPDATE no action;

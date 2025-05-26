@@ -25,9 +25,18 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       title: document.title,
       annotations: docAnnotations.map(annotation => ({
         id: annotation.id,
-        subject: annotation.subject,
-        predicate: annotation.predicate,
-        object: annotation.object,
+        subject: {
+          ...annotation.subject,
+          // entityLabel and entityValue are already populated with current custom entity data from getAnnotations
+        },
+        predicate: {
+          ...annotation.predicate,
+          // entityLabel and entityValue are already populated with current custom entity data from getAnnotations
+        },
+        object: {
+          ...annotation.object,
+          // entityLabel and entityValue are already populated with current custom entity data from getAnnotations
+        },
       })),
     })
   }

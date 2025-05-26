@@ -388,6 +388,7 @@ function createAnnotationComponent(
     annotationCell: cell,
     annotationRow: row,
     entityCustom: true,
+    entityCustomId: null, // Will be set when saved to database
     entityDatatype: 'string', // Default, might need adjustment based on actual entity types
     entityLabel: value,
     entityValue: value,
@@ -672,21 +673,27 @@ async function createAnnotationsInDb(
           label: anno.subject.entityLabel || '',
           value: anno.subject.entityValue || '',
           custom: !!anno.subject.entityCustom,
+          customId: anno.subject.entityCustomId || null,
           datatype: anno.subject.entityDatatype || 'string',
+          type: 'subject',
         },
         anno.predicate,
         {
           label: anno.predicate.entityLabel || '',
           value: anno.predicate.entityValue || '',
           custom: !!anno.predicate.entityCustom,
+          customId: anno.predicate.entityCustomId || null,
           datatype: anno.predicate.entityDatatype || 'string',
+          type: 'predicate',
         },
         anno.object,
         {
           label: anno.object.entityLabel || '',
           value: anno.object.entityValue || '',
           custom: !!anno.object.entityCustom,
+          customId: anno.object.entityCustomId || null,
           datatype: anno.object.entityDatatype || 'string',
+          type: 'object',
         },
       )
     } catch (error) {
