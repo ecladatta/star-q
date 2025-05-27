@@ -1,7 +1,7 @@
 import type { Entity, EntityDatatype, EntityType } from '@/app/corpus/[corpusId]/corpus-view'
 import type { ReactNode } from 'react'
 import { addCorpusCustomEntity, searchCorpusCustomEntities } from '@/actions/corpus/corpusActions'
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from '@/components/ui/command'
 import { cn } from '@/lib/utils'
 import { Calendar1Icon, CalendarClockIcon, CalendarIcon, CheckIcon, ChevronsUpDownIcon, ClockIcon, FilterIcon, GlobeIcon, ToggleLeftIcon, TypeIcon } from 'lucide-react'
 import Link from 'next/link'
@@ -212,7 +212,7 @@ export function EntitySelector({ type, value, onValueChange, text, corpusId }: {
 
             {/* Current value if not in search results */}
             {value && !searchResults.some(entity => entity.value === value.value) && (
-              <CommandGroup heading="Current Selection">
+              <CommandGroup>
                 <CommandItem
                   key={value.value}
                   value={value.value}
@@ -224,7 +224,7 @@ export function EntitySelector({ type, value, onValueChange, text, corpusId }: {
                 >
                   <CheckIcon className="size-4" />
                   <span>{value.label}</span>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="truncate text-xs text-muted-foreground" title={value.value}>
                     (
                     {value.value}
                     )
@@ -250,7 +250,7 @@ export function EntitySelector({ type, value, onValueChange, text, corpusId }: {
 
             {/* Custom entities */}
             {customEntities.length > 0 && (
-              <CommandGroup heading="Corpus Custom Entities">
+              <CommandGroup heading="Corpus entities">
                 {customEntities.map(entity => (
                   <CommandItem
                     key={entity.value}
@@ -281,7 +281,7 @@ export function EntitySelector({ type, value, onValueChange, text, corpusId }: {
 
             {/* Wikidata entities */}
             {wikidataEntities.length > 0 && (
-              <CommandGroup heading={customEntities.length > 0 ? 'Wikidata Entities' : undefined}>
+              <CommandGroup heading="Wikidata Entities">
                 {wikidataEntities.map(entity => (
                   <CommandItem
                     key={entity.value}
@@ -320,48 +320,52 @@ export function EntitySelector({ type, value, onValueChange, text, corpusId }: {
 
             {/* Create new custom entity option */}
             {searchTerm && !searchResults.some(entity => entity.value === searchTerm) && corpusId && (
-              <CommandGroup>
-                <CommandItem
-                  key="create-new"
-                  value="create-new"
-                  onSelect={async () => {
-                    try {
+              <>
+                <CommandSeparator />
+                <CommandGroup>
+                  <CommandItem
+                    key="create-new"
+                    value="create-new"
+                    onSelect={async () => {
+                      try {
                       // Create the entity in the database
-                      const customId = await addCorpusCustomEntity(
-                        corpusId,
-                        searchTerm,
-                        searchTerm,
-                        'string', // Default datatype
-                        type,
-                      )
+                        const customType: 'entity' | 'relation' = type === 'predicate' ? 'relation' : 'entity'
+                        const customId = await addCorpusCustomEntity(
+                          corpusId,
+                          searchTerm,
+                          searchTerm,
+                          'string', // Default datatype
+                          customType,
+                        )
 
-                      const newEntity: Entity = {
-                        label: searchTerm,
-                        value: searchTerm,
-                        custom: true,
-                        customId,
-                        datatype: 'string',
-                        type,
+                        const newEntity: Entity = {
+                          label: searchTerm,
+                          value: searchTerm,
+                          custom: true,
+                          customId,
+                          datatype: 'string',
+                          type,
+                        }
+
+                        onValueChange(newEntity)
+                        toast.success('Custom entity created!')
+                      } catch (error) {
+                        console.error('Failed to create custom entity:', error)
+                        toast.error('Failed to create custom entity. Please try again.')
+                        return
                       }
-
-                      onValueChange(newEntity)
-                      toast.success('Custom entity created!')
-                    } catch (error) {
-                      console.error('Failed to create custom entity:', error)
-                      toast.error('Failed to create custom entity. Please try again.')
-                      return
-                    }
-                    setOpen(false)
-                  }}
-                  className="flex"
-                >
-                  <span>
-                    Create "
-                    {searchTerm}
-                    "
-                  </span>
-                </CommandItem>
-              </CommandGroup>
+                      setOpen(false)
+                    }}
+                    className="flex"
+                  >
+                    <span>
+                      Create "
+                      {searchTerm}
+                      "
+                    </span>
+                  </CommandItem>
+                </CommandGroup>
+              </>
             )}
           </CommandList>
         </Command>

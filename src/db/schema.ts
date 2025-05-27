@@ -102,7 +102,7 @@ export const corpusCustomEntity = pgTable('corpus_custom_entity', {
   label: text('label').notNull(),
   value: text('value').notNull(),
   datatype: text('datatype').$type<EntityDatatype>().notNull().default('string'),
-  entityType: text('entity_type').$type<'subject' | 'predicate' | 'object'>().notNull(),
+  customType: text('custom_type').$type<'entity' | 'relation'>().notNull(),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 })

@@ -1,0 +1,1 @@
+ALTER TABLE "corpus_custom_entity" RENAME COLUMN "entity_type" TO "custom_type";

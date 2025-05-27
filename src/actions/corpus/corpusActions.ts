@@ -88,7 +88,7 @@ export async function duplicateCorpus(id: string, newTitle?: string) {
           label: entity.label,
           value: entity.value,
           datatype: entity.datatype,
-          entityType: entity.entityType,
+          customType: entity.customType,
         })),
       )
       .returning()
@@ -211,7 +211,7 @@ export async function getCorpusCustomEntities(corpusId: string) {
   return db.select().from(corpusCustomEntity).where(eq(corpusCustomEntity.corpusId, corpusId))
 }
 
-export async function addCorpusCustomEntity(corpusId: string, label: string, value: string, datatype: string, entityType: 'subject' | 'predicate' | 'object') {
+export async function addCorpusCustomEntity(corpusId: string, label: string, value: string, datatype: string, customType: 'entity' | 'relation') {
   const session = await auth()
   const userId = session?.user?.id
   if (!userId) {
@@ -223,7 +223,7 @@ export async function addCorpusCustomEntity(corpusId: string, label: string, val
     label,
     value,
     datatype: datatype as any,
-    entityType,
+    customType,
   }).returning({ id: corpusCustomEntity.id })
   revalidatePath(`/corpus/${corpusId}`)
   return result.id
@@ -236,6 +236,9 @@ export async function findOrCreateCorpusCustomEntity(corpusId: string, label: st
     throw new Error('User not authenticated')
   }
 
+  // Map entityType to customType
+  const customType: 'entity' | 'relation' = entityType === 'predicate' ? 'relation' : 'entity'
+
   // First try to find existing entity with same value and type
   const [existing] = await db.select()
     .from(corpusCustomEntity)
@@ -243,7 +246,7 @@ export async function findOrCreateCorpusCustomEntity(corpusId: string, label: st
       and(
         eq(corpusCustomEntity.corpusId, corpusId),
         eq(corpusCustomEntity.value, value),
-        eq(corpusCustomEntity.entityType, entityType),
+        eq(corpusCustomEntity.customType, customType),
       ),
     )
     .limit(1)
@@ -258,14 +261,14 @@ export async function findOrCreateCorpusCustomEntity(corpusId: string, label: st
     label,
     value,
     datatype: datatype as any,
-    entityType,
+    customType,
   }).returning({ id: corpusCustomEntity.id })
 
   revalidatePath(`/corpus/${corpusId}`)
   return result.id
 }
 
-export async function updateCorpusCustomEntity(id: string, label: string, value: string, datatype: string, entityType: 'subject' | 'predicate' | 'object') {
+export async function updateCorpusCustomEntity(id: string, label: string, value: string, datatype: string, customType: 'entity' | 'relation') {
   const session = await auth()
   const userId = session?.user?.id
   if (!userId) {
@@ -276,7 +279,7 @@ export async function updateCorpusCustomEntity(id: string, label: string, value:
     label,
     value,
     datatype: datatype as any,
-    entityType,
+    customType,
     updatedAt: new Date(),
   }).where(eq(corpusCustomEntity.id, id))
   revalidatePath(`/corpus/*`)
@@ -310,6 +313,9 @@ export async function searchCorpusCustomEntities(corpusId: string, searchTerm: s
     throw new Error('User not authenticated')
   }
 
+  // Map entityType to customType
+  const customType: 'entity' | 'relation' = entityType === 'predicate' ? 'relation' : 'entity'
+
   const searchPattern = `%${searchTerm}%`
 
   return db.select()
@@ -317,7 +323,7 @@ export async function searchCorpusCustomEntities(corpusId: string, searchTerm: s
     .where(
       and(
         eq(corpusCustomEntity.corpusId, corpusId),
-        eq(corpusCustomEntity.entityType, entityType),
+        eq(corpusCustomEntity.customType, customType),
         sql`(${corpusCustomEntity.label} ILIKE ${searchPattern} OR ${corpusCustomEntity.value} ILIKE ${searchPattern})`,
       ),
     )

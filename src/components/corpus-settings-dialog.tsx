@@ -1,6 +1,6 @@
 'use client'
 
-import type { EntityDatatype, EntityType } from '@/app/corpus/[corpusId]/corpus-view'
+import type { EntityDatatype } from '@/app/corpus/[corpusId]/corpus-view'
 import type { Corpus, CorpusCustomEntity } from '@/db/schema'
 import { addCorpusCustomEntity, deleteCorpusCustomEntity, getCorpusCustomEntities, renameCorpus, updateCorpusCustomEntity } from '@/actions/corpus/corpusActions'
 import { Button } from '@/components/ui/button'
@@ -9,9 +9,10 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { EditIcon, Loader2Icon, PlusIcon, SearchIcon, Trash2Icon } from 'lucide-react'
+import { EditIcon, FilterIcon, Loader2Icon, PlusIcon, SearchIcon, Trash2Icon } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu'
 
 const ENTITY_DATATYPES: EntityDatatype[] = ['string', 'integer', 'decimal', 'boolean', 'date', 'time', 'datetime', 'year', 'month', 'day', 'url']
 
@@ -29,11 +30,12 @@ export function CorpusSettingsDialog({ open, onOpenChange, corpus, onCorpusRenam
   const [isSaving, setIsSaving] = useState(false)
   const [editingEntity, setEditingEntity] = useState<CorpusCustomEntity | null>(null)
   const [filterKeyword, setFilterKeyword] = useState('')
+  const [filterType, setFilterType] = useState<'entity' | 'relation' | undefined>(undefined)
   const [newEntity, setNewEntity] = useState({
     label: '',
     value: '',
     datatype: 'string' as EntityDatatype,
-    entityType: 'subject' as EntityType,
+    customType: 'entity' as 'entity' | 'relation',
   })
 
   const loadCustomEntities = useCallback(async () => {
@@ -85,13 +87,13 @@ export function CorpusSettingsDialog({ open, onOpenChange, corpus, onCorpusRenam
         newEntity.label,
         newEntity.value,
         newEntity.datatype,
-        newEntity.entityType,
+        newEntity.customType,
       )
       setNewEntity({
         label: '',
         value: '',
         datatype: 'string',
-        entityType: 'subject',
+        customType: 'entity',
       })
       await loadCustomEntities()
       toast.success('Custom entity added successfully')
@@ -111,7 +113,7 @@ export function CorpusSettingsDialog({ open, onOpenChange, corpus, onCorpusRenam
         editingEntity.label,
         editingEntity.value,
         editingEntity.datatype,
-        editingEntity.entityType,
+        editingEntity.customType,
       )
       setEditingEntity(null)
       await loadCustomEntities()
@@ -133,16 +135,17 @@ export function CorpusSettingsDialog({ open, onOpenChange, corpus, onCorpusRenam
 
   // Filter entities based on the search keyword
   const filteredEntities = customEntities.filter((entity) => {
-    if (!filterKeyword.trim())
-      return true
-
     const searchTerm = filterKeyword.toLowerCase()
-    return (
-      entity.label.toLowerCase().includes(searchTerm)
-      || entity.value.toLowerCase().includes(searchTerm)
-      || entity.datatype.toLowerCase().includes(searchTerm)
-      || entity.entityType.toLowerCase().includes(searchTerm)
-    )
+    if (!searchTerm.trim() && !filterType) {
+      return true // No filter applied, show all entities
+    }
+    // Check if the entity matches the search term or filter type
+    if (!entity.label || !entity.value) {
+      return false // Skip entities without label or value
+    }
+    const matchesKeyword = entity.label.toLowerCase().includes(searchTerm) || entity.value.toLowerCase().includes(searchTerm)
+    const matchesType = !filterType || entity.customType === filterType
+    return matchesKeyword && matchesType
   })
 
   return (
@@ -214,16 +217,15 @@ export function CorpusSettingsDialog({ open, onOpenChange, corpus, onCorpusRenam
                   </SelectContent>
                 </Select>
                 <Select
-                  value={newEntity.entityType}
-                  onValueChange={(value: EntityType) => setNewEntity(prev => ({ ...prev, entityType: value }))}
+                  value={newEntity.customType}
+                  onValueChange={(value: 'entity' | 'relation') => setNewEntity(prev => ({ ...prev, customType: value }))}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="subject">Subject</SelectItem>
-                    <SelectItem value="predicate">Predicate</SelectItem>
-                    <SelectItem value="object">Object</SelectItem>
+                    <SelectItem value="entity">Entity</SelectItem>
+                    <SelectItem value="relation">Relation</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -236,14 +238,31 @@ export function CorpusSettingsDialog({ open, onOpenChange, corpus, onCorpusRenam
             <div className="flex flex-1 flex-col overflow-hidden">
               <div className="mb-2 flex items-center justify-between">
                 <h3 className="text-lg font-medium">Existing Custom Entities</h3>
-                <div className="relative">
-                  <SearchIcon className="absolute left-2 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    placeholder="Filter entities..."
-                    value={filterKeyword}
-                    onChange={e => setFilterKeyword(e.target.value)}
-                    className="w-64 pl-8"
-                  />
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* Filter by type (Entity/Relation) dropdown */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <FilterIcon />
+                        {filterType ? filterType.charAt(0).toUpperCase() + filterType.slice(1) : 'All'}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuItem onClick={() => setFilterType('entity')}>Entity</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setFilterType('relation')}>Relation</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setFilterType(undefined)}>All</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  {/* Search bar for filtering entities */}
+                  <div className="relative">
+                    <SearchIcon className="absolute left-2 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      placeholder="Filter entities..."
+                      value={filterKeyword}
+                      onChange={e => setFilterKeyword(e.target.value)}
+                      className="w-64 pl-8"
+                    />
+                  </div>
                 </div>
               </div>
               {isLoading
@@ -306,21 +325,20 @@ export function CorpusSettingsDialog({ open, onOpenChange, corpus, onCorpusRenam
                                       {editingEntity?.id === entity.id
                                         ? (
                                             <Select
-                                              value={editingEntity.entityType}
-                                              onValueChange={(value: EntityType) => setEditingEntity(prev => prev ? { ...prev, entityType: value } : null)}
+                                              value={editingEntity.customType}
+                                              onValueChange={(value: 'entity' | 'relation') => setEditingEntity(prev => prev ? { ...prev, customType: value } : null)}
                                             >
                                               <SelectTrigger>
                                                 <SelectValue />
                                               </SelectTrigger>
                                               <SelectContent>
-                                                <SelectItem value="subject">Subject</SelectItem>
-                                                <SelectItem value="predicate">Predicate</SelectItem>
-                                                <SelectItem value="object">Object</SelectItem>
+                                                <SelectItem value="entity">Entity</SelectItem>
+                                                <SelectItem value="relation">Relation</SelectItem>
                                               </SelectContent>
                                             </Select>
                                           )
                                         : (
-                                            entity.entityType.charAt(0).toUpperCase() + entity.entityType.slice(1)
+                                            entity.customType.charAt(0).toUpperCase() + entity.customType.slice(1)
                                           )}
                                     </TableCell>
                                     <TableCell>

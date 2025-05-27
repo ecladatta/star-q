@@ -71,6 +71,13 @@
       "when": 1748274578700,
       "tag": "0009_strong_starfox",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1748355127217,
+      "tag": "0010_shallow_prodigy",
+      "breakpoints": true
     }
   ]
 }
