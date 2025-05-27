@@ -12,7 +12,7 @@ import { v4 as uuidv4 } from 'uuid'
 
 const FILENAMES = {
   PARAGRAPHS_CSV: 'Annotation_paragraphes.csv',
-  TABLES_CSV: 'Annotation_tables_joint.csv',
+  TABLES_CSV: 'Annotation_tables.csv',
   TABLES_ARCHIVE: 'Tables.tar.gz',
 }
 
