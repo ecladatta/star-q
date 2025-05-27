@@ -523,49 +523,48 @@ export default function CorpusView({ corpus, documents, document, annotations }:
   return (
     <div className="flex">
       {documentData && (
-        <aside className="fixed hidden h-screen w-[280px] flex-col bg-gray-100 lg:flex">
-          <div className="mt-6 flex justify-center gap-4  px-8">
-            <Link href="/">
-              <Button variant="outline" className="px-6 py-2">Home</Button>
-            </Link>
-            <Link href={`/corpus/${corpus.id}`}>
-              <Button variant="outline" className="px-6 py-2">Back to Corpus</Button>
-            </Link>
+        <aside className="fixed left-0 top-0 hidden h-screen w-[280px] bg-gray-100 pt-16 md:block">
+          <div className="flex h-full flex-col">
+            <div className="mt-6 px-8">
+              <Link href={`/corpus/${corpus.id}`} passHref>
+                <Button variant="outline" className="w-full px-6 py-2">Back to Corpus</Button>
+              </Link>
+            </div>
+            <h2 className="my-4 px-8 text-xl font-bold">
+              {documents.length}
+              {' '}
+              document
+              {documents.length === 1 ? '' : 's'}
+            </h2>
+            <ScrollArea>
+              <ul className="px-8">
+                {documents.map((doc, i) => (
+                  <li
+                    key={doc.id}
+                    className={cn('mb-3', doc.id === document?.id && 'font-semibold text-blue-500')}
+                  >
+                    <Link href={`/document/${doc.id}`} className="flex flex-col gap-0">
+                      <span
+                        className="max-w-[220px] truncate break-all"
+                        title={doc.title}
+                      >
+                        {i + 1}
+                        .
+                        {' '}
+                        {doc.title}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {doc.annotationsCount}
+                        {' '}
+                        annotation
+                        {doc.annotationsCount === 1 ? '' : 's'}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </ScrollArea>
           </div>
-          <h2 className="mb-4 mt-8 px-8 text-xl font-bold">
-            {documents.length}
-            {' '}
-            document
-            {documents.length === 1 ? '' : 's'}
-          </h2>
-          <ScrollArea>
-            <ul>
-              {documents.map((doc, i) => (
-                <li
-                  key={doc.id}
-                  className={cn('mb-3 px-8', doc.id === document?.id && 'font-semibold text-blue-500')}
-                >
-                  <Link href={`/document/${doc.id}`} className="flex flex-col gap-0">
-                    <span
-                      className="max-w-[220px] truncate break-all"
-                      title={doc.title}
-                    >
-                      {i + 1}
-                      .
-                      {' '}
-                      {doc.title}
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      {doc.annotationsCount}
-                      {' '}
-                      annotation
-                      {doc.annotationsCount === 1 ? '' : 's'}
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </ScrollArea>
         </aside>
       )}
       <main className={cn('ml-0 min-w-0 flex-1 lg:ml-[280px]', documentAnnotations.length > 0 && 'md:mr-[280px]')}>
@@ -948,59 +947,59 @@ export default function CorpusView({ corpus, documents, document, annotations }:
         </div>
       </main>
       {documentAnnotations.length > 0 && (
-        <aside className="fixed right-0 hidden h-full w-[280px] bg-gray-100 md:block">
-          <div className="flex h-full flex-col p-6">
-            <h2 className="mb-4 text-xl font-bold">Annotations</h2>
-            <div className="mb-4 flex items-center gap-1">
-              <Checkbox
-                id="show-annotations"
-                checked={showAnnotations}
-                onCheckedChange={checked => setShowAnnotations(checked === true)}
-              />
-              <label
-                htmlFor="show-annotations"
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >
-                Highlight annotations in doc
-              </label>
+        <aside className="fixed right-0 top-0 hidden h-screen w-[280px] bg-gray-100 pt-16 md:block">
+          <div className="flex h-full flex-col">
+            <div className="px-6">
+              <h2 className="mb-2 mt-6 shrink-0 text-xl font-bold">Annotations</h2>
+              <div className="mb-4 flex shrink-0 items-center gap-1">
+                <Checkbox
+                  id="show-annotations"
+                  checked={showAnnotations}
+                  onCheckedChange={checked => setShowAnnotations(checked === true)}
+                />
+                <label
+                  htmlFor="show-annotations"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Highlight annotations in doc
+                </label>
+              </div>
             </div>
-            <ScrollArea>
-              <ul className="space-y-3 pb-4">
-                {documentAnnotations.map(ann => (
-                  <li key={ann.id} className="mb-3">
-                    <button
-                      type="button"
-                      className="w-full rounded-md bg-white p-2 text-left shadow hover:bg-gray-50"
-                      onClick={
-                        () => {
+            <div className="min-h-0 flex-1 overflow-hidden">
+              <ScrollArea className="size-full">
+                <ul className="space-y-3 px-6 pb-4">
+                  {documentAnnotations.map(ann => (
+                    <li key={ann.id} className="mb-3">
+                      <button
+                        type="button"
+                        className="w-full rounded-md bg-white p-2 text-left shadow hover:bg-gray-50"
+                        onClick={() => {
                           if (ann.id === currentAnnotation?.id) {
                             setCurrentAnnotation(null)
                             return
                           }
-
                           setCurrentAnnotation(ann)
-
                           const element = window.document.getElementById(`element-${ann.subject.elementIndex}`)
                           if (element) {
                             element.scrollIntoView({ behavior: 'smooth', block: 'center' })
                           }
-                        }
-                      }
-                    >
-                      <span className="font-semibold text-orange-500">{ann.subject.annotationValue}</span>
-                      {' '}
-                      &rarr;
-                      {' '}
-                      <span className="font-semibold text-blue-500">{ann.predicate.annotationValue}</span>
-                      {' '}
-                      &rarr;
-                      {' '}
-                      <span className="font-semibold text-green-500">{ann.object.annotationValue}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </ScrollArea>
+                        }}
+                      >
+                        <span className="font-semibold text-orange-500">{ann.subject.annotationValue}</span>
+                        {' '}
+                        &rarr;
+                        {' '}
+                        <span className="font-semibold text-blue-500">{ann.predicate.annotationValue}</span>
+                        {' '}
+                        &rarr;
+                        {' '}
+                        <span className="font-semibold text-green-500">{ann.object.annotationValue}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </ScrollArea>
+            </div>
           </div>
         </aside>
       )}
