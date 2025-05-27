@@ -155,7 +155,7 @@ export function Corpuses({ corpuses }: CorpusesProps) {
     <main className="ml-0 min-w-0">
       <div className="container mx-auto p-12">
         <div className="flex flex-col">
-          <h2 className="mb-4 text-2xl font-semibold">Corpus Management</h2>
+          <h1 className="mb-4 text-3xl font-bold">Corpus Management</h1>
           <div className="mb-4">
             <form
               className="flex space-x-4"
