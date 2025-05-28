@@ -267,6 +267,21 @@ export default function CorpusView({ corpus, documents, document, annotations }:
       value = (documentElements[currentElementIndex].value)[tableSelection.rowIndex][tableSelection.cellIndex]
     }
 
+    // Extract the selected text and trim whitespace
+    const selectedText = value.slice(selectedOffset.start, selectedOffset.end)
+    const trimmedText = selectedText.trim()
+
+    if (!trimmedText) {
+      toast.error('Please select some text to annotate.')
+      return
+    }
+
+    // Calculate the actual start and end positions after trimming
+    const leadingWhitespace = selectedText.length - selectedText.trimStart().length
+    const trailingWhitespace = selectedText.length - selectedText.trimEnd().length
+    const actualStart = selectedOffset.start + leadingWhitespace
+    const actualEnd = selectedOffset.end - trailingWhitespace
+
     const newComponent: AnnotationComponent = {
       id: uuidv4(),
       entityLabel: null,
@@ -274,11 +289,11 @@ export default function CorpusView({ corpus, documents, document, annotations }:
       entityCustomId: null,
       entityCustom: null,
       entityDatatype: null,
-      annotationStart: selectedOffset.start,
-      annotationEnd: selectedOffset.end,
+      annotationStart: actualStart,
+      annotationEnd: actualEnd,
       annotationRow: tableSelection?.rowIndex ?? null,
       annotationCell: tableSelection?.cellIndex ?? null,
-      annotationValue: value.slice(selectedOffset.start, selectedOffset.end),
+      annotationValue: trimmedText,
       annotationType: currentElementType,
       annotationTag: type,
       elementIndex: currentElementIndex,
