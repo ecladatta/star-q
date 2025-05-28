@@ -190,34 +190,82 @@ export default function CorpusView({ corpus, documents, document, annotations }:
     setTableSelection({ rowIndex, cellIndex })
 
     const selection = window.getSelection()
-
-    if (!selection || selectionIsEmpty(selection))
+    if (!selection)
       return
 
-    const anchorParent = selection.anchorNode?.parentElement
-    const focusParent = selection.focusNode?.parentElement
+    // Check if there's an active text selection within the cell
+    if (!selectionIsEmpty(selection) && selection.rangeCount > 0) {
+      // User has selected specific text within the cell - use that selection
+      const range = selection.getRangeAt(0)
 
-    if (anchorParent !== focusParent)
-      return // Prevent selecting over multiple parents
+      // Find the closest elements with data-start attributes
+      const startContainer = range.startContainer.nodeType === Node.TEXT_NODE
+        ? range.startContainer.parentElement
+        : range.startContainer as Element
+      const endContainer = range.endContainer.nodeType === Node.TEXT_NODE
+        ? range.endContainer.parentElement
+        : range.endContainer as Element
 
-    let start = Number.parseInt(anchorParent?.getAttribute('data-start') || '0', 10) + selection.anchorOffset
-    let end = Number.parseInt(focusParent?.getAttribute('data-start') || '0', 10) + selection.focusOffset
+      const startElement = startContainer?.closest('[data-start]')
+      const endElement = endContainer?.closest('[data-start]')
 
-    if (selectionIsBackwards(selection)) {
-      [start, end] = [end, start]
+      if (startElement && endElement) {
+        // Calculate relative offsets within the cell
+        let start = Number.parseInt(startElement.getAttribute('data-start') || '0', 10) + range.startOffset
+        let end = Number.parseInt(endElement.getAttribute('data-start') || '0', 10) + range.endOffset
+
+        if (selectionIsBackwards(selection)) {
+          [start, end] = [end, start]
+        }
+
+        setSelectedOffset({ start, end })
+
+        // Show popup at the selection
+        const rect = range.getBoundingClientRect()
+        setPopoverState(prev => ({
+          ...prev,
+          top: rect.top + window.scrollY - 80,
+          left: rect.left + window.scrollX,
+          annotation: null,
+          visible: true,
+        }))
+        return
+      }
     }
 
-    setSelectedOffset({ start, end })
+    // No text selection - select the entire cell content
+    const tableData = documentElements[index]?.value as string[][]
+    if (tableData && tableData[rowIndex] && tableData[rowIndex][cellIndex]) {
+      const cellContent = tableData[rowIndex][cellIndex]
+      setSelectedOffset({ start: 0, end: cellContent.length })
 
-    const range = selection.getRangeAt(0)
-    const rect = range.getBoundingClientRect()
-    setPopoverState(prev => ({
-      ...prev,
-      top: rect.top + window.scrollY - 80,
-      left: rect.left + window.scrollX,
-      annotation: null,
-      visible: true,
-    }))
+      // Clear any existing selection to avoid confusion
+      selection.removeAllRanges()
+
+      // Show selection popup at the cell location
+      setTimeout(() => {
+        const cellElement = window.document.querySelector(`[data-cell="${rowIndex}-${cellIndex}"]`)
+        if (cellElement) {
+          const rect = cellElement.getBoundingClientRect()
+          setPopoverState(prev => ({
+            ...prev,
+            top: rect.top + window.scrollY - 80,
+            left: rect.left + window.scrollX + rect.width / 2,
+            annotation: null,
+            visible: true,
+          }))
+        } else {
+          // Fallback: show popup at a reasonable position
+          setPopoverState(prev => ({
+            ...prev,
+            top: window.scrollY + 200,
+            left: window.scrollX + window.innerWidth / 2,
+            annotation: null,
+            visible: true,
+          }))
+        }
+      }, 100)
+    }
   }
 
   const handleMentionAssociation = useCallback((type: EntityType) => {

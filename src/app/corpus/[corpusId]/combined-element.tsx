@@ -3,8 +3,8 @@ import type { CurrentAnnotation, DocumentElement } from './corpus-view'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { TYPE_TO_COLOR } from '@/lib/constants'
-import { splitWithOffsets } from '@/lib/utils'
-import React from 'react'
+import { cn, splitWithOffsets } from '@/lib/utils'
+import { createElement, useState } from 'react'
 import Split from './split'
 
 export type CombinedElementProps = {
@@ -38,6 +38,8 @@ function CombinedElement({
   documentElements,
   currentAnnotation,
 }: CombinedElementProps) {
+  const [hoveredCell, setHoveredCell] = useState<{ row: number, cell: number } | null>(null)
+
   const element = documentElements[elementIndex]
   if (!element) {
     return null
@@ -58,7 +60,7 @@ function CombinedElement({
 
     return (
       <div key={elementIndex} className="mb-4" id={`element-${elementIndex}`}>
-        {React.createElement(data.level ? `h${data.level}` : 'div', { className: 'mb-2 font-semibold' }, data.title)}
+        {createElement(data.level ? `h${data.level}` : 'div', { className: 'mb-2 font-semibold' }, data.title)}
         <div
           className="text-lg leading-relaxed"
           role="textbox"
@@ -97,6 +99,31 @@ function CombinedElement({
       }),
     )
 
+    const handleCellMouseUp = (rowIndex: number, cellIndex: number, event: React.MouseEvent) => {
+      // Check if the click target is an annotation (Mark component)
+      const target = event.target as HTMLElement
+      const isAnnotationClick = target.closest('[role="button"]')
+        && (target.style.backgroundColor || target.closest('[style*="background"]'))
+
+      // If clicking on an existing annotation, don't handle cell selection
+      if (isAnnotationClick) {
+        return
+      }
+
+      // Small delay to ensure selection state is properly updated
+      setTimeout(() => {
+        const selection = window.getSelection()
+
+        if (selection && !selection.isCollapsed && selection.rangeCount > 0) {
+          // There's a text selection - handle it as text selection
+          handleTableSelection(elementIndex, rowIndex, cellIndex)
+        } else {
+          // No text selection - handle as whole cell click
+          handleTableSelection(elementIndex, rowIndex, cellIndex)
+        }
+      }, 50)
+    }
+
     return (
       <div key={elementIndex} className="mb-6" id={`element-${elementIndex}`}>
         {data.title && <div className="mb-2 font-semibold">{data.title}</div>}
@@ -105,58 +132,73 @@ function CombinedElement({
             <TableHeader className="bg-muted/50">
               {splits.slice(0, 1).map((row, rowIndex) => (
                 <TableRow key={rowIndex} className="hover:bg-muted/20">
-                  {row.map((cellSplits, cellIndex) => (
-                    <TableHead
-                      key={cellIndex}
-                      role="textbox"
-                      tabIndex={0}
-                      className="p-3 font-medium transition-colors"
-                      onMouseUp={() => handleTableSelection(elementIndex, 0, cellIndex)}
-                      onKeyUp={e => e.key === 'Enter' && handleTableSelection(elementIndex, 0, cellIndex)}
-                      aria-label={`Table header ${cellIndex + 1}`}
-                    >
-                      {cellSplits.map(split => (
-                        <Split
-                          key={`table-header-split-${split.componentId}-${split.start}-${split.end}`}
-                          {...split}
-                          onClick={() => handleSplitClick(split)}
-                          color={TYPE_TO_COLOR[element.components.find(annotation =>
-                            annotation.id === split.componentId,
-                          )?.annotationTag as keyof typeof TYPE_TO_COLOR]}
-                          isCurrentAnnotation={split.componentId ? isComponentFromCurrentAnnotation(split.componentId, currentAnnotation) : false}
-                        />
-                      ))}
-                    </TableHead>
-                  ))}
+                  {row.map((cellSplits, cellIndex) => {
+                    const isHovered = hoveredCell?.row === 0 && hoveredCell?.cell === cellIndex
+
+                    return (
+                      <TableHead
+                        key={cellIndex}
+                        role="button"
+                        tabIndex={0}
+                        className={cn('relative select-text p-3 font-medium transition-all duration-200', isHovered ? '!bg-blue-50 shadow-[inset_0_0_0_1px_rgb(147_197_253)]' : 'hover:!bg-blue-50 hover:shadow-[inset_0_0_0_1px_rgb(147_197_253)]')}
+                        onMouseEnter={() => setHoveredCell({ row: 0, cell: cellIndex })}
+                        onMouseLeave={() => setHoveredCell(null)}
+                        onMouseUp={e => handleCellMouseUp(0, cellIndex, e)}
+                        aria-label={`Table header cell ${cellIndex + 1}. Click to annotate this cell.`}
+                        title={`Click to annotate header cell: ${tableData[0][cellIndex]}`}
+                        data-cell={`0-${cellIndex}`}
+                      >
+                        {cellSplits.map(split => (
+                          <Split
+                            key={`table-header-split-${split.componentId}-${split.start}-${split.end}`}
+                            {...split}
+                            onClick={() => handleSplitClick(split)}
+                            color={TYPE_TO_COLOR[element.components.find(annotation =>
+                              annotation.id === split.componentId,
+                            )?.annotationTag as keyof typeof TYPE_TO_COLOR]}
+                            isCurrentAnnotation={split.componentId ? isComponentFromCurrentAnnotation(split.componentId, currentAnnotation) : false}
+                          />
+                        ))}
+                      </TableHead>
+                    )
+                  })}
                 </TableRow>
               ))}
             </TableHeader>
             <TableBody>
               {splits.slice(1).map((row, rowIndex) => (
                 <TableRow key={rowIndex} className="border-b hover:bg-muted/10">
-                  {row.map((cellSplits, cellIndex) => (
-                    <TableCell
-                      key={cellIndex}
-                      role="textbox"
-                      tabIndex={0}
-                      className="p-3 transition-colors"
-                      onMouseUp={() => handleTableSelection(elementIndex, rowIndex + 1, cellIndex)}
-                      onKeyUp={e => e.key === 'Enter' && handleTableSelection(elementIndex, rowIndex + 1, cellIndex)}
-                      aria-label={`Row ${rowIndex + 1}, Column ${cellIndex + 1}`}
-                    >
-                      {cellSplits.map(split => (
-                        <Split
-                          key={`table-row-split-${split.componentId}-${split.start}-${split.end}`}
-                          {...split}
-                          onClick={() => handleSplitClick(split)}
-                          color={TYPE_TO_COLOR[element.components.find(annotation =>
-                            annotation.id === split.componentId,
-                          )?.annotationTag as keyof typeof TYPE_TO_COLOR]}
-                          isCurrentAnnotation={split.componentId ? isComponentFromCurrentAnnotation(split.componentId, currentAnnotation) : false}
-                        />
-                      ))}
-                    </TableCell>
-                  ))}
+                  {row.map((cellSplits, cellIndex) => {
+                    const actualRowIndex = rowIndex + 1
+                    const isHovered = hoveredCell?.row === actualRowIndex && hoveredCell?.cell === cellIndex
+
+                    return (
+                      <TableCell
+                        key={cellIndex}
+                        role="button"
+                        tabIndex={0}
+                        className={cn('relative select-text p-3 transition-all duration-200', isHovered ? '!bg-blue-50 shadow-[inset_0_0_0_1px_rgb(147_197_253)]' : 'hover:!bg-blue-50 hover:shadow-[inset_0_0_0_1px_rgb(147_197_253)]')}
+                        onMouseEnter={() => setHoveredCell({ row: actualRowIndex, cell: cellIndex })}
+                        onMouseLeave={() => setHoveredCell(null)}
+                        onMouseUp={e => handleCellMouseUp(actualRowIndex, cellIndex, e)}
+                        aria-label={`Table cell row ${actualRowIndex + 1}, column ${cellIndex + 1}. Click to annotate this cell.`}
+                        title={`Click to annotate cell: ${tableData[actualRowIndex][cellIndex]}`}
+                        data-cell={`${actualRowIndex}-${cellIndex}`}
+                      >
+                        {cellSplits.map(split => (
+                          <Split
+                            key={`table-row-split-${split.componentId}-${split.start}-${split.end}`}
+                            {...split}
+                            onClick={() => handleSplitClick(split)}
+                            color={TYPE_TO_COLOR[element.components.find(annotation =>
+                              annotation.id === split.componentId,
+                            )?.annotationTag as keyof typeof TYPE_TO_COLOR]}
+                            isCurrentAnnotation={split.componentId ? isComponentFromCurrentAnnotation(split.componentId, currentAnnotation) : false}
+                          />
+                        ))}
+                      </TableCell>
+                    )
+                  })}
                 </TableRow>
               ))}
             </TableBody>

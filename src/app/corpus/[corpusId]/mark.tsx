@@ -1,3 +1,4 @@
+import { cn } from '@/lib/utils'
 import React from 'react'
 
 export type MarkProps = {
@@ -7,32 +8,55 @@ export type MarkProps = {
   tag?: string
   color?: string
   isCurrentAnnotation?: boolean
+  className?: string
   onClick: ({ start, end }: { start: number, end: number }) => void
 }
 
 function Mark(props: MarkProps) {
+  const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    e.preventDefault()
+    props.onClick({ start: props.start, end: props.end })
+  }
+
+  const handleKeyUp = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.stopPropagation()
+      e.preventDefault()
+      props.onClick({ start: props.start, end: props.end })
+    }
+  }
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation()
+  }
+
+  const handleMouseUp = (e: React.MouseEvent) => {
+    e.stopPropagation()
+  }
+
   return (
     <span
       role="button"
       tabIndex={0}
+      className={cn(
+        'cursor-pointer whitespace-pre-wrap px-1 transition-opacity duration-300',
+        props.isCurrentAnnotation
+          ? 'border-2 border-black/20 opacity-100 shadow-md'
+          : 'opacity-70',
+        props.className,
+      )}
       style={{
-        transition: 'background-color 0.3s, opacity 0.3s',
         backgroundColor: props.isCurrentAnnotation
           ? props.color || 'lightgrey'
           : '#d1d5db',
-        opacity: props.isCurrentAnnotation ? 1 : 0.7,
-        whiteSpace: 'pre-wrap',
-        border: props.isCurrentAnnotation ? '2px solid rgba(0, 0, 0, 0.2)' : 'none',
       }}
-      className={`cursor-pointer px-1 ${props.isCurrentAnnotation ? 'shadow-md' : ''}`}
       data-start={props.start}
       data-end={props.end}
-      onClick={() => props.onClick({ start: props.start, end: props.end })}
-      onKeyUp={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          props.onClick({ start: props.start, end: props.end })
-        }
-      }}
+      onClick={handleClick}
+      onKeyUp={handleKeyUp}
+      onMouseDown={handleMouseDown}
+      onMouseUp={handleMouseUp}
     >
       {props.content}
       {props.tag && (
