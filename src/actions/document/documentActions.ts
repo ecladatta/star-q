@@ -1,11 +1,11 @@
 'use server'
 import type { DocumentMetadata } from '@/actions/corpus/corpusActions'
-import type { DocumentData } from '@/components/corpus-view'
 import type { Document } from '@/db/schema'
+import type { DocumentData } from '@/types/types'
 import { auth } from '@/auth'
 import { db } from '@/db/drizzle'
-import { annotation, document } from '@/db/schema'
 
+import { annotation, document } from '@/db/schema'
 import { count, eq, getTableColumns } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 

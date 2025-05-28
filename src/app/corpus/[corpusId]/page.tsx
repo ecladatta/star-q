@@ -31,7 +31,11 @@ export default async function CorpusPage({ params }: { params: Promise<{ corpusI
     <div className="container mx-auto flex size-full min-h-screen max-w-6xl flex-col px-4 py-12 sm:px-6 lg:px-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">{corpus.title}</h1>
+          <h1 className="text-3xl font-bold">
+            Corpus:
+            {' '}
+            {corpus.title}
+          </h1>
           <p className="text-sm text-muted-foreground">
             Select a document to start annotating
           </p>

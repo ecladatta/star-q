@@ -3,7 +3,7 @@ import type { DocumentMetadata } from '@/actions/corpus/corpusActions'
 import type {
   Column,
   ColumnDef,
-  RowData,
+  ColumnFiltersState,
   SortingState,
   Table as TableType,
 } from '@tanstack/react-table'
@@ -48,6 +48,7 @@ import { cn } from '@/lib/utils'
 import {
   flexRender,
   getCoreRowModel,
+  getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
@@ -73,23 +74,14 @@ import * as React from 'react'
 import { toast } from 'sonner'
 import { Label } from './ui/label'
 
-declare module '@tanstack/react-table' {
-  // eslint-disable-next-line unused-imports/no-unused-vars, ts/consistent-type-definitions
-  interface TableMeta<TData extends RowData> {
-    filteredDocuments: DocumentMetadata[]
-    handleMarkCompleted: (doc: DocumentMetadata) => void
-    setDocumentToDelete: (doc: DocumentMetadata) => void
-  }
-}
-
 type DataTableColumnHeaderProps<TData, TValue> = {
   column: Column<TData, TValue>
   title: string
 } & React.HTMLAttributes<HTMLDivElement>
 
-type DataTableProps<TData, TValue> = {
-  columns: ColumnDef<TData, TValue>[]
-  data: TData[]
+type DataTableProps = {
+  columns: ColumnDef<DocumentMetadata, any>[]
+  data: DocumentMetadata[]
   filteredDocuments: DocumentMetadata[]
   setDocumentToDelete: (doc: DocumentMetadata) => void
   handleMarkCompleted: (doc: DocumentMetadata) => void
@@ -99,34 +91,69 @@ type DataTablePaginationProps<TData> = {
   table: TableType<TData>
 }
 
-function DataTable<TData, TValue>({
+type DocumentTableMeta = {
+  filteredDocuments: DocumentMetadata[]
+  handleMarkCompleted: (doc: DocumentMetadata) => void
+  setDocumentToDelete: (doc: DocumentMetadata) => void
+}
+
+function DataTable({
   columns,
   data,
   filteredDocuments,
   setDocumentToDelete,
   handleMarkCompleted,
-}: DataTableProps<TData, TValue>) {
+}: DataTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([])
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
+  const [globalFilter, setGlobalFilter] = React.useState('')
 
-  const table = useReactTable({
+  const table = useReactTable<DocumentMetadata>({
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     onSortingChange: setSorting,
     getSortedRowModel: getSortedRowModel(),
+    onColumnFiltersChange: setColumnFilters,
+    getFilteredRowModel: getFilteredRowModel(),
+    onGlobalFilterChange: setGlobalFilter,
+    globalFilterFn: 'includesString',
     state: {
       sorting,
+      columnFilters,
+      globalFilter,
     },
     meta: {
       filteredDocuments,
       handleMarkCompleted,
       setDocumentToDelete,
-    },
+    } satisfies DocumentTableMeta,
   })
 
   return (
     <div>
+      <div className="mb-4 flex items-center gap-2">
+        <Input
+          type="text"
+          placeholder="Search documents..."
+          value={globalFilter ?? ''}
+          onChange={e => setGlobalFilter(e.target.value)}
+          className="w-1/2"
+        />
+        <div className="flex items-center gap-1">
+          <Checkbox
+            id="show-only-not-completed"
+            checked={(table.getColumn('completedAt')?.getFilterValue() as boolean) ?? false}
+            onCheckedChange={(checked) => {
+              table.getColumn('completedAt')?.setFilterValue(checked ? true : undefined)
+            }}
+          />
+          <Label htmlFor="show-only-not-completed">
+            Show only not completed
+          </Label>
+        </div>
+      </div>
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -149,7 +176,7 @@ function DataTable<TData, TValue>({
             {table.getRowModel().rows?.length
               ? (
                   table.getRowModel().rows.map(row => (
-                    <TableRow key={row.id}>
+                    <TableRow key={row.id} className="transition-colors hover:bg-muted/50">
                       {row.getVisibleCells().map(cell => (
                         <TableCell key={cell.id}>
                           {flexRender(
@@ -187,13 +214,13 @@ function DataTablePagination<TData>({
   return (
     <div className="flex items-center justify-between px-2">
       <div className="flex-1 text-sm text-muted-foreground">
-        {table.getFilteredSelectedRowModel().rows.length}
+        {table.getFilteredRowModel().rows.length}
         {' '}
         of
         {' '}
-        {table.getFilteredRowModel().rows.length}
+        {table.getPreFilteredRowModel().rows.length}
         {' '}
-        row(s) selected.
+        documents
       </div>
       <div className="flex items-center space-x-6 lg:space-x-8">
         <div className="flex items-center space-x-2">
@@ -309,6 +336,12 @@ const columns: ColumnDef<DocumentMetadata, any>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Title" />
     ),
+    cell: ({ row }) => (
+      <Link href={`/document/${row.original.id}`} className="block hover:underline">
+        {row.original.title}
+      </Link>
+    ),
+    filterFn: 'includesString',
   },
   {
     accessorKey: 'annotationsCount',
@@ -327,6 +360,12 @@ const columns: ColumnDef<DocumentMetadata, any>[] = [
     cell: ({ row }) => (
       <div>{row.original.completedAt?.toLocaleString() ?? 'No'}</div>
     ),
+    filterFn: (row, columnId, filterValue) => {
+      if (filterValue === true) {
+        return !row.original.completedAt
+      }
+      return true
+    },
   },
   {
     accessorKey: 'actions',
@@ -350,7 +389,7 @@ const columns: ColumnDef<DocumentMetadata, any>[] = [
           <DropdownMenuContent align="start">
             <DropdownMenuItem
               onClick={() =>
-                table.options.meta?.handleMarkCompleted(row.original)}
+                (table.options.meta as DocumentTableMeta)?.handleMarkCompleted(row.original)}
             >
               {row.original.completedAt
                 ? (
@@ -375,7 +414,7 @@ const columns: ColumnDef<DocumentMetadata, any>[] = [
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() =>
-                table.options.meta?.setDocumentToDelete(row.original)}
+                (table.options.meta as DocumentTableMeta)?.setDocumentToDelete(row.original)}
               className="font-bold text-red-600"
             >
               <Trash2Icon className="mr-2 size-4" />
@@ -440,19 +479,9 @@ export default function DocumentsTable({
 }: {
   documents: DocumentMetadata[]
 }) {
-  const [search, setSearch] = useState('')
-  const [showOnlyNotCompleted, setShowOnlyNotCompleted] = useState(false)
   const [documentToDelete, setDocumentToDelete]
     = useState<DocumentMetadata | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
-
-  const filteredDocuments = documents.filter((doc) => {
-    const matchesSearch = doc.title
-      ?.toLowerCase()
-      .includes(search.toLowerCase())
-    const isNotCompleted = !doc.completedAt
-    return matchesSearch && (!showOnlyNotCompleted || isNotCompleted)
-  })
 
   const handleMarkCompleted = async (document: DocumentMetadata) => {
     await markDocumentAsCompleted(
@@ -478,30 +507,10 @@ export default function DocumentsTable({
 
   return (
     <div>
-      <div className="mb-4 flex items-center gap-2">
-        <Input
-          type="text"
-          placeholder="Search documents..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="w-1/2"
-        />
-        <div className="flex items-center gap-1">
-          <Checkbox
-            id="show-only-not-completed"
-            checked={showOnlyNotCompleted}
-            onCheckedChange={checked =>
-              setShowOnlyNotCompleted(checked === true)}
-          />
-          <Label htmlFor="show-only-not-completed">
-            Show only not completed
-          </Label>
-        </div>
-      </div>
       <DataTable
         columns={columns}
-        data={filteredDocuments}
-        filteredDocuments={filteredDocuments}
+        data={documents}
+        filteredDocuments={documents}
         setDocumentToDelete={setDocumentToDelete}
         handleMarkCompleted={handleMarkCompleted}
       />

@@ -35,8 +35,9 @@ export async function addCorpus(title: string) {
     throw new Error('User not authenticated')
   }
 
-  await db.insert(corpus).values({ title })
+  const [result] = await db.insert(corpus).values({ title }).returning({ id: corpus.id })
   revalidatePath('/')
+  return result
 }
 
 export async function deleteCorpus(id: string) {
