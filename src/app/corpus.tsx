@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { InvalidJsonLinesError, UnsupportedFileTypeError } from '@/lib/utils'
 import { CopyIcon, EditIcon, FileDownIcon, FileUpIcon, FolderOpenIcon, Loader2Icon, MoreHorizontalIcon, PlusCircleIcon, Trash2Icon } from 'lucide-react'
@@ -402,9 +403,9 @@ export function Corpuses({ corpuses }: CorpusesProps) {
               </ul>
             </div>
             <div className="mt-4">
-              <label htmlFor="new-corpus-name" className="block text-sm font-medium text-gray-700">
+              <Label htmlFor="new-corpus-name">
                 New corpus name
-              </label>
+              </Label>
               <Input
                 id="new-corpus-name"
                 value={newDuplicateTitle}
@@ -437,9 +438,9 @@ export function Corpuses({ corpuses }: CorpusesProps) {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="mt-4">
-              <label htmlFor="rename-corpus-name" className="block text-sm font-medium text-gray-700">
+              <Label htmlFor="rename-corpus-name">
                 Corpus name
-              </label>
+              </Label>
               <Input
                 id="rename-corpus-name"
                 value={newRenameTitle}

@@ -1,7 +1,7 @@
 'use client'
 
-import type { EntityDatatype } from '@/app/corpus/[corpusId]/corpus-view'
 import type { Corpus, CorpusCustomEntity } from '@/db/schema'
+import type { EntityDatatype } from '@/types/types'
 import { addCorpusCustomEntity, deleteCorpusCustomEntity, getCorpusCustomEntities, renameCorpus, updateCorpusCustomEntity } from '@/actions/corpus/corpusActions'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -13,6 +13,7 @@ import { EditIcon, FilterIcon, Loader2Icon, PlusIcon, SearchIcon, Trash2Icon } f
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu'
+import { Label } from './ui/label'
 
 const ENTITY_DATATYPES: EntityDatatype[] = ['string', 'integer', 'decimal', 'boolean', 'date', 'time', 'datetime', 'year', 'month', 'day', 'url']
 
@@ -166,9 +167,9 @@ export function CorpusSettingsDialog({ open, onOpenChange, corpus, onCorpusRenam
 
           <TabsContent value="general" className="space-y-4">
             <div className="space-y-2">
-              <label htmlFor="corpus-title" className="text-sm font-medium">
+              <Label htmlFor="corpus-title">
                 Corpus Name
-              </label>
+              </Label>
               <div className="flex gap-2">
                 <Input
                   id="corpus-title"

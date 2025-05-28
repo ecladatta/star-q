@@ -71,6 +71,7 @@ import Link from 'next/link'
 import { useState } from 'react'
 import * as React from 'react'
 import { toast } from 'sonner'
+import { Label } from './ui/label'
 
 declare module '@tanstack/react-table' {
   // eslint-disable-next-line unused-imports/no-unused-vars, ts/consistent-type-definitions
@@ -492,12 +493,9 @@ export default function DocumentsTable({
             onCheckedChange={checked =>
               setShowOnlyNotCompleted(checked === true)}
           />
-          <label
-            htmlFor="show-only-not-completed"
-            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-          >
+          <Label htmlFor="show-only-not-completed">
             Show only not completed
-          </label>
+          </Label>
         </div>
       </div>
       <DataTable

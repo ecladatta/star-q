@@ -1,8 +1,9 @@
 import { getCorpus } from '@/actions/corpus/corpusActions'
 import { getDocumentsMetadata } from '@/actions/document/documentActions'
 import CorpusSettingsButton from '@/components/corpus-settings-button'
+import DocumentsTable from '@/components/documents-table'
+import Link from 'next/link'
 import React from 'react'
-import DocumentsTable from './documents-table'
 
 export default async function CorpusPage({ params }: { params: Promise<{ corpusId: string }> }) {
   const corpusId = (await params).corpusId
@@ -10,7 +11,20 @@ export default async function CorpusPage({ params }: { params: Promise<{ corpusI
   const corpus = await getCorpus(corpusId)
 
   if (!corpus) {
-    return <div>Corpus not found</div>
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <h1 className="mb-4 text-4xl font-bold text-gray-900">404</h1>
+          <p className="mb-8 text-xl text-gray-600">Corpus not found</p>
+          <Link
+            href="/"
+            className="inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700"
+          >
+            Go back home
+          </Link>
+        </div>
+      </div>
+    )
   }
 
   return (

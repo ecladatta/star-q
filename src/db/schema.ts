@@ -1,4 +1,4 @@
-import type { DocumentData, EntityDatatype } from '@/app/corpus/[corpusId]/corpus-view'
+import type { DocumentData, EntityDatatype } from '@/types/types'
 import type { InferSelectModel } from 'drizzle-orm'
 import type { AdapterAccountType } from 'next-auth/adapters'
 import { randomUUID } from 'node:crypto'

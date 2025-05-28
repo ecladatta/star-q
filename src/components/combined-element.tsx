@@ -1,5 +1,6 @@
+'use client'
 import type { Offset } from '@/lib/utils'
-import type { CurrentAnnotation, DocumentElement } from './corpus-view'
+import type { CurrentAnnotation, DocumentElement } from '@/types/types'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { TYPE_TO_COLOR } from '@/lib/constants'

@@ -1,6 +1,6 @@
 'use server'
-import type { DocumentAnnotation, Entity, EntityType } from '@/app/corpus/[corpusId]/corpus-view'
 import type { AnnotationComponent } from '@/db/schema'
+import type { DocumentAnnotation, Entity, EntityType } from '@/types/types'
 import { findOrCreateCorpusCustomEntity } from '@/actions/corpus/corpusActions'
 import { auth } from '@/auth'
 import { db } from '@/db/drizzle'

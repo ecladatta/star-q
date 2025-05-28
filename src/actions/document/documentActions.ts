@@ -1,6 +1,6 @@
 'use server'
 import type { DocumentMetadata } from '@/actions/corpus/corpusActions'
-import type { DocumentData } from '@/app/corpus/[corpusId]/corpus-view'
+import type { DocumentData } from '@/components/corpus-view'
 import type { Document } from '@/db/schema'
 import { auth } from '@/auth'
 import { db } from '@/db/drizzle'

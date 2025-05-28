@@ -1,4 +1,4 @@
-import type { Entity, EntityDatatype, EntityType } from '@/app/corpus/[corpusId]/corpus-view'
+import type { Entity, EntityDatatype, EntityType } from '@/types/types'
 import type { ReactNode } from 'react'
 import { addCorpusCustomEntity, searchCorpusCustomEntities } from '@/actions/corpus/corpusActions'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from '@/components/ui/command'

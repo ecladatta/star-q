@@ -1,5 +1,5 @@
 'use server'
-import type { DocumentData } from '@/app/corpus/[corpusId]/corpus-view'
+import type { DocumentData } from '@/types/types'
 import { db } from '@/db/drizzle'
 import { document } from '@/db/schema'
 import { InvalidJsonLinesError } from '@/lib/utils'

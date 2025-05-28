@@ -1,5 +1,5 @@
 'use server'
-import type { DocumentAnnotationComponent, DocumentData } from '@/app/corpus/[corpusId]/corpus-view'
+import type { DocumentAnnotationComponent, DocumentData } from '@/types/types'
 import { Buffer } from 'node:buffer'
 import { addAnnotation } from '@/actions/annotation/annotationActions'
 import { db } from '@/db/drizzle'
