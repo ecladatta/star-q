@@ -6,6 +6,7 @@ function Split(props: {
   content: string
   color: string
   mark?: boolean
+  isCurrentAnnotation?: boolean
   onClick: ({ start, end }: { start: number, end: number }) => void
 }) {
   if (props.mark) {

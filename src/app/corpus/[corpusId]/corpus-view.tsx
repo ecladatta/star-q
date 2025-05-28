@@ -95,6 +95,13 @@ export type DocumentData = {
   }
 }
 
+export type CurrentAnnotation = {
+  id?: string
+  subject?: DocumentAnnotationComponent
+  predicate?: DocumentAnnotationComponent
+  object?: DocumentAnnotationComponent
+}
+
 type PopoverState = {
   top: number
   left: number
@@ -125,12 +132,7 @@ export default function CorpusView({ corpus, documents, document, annotations }:
   const documentData = document?.raw as (DocumentData | undefined)
   const [annotationFormLoading, setAnnotationFormLoading] = useState(false)
   const [isDeletingAnnotation, setIsDeletingAnnotation] = useState(false)
-  const [currentAnnotation, setCurrentAnnotation] = useState<{
-    id?: string
-    subject?: DocumentAnnotationComponent
-    predicate?: DocumentAnnotationComponent
-    object?: DocumentAnnotationComponent
-  } | null>(null)
+  const [currentAnnotation, setCurrentAnnotation] = useState<CurrentAnnotation | null>(null)
   const [showAnnotations, setShowAnnotations] = useState(true)
 
   const handleTextSelection = (index: number) => {
@@ -634,6 +636,7 @@ export default function CorpusView({ corpus, documents, document, annotations }:
                       handleTableSelection={handleTableSelection}
                       handleTextSelection={handleTextSelection}
                       documentElements={documentElements}
+                      currentAnnotation={currentAnnotation}
                     />
                   ))}
                 </CardContent>
@@ -972,7 +975,7 @@ export default function CorpusView({ corpus, documents, document, annotations }:
                     <li key={ann.id} className="mb-3">
                       <button
                         type="button"
-                        className="w-full rounded-md bg-white p-2 text-left shadow hover:bg-gray-50"
+                        className="w-full break-all rounded-md bg-white p-2 text-left shadow hover:bg-gray-50"
                         onClick={() => {
                           if (ann.id === currentAnnotation?.id) {
                             setCurrentAnnotation(null)

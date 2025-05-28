@@ -1,5 +1,5 @@
 import type { Offset } from '@/lib/utils'
-import type { DocumentElement } from './corpus-view'
+import type { CurrentAnnotation, DocumentElement } from './corpus-view'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { TYPE_TO_COLOR } from '@/lib/constants'
@@ -16,6 +16,15 @@ export type CombinedElementProps = {
   handleTableSelection: (index: number, row: number, cell: number) => void
   handleSplitClick: (split: Offset) => void
   documentElements: DocumentElement[]
+  currentAnnotation: CurrentAnnotation | null
+}
+
+function isComponentFromCurrentAnnotation(componentId: string, currentAnnotation: CurrentAnnotation | null): boolean {
+  if (!currentAnnotation)
+    return false
+  return componentId === currentAnnotation.subject?.id
+    || componentId === currentAnnotation.predicate?.id
+    || componentId === currentAnnotation.object?.id
 }
 
 function CombinedElement({
@@ -27,6 +36,7 @@ function CombinedElement({
   handleTableSelection,
   handleSplitClick,
   documentElements,
+  currentAnnotation,
 }: CombinedElementProps) {
   const element = documentElements[elementIndex]
   if (!element) {
@@ -64,6 +74,7 @@ function CombinedElement({
                 {...split}
                 onClick={() => handleSplitClick(split)}
                 color={TYPE_TO_COLOR[element.components.find(annotation => annotation.id === split.componentId)?.annotationTag as keyof typeof TYPE_TO_COLOR]}
+                isCurrentAnnotation={split.componentId ? isComponentFromCurrentAnnotation(split.componentId, currentAnnotation) : false}
               />
             ))}
         </div>
@@ -112,6 +123,7 @@ function CombinedElement({
                           color={TYPE_TO_COLOR[element.components.find(annotation =>
                             annotation.id === split.componentId,
                           )?.annotationTag as keyof typeof TYPE_TO_COLOR]}
+                          isCurrentAnnotation={split.componentId ? isComponentFromCurrentAnnotation(split.componentId, currentAnnotation) : false}
                         />
                       ))}
                     </TableHead>
@@ -140,6 +152,7 @@ function CombinedElement({
                           color={TYPE_TO_COLOR[element.components.find(annotation =>
                             annotation.id === split.componentId,
                           )?.annotationTag as keyof typeof TYPE_TO_COLOR]}
+                          isCurrentAnnotation={split.componentId ? isComponentFromCurrentAnnotation(split.componentId, currentAnnotation) : false}
                         />
                       ))}
                     </TableCell>
