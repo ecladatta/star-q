@@ -7,7 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { TYPE_TO_COLOR } from '@/lib/constants'
 import { cn } from '@/lib/utils'
-import { ArrowLeftRightIcon, Loader2Icon, SaveIcon, Trash2Icon } from 'lucide-react'
+import { ArrowLeftRightIcon, CopyIcon, Loader2Icon, SaveIcon, Trash2Icon } from 'lucide-react'
 
 type AnnotationFormProps = {
   currentAnnotation: CurrentAnnotation | null
@@ -88,6 +88,21 @@ export function AnnotationForm({
     })
   }
 
+  const handleCloneAnnotation = () => {
+    if (!currentAnnotation)
+      return
+
+    // Create a copy without the id to make it a new annotation
+    const clonedAnnotation: CurrentAnnotation = {
+      subject: currentAnnotation.subject ? { ...currentAnnotation.subject } : undefined,
+      predicate: currentAnnotation.predicate ? { ...currentAnnotation.predicate } : undefined,
+      object: currentAnnotation.object ? { ...currentAnnotation.object } : undefined,
+      // Omit id and other database-specific fields to create a new annotation
+    }
+
+    setCurrentAnnotation(clonedAnnotation)
+  }
+
   if (!hasAnyTags)
     return null
 
@@ -110,33 +125,49 @@ export function AnnotationForm({
           </div>
           <div className="ml-auto flex gap-2">
             {currentAnnotation?.id && (
-              <Popover>
+              <>
                 <Tooltip delayDuration={200}>
-                  <PopoverTrigger asChild>
-                    <TooltipTrigger asChild>
-                      <Button variant="destructive" disabled={isDeletingAnnotation}>
-                        {isDeletingAnnotation ? <Loader2Icon className="animate-spin" /> : <Trash2Icon />}
-                      </Button>
-                    </TooltipTrigger>
-                  </PopoverTrigger>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      onClick={handleCloneAnnotation}
+                      disabled={annotationFormLoading || isDeletingAnnotation}
+                    >
+                      <CopyIcon />
+                    </Button>
+                  </TooltipTrigger>
                   <TooltipContent>
-                    Delete annotation
+                    Clone annotation
                   </TooltipContent>
                 </Tooltip>
-                <PopoverContent>
-                  <div className="flex flex-col items-center">
-                    <p>Are you sure you want to delete this annotation?</p>
-                    <div className="mt-2 flex gap-2">
-                      <Button variant="destructive" onClick={onDelete} disabled={isDeletingAnnotation}>
-                        {isDeletingAnnotation ? <Loader2Icon className="animate-spin" /> : 'Delete'}
-                      </Button>
-                      <Button variant="ghost" disabled={isDeletingAnnotation}>
-                        Cancel
-                      </Button>
+                <Popover>
+                  <Tooltip delayDuration={200}>
+                    <PopoverTrigger asChild>
+                      <TooltipTrigger asChild>
+                        <Button variant="destructive" disabled={isDeletingAnnotation}>
+                          {isDeletingAnnotation ? <Loader2Icon className="animate-spin" /> : <Trash2Icon />}
+                        </Button>
+                      </TooltipTrigger>
+                    </PopoverTrigger>
+                    <TooltipContent>
+                      Delete annotation
+                    </TooltipContent>
+                  </Tooltip>
+                  <PopoverContent>
+                    <div className="flex flex-col items-center">
+                      <p>Are you sure you want to delete this annotation?</p>
+                      <div className="mt-2 flex gap-2">
+                        <Button variant="destructive" onClick={onDelete} disabled={isDeletingAnnotation}>
+                          {isDeletingAnnotation ? <Loader2Icon className="animate-spin" /> : 'Delete'}
+                        </Button>
+                        <Button variant="ghost" disabled={isDeletingAnnotation}>
+                          Cancel
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                </PopoverContent>
-              </Popover>
+                  </PopoverContent>
+                </Popover>
+              </>
             )}
             <Tooltip delayDuration={200}>
               <TooltipTrigger asChild>
