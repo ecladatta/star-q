@@ -1,5 +1,5 @@
 import type { CurrentAnnotation, DocumentAnnotation, DocumentAnnotationComponent, DocumentElement, Entity, EntityType, TextOrTableElement } from '@/types/types'
-import { addAnnotation, deleteAnnotation, getAnnotationById, updateAnnotation } from '@/actions/annotation/annotationActions'
+import { addAnnotation, deleteAnnotation, deleteAnnotations, getAnnotationById, updateAnnotation } from '@/actions/annotation/annotationActions'
 import { useCallback, useEffect, useLayoutEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { v4 as uuidv4 } from 'uuid'
@@ -22,6 +22,8 @@ export function useAnnotationState(
   const [currentAnnotation, setCurrentAnnotation] = useState<CurrentAnnotation | null>(null)
   const [annotationFormLoading, setAnnotationFormLoading] = useState(false)
   const [isDeletingAnnotation, setIsDeletingAnnotation] = useState(false)
+  const [isBatchDeleting, setIsBatchDeleting] = useState(false)
+  const [selectedAnnotations, setSelectedAnnotations] = useState<Set<string>>(new Set())
   const [popoverState, setPopoverState] = useState<PopoverState>({
     top: 0,
     left: 0,
@@ -34,6 +36,8 @@ export function useAnnotationState(
   // Update annotations when props change
   useEffect(() => {
     setDocumentAnnotations(initialAnnotations)
+    // Clear selected annotations when annotations change to avoid stale selections
+    setSelectedAnnotations(new Set())
   }, [initialAnnotations])
 
   const resetAnnotations = useCallback(() => {
@@ -126,11 +130,57 @@ export function useAnnotationState(
     }
   }
 
+  const handleAnnotationSelect = useCallback((annotationId: string, selected: boolean) => {
+    setSelectedAnnotations(prev => {
+      const newSet = new Set(prev)
+      if (selected) {
+        newSet.add(annotationId)
+      } else {
+        newSet.delete(annotationId)
+      }
+      return newSet
+    })
+  }, [])
+
+  const handleBatchDelete = useCallback(async () => {
+    if (selectedAnnotations.size === 0) return
+
+    setIsBatchDeleting(true)
+    try {
+      const annotationIds = Array.from(selectedAnnotations)
+      await deleteAnnotations(annotationIds)
+
+      // Remove deleted annotations from state
+      setDocumentAnnotations(prev => prev.filter(ann => !selectedAnnotations.has(ann.id)))
+
+      // Clear selections and current annotation if it was deleted
+      setSelectedAnnotations(new Set())
+      if (currentAnnotation?.id && selectedAnnotations.has(currentAnnotation.id)) {
+        setCurrentAnnotation(null)
+      }
+
+      resetAnnotations()
+      toast.success(`${annotationIds.length} annotation${annotationIds.length > 1 ? 's' : ''} deleted!`)
+    } catch (error: any) {
+      toast.error(`Failed to delete annotations: ${error?.message || 'Something went wrong'}`)
+    } finally {
+      setIsBatchDeleting(false)
+    }
+  }, [selectedAnnotations, currentAnnotation])
+
   const deleteAnnotationById = async (annotationId: string) => {
     setIsDeletingAnnotation(true)
     try {
       await deleteAnnotation(annotationId)
       setDocumentAnnotations(prev => prev.filter(ann => ann.id !== annotationId))
+
+      // Remove from selected annotations if it was selected
+      setSelectedAnnotations(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(annotationId)
+        return newSet
+      })
+
       resetAnnotations()
       setCurrentAnnotation(null)
       toast.success('Annotation deleted!')
@@ -224,6 +274,10 @@ export function useAnnotationState(
     setCurrentAnnotation,
     annotationFormLoading,
     isDeletingAnnotation,
+    isBatchDeleting,
+    selectedAnnotations,
+    handleAnnotationSelect,
+    handleBatchDelete,
     popoverState,
     setPopoverState,
     documentElements,

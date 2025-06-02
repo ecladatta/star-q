@@ -36,6 +36,10 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
     setCurrentAnnotation,
     annotationFormLoading,
     isDeletingAnnotation,
+    isBatchDeleting,
+    selectedAnnotations,
+    handleAnnotationSelect,
+    handleBatchDelete,
     popoverState,
     setPopoverState,
     documentElements,
@@ -181,6 +185,10 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
         onShowAnnotationsChange={setShowAnnotations}
         currentAnnotation={currentAnnotation}
         onAnnotationClick={handleAnnotationClick}
+        selectedAnnotations={selectedAnnotations}
+        onAnnotationSelect={handleAnnotationSelect}
+        onBatchDelete={handleBatchDelete}
+        isBatchDeleting={isBatchDeleting}
       />
     </div>
   )

@@ -303,3 +303,38 @@ export async function deleteAnnotation(id: string) {
 
   revalidatePath(`/document/${annotationData.documentId}`)
 }
+
+export async function deleteAnnotations(ids: string[]) {
+  const session = await auth()
+  const userId = session?.user?.id
+  if (!userId) {
+    throw new Error('User not authenticated')
+  }
+
+  if (ids.length === 0) {
+    return
+  }
+
+  // Get all annotation data first
+  const annotationsData = await Promise.all(ids.map(id => getAnnotationById(id)))
+
+  await db.transaction(async (trx) => {
+    // Delete all annotations
+    for (const id of ids) {
+      await trx.delete(annotation).where(eq(annotation.id, id))
+    }
+
+    // Delete all associated components
+    for (const annotationData of annotationsData) {
+      await trx.delete(annotationComponent).where(eq(annotationComponent.id, annotationData.subject.id))
+      await trx.delete(annotationComponent).where(eq(annotationComponent.id, annotationData.predicate.id))
+      await trx.delete(annotationComponent).where(eq(annotationComponent.id, annotationData.object.id))
+    }
+  })
+
+  // Revalidate all unique document pages
+  const uniqueDocumentIds = [...new Set(annotationsData.map(data => data.documentId))]
+  for (const documentId of uniqueDocumentIds) {
+    revalidatePath(`/document/${documentId}`)
+  }
+}
