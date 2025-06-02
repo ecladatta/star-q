@@ -29,7 +29,7 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
   const documentData = document?.raw as (DocumentData | undefined)
   const combinedElements = useDocumentElements(documentData)
 
-  const annotationState = useAnnotationState(annotations, combinedElements, showAnnotations)
+  const annotationState = useAnnotationState(annotations, combinedElements, showAnnotations, setShowAnnotations)
   const {
     documentAnnotations,
     currentAnnotation,

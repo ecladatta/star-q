@@ -16,6 +16,7 @@ export function useAnnotationState(
   initialAnnotations: DocumentAnnotation[] = [],
   combinedElements: TextOrTableElement[],
   showAnnotations: boolean,
+  setShowAnnotations: (show: boolean) => void,
 ) {
   const [documentAnnotations, setDocumentAnnotations] = useState<DocumentAnnotation[]>(initialAnnotations)
   const [currentAnnotation, setCurrentAnnotation] = useState<CurrentAnnotation | null>(null)
@@ -202,11 +203,16 @@ export function useAnnotationState(
             break
         }
       }
+
+      if (e.key.toLowerCase() === 'h') {
+        e.preventDefault()
+        setShowAnnotations(!showAnnotations)
+      }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [resetAnnotations, handleMentionAssociation, popoverState.visible, popoverState.annotation])
+  }, [resetAnnotations, handleMentionAssociation, popoverState.visible, popoverState.annotation, showAnnotations, setShowAnnotations])
 
   useEffect(() => {
     resetAnnotations()
