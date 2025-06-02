@@ -2,10 +2,13 @@ import type { CurrentAnnotation, DocumentAnnotation } from '@/types/types'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Loader2Icon, Trash2Icon } from 'lucide-react'
-import { useState } from 'react'
+import { ChevronDownIcon, Loader2Icon, Trash2Icon } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import { Label } from './ui/label'
+
+type SortOption = 'creation' | 'alphabetical' | 'position'
 
 type AnnotationsSidebarProps = {
   annotations: DocumentAnnotation[]
@@ -31,16 +34,54 @@ export function AnnotationsSidebar({
   isBatchDeleting,
 }: AnnotationsSidebarProps) {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
+  const [sortOption, setSortOption] = useState<SortOption>('position')
 
-  if (annotations.length === 0) {
-    return null
-  }
+  const sortedAnnotations = useMemo(() => {
+    const sorted = [...annotations]
 
-  const allSelected = annotations.length > 0 && annotations.every(ann => selectedAnnotations.has(ann.id))
+    switch (sortOption) {
+      case 'alphabetical':
+        return sorted.sort((a, b) => {
+          const aText = `${a.subject.annotationValue} ${a.predicate.annotationValue} ${a.object.annotationValue}`
+          const bText = `${b.subject.annotationValue} ${b.predicate.annotationValue} ${b.object.annotationValue}`
+          return aText.localeCompare(bText)
+        })
+      case 'position':
+        return sorted.sort((a, b) => {
+          // Sort by element index first
+          if (a.subject.elementIndex !== b.subject.elementIndex) {
+            return a.subject.elementIndex - b.subject.elementIndex
+          }
+
+          // Then by row and cell (if table)
+          if (a.subject.annotationType === 'table' && b.subject.annotationType === 'table') {
+            const aRow = a.subject.annotationRow ?? 0
+            const bRow = b.subject.annotationRow ?? 0
+            if (aRow !== bRow) {
+              return aRow - bRow
+            }
+
+            const aCell = a.subject.annotationCell ?? 0
+            const bCell = b.subject.annotationCell ?? 0
+            if (aCell !== bCell) {
+              return aCell - bCell
+            }
+          }
+
+          // Finally by start position
+          return a.subject.annotationStart - b.subject.annotationStart
+        })
+      case 'creation':
+      default:
+        return sorted // Keep original order (creation order)
+    }
+  }, [annotations, sortOption])
+
+  const allSelected = sortedAnnotations.length > 0 && sortedAnnotations.every(ann => selectedAnnotations.has(ann.id))
   const someSelected = selectedAnnotations.size > 0
 
   const handleSelectAll = (checked: boolean) => {
-    annotations.forEach((ann) => {
+    sortedAnnotations.forEach((ann) => {
       onAnnotationSelect(ann.id, checked)
     })
   }
@@ -52,6 +93,10 @@ export function AnnotationsSidebar({
   const handleConfirmDelete = () => {
     setShowConfirmDialog(false)
     onBatchDelete()
+  }
+
+  if (annotations.length === 0) {
+    return null
   }
 
   return (
@@ -69,6 +114,32 @@ export function AnnotationsSidebar({
               <Label htmlFor="show-annotations">
                 Highlight annotations in doc
               </Label>
+            </div>
+
+            {/* Sort dropdown */}
+            <div className="mb-4 flex items-center gap-2">
+              <Label className="text-sm">Sort by</Label>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="flex-1 justify-between" size="sm">
+                    {sortOption === 'creation' && 'Creation order'}
+                    {sortOption === 'alphabetical' && 'Alphabetical'}
+                    {sortOption === 'position' && 'Position in document'}
+                    <ChevronDownIcon className="size-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-full">
+                  <DropdownMenuItem onClick={() => setSortOption('creation')}>
+                    Creation order
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSortOption('alphabetical')}>
+                    Alphabetical
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setSortOption('position')}>
+                    Text position
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
             {/* Selection controls */}
@@ -116,7 +187,7 @@ export function AnnotationsSidebar({
           <div className="min-h-0 flex-1 overflow-hidden">
             <ScrollArea className="size-full">
               <ul className="space-y-3 px-6 pb-4 pt-1">
-                {annotations.map((ann) => {
+                {sortedAnnotations.map((ann) => {
                   const isSelected = currentAnnotation?.id === ann.id
                   const isChecked = selectedAnnotations.has(ann.id)
                   return (
