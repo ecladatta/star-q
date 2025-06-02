@@ -1,9 +1,11 @@
+'use client'
 import type { DocumentMetadata } from '@/actions/corpus/corpusActions'
 import type { Corpus, Document } from '@/db/schema'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
+import { useEffect, useRef } from 'react'
 
 type DocumentSidebarProps = {
   corpus: Corpus
@@ -12,6 +14,17 @@ type DocumentSidebarProps = {
 }
 
 export function DocumentSidebar({ corpus, documents, currentDocument }: DocumentSidebarProps) {
+  const currentDocumentRef = useRef<HTMLLIElement>(null)
+
+  useEffect(() => {
+    if (currentDocumentRef.current) {
+      currentDocumentRef.current.scrollIntoView({
+        behavior: 'instant',
+        block: 'center'
+      })
+    }
+  }, [currentDocument?.id])
+
   return (
     <aside className="fixed left-0 top-0 hidden h-screen w-[280px] bg-gray-100 pt-16 md:block">
       <div className="flex h-full flex-col">
@@ -33,6 +46,7 @@ export function DocumentSidebar({ corpus, documents, currentDocument }: Document
             {documents.map((doc, i) => (
               <li
                 key={doc.id}
+                ref={doc.id === currentDocument?.id ? currentDocumentRef : null}
                 className={cn(
                   'mb-3',
                   doc.id === currentDocument?.id && 'font-semibold text-blue-500',
