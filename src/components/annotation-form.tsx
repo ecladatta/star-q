@@ -97,7 +97,6 @@ export function AnnotationForm({
       subject: currentAnnotation.subject ? { ...currentAnnotation.subject } : undefined,
       predicate: currentAnnotation.predicate ? { ...currentAnnotation.predicate } : undefined,
       object: currentAnnotation.object ? { ...currentAnnotation.object } : undefined,
-      // Omit id and other database-specific fields to create a new annotation
     }
 
     setCurrentAnnotation(clonedAnnotation)
