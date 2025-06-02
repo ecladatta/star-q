@@ -15,6 +15,7 @@ export function AnnotationsSidebar({
   annotations,
   showAnnotations,
   onShowAnnotationsChange,
+  currentAnnotation,
   onAnnotationClick,
 }: AnnotationsSidebarProps) {
   if (annotations.length === 0) {
@@ -39,32 +40,39 @@ export function AnnotationsSidebar({
         </div>
         <div className="min-h-0 flex-1 overflow-hidden">
           <ScrollArea className="size-full">
-            <ul className="space-y-3 px-6 pb-4">
-              {annotations.map(ann => (
-                <li key={ann.id} className="mb-3">
-                  <button
-                    type="button"
-                    className="w-full break-all rounded-md bg-white p-2 text-left shadow hover:bg-gray-50"
-                    onClick={() => onAnnotationClick(ann)}
-                  >
-                    <span className="font-semibold text-orange-500">
-                      {ann.subject.annotationValue}
-                    </span>
-                    {' '}
-                    &rarr;
-                    {' '}
-                    <span className="font-semibold text-blue-500">
-                      {ann.predicate.annotationValue}
-                    </span>
-                    {' '}
-                    &rarr;
-                    {' '}
-                    <span className="font-semibold text-green-500">
-                      {ann.object.annotationValue}
-                    </span>
-                  </button>
-                </li>
-              ))}
+            <ul className="space-y-3 px-6 pb-4 pt-1">
+              {annotations.map((ann) => {
+                const isSelected = currentAnnotation?.id === ann.id
+                return (
+                  <li key={ann.id} className="mb-3">
+                    <button
+                      type="button"
+                      className={`w-full break-all rounded-md p-2 text-left shadow transition-all ${
+                        isSelected
+                          ? 'bg-blue-50 ring-2 ring-blue-500/50'
+                          : 'bg-white hover:bg-gray-50'
+                      }`}
+                      onClick={() => onAnnotationClick(ann)}
+                    >
+                      <span className="font-semibold text-orange-500">
+                        {ann.subject.annotationValue}
+                      </span>
+                      {' '}
+                      &rarr;
+                      {' '}
+                      <span className="font-semibold text-blue-500">
+                        {ann.predicate.annotationValue}
+                      </span>
+                      {' '}
+                      &rarr;
+                      {' '}
+                      <span className="font-semibold text-green-500">
+                        {ann.object.annotationValue}
+                      </span>
+                    </button>
+                  </li>
+                )
+              })}
             </ul>
           </ScrollArea>
         </div>
