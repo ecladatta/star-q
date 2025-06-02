@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { ChevronDownIcon, Loader2Icon, Trash2Icon } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Label } from './ui/label'
 
 type SortOption = 'creation' | 'alphabetical' | 'position'
@@ -35,6 +35,8 @@ export function AnnotationsSidebar({
 }: AnnotationsSidebarProps) {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const [sortOption, setSortOption] = useState<SortOption>('position')
+  const scrollAreaRef = useRef<HTMLDivElement>(null)
+  const annotationRefs = useRef<Map<string, HTMLLIElement>>(new Map())
 
   const sortedAnnotations = useMemo(() => {
     const sorted = [...annotations]
@@ -94,6 +96,45 @@ export function AnnotationsSidebar({
     setShowConfirmDialog(false)
     onBatchDelete()
   }
+
+  // Auto-scroll to current annotation
+  useEffect(() => {
+    if (!currentAnnotation?.id)
+      return
+
+    const annotationElement = annotationRefs.current.get(currentAnnotation.id)
+    const scrollArea = scrollAreaRef.current
+
+    if (annotationElement && scrollArea) {
+      // Find the scroll container (the actual scrollable element inside ScrollArea)
+      const scrollContainer = scrollArea.querySelector('[data-radix-scroll-area-viewport]')
+
+      if (scrollContainer) {
+        const containerRect = scrollContainer.getBoundingClientRect()
+        const elementRect = annotationElement.getBoundingClientRect()
+
+        // Check if element is already visible
+        const isVisible
+          = elementRect.top >= containerRect.top
+            && elementRect.bottom <= containerRect.bottom
+
+        if (!isVisible) {
+          // Calculate the scroll position to center the element
+          const scrollTop = scrollContainer.scrollTop
+          const elementOffsetTop = elementRect.top - containerRect.top + scrollTop
+          const containerHeight = containerRect.height
+          const elementHeight = elementRect.height
+
+          const targetScrollTop = elementOffsetTop - (containerHeight / 2) + (elementHeight / 2)
+
+          scrollContainer.scrollTo({
+            top: Math.max(0, targetScrollTop),
+            behavior: 'smooth',
+          })
+        }
+      }
+    }
+  }, [currentAnnotation?.id, sortedAnnotations])
 
   if (annotations.length === 0) {
     return null
@@ -185,13 +226,23 @@ export function AnnotationsSidebar({
           </div>
 
           <div className="min-h-0 flex-1 overflow-hidden">
-            <ScrollArea className="size-full">
+            <ScrollArea className="size-full" ref={scrollAreaRef}>
               <ul className="space-y-3 px-6 pb-4 pt-1">
                 {sortedAnnotations.map((ann) => {
                   const isSelected = currentAnnotation?.id === ann.id
                   const isChecked = selectedAnnotations.has(ann.id)
                   return (
-                    <li key={ann.id} className="mb-3">
+                    <li
+                      key={ann.id}
+                      className="mb-3"
+                      ref={(el) => {
+                        if (el) {
+                          annotationRefs.current.set(ann.id, el)
+                        } else {
+                          annotationRefs.current.delete(ann.id)
+                        }
+                      }}
+                    >
                       <div className="group relative">
                         <button
                           type="button"
