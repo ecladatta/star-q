@@ -26,7 +26,7 @@ export function DocumentSidebar({ corpus, documents, currentDocument }: Document
   }, [currentDocument?.id])
 
   return (
-    <aside className="fixed left-0 top-0 hidden h-screen w-[280px] bg-gray-100 pt-16 md:block">
+    <aside className="fixed left-0 top-0 hidden h-screen w-[280px] bg-gray-100 pt-16 lg:block">
       <div className="flex h-full flex-col">
         <div className="mt-6 px-8">
           <Link href={`/corpus/${corpus.id}`} passHref>
