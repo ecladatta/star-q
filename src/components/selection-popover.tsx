@@ -1,8 +1,8 @@
-import type { PopoverState } from '@/hooks/useAnnotationState'
+import type { PopoverState } from '@/hooks/useSelectionState'
 import type { DocumentAnnotation, EntityType } from '@/types/types'
+import { BoxIcon, EditIcon, LinkIcon, UserIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { BoxIcon, EditIcon, LinkIcon, UserIcon } from 'lucide-react'
 
 type SelectionPopoverProps = {
   popoverState: PopoverState

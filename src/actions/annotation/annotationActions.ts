@@ -1,13 +1,13 @@
 'use server'
 import type { AnnotationComponent } from '@/db/schema'
 import type { DocumentAnnotation, Entity, EntityType } from '@/types/types'
+import { eq, getTableColumns } from 'drizzle-orm'
+import { alias } from 'drizzle-orm/pg-core'
+import { revalidatePath } from 'next/cache'
 import { findOrCreateCorpusCustomEntity } from '@/actions/corpus/corpusActions'
 import { auth } from '@/auth'
 import { db } from '@/db/drizzle'
 import { annotation, annotationComponent, corpusCustomEntity, document } from '@/db/schema'
-import { eq, getTableColumns } from 'drizzle-orm'
-import { alias } from 'drizzle-orm/pg-core'
-import { revalidatePath } from 'next/cache'
 
 async function upsertAnnotationComponent(
   component: AnnotationComponent,

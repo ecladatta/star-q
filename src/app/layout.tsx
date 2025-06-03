@@ -1,8 +1,8 @@
 import type { Metadata } from 'next'
-import Header from '@/components/header'
 import { TooltipProvider } from '@radix-ui/react-tooltip'
 import localFont from 'next/font/local'
 import { Toaster } from 'sonner'
+import Header from '@/components/header'
 import './globals.css'
 
 const geistSans = localFont({

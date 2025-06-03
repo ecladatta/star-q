@@ -1,9 +1,9 @@
 'use server'
+import { revalidatePath } from 'next/cache'
 import { importCorpuswalkerDocuments } from '@/lib/imports/corpuswalkerImport'
 import { importIritDocuments } from '@/lib/imports/iritImport'
 import { importLabelStudioDocuments } from '@/lib/imports/labelstudioImport'
 import { determineImportType, UnsupportedFileTypeError } from '@/lib/utils'
-import { revalidatePath } from 'next/cache'
 
 /**
  * Main import function that determines the file type and routes to the appropriate importer

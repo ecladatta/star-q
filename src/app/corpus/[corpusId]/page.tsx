@@ -1,9 +1,9 @@
+import Link from 'next/link'
+import React from 'react'
 import { getCorpus } from '@/actions/corpus/corpusActions'
 import { getDocumentsMetadata } from '@/actions/document/documentActions'
 import CorpusSettingsButton from '@/components/corpus-settings-button'
 import DocumentsTable from '@/components/documents-table'
-import Link from 'next/link'
-import React from 'react'
 
 export default async function CorpusPage({ params }: { params: Promise<{ corpusId: string }> }) {
   const corpusId = (await params).corpusId

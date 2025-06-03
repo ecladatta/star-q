@@ -1,8 +1,8 @@
+import Link from 'next/link'
 import { getAnnotations } from '@/actions/annotation/annotationActions'
 import { getCorpus } from '@/actions/corpus/corpusActions'
 import { getDocument, getDocumentsMetadata } from '@/actions/document/documentActions'
 import { DocumentViewer } from '@/components/document-viewer'
-import Link from 'next/link'
 
 export default async function DocumentPage({ params }: { params: Promise<{ documentId: string }> }) {
   const { documentId } = await params

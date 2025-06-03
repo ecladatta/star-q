@@ -1,5 +1,4 @@
 'use client'
-import type { Corpus } from '@/db/schema'
 import type {
   Column,
   ColumnDef,
@@ -7,22 +6,7 @@ import type {
   SortingState,
   Table as TableType,
 } from '@tanstack/react-table'
-import { addCorpus, deleteCorpus, duplicateCorpus, renameCorpus } from '@/actions/corpus/corpusActions'
-import { importDocuments } from '@/actions/imports/importActions'
-import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { cn, InvalidJsonLinesError, UnsupportedFileTypeError } from '@/lib/utils'
+import type { Corpus } from '@/db/schema'
 import {
   flexRender,
   getCoreRowModel,
@@ -54,6 +38,22 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useRef, useState } from 'react'
 import * as React from 'react'
+import { addCorpus, deleteCorpus, duplicateCorpus, renameCorpus } from '@/actions/corpus/corpusActions'
+import { importDocuments } from '@/actions/imports/importActions'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { cn, InvalidJsonLinesError, UnsupportedFileTypeError } from '@/lib/utils'
 
 export type CorpusesProps = {
   corpuses: (Corpus & { documentsCount: number, annotationsCount: number })[]

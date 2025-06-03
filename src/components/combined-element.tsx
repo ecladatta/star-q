@@ -1,11 +1,11 @@
 'use client'
 import type { Offset } from '@/lib/utils'
 import type { CurrentAnnotation, DocumentElement } from '@/types/types'
+import { createElement, useState } from 'react'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { TYPE_TO_COLOR } from '@/lib/constants'
 import { cn, splitWithOffsets } from '@/lib/utils'
-import { createElement, useState } from 'react'
 import Split from './split'
 
 export type CombinedElementProps = {

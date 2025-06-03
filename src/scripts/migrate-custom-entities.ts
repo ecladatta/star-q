@@ -3,10 +3,10 @@
  * This creates proper custom entities in the corpus_custom_entity table and updates references.
  */
 
-import { db } from '@/db/drizzle'
-import { annotationComponent, annotation as annotationTable, corpusCustomEntity, document } from '@/db/schema'
 import cliProgress from 'cli-progress'
 import { and, eq, isNull } from 'drizzle-orm'
+import { db } from '@/db/drizzle'
+import { annotationComponent, annotation as annotationTable, corpusCustomEntity, document } from '@/db/schema'
 
 async function migrateCustomEntities() {
   console.log('Starting custom entity migration...')
@@ -46,16 +46,16 @@ async function migrateCustomEntities() {
 
     const asPredicate = asSubject.length === 0
       ? await db.select()
-        .from(annotationTable)
-        .where(eq(annotationTable.predicateId, component.id))
-        .limit(1)
+          .from(annotationTable)
+          .where(eq(annotationTable.predicateId, component.id))
+          .limit(1)
       : []
 
     const asObject = asSubject.length === 0 && asPredicate.length === 0
       ? await db.select()
-        .from(annotationTable)
-        .where(eq(annotationTable.objectId, component.id))
-        .limit(1)
+          .from(annotationTable)
+          .where(eq(annotationTable.objectId, component.id))
+          .limit(1)
       : []
 
     // Determine which role this component plays and map to customType

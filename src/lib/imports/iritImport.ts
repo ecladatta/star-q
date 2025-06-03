@@ -1,14 +1,14 @@
 'use server'
 import type { DocumentAnnotationComponent, DocumentData } from '@/types/types'
 import { Buffer } from 'node:buffer'
-import { addAnnotation } from '@/actions/annotation/annotationActions'
-import { db } from '@/db/drizzle'
-import { document } from '@/db/schema'
 import concat from 'concat-stream'
 import { parse as parseCSV } from 'csv-parse/sync'
 import JSZip from 'jszip'
 import * as tarStream from 'tar-stream'
 import { v4 as uuidv4 } from 'uuid'
+import { addAnnotation } from '@/actions/annotation/annotationActions'
+import { db } from '@/db/drizzle'
+import { document } from '@/db/schema'
 
 const FILENAMES = {
   PARAGRAPHS_CSV: 'Annotation_paragraphes.csv',

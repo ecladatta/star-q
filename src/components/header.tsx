@@ -1,5 +1,5 @@
-import { auth, signIn, signOut } from '@/auth'
 import Link from 'next/link'
+import { auth, signIn, signOut } from '@/auth'
 import { Button } from './ui/button'
 
 async function Header() {

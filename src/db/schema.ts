@@ -1,6 +1,6 @@
-import type { DocumentData, EntityDatatype } from '@/types/types'
 import type { InferSelectModel } from 'drizzle-orm'
 import type { AdapterAccountType } from 'next-auth/adapters'
+import type { DocumentData, EntityDatatype } from '@/types/types'
 import { randomUUID } from 'node:crypto'
 import { boolean, integer, jsonb, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core'
 

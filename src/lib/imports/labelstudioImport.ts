@@ -1,10 +1,10 @@
 'use server'
 import type { DocumentAnnotationComponent, DocumentData } from '@/types/types'
+import { v4 as uuidv4 } from 'uuid'
 import { addAnnotation } from '@/actions/annotation/annotationActions'
 import { db } from '@/db/drizzle'
-import { document } from '@/db/schema'
 
-import { v4 as uuidv4 } from 'uuid'
+import { document } from '@/db/schema'
 
 /**
  * Imports documents from a Label Studio formatted JSON file

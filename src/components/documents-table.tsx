@@ -1,5 +1,4 @@
 'use client'
-import type { DocumentMetadata } from '@/actions/corpus/corpusActions'
 import type {
   Column,
   ColumnDef,
@@ -7,12 +6,41 @@ import type {
   SortingState,
   Table as TableType,
 } from '@tanstack/react-table'
+import type { DocumentMetadata } from '@/actions/corpus/corpusActions'
+import {
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useReactTable,
+} from '@tanstack/react-table'
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  CheckCircleIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ChevronsLeftIcon,
+  ChevronsRightIcon,
+  ChevronsUpDownIcon,
+  DownloadIcon,
+  FilePenIcon,
+  Loader2Icon,
+  MoreHorizontalIcon,
+  Trash2Icon,
+} from 'lucide-react'
+import Link from 'next/link'
+import { useState } from 'react'
+import * as React from 'react'
+import { toast } from 'sonner'
 import {
   deleteDocument,
   getRawDocumentData,
   markDocumentAsCompleted,
 } from '@/actions/document/documentActions'
 import { Button } from '@/components/ui/button'
+
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
@@ -43,35 +71,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-
 import { cn } from '@/lib/utils'
-import {
-  flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from '@tanstack/react-table'
-import {
-  ArrowDownIcon,
-  ArrowUpIcon,
-  CheckCircleIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  ChevronsLeftIcon,
-  ChevronsRightIcon,
-  ChevronsUpDownIcon,
-  DownloadIcon,
-  FilePenIcon,
-  Loader2Icon,
-  MoreHorizontalIcon,
-  Trash2Icon,
-} from 'lucide-react'
-import Link from 'next/link'
-import { useState } from 'react'
-import * as React from 'react'
-import { toast } from 'sonner'
 import { Label } from './ui/label'
 
 type DataTableColumnHeaderProps<TData, TValue> = {

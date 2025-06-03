@@ -1,11 +1,11 @@
 'use client'
 import type { DocumentMetadata } from '@/actions/corpus/corpusActions'
 import type { Corpus, Document } from '@/db/schema'
+import Link from 'next/link'
+import { useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
-import Link from 'next/link'
-import { useEffect, useRef } from 'react'
 
 type DocumentSidebarProps = {
   corpus: Corpus
@@ -20,7 +20,7 @@ export function DocumentSidebar({ corpus, documents, currentDocument }: Document
     if (currentDocumentRef.current) {
       currentDocumentRef.current.scrollIntoView({
         behavior: 'instant',
-        block: 'center'
+        block: 'center',
       })
     }
   }, [currentDocument?.id])

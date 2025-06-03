@@ -1,11 +1,11 @@
 import type { CurrentAnnotation, DocumentAnnotation } from '@/types/types'
+import { ChevronDownIcon, Loader2Icon, Trash2Icon } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { ChevronDownIcon, Loader2Icon, Trash2Icon } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
 import { Label } from './ui/label'
 
 type SortOption = 'creation' | 'alphabetical' | 'position'
