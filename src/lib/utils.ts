@@ -2,6 +2,10 @@ import type { ClassValue } from 'clsx'
 import { clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 
+export function isMac() {
+  return typeof window !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.userAgent)
+}
+
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }

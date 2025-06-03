@@ -3,12 +3,15 @@ import type { DocumentMetadata } from '@/actions/corpus/corpusActions'
 import type { Corpus, Document } from '@/db/schema'
 import type { Offset } from '@/lib/utils'
 import type { DocumentAnnotation, DocumentData } from '@/types/types'
+import { InfoIcon } from 'lucide-react'
 import { useState } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { useAnnotationState } from '@/hooks/useAnnotationState'
 import { useDocumentElements } from '@/hooks/useDocumentElements'
 import { useSelectionHandlers } from '@/hooks/useSelectionState'
-import { cn } from '@/lib/utils'
+import { cn, isMac } from '@/lib/utils'
 import { AnnotationForm } from './annotation-form'
 import { AnnotationsSidebar } from './annotations-sidebar'
 import CombinedElement from './combined-element'
@@ -101,6 +104,8 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
     popover.hidePopover()
   }
 
+  const ctrlKey = isMac() ? '⌘' : 'Ctrl'
+
   return (
     <div className="flex">
       {documentData && (
@@ -124,8 +129,72 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
 
               <Card className="mb-6">
                 <CardHeader>
-                  <CardTitle>{documentData._source.identificationMetadata.title}</CardTitle>
-                  <CardDescription>Select text or table cells to start annotating</CardDescription>
+                  <div className="flex items-center gap-2">
+                    <CardDescription>Select text or table cells to start annotating</CardDescription>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button variant="ghost" size="sm" className="size-6 p-0">
+                          <InfoIcon className="size-4" />
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-md">
+                        <DialogHeader>
+                          <DialogTitle>Keyboard Shortcuts</DialogTitle>
+                          <DialogDescription>
+                            Use these shortcuts to speed up your annotation workflow
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                          <div>
+                            <h4 className="mb-2 text-sm font-medium">Annotation Actions</h4>
+                            <div className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span>Mark as Subject</span>
+                                <kbd className="rounded bg-muted px-2 py-1 text-xs">S</kbd>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Mark as Predicate</span>
+                                <kbd className="rounded bg-muted px-2 py-1 text-xs">P</kbd>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Mark as Object</span>
+                                <kbd className="rounded bg-muted px-2 py-1 text-xs">O</kbd>
+                              </div>
+                            </div>
+                          </div>
+                          <div>
+                            <h4 className="mb-2 text-sm font-medium">Navigation</h4>
+                            <div className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span>Edit annotation (when popover visible)</span>
+                                <kbd className="rounded bg-muted px-2 py-1 text-xs">E</kbd>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Toggle annotations visibility</span>
+                                <kbd className="rounded bg-muted px-2 py-1 text-xs">H</kbd>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Clear/Cancel</span>
+                                <kbd className="rounded bg-muted px-2 py-1 text-xs">Esc</kbd>
+                              </div>
+                            </div>
+                          </div>
+                          <div>
+                            <h4 className="mb-2 text-sm font-medium">Form Actions</h4>
+                            <div className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span>Save annotation</span>
+                                <kbd className="rounded bg-muted px-2 py-1 text-xs">
+                                  {ctrlKey}
+                                  +S
+                                </kbd>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   {combinedElements.map(element => (

@@ -31,6 +31,11 @@ export function useKeyboardShortcuts({
         return
       }
 
+      if (e.ctrlKey || e.altKey || e.metaKey) {
+        // Ignore if Ctrl, Alt, or Meta keys are pressed
+        return
+      }
+
       const key = e.key.toLowerCase()
 
       // Escape key - clear annotation and hide popover

@@ -2,13 +2,14 @@ import type { Dispatch, SetStateAction } from 'react'
 import type { CurrentAnnotation, DocumentAnnotationComponent, Entity, EntityType } from '@/types/types'
 import { PopoverClose } from '@radix-ui/react-popover'
 import { ArrowLeftRightIcon, CopyIcon, Loader2Icon, SaveIcon, Trash2Icon } from 'lucide-react'
+import { useEffect } from 'react'
 import { EntitySelector } from '@/components/entity-selector'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { TYPE_TO_COLOR } from '@/lib/constants'
-import { cn } from '@/lib/utils'
+import { cn, isMac } from '@/lib/utils'
 
 type AnnotationFormProps = {
   currentAnnotation: CurrentAnnotation | null
@@ -50,6 +51,8 @@ export function AnnotationForm({
       type: entityType,
     }
   }
+
+  const saveShortcut = isMac() ? '⌘S' : 'Ctrl+S'
 
   const handleEntityChange = (type: EntityType, newValue: Entity | null) => {
     setCurrentAnnotation((prev) => {
@@ -103,6 +106,24 @@ export function AnnotationForm({
     setCurrentAnnotation(clonedAnnotation)
   }
 
+  // Keyboard shortcut for saving annotation (Ctrl+S / Cmd+S)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault()
+        e.stopPropagation()
+        if (hasAllTags && !annotationFormLoading && !isDeletingAnnotation) {
+          onSave()
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [hasAllTags, annotationFormLoading, isDeletingAnnotation, onSave])
+
   if (!hasAnyTags)
     return null
 
@@ -153,7 +174,7 @@ export function AnnotationForm({
                       Delete annotation
                     </TooltipContent>
                   </Tooltip>
-                  <PopoverContent>
+                  <PopoverContent side="top">
                     <div className="flex flex-col items-center">
                       <p>Are you sure you want to delete this annotation?</p>
                       <div className="mt-2 flex gap-2">
@@ -191,7 +212,9 @@ export function AnnotationForm({
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                Save changes
+                Save changes (
+                {saveShortcut}
+                )
               </TooltipContent>
             </Tooltip>
             <Tooltip delayDuration={200}>
