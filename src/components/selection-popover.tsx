@@ -73,7 +73,7 @@ export function SelectionPopover({
                         Delete annotation
                       </TooltipContent>
                     </Tooltip>
-                    <PopoverContent>
+                    <PopoverContent side="top">
                       <div className="flex flex-col items-center">
                         <p>Are you sure you want to delete this annotation?</p>
                         <div className="mt-2 flex gap-2">
