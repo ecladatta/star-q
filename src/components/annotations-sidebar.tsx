@@ -153,7 +153,10 @@ export function AnnotationsSidebar({
                 onCheckedChange={checked => onShowAnnotationsChange(checked === true)}
               />
               <Label htmlFor="show-annotations">
-                Highlight annotations in doc
+                <span>
+                  <u>H</u>
+                  ighlight annotations in doc
+                </span>
               </Label>
             </div>
 

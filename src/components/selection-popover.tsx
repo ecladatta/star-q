@@ -40,7 +40,10 @@ export function SelectionPopover({
               onClick={() => onEditAnnotation(popoverState.annotation!)}
             >
               <EditIcon />
-              Edit
+              <span>
+                <u>E</u>
+                dit
+              </span>
             </Button>
           )}
           <Button
@@ -49,8 +52,10 @@ export function SelectionPopover({
             onClick={() => onMentionAssociation('subject')}
           >
             <UserIcon />
-            {' '}
-            Subject
+            <span>
+              <u>S</u>
+              ubject
+            </span>
           </Button>
           <Button
             variant="outline"
@@ -58,8 +63,10 @@ export function SelectionPopover({
             onClick={() => onMentionAssociation('predicate')}
           >
             <LinkIcon />
-            {' '}
-            Predicate
+            <span>
+              <u>P</u>
+              redicate
+            </span>
           </Button>
           <Button
             variant="outline"
@@ -67,8 +74,10 @@ export function SelectionPopover({
             onClick={() => onMentionAssociation('object')}
           >
             <BoxIcon />
-            {' '}
-            Object
+            <span>
+              <u>O</u>
+              bject
+            </span>
           </Button>
         </div>
       </PopoverContent>
