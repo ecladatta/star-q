@@ -48,11 +48,17 @@ export function DocumentSidebar({ corpus, documents, currentDocument }: Document
                 key={doc.id}
                 ref={doc.id === currentDocument?.id ? currentDocumentRef : null}
                 className={cn(
-                  'mb-3',
+                  'mb-2',
                   doc.id === currentDocument?.id && 'font-semibold text-blue-500',
                 )}
               >
-                <Link href={`/document/${doc.id}`} className="flex flex-col gap-0">
+                <Link
+                  href={`/document/${doc.id}`}
+                  className={cn(
+                    'flex w-full flex-col gap-0 rounded p-2 text-left transition-colors hover:bg-gray-200',
+                    doc.id === currentDocument?.id && 'border border-blue-200 bg-blue-50',
+                  )}
+                >
                   <span
                     className="max-w-[220px] truncate break-all"
                     title={doc.title}
