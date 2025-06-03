@@ -147,17 +147,7 @@ function CombinedElement({
       }),
     )
 
-    const handleCellMouseUp = (rowIndex: number, cellIndex: number, event: React.MouseEvent) => {
-      // Check if the click target is an annotation (Mark component)
-      const target = event.target as HTMLElement
-      const isAnnotationClick = target.closest('[role="button"]')
-        && (target.style.backgroundColor || target.closest('[style*="background"]'))
-
-      // If clicking on an existing annotation, don't handle cell selection
-      if (isAnnotationClick) {
-        return
-      }
-
+    const handleCellMouseUp = (rowIndex: number, cellIndex: number) => {
       // Small delay to ensure selection state is properly updated
       setTimeout(() => {
         const selection = window.getSelection()
