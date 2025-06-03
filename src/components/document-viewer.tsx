@@ -96,12 +96,6 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
     await createAnnotation(document.id, subject, predicate, object)
   }
 
-  const handleDeleteAnnotation = async () => {
-    if (!currentAnnotation?.id)
-      return
-    await deleteAnnotationById(currentAnnotation.id)
-  }
-
   const handleEditAnnotation = (annotation: DocumentAnnotation) => {
     setCurrentAnnotation(annotation)
     popover.hidePopover()
@@ -154,7 +148,7 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
             currentAnnotation={currentAnnotation}
             setCurrentAnnotation={setCurrentAnnotation}
             onSave={handleSaveAnnotation}
-            onDelete={handleDeleteAnnotation}
+            onDelete={deleteAnnotationById}
             annotationFormLoading={annotationFormLoading}
             isDeletingAnnotation={isDeletingAnnotation}
             corpusId={corpus.id}
@@ -163,6 +157,8 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
           <SelectionPopover
             popoverState={popover.popoverState}
             onClose={popover.hidePopover}
+            onDelete={deleteAnnotationById}
+            isDeletingAnnotation={isDeletingAnnotation}
             onMentionAssociation={handleSelectionMentionAssociation}
             onEditAnnotation={handleEditAnnotation}
           />

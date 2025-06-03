@@ -14,7 +14,7 @@ type AnnotationFormProps = {
   currentAnnotation: CurrentAnnotation | null
   setCurrentAnnotation: Dispatch<SetStateAction<CurrentAnnotation | null>>
   onSave: () => void
-  onDelete: () => void
+  onDelete: (annotationId: string) => void
   annotationFormLoading: boolean
   isDeletingAnnotation: boolean
   corpusId: string
@@ -157,7 +157,16 @@ export function AnnotationForm({
                     <div className="flex flex-col items-center">
                       <p>Are you sure you want to delete this annotation?</p>
                       <div className="mt-2 flex gap-2">
-                        <Button variant="destructive" onClick={onDelete} disabled={isDeletingAnnotation}>
+                        <Button
+                          variant="destructive"
+                          onClick={async () => {
+                            if (currentAnnotation?.id) {
+                              await onDelete(currentAnnotation.id)
+                              setCurrentAnnotation(null)
+                            }
+                          }}
+                          disabled={isDeletingAnnotation}
+                        >
                           {isDeletingAnnotation ? <Loader2Icon className="animate-spin" /> : 'Delete'}
                         </Button>
                         <PopoverClose asChild>

@@ -1,12 +1,16 @@
 import type { PopoverState } from '@/hooks/useSelectionState'
 import type { DocumentAnnotation, EntityType } from '@/types/types'
-import { BoxIcon, EditIcon, LinkIcon, UserIcon } from 'lucide-react'
+import { PopoverClose } from '@radix-ui/react-popover'
+import { BoxIcon, EditIcon, LinkIcon, Loader2Icon, Trash2Icon, UserIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
 
 type SelectionPopoverProps = {
   popoverState: PopoverState
   onClose: () => void
+  onDelete: (annotationId: string) => void
+  isDeletingAnnotation: boolean
   onMentionAssociation: (type: EntityType) => void
   onEditAnnotation: (annotation: DocumentAnnotation) => void
 }
@@ -14,6 +18,8 @@ type SelectionPopoverProps = {
 export function SelectionPopover({
   popoverState,
   onClose,
+  onDelete,
+  isDeletingAnnotation,
   onMentionAssociation,
   onEditAnnotation,
 }: SelectionPopoverProps) {
