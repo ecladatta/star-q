@@ -13,12 +13,6 @@ export type MarkProps = {
 }
 
 function Mark(props: MarkProps) {
-  const handleClick = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    e.preventDefault()
-    props.onClick({ start: props.start, end: props.end })
-  }
-
   const handleKeyUp = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.stopPropagation()
@@ -27,20 +21,25 @@ function Mark(props: MarkProps) {
     }
   }
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    e.stopPropagation()
-  }
-
   const handleMouseUp = (e: React.MouseEvent) => {
-    e.stopPropagation()
+    const selection = window.getSelection()
+    const hasSelection = selection && !selection.isCollapsed && selection.toString().trim().length > 0
+    // If there's no selection, treat it as a click on the annotation
+    if (!hasSelection) {
+      e.stopPropagation()
+      e.preventDefault()
+      props.onClick({ start: props.start, end: props.end })
+    }
   }
 
   return (
+    // Note: making this span a button (and thus adding a tabIndex)
+    // makes it impossible to select text within it, so we disable
+    // the eslint rule for this line.
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions
     <span
-      role="button"
-      tabIndex={0}
       className={cn(
-        'cursor-pointer whitespace-pre-wrap px-1 transition-opacity duration-300',
+        'cursor-pointer select-text whitespace-pre-wrap px-1 transition-opacity duration-300',
         props.isCurrentAnnotation
           ? 'border-2 border-black/20 opacity-100 shadow-md'
           : 'opacity-70',
@@ -53,9 +52,7 @@ function Mark(props: MarkProps) {
       }}
       data-start={props.start}
       data-end={props.end}
-      onClick={handleClick}
       onKeyUp={handleKeyUp}
-      onMouseDown={handleMouseDown}
       onMouseUp={handleMouseUp}
     >
       {props.content}
