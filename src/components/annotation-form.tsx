@@ -1,5 +1,6 @@
 import type { Dispatch, SetStateAction } from 'react'
 import type { CurrentAnnotation, DocumentAnnotationComponent, Entity, EntityType } from '@/types/types'
+import { PopoverClose } from '@radix-ui/react-popover'
 import { ArrowLeftRightIcon, CopyIcon, Loader2Icon, SaveIcon, Trash2Icon } from 'lucide-react'
 import { EntitySelector } from '@/components/entity-selector'
 import { Button } from '@/components/ui/button'
@@ -159,9 +160,11 @@ export function AnnotationForm({
                         <Button variant="destructive" onClick={onDelete} disabled={isDeletingAnnotation}>
                           {isDeletingAnnotation ? <Loader2Icon className="animate-spin" /> : 'Delete'}
                         </Button>
-                        <Button variant="ghost" disabled={isDeletingAnnotation}>
-                          Cancel
-                        </Button>
+                        <PopoverClose asChild>
+                          <Button variant="ghost" disabled={isDeletingAnnotation}>
+                            Cancel
+                          </Button>
+                        </PopoverClose>
                       </div>
                     </div>
                   </PopoverContent>
