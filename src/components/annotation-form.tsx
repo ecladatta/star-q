@@ -1,5 +1,6 @@
-import type { CurrentAnnotation, DocumentAnnotationComponent, Entity, EntityType } from '@/types/types'
 import type { Dispatch, SetStateAction } from 'react'
+import type { CurrentAnnotation, DocumentAnnotationComponent, Entity, EntityType } from '@/types/types'
+import { ArrowLeftRightIcon, CopyIcon, Loader2Icon, SaveIcon, Trash2Icon } from 'lucide-react'
 import { EntitySelector } from '@/components/entity-selector'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -7,7 +8,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { TYPE_TO_COLOR } from '@/lib/constants'
 import { cn } from '@/lib/utils'
-import { ArrowLeftRightIcon, CopyIcon, Loader2Icon, SaveIcon, Trash2Icon } from 'lucide-react'
 
 type AnnotationFormProps = {
   currentAnnotation: CurrentAnnotation | null

@@ -15,20 +15,6 @@ export function selectionIsEmpty(selection: Selection) {
   return position === 0 && selection.focusOffset === selection.anchorOffset
 }
 
-export function selectionIsBackwards(selection: Selection) {
-  if (!selection || !selection.anchorNode || !selection.focusNode || selectionIsEmpty(selection)) {
-    return false
-  }
-
-  const position = selection.anchorNode.compareDocumentPosition(selection.focusNode)
-
-  let backward = false
-  if ((!position && selection.anchorOffset > selection.focusOffset) || position === Node.DOCUMENT_POSITION_PRECEDING)
-    backward = true
-
-  return backward
-}
-
 export type Offset = {
   start: number
   end: number

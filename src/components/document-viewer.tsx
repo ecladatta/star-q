@@ -3,12 +3,12 @@ import type { DocumentMetadata } from '@/actions/corpus/corpusActions'
 import type { Corpus, Document } from '@/db/schema'
 import type { Offset } from '@/lib/utils'
 import type { DocumentAnnotation, DocumentData } from '@/types/types'
+import { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAnnotationState } from '@/hooks/useAnnotationState'
 import { useDocumentElements } from '@/hooks/useDocumentElements'
-import { useSelectionState } from '@/hooks/useSelectionState'
+import { useSelectionHandlers } from '@/hooks/useSelectionState'
 import { cn } from '@/lib/utils'
-import { useState } from 'react'
 import { AnnotationForm } from './annotation-form'
 import { AnnotationsSidebar } from './annotations-sidebar'
 import CombinedElement from './combined-element'
@@ -40,21 +40,19 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
     selectedAnnotations,
     handleAnnotationSelect,
     handleBatchDelete,
-    popoverState,
-    setPopoverState,
     documentElements,
     createAnnotation,
     deleteAnnotationById,
-    handleMentionAssociation,
+    handleSelectionMentionAssociation,
+    selection,
+    popover,
   } = annotationState
 
-  const selectionState = useSelectionState(
-    combinedElements,
+  const { handleTextSelection, handleTableSelection } = useSelectionHandlers(
     documentElements,
-    setPopoverState,
-    setCurrentAnnotation,
+    selection,
+    popover,
   )
-  const { handleTextSelection, handleTableSelection, addToCurrentAnnotation } = selectionState
 
   const handleSplitClick = ({ componentId }: Offset) => {
     const ann = documentAnnotations.find(ann =>
@@ -63,12 +61,12 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
     if (!ann)
       return
 
-    const selection = window.getSelection()
-    if (!selection)
+    const domSelection = window.getSelection()
+    if (!domSelection)
       return
 
-    const rect = selection.getRangeAt(0).getClientRects()[0]
-    setPopoverState({
+    const rect = domSelection.getRangeAt(0).getClientRects()[0]
+    popover.setPopoverState({
       top: rect.top + window.scrollY - 80,
       left: rect.left + window.scrollX,
       visible: true,
@@ -106,16 +104,7 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
 
   const handleEditAnnotation = (annotation: DocumentAnnotation) => {
     setCurrentAnnotation(annotation)
-    setPopoverState(prev => ({ ...prev, visible: false }))
-  }
-
-  const handleSelectionMentionAssociation = (type: 'subject' | 'predicate' | 'object') => {
-    if (popoverState.annotation && popoverState.componentId) {
-      handleMentionAssociation(type)
-    } else {
-      addToCurrentAnnotation(type)
-    }
-    setPopoverState(prev => ({ ...prev, visible: false }))
+    popover.hidePopover()
   }
 
   return (
@@ -171,8 +160,8 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
           />
 
           <SelectionPopover
-            popoverState={popoverState}
-            onClose={() => setPopoverState(prev => ({ ...prev, visible: false }))}
+            popoverState={popover.popoverState}
+            onClose={popover.hidePopover}
             onMentionAssociation={handleSelectionMentionAssociation}
             onEditAnnotation={handleEditAnnotation}
           />
