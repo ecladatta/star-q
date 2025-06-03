@@ -181,7 +181,7 @@ function CombinedElement({
                         className={cn('relative select-text p-3 font-medium transition-all duration-200', isHovered ? '!bg-blue-50 shadow-[inset_0_0_0_1px_rgb(147_197_253)]' : 'hover:!bg-blue-50 hover:shadow-[inset_0_0_0_1px_rgb(147_197_253)]')}
                         onMouseEnter={() => setHoveredCell({ row: 0, cell: cellIndex })}
                         onMouseLeave={() => setHoveredCell(null)}
-                        onMouseUp={e => handleCellMouseUp(0, cellIndex, e)}
+                        onMouseUp={() => handleCellMouseUp(0, cellIndex)}
                         aria-label={`Table header cell ${cellIndex + 1}. Click to annotate this cell.`}
                         title={`Click to annotate header cell: ${tableData[0][cellIndex]}`}
                         data-cell={`0-${cellIndex}`}
@@ -218,7 +218,7 @@ function CombinedElement({
                         className={cn('relative select-text p-3 transition-all duration-200', isHovered ? '!bg-blue-50 shadow-[inset_0_0_0_1px_rgb(147_197_253)]' : 'hover:!bg-blue-50 hover:shadow-[inset_0_0_0_1px_rgb(147_197_253)]')}
                         onMouseEnter={() => setHoveredCell({ row: actualRowIndex, cell: cellIndex })}
                         onMouseLeave={() => setHoveredCell(null)}
-                        onMouseUp={e => handleCellMouseUp(actualRowIndex, cellIndex, e)}
+                        onMouseUp={() => handleCellMouseUp(actualRowIndex, cellIndex)}
                         aria-label={`Table cell row ${actualRowIndex + 1}, column ${cellIndex + 1}. Click to annotate this cell.`}
                         title={`Click to annotate cell: ${tableData[actualRowIndex][cellIndex]}`}
                         data-cell={`${actualRowIndex}-${cellIndex}`}
