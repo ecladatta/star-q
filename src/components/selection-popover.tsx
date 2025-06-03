@@ -27,66 +27,144 @@ export function SelectionPopover({
     return null
 
   return (
-    <Popover open={popoverState.visible} onOpenChange={onClose}>
-      <PopoverTrigger asChild>
-        <div
-          style={{
-            position: 'absolute',
-            top: popoverState.top,
-            left: popoverState.left,
-            zIndex: 1000,
-          }}
-        />
-      </PopoverTrigger>
-      <PopoverContent className="w-auto">
-        <div className="flex gap-2">
-          {popoverState.annotation && (
-            <Button
-              variant="outline"
-              onClick={() => onEditAnnotation(popoverState.annotation!)}
-            >
-              <EditIcon />
-              <span>
-                <u>E</u>
-                dit
-              </span>
-            </Button>
-          )}
-          <Button
-            variant="outline"
-            className="border-orange-400 focus-visible:ring-orange-500"
-            onClick={() => onMentionAssociation('subject')}
-          >
-            <UserIcon />
-            <span>
-              <u>S</u>
-              ubject
-            </span>
-          </Button>
-          <Button
-            variant="outline"
-            className="border-blue-400 focus-visible:ring-blue-500"
-            onClick={() => onMentionAssociation('predicate')}
-          >
-            <LinkIcon />
-            <span>
-              <u>P</u>
-              redicate
-            </span>
-          </Button>
-          <Button
-            variant="outline"
-            className="border-green-400 focus-visible:ring-green-500"
-            onClick={() => onMentionAssociation('object')}
-          >
-            <BoxIcon />
-            <span>
-              <u>O</u>
-              bject
-            </span>
-          </Button>
-        </div>
-      </PopoverContent>
-    </Popover>
+    <div onFocusCapture={(e) => {
+      e.stopPropagation()
+    }}
+    >
+      <Popover open={popoverState.visible} onOpenChange={onClose}>
+        <PopoverTrigger asChild>
+          <div
+            style={{
+              position: 'absolute',
+              top: popoverState.top,
+              left: popoverState.left,
+              zIndex: 1000,
+            }}
+          />
+        </PopoverTrigger>
+        <PopoverContent className="w-auto">
+          <div className="flex gap-2">
+            {popoverState.annotation && (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => onEditAnnotation(popoverState.annotation!)}
+                >
+                  <EditIcon />
+                  <span>
+                    <u>E</u>
+                    dit
+                  </span>
+                </Button>
+                <TooltipProvider>
+                  <Popover>
+                    <Tooltip delayDuration={200}>
+                      <PopoverTrigger asChild>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className="border-red-400 text-red-500 hover:text-red-500 focus-visible:ring-red-500"
+                          >
+                            <Trash2Icon />
+                          </Button>
+                        </TooltipTrigger>
+                      </PopoverTrigger>
+                      <TooltipContent>
+                        Delete annotation
+                      </TooltipContent>
+                    </Tooltip>
+                    <PopoverContent>
+                      <div className="flex flex-col items-center">
+                        <p>Are you sure you want to delete this annotation?</p>
+                        <div className="mt-2 flex gap-2">
+                          <Button
+                            variant="destructive"
+                            onClick={async () => {
+                              if (popoverState.annotation) {
+                                await onDelete(popoverState.annotation.id)
+                                onClose()
+                              }
+                            }}
+                            disabled={isDeletingAnnotation}
+                          >
+                            {isDeletingAnnotation ? <Loader2Icon className="animate-spin" /> : 'Delete'}
+                          </Button>
+                          <PopoverClose asChild>
+                            <Button variant="ghost" disabled={isDeletingAnnotation}>
+                              Cancel
+                            </Button>
+                          </PopoverClose>
+                        </div>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </TooltipProvider>
+                <div className="mx-1 border-l border-gray-300" />
+              </>
+            )}
+            <Tooltip delayDuration={200}>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="border-orange-400 focus-visible:ring-orange-500"
+                  onClick={() => onMentionAssociation('subject')}
+                >
+                  <UserIcon />
+                  {!popoverState.annotation && (
+                    <span>
+                      <u>S</u>
+                      ubject
+                    </span>
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                New subject
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip delayDuration={200}>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="border-blue-400 focus-visible:ring-blue-500"
+                  onClick={() => onMentionAssociation('predicate')}
+                >
+                  <LinkIcon />
+                  {!popoverState.annotation && (
+                    <span>
+                      <u>P</u>
+                      redicate
+                    </span>
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                New predicate
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip delayDuration={200}>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="border-green-400 focus-visible:ring-green-500"
+                  onClick={() => onMentionAssociation('object')}
+                >
+                  <BoxIcon />
+                  {!popoverState.annotation && (
+                    <span>
+                      <u>O</u>
+                      bject
+                    </span>
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                New object
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
   )
 }
