@@ -120,6 +120,7 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
       <main className={cn(
         'ml-0 min-w-0 flex-1 lg:ml-[280px]',
         documentAnnotations.length > 0 && 'md:mr-[280px]',
+        currentAnnotation && 'pb-80 sm:pb-48',
       )}
       >
         <div className="container mx-auto p-6 lg:px-12">
