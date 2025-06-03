@@ -31,7 +31,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <TooltipProvider>
+        <TooltipProvider delayDuration={200}>
           <Toaster position="top-center" />
           <Header />
           <div className="mt-16">{children}</div>

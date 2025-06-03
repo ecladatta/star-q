@@ -147,7 +147,7 @@ export function AnnotationForm({
           <div className="ml-auto flex gap-2">
             {currentAnnotation?.id && (
               <>
-                <Tooltip delayDuration={200}>
+                <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
                       variant="outline"
@@ -162,7 +162,7 @@ export function AnnotationForm({
                   </TooltipContent>
                 </Tooltip>
                 <Popover>
-                  <Tooltip delayDuration={200}>
+                  <Tooltip>
                     <PopoverTrigger asChild>
                       <TooltipTrigger asChild>
                         <Button variant="destructive" disabled={isDeletingAnnotation}>
@@ -201,7 +201,7 @@ export function AnnotationForm({
                 </Popover>
               </>
             )}
-            <Tooltip delayDuration={200}>
+            <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   className="bg-green-600 text-green-50 hover:bg-green-700 focus-visible:ring-green-500"
@@ -217,7 +217,7 @@ export function AnnotationForm({
                 )
               </TooltipContent>
             </Tooltip>
-            <Tooltip delayDuration={200}>
+            <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
@@ -236,7 +236,7 @@ export function AnnotationForm({
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div>
               <div className="mb-1 flex items-center justify-between truncate rounded-md px-2 py-0.5 text-sm font-semibold" style={{ backgroundColor: TYPE_TO_COLOR.subject }}>
-                <Tooltip delayDuration={200}>
+                <Tooltip>
                   <TooltipTrigger className="truncate">
                     {subjectTag?.annotationValue ?? '\u00A0'}
                   </TooltipTrigger>
@@ -266,7 +266,7 @@ export function AnnotationForm({
             </div>
             <div>
               <div className="mb-1 flex items-center justify-between truncate rounded-md px-2 py-0.5 text-sm font-semibold" style={{ backgroundColor: TYPE_TO_COLOR.predicate }}>
-                <Tooltip delayDuration={200}>
+                <Tooltip>
                   <TooltipTrigger className="truncate">
                     {predicateTag?.annotationValue ?? '\u00A0'}
                   </TooltipTrigger>
@@ -296,7 +296,7 @@ export function AnnotationForm({
                     corpusId={corpusId}
                   />
                 </div>
-                <Tooltip delayDuration={200}>
+                <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
                       variant="outline"
@@ -314,7 +314,7 @@ export function AnnotationForm({
             </div>
             <div>
               <div className="mb-1 flex items-center justify-between truncate rounded-md px-2 py-0.5 text-sm font-semibold" style={{ backgroundColor: TYPE_TO_COLOR.object }}>
-                <Tooltip delayDuration={200}>
+                <Tooltip>
                   <TooltipTrigger className="truncate">
                     {objectTag?.annotationValue ?? '\u00A0'}
                   </TooltipTrigger>

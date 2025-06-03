@@ -56,9 +56,9 @@ export function SelectionPopover({
                     dit
                   </span>
                 </Button>
-                <TooltipProvider>
+                <TooltipProvider delayDuration={200}>
                   <Popover>
-                    <Tooltip delayDuration={200}>
+                    <Tooltip>
                       <PopoverTrigger asChild>
                         <TooltipTrigger asChild>
                           <Button
@@ -102,7 +102,7 @@ export function SelectionPopover({
                 <div className="mx-1 border-l border-gray-300" />
               </>
             )}
-            <Tooltip delayDuration={200}>
+            <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant="outline"
@@ -122,7 +122,7 @@ export function SelectionPopover({
                 New subject
               </TooltipContent>
             </Tooltip>
-            <Tooltip delayDuration={200}>
+            <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant="outline"
@@ -142,7 +142,7 @@ export function SelectionPopover({
                 New predicate
               </TooltipContent>
             </Tooltip>
-            <Tooltip delayDuration={200}>
+            <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant="outline"
