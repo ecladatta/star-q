@@ -49,15 +49,35 @@ function CombinedElement({
   if (type === 'text') {
     const rawText = value as string
 
-    const splits = splitWithOffsets(rawText, 'text', element.components.map(
-      component => ({
+    // Extract current annotation offsets for this element to handle overlaps
+    const currentAnnotationOffsets = currentAnnotation
+      ? [
+          currentAnnotation.subject,
+          currentAnnotation.predicate,
+          currentAnnotation.object,
+        ]
+          .filter(component => component && component.elementIndex === elementIndex)
+          .map(component => ({
+            start: component!.annotationStart,
+            end: component!.annotationEnd,
+            row: component!.annotationRow ?? undefined,
+            cell: component!.annotationCell ?? undefined,
+            componentId: component!.id,
+          }))
+      : []
+
+    const splits = splitWithOffsets(
+      rawText,
+      'text',
+      element.components.map(component => ({
         start: component.annotationStart,
         end: component.annotationEnd,
         row: component.annotationRow ?? undefined,
         cell: component.annotationCell ?? undefined,
         componentId: component.id,
-      }),
-    ))
+      })),
+      currentAnnotationOffsets,
+    )
 
     return (
       <div key={elementIndex} className="mb-4" id={`element-${elementIndex}`}>
@@ -91,12 +111,39 @@ function CombinedElement({
         const cellAnnotations = element.components.filter(
           annotation => annotation.annotationRow === rowIndex && annotation.annotationCell === cellIndex,
         )
-        return splitWithOffsets(cell, 'table', cellAnnotations.map(annotation => ({
-          start: annotation.annotationStart,
-          end: annotation.annotationEnd,
-          id: annotation.id,
-          componentId: annotation.id,
-        })))
+
+        // Extract current annotation offsets for this specific cell
+        const currentAnnotationOffsets = currentAnnotation
+          ? [
+              currentAnnotation.subject,
+              currentAnnotation.predicate,
+              currentAnnotation.object,
+            ]
+              .filter(component =>
+                component
+                && component.elementIndex === elementIndex
+                && component.annotationRow === rowIndex
+                && component.annotationCell === cellIndex,
+              )
+              .map(component => ({
+                start: component!.annotationStart,
+                end: component!.annotationEnd,
+                id: component!.id,
+                componentId: component!.id,
+              }))
+          : []
+
+        return splitWithOffsets(
+          cell,
+          'table',
+          cellAnnotations.map(annotation => ({
+            start: annotation.annotationStart,
+            end: annotation.annotationEnd,
+            id: annotation.id,
+            componentId: annotation.id,
+          })),
+          currentAnnotationOffsets,
+        )
       }),
     )
 

@@ -38,55 +38,71 @@ export function splitWithOffsets(
   text: string,
   source: string,
   offsets: Array<Offset & { componentId?: string }>,
+  currentAnnotationOffsets: Array<Offset & { componentId?: string }> = [],
 ): SplitComponent[] {
-  if (!text || !offsets.length) {
+  if (!text || (offsets.length === 0 && currentAnnotationOffsets.length === 0)) {
     return [{ start: 0, end: text.length, content: text, source }]
   }
 
-  // Sort offsets by start position and then by end position (longer spans first)
-  const sortedOffsets = [...offsets].sort((a, b) => {
-    if (a.start !== b.start)
-      return a.start - b.start
-    return b.end - a.end // Longer spans come first
+  const allOffsets = [...offsets, ...currentAnnotationOffsets]
+
+  const isCurrent = new Set(currentAnnotationOffsets.map(o => o.componentId))
+
+  // Sort by priority: current > longer > earlier start
+  allOffsets.sort((a, b) => {
+    const aIsCurrent = isCurrent.has(a.componentId)
+    const bIsCurrent = isCurrent.has(b.componentId)
+    if (aIsCurrent !== bIsCurrent)
+      return aIsCurrent ? -1 : 1
+    const lenDiff = (b.end - b.start) - (a.end - a.start)
+    return lenDiff !== 0 ? lenDiff : a.start - b.start
   })
 
-  const splits: SplitComponent[] = []
-  let currentIndex = 0
+  const characterMap = new Map<number, Offset & { componentId?: string }>()
 
-  while (currentIndex < text.length) {
-    // Find all annotations that include the current index
-    const activeAnnotations = sortedOffsets.filter(
-      offset => offset.start <= currentIndex && offset.end > currentIndex,
-    )
-
-    if (activeAnnotations.length === 0) {
-      // No active annotations, find the next one
-      const nextOffset = sortedOffsets.find(offset => offset.start > currentIndex)
-      const end = nextOffset ? nextOffset.start : text.length
-
-      if (end > currentIndex) {
-        splits.push({
-          start: currentIndex,
-          end,
-          content: text.slice(currentIndex, end),
-          source,
-        })
+  for (const o of allOffsets) {
+    for (let i = o.start; i < o.end; i++) {
+      if (!characterMap.has(i)) {
+        characterMap.set(i, o)
       }
-      currentIndex = end
-    } else {
-      // Use the longest active annotation (which comes first due to our sorting)
-      const annotation = activeAnnotations[0]
+    }
+  }
+
+  const splits: SplitComponent[] = []
+  let i = 0
+
+  while (i < text.length) {
+    const annotation = characterMap.get(i)
+    const start = i
+
+    while (
+      i < text.length
+      && characterMap.get(i)?.componentId === annotation?.componentId
+    ) {
+      i++
+    }
+
+    const end = i
+    const content = text.slice(start, end)
+
+    if (annotation) {
       splits.push({
-        start: annotation.start,
-        end: annotation.end,
-        content: text.slice(annotation.start, annotation.end),
+        start,
+        end,
+        content: content.trim(),
         mark: true,
         componentId: annotation.componentId,
         source,
         row: annotation.row,
         cell: annotation.cell,
       })
-      currentIndex = annotation.end
+    } else {
+      splits.push({
+        start,
+        end,
+        content,
+        source,
+      })
     }
   }
 
