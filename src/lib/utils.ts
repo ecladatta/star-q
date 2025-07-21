@@ -1,4 +1,5 @@
 import type { ClassValue } from 'clsx'
+import type { ExportModel } from '@/types/types'
 import { clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 
@@ -144,16 +145,14 @@ export async function determineJsonType(content: string): Promise<JsonFileType> 
   return 'unknown'
 }
 
-export type ImportType = 'corpuswalker' | 'labelstudio' | 'irit-zip' | 'unknown'
+export type ImportType = 'corpuswalker' | 'labelstudio' | 'irit-zip' | 'full-corpus-export' | 'unknown'
 
 export async function determineImportType(content: string, fileName?: string): Promise<ImportType> {
-  // Check if file is a zip file based on name
   if (fileName?.toLowerCase().endsWith('.zip')) {
-    // Check if it's an IRIT zip format (assuming naming convention or content pattern)
+    // Check if it's an IRIT zip format
     if (fileName.toLowerCase().includes('irit') || fileName.toLowerCase().includes('iswc')) {
       return 'irit-zip'
     }
-    // For future: other zip format detection logic could go here
   }
 
   const jsonType = await determineJsonType(content)
@@ -166,9 +165,14 @@ export async function determineImportType(content: string, fileName?: string): P
       }
     } catch {}
   } else if (jsonType === 'json') {
-    // Check if it is a Label Studio JSON file
     try {
-      const parsedJson = JSON.parse(content)
+      // Check if it is a full corpus export
+      const parsedJson = JSON.parse(content) as ExportModel
+      if (parsedJson.exportMeta?.type === 'full-corpus-export' && Array.isArray(parsedJson.documents)) {
+        return 'full-corpus-export'
+      }
+
+      // Check if it is a Label Studio JSON file
       if (!Array.isArray(parsedJson) || !parsedJson.length) {
         return 'unknown'
       }
@@ -178,6 +182,7 @@ export async function determineImportType(content: string, fileName?: string): P
       return 'labelstudio'
     } catch {}
   }
+
   return 'unknown'
 }
 

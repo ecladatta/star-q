@@ -1,6 +1,7 @@
 'use server'
 import { revalidatePath } from 'next/cache'
 import { importCorpuswalkerDocuments } from '@/lib/imports/corpuswalkerImport'
+import { importFullCorpusExportDocuments } from '@/lib/imports/fullCorpusImport'
 import { importIritDocuments } from '@/lib/imports/iritImport'
 import { importLabelStudioDocuments } from '@/lib/imports/labelstudioImport'
 import { determineImportType, UnsupportedFileTypeError } from '@/lib/utils'
@@ -35,6 +36,10 @@ export async function importDocuments(corpusId: string, formData: FormData) {
   } else if (importType === 'labelstudio') {
     // Handle Label Studio import
     importedDocumentsIds = await importLabelStudioDocuments(corpusId, content)
+  } else if (importType === 'full-corpus-export') {
+    // Handle full corpus export import
+    const parsed = JSON.parse(content)
+    importedDocumentsIds = await importFullCorpusExportDocuments(corpusId, parsed)
   }
 
   revalidatePath('/')

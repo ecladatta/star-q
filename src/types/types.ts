@@ -79,3 +79,22 @@ export type CurrentAnnotation = {
   predicate?: DocumentAnnotationComponent
   object?: DocumentAnnotationComponent
 }
+
+export type DocumentExport = {
+  id: string
+  title: string
+  createdAt: string
+  content: any
+  annotations: CurrentAnnotation[]
+}
+
+export type ExportModel = {
+  exportMeta: {
+    version: string
+    type: 'full-corpus-export'
+  }
+  id: string
+  title: string
+  createdAt: string
+  documents: DocumentExport[]
+}

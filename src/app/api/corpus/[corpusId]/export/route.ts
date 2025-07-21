@@ -1,10 +1,8 @@
 import type { NextRequest } from 'next/server'
+import type { ExportModel } from '@/types/types'
 import { getAnnotations } from '@/actions/annotation/annotationActions'
 import { getCorpus } from '@/actions/corpus/corpusActions'
-import { getDocumentsMetadata } from '@/actions/document/documentActions'
-
-// @TODO: Define the model for the export
-type ExportModel = any
+import { getDocumentsMetadata, getRawDocumentData } from '@/actions/document/documentActions'
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ corpusId: string }> }) {
   const { corpusId } = await params
@@ -13,40 +11,35 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const documents = await getDocumentsMetadata(corpusId)
 
   const corpusData: ExportModel = {
+    exportMeta: {
+      version: '1.0',
+      type: 'full-corpus-export',
+    },
     id: corpus.id,
-    title: corpus.title,
-    documents: [],
+    title: corpus.title ?? '',
+    createdAt: corpus.createdAt ? corpus.createdAt.toISOString() : '',
+    documents: await Promise.all(documents.map(async (document) => {
+      const docAnnotations = await getAnnotations(document.id)
+      const rawContent = await getRawDocumentData(document.id)
+      return {
+        id: document.id,
+        title: document.title,
+        createdAt: document.createdAt.toISOString(),
+        content: rawContent,
+        annotations: docAnnotations.map((annotation: any) => ({
+          id: annotation.id,
+          subject: { ...annotation.subject },
+          predicate: { ...annotation.predicate },
+          object: { ...annotation.object },
+        })),
+      }
+    })),
   }
 
-  for (const document of documents) {
-    const docAnnotations = await getAnnotations(document.id)
-    corpusData.documents.push({
-      id: document.id,
-      title: document.title,
-      annotations: docAnnotations.map(annotation => ({
-        id: annotation.id,
-        subject: {
-          ...annotation.subject,
-          // entityLabel and entityValue are already populated with current custom entity data from getAnnotations
-        },
-        predicate: {
-          ...annotation.predicate,
-          // entityLabel and entityValue are already populated with current custom entity data from getAnnotations
-        },
-        object: {
-          ...annotation.object,
-          // entityLabel and entityValue are already populated with current custom entity data from getAnnotations
-        },
-      })),
-    })
-  }
-
-  const blob = new Blob([JSON.stringify(corpusData, null, 2)], { type: 'application/json' })
-
-  return new Response(blob, {
+  return new Response(JSON.stringify(corpusData, null, 2), {
     headers: {
       'Content-Type': 'application/json',
-      'Content-Disposition': `attachment; filename="${corpus.title}.json"`,
+      'Content-Disposition': `attachment; filename="${corpusData.title}.json"`,
     },
   })
 }
