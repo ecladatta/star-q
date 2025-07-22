@@ -1,6 +1,6 @@
 'use server'
 import type { Column, SQL, SQLWrapper } from 'drizzle-orm'
-import type { Document } from '@/db/schema'
+import type { CorpusCustomEntity, Document } from '@/db/schema'
 import { and, count, countDistinct, desc, eq, getTableColumns, inArray, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { auth } from '@/auth'
@@ -202,7 +202,7 @@ export async function renameCorpus(id: string, newTitle: string) {
   revalidatePath('/')
 }
 
-export async function getCorpusCustomEntities(corpusId: string) {
+export async function getCorpusCustomEntities(corpusId: string): Promise<CorpusCustomEntity[]> {
   const session = await auth()
   const userId = session?.user?.id
   if (!userId) {
