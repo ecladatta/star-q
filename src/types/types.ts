@@ -1,3 +1,5 @@
+import type { CorpusCustomEntity, Document } from '@/db/schema'
+
 export type TextOrTableElement = {
   elementIndex: number
   type: 'text' | 'table'
@@ -81,10 +83,12 @@ export type CurrentAnnotation = {
 }
 
 export type DocumentExport = {
-  id: string
-  title: string
+  id: Document['id']
+  title: Document['title']
   createdAt: string
-  content: any
+  updatedAt: string | null
+  completedAt: string | null
+  raw: DocumentData | null
   annotations: CurrentAnnotation[]
 }
 
@@ -94,7 +98,10 @@ export type ExportModel = {
     type: 'full-corpus-export'
   }
   id: string
-  title: string
-  createdAt: string
+  title: string | null
+  content: string | null
+  createdAt: string | null
+  updatedAt: string | null
   documents: DocumentExport[]
+  customEntities: CorpusCustomEntity[]
 }

@@ -1,49 +1,110 @@
 'use server'
 import type { DocumentData, ExportModel } from '@/types/types'
 import { db } from '@/db/drizzle'
-import { annotation, annotationComponent, document } from '@/db/schema'
+import { annotation, annotationComponent, corpusCustomEntity, document } from '@/db/schema'
 
 /**
  * Import documents and annotations from a full corpus export
  */
-export async function importFullCorpusExportDocuments(corpusId: string, corpusData: ExportModel): Promise<string[]> {
+export async function importFullCorpusExportDocuments(
+  corpusId: string,
+  corpusData: ExportModel,
+): Promise<{ ids: string[], errors: string[] }> {
   const importedDocumentsIds: string[] = []
-  for (const doc of corpusData.documents) {
-    // Insert document with content
-    const [documentId] = await db.insert(document).values({
-      corpusId,
-      title: doc.title,
-      raw: doc.content as DocumentData,
-    }).returning({ id: document.id })
+  const errors: string[] = []
 
-    // Insert annotations for this document
-    if (doc.annotations && doc.annotations.length > 0) {
-      for (const ann of doc.annotations) {
-        // Insert annotation components (subject, predicate, object)
-        const components = ['subject', 'predicate', 'object'].map((key) => {
-          const comp = ann[key as keyof typeof ann]
-          if (typeof comp === 'object' && comp !== null) {
-            const { id: _id, ...data } = comp
-            return db.insert(annotationComponent).values(data).returning({ id: annotationComponent.id })
-          } else {
-            throw new Error(`Annotation component '${key}' is not an object: ${JSON.stringify(comp)}`)
-          }
-        })
-        const [[subjectComp], [predicateComp], [objectComp]] = await Promise.all(components)
+  await db.transaction(async (tx) => {
+    // Map old custom entity IDs to new database IDs
+    const customEntityIdMap: Record<string, string> = {}
 
-        // Insert annotation record
-        const { id: _annotationId, ...annotationData } = ann
-        await db.insert(annotation).values({
-          documentId: documentId.id,
-          subjectId: subjectComp.id,
-          predicateId: predicateComp.id,
-          objectId: objectComp.id,
-          ...annotationData,
-        })
-      }
+    // Batch insert custom entities
+    if (corpusData.customEntities && corpusData.customEntities.length > 0) {
+      const entitiesToInsert = corpusData.customEntities.map((ent) => {
+        const { id: oldId, ...data } = ent
+        return {
+          ...data,
+          corpusId,
+          createdAt: data.createdAt ? new Date(data.createdAt) : null,
+          updatedAt: data.updatedAt ? new Date(data.updatedAt) : null,
+          _oldId: oldId,
+        }
+      })
+
+      const insertedEntities = await tx.insert(corpusCustomEntity)
+        .values(entitiesToInsert.map(({ _oldId, ...data }) => data))
+        .returning({ id: corpusCustomEntity.id })
+
+      // Map old IDs to new IDs
+      entitiesToInsert.forEach((ent, idx) => {
+        customEntityIdMap[ent._oldId] = insertedEntities[idx].id
+      })
     }
 
-    importedDocumentsIds.push(documentId.id)
+    for (const doc of corpusData.documents) {
+      try {
+        // Insert document with content
+        const [documentId] = await tx.insert(document).values({
+          corpusId,
+          title: doc.title,
+          raw: doc.raw as DocumentData,
+          createdAt: doc.createdAt ? new Date(doc.createdAt) : new Date(),
+          updatedAt: doc.updatedAt ? new Date(doc.updatedAt) : new Date(),
+          completedAt: doc.completedAt ? new Date(doc.completedAt) : null,
+        }).returning({ id: document.id })
+
+        // Insert annotations for this document
+        if (doc.annotations && doc.annotations.length > 0) {
+          for (const ann of doc.annotations) {
+            try {
+              // Insert annotation components (subject, predicate, object)
+              const components = await Promise.all(['subject', 'predicate', 'object'].map(async (key) => {
+                const comp = ann[key as keyof typeof ann]
+                if (typeof comp === 'object' && comp !== null) {
+                  const { id: _id, ...data } = comp
+                  // If entityCustomId exists, replace with new ID from mapping
+                  if (data.entityCustomId && customEntityIdMap[data.entityCustomId]) {
+                    data.entityCustomId = customEntityIdMap[data.entityCustomId]
+                  }
+                  const [insertedComp] = await tx.insert(annotationComponent).values(data).returning({ id: annotationComponent.id })
+                  return insertedComp
+                } else {
+                  errors.push(`Annotation component '${key}' is not an object: ${JSON.stringify(comp)} in document ${doc.title}`)
+                  return null
+                }
+              }))
+              if (components.includes(null)) {
+                errors.push(`Skipping annotation in document ${doc.title} due to invalid component.`)
+                continue
+              }
+              const [subjectComp, predicateComp, objectComp] = components as [ { id: string }, { id: string }, { id: string } ]
+
+              // Insert annotation record
+              const { id: _annotationId, ...annotationData } = ann
+              await tx.insert(annotation).values({
+                documentId: documentId.id,
+                subjectId: subjectComp.id,
+                predicateId: predicateComp.id,
+                objectId: objectComp.id,
+                ...annotationData,
+              })
+            } catch (annErr) {
+              errors.push(`Error inserting annotation in document ${doc.title}: ${annErr}`)
+              continue
+            }
+          }
+        }
+
+        importedDocumentsIds.push(documentId.id)
+      } catch (docErr) {
+        errors.push(`Error inserting document ${doc.title}: ${docErr}`)
+        continue
+      }
+    }
+  })
+
+  if (errors.length > 0) {
+    console.warn('Import errors:', errors)
   }
-  return importedDocumentsIds
+
+  return { ids: importedDocumentsIds, errors }
 }
