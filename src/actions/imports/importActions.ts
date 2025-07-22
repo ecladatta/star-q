@@ -24,27 +24,36 @@ export async function importDocuments(corpusId: string, formData: FormData) {
     throw new UnsupportedFileTypeError('File format is not supported')
   }
 
-  let importedDocumentsIds: string[] = []
+  let result: { ids: string[], errors: string[] } = { ids: [], errors: [] }
 
-  if (importType === 'irit-zip') {
-    // Handle IRIT zip file import
-    const zipBuffer = await file.arrayBuffer()
-    importedDocumentsIds = await importIritDocuments(corpusId, zipBuffer)
-  } else if (importType === 'corpuswalker') {
-    // Handle Corpus Walker import
-    importedDocumentsIds = await importCorpuswalkerDocuments(corpusId, content)
-  } else if (importType === 'labelstudio') {
-    // Handle Label Studio import
-    importedDocumentsIds = await importLabelStudioDocuments(corpusId, content)
-  } else if (importType === 'full-corpus-export') {
-    // Handle full corpus export import
-    const parsed = JSON.parse(content)
-    importedDocumentsIds = await importFullCorpusExportDocuments(corpusId, parsed)
+  switch (importType) {
+    case 'irit-zip': {
+      const zipBuffer = await file.arrayBuffer()
+      result = await importIritDocuments(corpusId, zipBuffer)
+      break
+    }
+    case 'corpuswalker': {
+      result = await importCorpuswalkerDocuments(corpusId, content)
+      break
+    }
+    case 'labelstudio': {
+      result = await importLabelStudioDocuments(corpusId, content)
+      break
+    }
+    case 'full-corpus-export': {
+      const parsed = JSON.parse(content)
+      result = await importFullCorpusExportDocuments(corpusId, parsed)
+      break
+    }
+    default:
+      // Should not reach here due to earlier error throw
+      break
   }
 
   revalidatePath('/')
 
   return {
-    count: importedDocumentsIds.length,
+    count: result.ids.length,
+    errors: result.errors,
   }
 }

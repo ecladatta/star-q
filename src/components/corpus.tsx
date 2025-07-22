@@ -463,9 +463,12 @@ export function Corpuses({ corpuses }: CorpusesProps) {
       setIsImporting(true)
       const formData = new FormData()
       formData.append('file', file)
-      const { count } = await importDocuments(targetCorpusId, formData)
+      const { count, errors } = await importDocuments(targetCorpusId, formData)
       setImportedCount(count)
       setCorpusToImport({ id: targetCorpusId } as Corpus)
+      if (errors && errors.length > 0) {
+        setUploadError(errors.join('\n'))
+      }
     } catch (err) {
       if (err instanceof UnsupportedFileTypeError) {
         setUploadError('Unsupported file type. Please upload a JSON or ZIP file.')
@@ -809,7 +812,11 @@ export function Corpuses({ corpuses }: CorpusesProps) {
                 <span>Importing...</span>
               </div>
             )}
-            {uploadError && <p className="text-red-500">{uploadError}</p>}
+            {!isImporting && uploadError && (
+              <div className="mb-2 max-h-48 overflow-y-auto rounded border border-red-200 bg-red-50 p-2">
+                <p className="whitespace-pre-line text-red-500">{uploadError}</p>
+              </div>
+            )}
             {!isImporting && !uploadError && (
               <>
                 {importedCount}

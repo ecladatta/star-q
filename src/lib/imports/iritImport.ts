@@ -709,8 +709,12 @@ async function createAnnotationsInDb(
  * @param zipBuffer The ArrayBuffer content of the ZIP archive.
  * @returns A promise that resolves to an array of imported document IDs.
  */
-export async function importIritDocuments(corpusId: string, zipBuffer: ArrayBuffer): Promise<string[]> {
+export async function importIritDocuments(
+  corpusId: string,
+  zipBuffer: ArrayBuffer,
+): Promise<{ ids: string[], errors: string[] }> {
   const importedDocumentIds: string[] = []
+  const errors: string[] = []
   const zip = await JSZip.loadAsync(zipBuffer)
 
   const { paragraphsFile, tablesFile: tablesMetadataFile, tablesArchive } = findRequiredFiles(zip)
@@ -742,11 +746,12 @@ export async function importIritDocuments(corpusId: string, zipBuffer: ArrayBuff
       importedDocumentIds.push(documentId)
       await createAnnotationsInDb(docData, documentId)
     } catch (error) {
-      console.error(`Failed to process and import document ${docData.title} (URL: ${docData.url}):`, error)
+      errors.push(`Failed to process and import document ${docData.title} (URL: ${docData.url}): ${error}`)
+      continue
     }
   }
 
   // eslint-disable-next-line no-console
   console.log(`Import completed. ${importedDocumentIds.length} documents processed.`)
-  return importedDocumentIds
+  return { ids: importedDocumentIds, errors }
 }
