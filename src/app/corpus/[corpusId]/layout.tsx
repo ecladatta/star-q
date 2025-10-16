@@ -11,11 +11,9 @@ export default async function CorpusLayout({
   const { corpusId } = await params
   const corpus = await getCorpus(corpusId)
 
-  const corpusTitle = corpus?.title ?? undefined
-
   return (
     <>
-      <Header corpusTitle={corpusTitle} corpusId={corpusId} />
+      <Header corpus={corpus} />
       <div className="mt-16">{children}</div>
     </>
   )
