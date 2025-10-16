@@ -255,6 +255,10 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
                                 <kbd className="rounded bg-muted px-2 py-1 text-xs">E</kbd>
                               </div>
                               <div className="flex justify-between">
+                                <span>Clone annotation (when popover visible)</span>
+                                <kbd className="rounded bg-muted px-2 py-1 text-xs">C</kbd>
+                              </div>
+                              <div className="flex justify-between">
                                 <span>Toggle annotations visibility</span>
                                 <kbd className="rounded bg-muted px-2 py-1 text-xs">H</kbd>
                               </div>
@@ -267,6 +271,10 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
                           <div>
                             <h4 className="mb-2 text-sm font-medium">Form Actions</h4>
                             <div className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span>Clone annotation</span>
+                                <kbd className="rounded bg-muted px-2 py-1 text-xs">C</kbd>
+                              </div>
                               <div className="flex justify-between">
                                 <span>Save annotation</span>
                                 <kbd className="rounded bg-muted px-2 py-1 text-xs">
