@@ -14,9 +14,8 @@ services:
     env_file:
       - .env
     volumes:
-      - ./next-app/src:/app/src
-      - ./next-app/public:/app/public
-    restart: unless-stopped
+      - ./src:/app/src
+      - ./public:/app/public
     ports:
       - ${CONTAINER_PORT:-3000}:3000
   postgres:
