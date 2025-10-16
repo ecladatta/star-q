@@ -3,8 +3,10 @@ import type { DocumentMetadata } from '@/actions/corpus/corpusActions'
 import type { Corpus, Document } from '@/db/schema'
 import type { Offset } from '@/lib/utils'
 import type { DocumentAnnotation, DocumentData } from '@/types/types'
-import { InfoIcon } from 'lucide-react'
+import { Check, Copy, InfoIcon } from 'lucide-react'
 import { useState } from 'react'
+
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
@@ -28,6 +30,7 @@ type DocumentViewerProps = {
 
 export function DocumentViewer({ corpus, documents, document, annotations }: DocumentViewerProps) {
   const [showAnnotations, setShowAnnotations] = useState(true)
+  const [copiedDocument, setCopiedDocument] = useState(false)
 
   const documentData = document?.raw as (DocumentData | undefined)
   const combinedElements = useDocumentElements(documentData)
@@ -102,6 +105,53 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
   const handleEditAnnotation = (annotation: DocumentAnnotation) => {
     setCurrentAnnotation(annotation)
     popover.hidePopover()
+  }
+
+  const copyDocumentAsMarkdown = () => {
+    if (!documentData)
+      return
+
+    const title = documentData._source.identificationMetadata.title
+    let markdown = `# ${title}\n\n`
+
+    combinedElements.forEach((element) => {
+      if (element.type === 'text') {
+        const textValue = element.value as string
+        const heading = element.data.title
+        const level = element.data.level
+
+        if (heading && level) {
+          markdown += `${'#'.repeat(level)} ${heading}\n\n`
+        } else if (heading) {
+          markdown += `**${heading}**\n\n`
+        }
+
+        markdown += `${textValue}\n\n`
+      } else if (element.type === 'table') {
+        const tableData = element.value as string[][]
+
+        if (element.data.title) {
+          markdown += `**${element.data.title}**\n\n`
+        }
+
+        tableData.forEach((row, rowIndex) => {
+          const cells = row.map(cell => cell.replace(/\|/g, '\\|'))
+          markdown += `| ${cells.join(' | ')} |\n`
+
+          if (rowIndex === 0) {
+            markdown += `| ${cells.map(() => '---').join(' | ')} |\n`
+          }
+        })
+
+        markdown += '\n'
+      }
+    })
+
+    navigator.clipboard.writeText(markdown).then(() => {
+      setCopiedDocument(true)
+      setTimeout(() => setCopiedDocument(false), 2000)
+      toast.success('Document copied to clipboard as Markdown!')
+    })
   }
 
   const ctrlKey = isMac() ? '⌘' : 'Ctrl'
@@ -194,6 +244,25 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
                         </div>
                       </DialogContent>
                     </Dialog>
+                    <div className="ml-auto flex justify-end">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={copyDocumentAsMarkdown}
+                      >
+                        {copiedDocument
+                          ? (
+                              <>
+                                <Check className="size-4" />
+                              </>
+                            )
+                          : (
+                              <>
+                                <Copy className="size-4" />
+                              </>
+                            )}
+                      </Button>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>

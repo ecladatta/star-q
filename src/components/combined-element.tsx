@@ -1,7 +1,11 @@
 'use client'
 import type { Offset } from '@/lib/utils'
 import type { CurrentAnnotation, DocumentElement } from '@/types/types'
+import { Check, Copy } from 'lucide-react'
 import { createElement, useState } from 'react'
+
+import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { TYPE_TO_COLOR } from '@/lib/constants'
@@ -40,6 +44,28 @@ function CombinedElement({
   currentAnnotation,
 }: CombinedElementProps) {
   const [hoveredCell, setHoveredCell] = useState<{ row: number, cell: number } | null>(null)
+  const [copied, setCopied] = useState(false)
+
+  const copyTableAsMarkdown = (tableData: string[][]) => {
+    const markdown = tableData.map((row, rowIndex) => {
+      const cells = row.map(cell => cell.replace(/\|/g, '\\|'))
+      const rowMarkdown = `| ${cells.join(' | ')} |`
+
+      if (rowIndex === 0) {
+        const separator = `| ${cells.map(() => '---').join(' | ')} |`
+        return `${rowMarkdown}\n${separator}`
+      }
+
+      return rowMarkdown
+    }).join('\n')
+
+    navigator.clipboard.writeText(markdown).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+
+    toast.success('Table copied to clipboard as Markdown!')
+  }
 
   const element = documentElements[elementIndex]
   if (!element) {
@@ -163,8 +189,33 @@ function CombinedElement({
     }
 
     return (
-      <div key={elementIndex} className="mb-6" id={`element-${elementIndex}`}>
-        {data.title && <div className="mb-2 font-semibold">{data.title}</div>}
+      <div key={elementIndex} className="group mb-6" id={`element-${elementIndex}`}>
+        <div className="mb-2 flex items-center justify-between">
+          {data.title && <div className="text-sm font-semibold">{data.title}</div>}
+          <div
+            className="group relative ml-auto"
+          >
+            <Button
+              variant="outline"
+              size="sm"
+              className="opacity-0 transition-opacity group-hover:opacity-100"
+              onClick={() => copyTableAsMarkdown(tableData)}
+              tabIndex={-1}
+            >
+              {copied
+                ? (
+                    <>
+                      <Check className="size-4" />
+                    </>
+                  )
+                : (
+                    <>
+                      <Copy className="size-4" />
+                    </>
+                  )}
+            </Button>
+          </div>
+        </div>
         <ScrollArea className="flex max-h-[60vh] w-full flex-col overflow-y-auto rounded-xl border">
           <Table>
             <TableHeader className="bg-muted/50">
