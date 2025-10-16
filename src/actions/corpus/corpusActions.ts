@@ -1,6 +1,6 @@
 'use server'
 import type { Column, SQL, SQLWrapper } from 'drizzle-orm'
-import type { CorpusCustomEntity, Document } from '@/db/schema'
+import type { Corpus, CorpusCustomEntity, Document } from '@/db/schema'
 import { and, count, countDistinct, desc, eq, getTableColumns, inArray, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { auth } from '@/auth'
@@ -51,7 +51,7 @@ export async function deleteCorpus(id: string) {
   revalidatePath('/')
 }
 
-export async function getCorpus(id: string) {
+export async function getCorpus(id: string): Promise<Corpus> {
   const session = await auth()
   const userId = session?.user?.id
   if (!userId) {
