@@ -7,6 +7,7 @@ import {
   TextIcon,
   Trash2Icon,
 } from 'lucide-react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -82,22 +83,113 @@ export function AnnotationsSidebar({
   onBatchDelete,
   isBatchDeleting,
 }: AnnotationsSidebarProps) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
-  const [sortOption, setSortOption] = useState<SortOption>('position')
-  const [filters, setFilters] = useState<FilterOptions>({
-    types: {
-      text: true,
-      table: true,
-      joint: true,
-    },
-    entities: {
-      subject: 'any',
-      predicate: 'any',
-      object: 'any',
-    },
+
+  // Initialize state from URL params
+  const [sortOption, setSortOption] = useState<SortOption>(() => {
+    const param = searchParams.get('sort')
+    return (param === 'creation' || param === 'alphabetical' || param === 'position') ? param : 'position'
   })
+
+  const [filters, setFilters] = useState<FilterOptions>(() => {
+    const defaultFilters = {
+      types: {
+        text: true,
+        table: true,
+        joint: true,
+      },
+      entities: {
+        subject: 'any' as EntityFilterState,
+        predicate: 'any' as EntityFilterState,
+        object: 'any' as EntityFilterState,
+      },
+    }
+
+    // Try to read from URL params
+    const typesParam = searchParams.get('types')
+    const subjectParam = searchParams.get('subject')
+    const predicateParam = searchParams.get('predicate')
+    const objectParam = searchParams.get('object')
+
+    if (typesParam || subjectParam || predicateParam || objectParam) {
+      return {
+        types: typesParam
+          ? {
+              text: typesParam.includes('text'),
+              table: typesParam.includes('table'),
+              joint: typesParam.includes('joint'),
+            }
+          : defaultFilters.types,
+        entities: {
+          subject: (subjectParam === 'any' || subjectParam === 'with' || subjectParam === 'without')
+            ? subjectParam
+            : defaultFilters.entities.subject,
+          predicate: (predicateParam === 'any' || predicateParam === 'with' || predicateParam === 'without')
+            ? predicateParam
+            : defaultFilters.entities.predicate,
+          object: (objectParam === 'any' || objectParam === 'with' || objectParam === 'without')
+            ? objectParam
+            : defaultFilters.entities.object,
+        },
+      }
+    }
+
+    return defaultFilters
+  })
+
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const annotationRefs = useRef<Map<string, HTMLLIElement>>(new Map())
+
+  // Update URL when filters or sort changes
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams.toString())
+
+    // Update sort param
+    if (sortOption !== 'position') {
+      params.set('sort', sortOption)
+    } else {
+      params.delete('sort')
+    }
+
+    // Update type filters
+    const activeTypes = Object.entries(filters.types)
+      .filter(([_, value]) => value)
+      .map(([key]) => key)
+
+    if (activeTypes.length === 3) {
+      params.delete('types')
+    } else if (activeTypes.length > 0) {
+      params.set('types', activeTypes.join(','))
+    } else {
+      params.delete('types')
+    }
+
+    // Update entity filters
+    if (filters.entities.subject !== 'any') {
+      params.set('subject', filters.entities.subject)
+    } else {
+      params.delete('subject')
+    }
+
+    if (filters.entities.predicate !== 'any') {
+      params.set('predicate', filters.entities.predicate)
+    } else {
+      params.delete('predicate')
+    }
+
+    if (filters.entities.object !== 'any') {
+      params.set('object', filters.entities.object)
+    } else {
+      params.delete('object')
+    }
+
+    const newUrl = `${pathname}${params.toString() ? `?${params.toString()}` : ''}`
+    router.replace(newUrl, { scroll: false })
+  }, [sortOption, filters, pathname, router, searchParams])
 
   const filteredAndSortedAnnotations = useMemo(() => {
     // First filter annotations
