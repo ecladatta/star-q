@@ -62,6 +62,22 @@ export async function getCorpus(id: string): Promise<Corpus> {
   return data
 }
 
+export async function getCorpusAnnotationsCount(corpusId: string): Promise<number> {
+  const session = await auth()
+  const userId = session?.user?.id
+  if (!userId) {
+    throw new Error('User not authenticated')
+  }
+
+  const [result] = await db
+    .select({ count: count(annotation.id) })
+    .from(annotation)
+    .innerJoin(document, eq(annotation.documentId, document.id))
+    .where(eq(document.corpusId, corpusId))
+
+  return result?.count || 0
+}
+
 export async function duplicateCorpus(id: string, newTitle?: string) {
   const session = await auth()
   const userId = session?.user?.id

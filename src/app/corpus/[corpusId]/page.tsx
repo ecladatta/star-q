@@ -1,7 +1,7 @@
 import { BarChart3Icon } from 'lucide-react'
 import Link from 'next/link'
 import React from 'react'
-import { getCorpus } from '@/actions/corpus/corpusActions'
+import { getCorpus, getCorpusAnnotationsCount } from '@/actions/corpus/corpusActions'
 import { getDocumentsMetadata } from '@/actions/document/documentActions'
 import CorpusSettingsButton from '@/components/corpus-settings-button'
 import DocumentsTable from '@/components/documents-table'
@@ -11,6 +11,7 @@ export default async function CorpusPage({ params }: { params: Promise<{ corpusI
   const corpusId = (await params).corpusId
   const documentsList = await getDocumentsMetadata(corpusId)
   const corpus = await getCorpus(corpusId)
+  const totalAnnotations = await getCorpusAnnotationsCount(corpusId)
 
   if (!corpus) {
     return (
@@ -40,6 +41,11 @@ export default async function CorpusPage({ params }: { params: Promise<{ corpusI
           </h1>
           <p className="text-sm text-muted-foreground">
             Select a document to start annotating
+          </p>
+          <p className="mt-2 text-sm font-medium text-gray-700">
+            Total annotations:
+            {' '}
+            {totalAnnotations}
           </p>
         </div>
         <div className="flex items-center gap-2">
