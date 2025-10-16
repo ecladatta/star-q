@@ -1,23 +1,57 @@
-import type { Corpus } from '@/db/schema'
+'use client'
+import type { Corpus, Document } from '@/db/schema'
 import type { DocumentData } from '@/types/types'
+import { Check, Circle } from 'lucide-react'
 import Link from 'next/link'
-import React from 'react'
+import React, { useState, useTransition } from 'react'
+import { toast } from 'sonner'
+import { markDocumentAsCompleted } from '@/actions/document/documentActions'
+import { Button } from '@/components/ui/button'
 
 type DocumentHeaderProps = {
   corpus: Corpus
+  document: Document
   documentData: DocumentData
 }
 
-export function DocumentHeader({ corpus, documentData }: DocumentHeaderProps) {
+export function DocumentHeader({ corpus, document, documentData }: DocumentHeaderProps) {
+  const [isCompleted, setIsCompleted] = useState(!!document.completedAt)
+  const [isPending, startTransition] = useTransition()
+
+  const toggleCompletion = () => {
+    startTransition(async () => {
+      try {
+        const newValue = isCompleted ? null : new Date()
+        await markDocumentAsCompleted(document.id, newValue)
+        setIsCompleted(!isCompleted)
+        toast.success(isCompleted ? 'Document marked as incomplete' : 'Document marked as complete')
+      } catch (error) {
+        toast.error('Failed to update document status')
+        console.error(error)
+      }
+    })
+  }
+
   return (
     <>
-      <h1 className="mb-6 text-3xl font-bold">
-        Corpus:
-        {' '}
-        <Link href={`/corpus/${corpus.id}`} className="underline">
-          {corpus.title}
-        </Link>
-      </h1>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-3xl font-bold">
+          Corpus:
+          {' '}
+          <Link href={`/corpus/${corpus.id}`} className="underline">
+            {corpus.title}
+          </Link>
+        </h1>
+        <Button
+          onClick={toggleCompletion}
+          disabled={isPending}
+          variant={isCompleted ? 'default' : 'outline'}
+          className="gap-2"
+        >
+          {isCompleted ? <Check className="size-4" /> : <Circle className="size-4" />}
+          {isCompleted ? 'Completed' : 'Mark as Complete'}
+        </Button>
+      </div>
       <div className="mb-4">
         <h2 className="text-2xl font-bold">
           {documentData._source.identificationMetadata.title}

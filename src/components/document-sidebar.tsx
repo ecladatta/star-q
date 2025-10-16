@@ -1,7 +1,7 @@
 'use client'
 import type { DocumentMetadata } from '@/actions/corpus/corpusActions'
 import type { Document } from '@/db/schema'
-import { Search } from 'lucide-react'
+import { CheckCircle, Search } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
@@ -82,6 +82,9 @@ export function DocumentSidebar({ documents, currentDocument }: DocumentSidebarP
                           {' '}
                           {doc.title}
                         </span>
+                        {doc.completedAt && (
+                          <CheckCircle className="size-4 shrink-0 text-green-600" />
+                        )}
                       </div>
                       <div className="mt-1 text-xs text-muted-foreground">
                         {doc.annotationsCount}

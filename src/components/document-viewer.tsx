@@ -172,9 +172,13 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
       )}
       >
         <div className="container mx-auto p-6 lg:px-12">
-          {documentData && (
+          {documentData && document && (
             <>
-              <DocumentHeader corpus={corpus} documentData={documentData} />
+              <DocumentHeader
+                corpus={corpus}
+                document={document}
+                documentData={documentData}
+              />
 
               <Card className="mb-6">
                 <CardHeader>

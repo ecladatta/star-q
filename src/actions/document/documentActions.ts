@@ -56,8 +56,12 @@ export async function markDocumentAsCompleted(id: string, value: Date | null) {
     throw new Error('User not authenticated')
   }
 
+  const [doc] = await db.select({ corpusId: document.corpusId }).from(document).where(eq(document.id, id))
   await db.update(document).set({ completedAt: value }).where(eq(document.id, id))
-  revalidatePath('/')
+  revalidatePath(`/document/${id}`)
+  if (doc?.corpusId) {
+    revalidatePath(`/corpus/${doc.corpusId}`)
+  }
 }
 
 export async function deleteDocument(id: string) {
