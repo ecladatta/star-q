@@ -1,5 +1,5 @@
 import type { ClassValue } from 'clsx'
-import type { ExportModel } from '@/types/types'
+import type { DocumentAnnotation, ExportModel } from '@/types/types'
 import { clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 
@@ -198,4 +198,25 @@ export class InvalidJsonLinesError extends Error {
     super(message)
     this.name = 'InvalidJsonLinesError'
   }
+}
+
+type AnnotationType = 'text' | 'table' | 'joint'
+
+export function getAnnotationType(annotation: DocumentAnnotation): AnnotationType {
+  const types = [
+    annotation.subject.annotationType,
+    annotation.predicate.annotationType,
+    annotation.object.annotationType,
+  ]
+
+  const hasText = types.includes('text')
+  const hasTable = types.includes('table')
+
+  if (hasText && hasTable) {
+    return 'joint'
+  }
+  if (hasTable) {
+    return 'table'
+  }
+  return 'text'
 }

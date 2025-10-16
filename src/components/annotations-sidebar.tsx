@@ -1,11 +1,31 @@
 import type { CurrentAnnotation, DocumentAnnotation } from '@/types/types'
-import { ChevronDownIcon, Loader2Icon, Trash2Icon } from 'lucide-react'
+import {
+  ChevronDownIcon,
+  Loader2Icon,
+  TableIcon,
+  TextIcon,
+  Trash2Icon,
+} from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { getAnnotationType } from '@/lib/utils'
+import { Badge } from './ui/badge'
 import { Label } from './ui/label'
 
 type SortOption = 'creation' | 'alphabetical' | 'position'
@@ -56,7 +76,10 @@ export function AnnotationsSidebar({
           }
 
           // Then by row and cell (if table)
-          if (a.subject.annotationType === 'table' && b.subject.annotationType === 'table') {
+          if (
+            a.subject.annotationType === 'table'
+            && b.subject.annotationType === 'table'
+          ) {
             const aRow = a.subject.annotationRow ?? 0
             const bRow = b.subject.annotationRow ?? 0
             if (aRow !== bRow) {
@@ -79,7 +102,9 @@ export function AnnotationsSidebar({
     }
   }, [annotations, sortOption])
 
-  const allSelected = sortedAnnotations.length > 0 && sortedAnnotations.every(ann => selectedAnnotations.has(ann.id))
+  const allSelected
+    = sortedAnnotations.length > 0
+      && sortedAnnotations.every(ann => selectedAnnotations.has(ann.id))
   const someSelected = selectedAnnotations.size > 0
 
   const handleSelectAll = (checked: boolean) => {
@@ -107,7 +132,9 @@ export function AnnotationsSidebar({
 
     if (annotationElement && scrollArea) {
       // Find the scroll container (the actual scrollable element inside ScrollArea)
-      const scrollContainer = scrollArea.querySelector('[data-radix-scroll-area-viewport]')
+      const scrollContainer = scrollArea.querySelector(
+        '[data-radix-scroll-area-viewport]',
+      )
 
       if (scrollContainer) {
         const containerRect = scrollContainer.getBoundingClientRect()
@@ -121,11 +148,13 @@ export function AnnotationsSidebar({
         if (!isVisible) {
           // Calculate the scroll position to center the element
           const scrollTop = scrollContainer.scrollTop
-          const elementOffsetTop = elementRect.top - containerRect.top + scrollTop
+          const elementOffsetTop
+            = elementRect.top - containerRect.top + scrollTop
           const containerHeight = containerRect.height
           const elementHeight = elementRect.height
 
-          const targetScrollTop = elementOffsetTop - (containerHeight / 2) + (elementHeight / 2)
+          const targetScrollTop
+            = elementOffsetTop - containerHeight / 2 + elementHeight / 2
 
           scrollContainer.scrollTo({
             top: Math.max(0, targetScrollTop),
@@ -142,102 +171,128 @@ export function AnnotationsSidebar({
 
   return (
     <>
-      <aside className="fixed right-0 top-0 hidden h-screen w-[280px] bg-gray-100 pt-16 md:block">
+      <aside className="fixed right-0 top-0 hidden h-screen w-[280px] border-l bg-background pt-16 md:block">
         <div className="flex h-full flex-col">
-          <div className="px-6">
-            <h2 className="mb-2 mt-6 shrink-0 text-xl font-bold">Annotations</h2>
-            <div className="mb-4 flex shrink-0 items-center gap-1">
-              <Checkbox
-                id="show-annotations"
-                checked={showAnnotations}
-                onCheckedChange={checked => onShowAnnotationsChange(checked === true)}
-              />
-              <Label htmlFor="show-annotations">
-                <span>
-                  <u>H</u>
-                  ighlight annotations in doc
-                </span>
-              </Label>
-            </div>
+          <div className="border-b bg-muted/30 p-4">
+            <h2 className="mb-2 flex items-center gap-2 text-lg font-semibold">
+              Annotations
+              <Badge variant="secondary" className="ml-auto">
+                {annotations.length}
+              </Badge>
+            </h2>
 
-            {/* Sort dropdown */}
-            <div className="mb-4 flex items-center gap-2">
-              <Label className="text-sm">Sort by</Label>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="flex-1 justify-between" size="sm">
-                    {sortOption === 'creation' && 'Creation order'}
-                    {sortOption === 'alphabetical' && 'Alphabetical'}
-                    {sortOption === 'position' && 'Position in document'}
-                    <ChevronDownIcon className="size-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-full">
-                  <DropdownMenuItem onClick={() => setSortOption('creation')}>
-                    Creation order
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setSortOption('alphabetical')}>
-                    Alphabetical
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setSortOption('position')}>
-                    Text position
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+            <div className="space-y-3">
+              {/* Highlight toggle */}
+              <div className="flex items-center gap-2 rounded-lg bg-background p-2 shadow-sm">
+                <Checkbox
+                  id="show-annotations"
+                  checked={showAnnotations}
+                  onCheckedChange={checked =>
+                    onShowAnnotationsChange(checked === true)}
+                />
+                <Label
+                  htmlFor="show-annotations"
+                  className="cursor-pointer text-sm font-medium"
+                >
+                  <span>
+                    <u>H</u>
+                    ighlight in document
+                  </span>
+                </Label>
+              </div>
 
-            {/* Selection controls */}
-            <div className="mb-4 flex items-center gap-1">
-              <Checkbox
-                id="select-all"
-                checked={allSelected}
-                onCheckedChange={handleSelectAll}
-                // className="data-[state=indeterminate]:bg-primary data-[state=indeterminate]:text-primary-foreground"
-                {...(someSelected && !allSelected ? { 'data-state': 'indeterminate' } : {})}
-              />
-              <Label htmlFor="select-all" className="text-sm">
-                Select all
-              </Label>
-            </div>
-            <div className="mb-4 space-y-2">
+              {/* Sort dropdown */}
+              <div className="flex items-center gap-2">
+                <Label className="shrink-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Sort by
+                </Label>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="flex-1 justify-between truncate"
+                      size="sm"
+                      style={{ minWidth: 0 }}
+                    >
+                      <span className="truncate text-sm">
+                        {sortOption === 'creation' && 'Creation order'}
+                        {sortOption === 'alphabetical' && 'Alphabetical'}
+                        {sortOption === 'position' && 'Position in document'}
+                      </span>
+                      <ChevronDownIcon className="ml-2 size-4 shrink-0 opacity-50" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-[200px]">
+                    <DropdownMenuItem onClick={() => setSortOption('creation')}>
+                      Creation order
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setSortOption('alphabetical')}
+                    >
+                      Alphabetical
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSortOption('position')}>
+                      Position in document
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+
+              {/* Selection controls */}
+              <div className="flex items-center gap-2 rounded-lg bg-background p-2 shadow-sm">
+                <Checkbox
+                  id="select-all"
+                  checked={allSelected}
+                  onCheckedChange={handleSelectAll}
+                  {...(someSelected && !allSelected
+                    ? { 'data-state': 'indeterminate' }
+                    : {})}
+                />
+                <Label
+                  htmlFor="select-all"
+                  className="cursor-pointer text-sm font-medium"
+                >
+                  Select all
+                </Label>
+              </div>
+
+              {/* Delete button */}
               {someSelected && (
-                <>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={handleDeleteClick}
-                    disabled={isBatchDeleting}
-                    className="w-full"
-                  >
-                    {isBatchDeleting
-                      ? (
-                          <Loader2Icon className="mr-2 size-4 animate-spin" />
-                        )
-                      : (
-                          <Trash2Icon className="mr-2 size-4" />
-                        )}
-                    Delete
-                    {' '}
-                    {selectedAnnotations.size}
-                    {' '}
-                    annotation
-                    {selectedAnnotations.size > 1 ? 's' : ''}
-                  </Button>
-                </>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleDeleteClick}
+                  disabled={isBatchDeleting}
+                  className="w-full"
+                >
+                  {isBatchDeleting
+                    ? (
+                        <Loader2Icon className="mr-2 size-4 animate-spin" />
+                      )
+                    : (
+                        <Trash2Icon className="mr-2 size-4" />
+                      )}
+                  Delete
+                  {' '}
+                  {selectedAnnotations.size}
+                  {' '}
+                  annotation
+                  {selectedAnnotations.size > 1 ? 's' : ''}
+                </Button>
               )}
             </div>
           </div>
 
           <div className="min-h-0 flex-1 overflow-hidden">
             <ScrollArea className="size-full" ref={scrollAreaRef}>
-              <ul className="space-y-3 px-6 pb-4 pt-1">
+              <ul className="space-y-2 p-4">
                 {sortedAnnotations.map((ann) => {
                   const isSelected = currentAnnotation?.id === ann.id
                   const isChecked = selectedAnnotations.has(ann.id)
+                  const annotationType = getAnnotationType(ann)
                   return (
                     <li
                       key={ann.id}
-                      className="mb-3"
                       ref={(el) => {
                         if (el) {
                           annotationRefs.current.set(ann.id, el)
@@ -249,40 +304,81 @@ export function AnnotationsSidebar({
                       <div className="group relative">
                         <button
                           type="button"
-                          className={`w-full break-all rounded-md p-2 text-left shadow transition-all ${
+                          className={`w-full rounded-lg border p-3 text-left transition-all ${
                             isSelected
-                              ? 'bg-blue-50 ring-2 ring-blue-500/50'
-                              : 'bg-white hover:bg-gray-50'
+                              ? 'border-blue-500 bg-blue-50 shadow-md ring-2 ring-blue-500/20'
+                              : 'border-border bg-card hover:border-blue-300 hover:shadow-sm'
                           }`}
                           onClick={() => onAnnotationClick(ann)}
                         >
-                          <span className="font-semibold text-orange-500">
-                            {ann.subject.annotationValue}
-                          </span>
-                          {' '}
-                          &rarr;
-                          {' '}
-                          <span className="font-semibold text-blue-500">
-                            {ann.predicate.annotationValue}
-                          </span>
-                          {' '}
-                          &rarr;
-                          {' '}
-                          <span className="font-semibold text-green-500">
-                            {ann.object.annotationValue}
-                          </span>
+                          <div className="mb-2 flex items-center gap-2">
+                            {annotationType === 'joint' && (
+                              <Badge
+                                variant="secondary"
+                                className="flex items-center gap-1 text-xs font-medium"
+                              >
+                                <TextIcon className="size-3" />
+                                +
+                                <TableIcon className="size-3" />
+                                <span className="ml-0.5">Joint</span>
+                              </Badge>
+                            )}
+                            {annotationType === 'table' && (
+                              <Badge
+                                variant="outline"
+                                className="flex items-center gap-1 text-xs font-medium"
+                              >
+                                <TableIcon className="size-3" />
+                                <span className="ml-0.5">Table</span>
+                              </Badge>
+                            )}
+                            {annotationType === 'text' && (
+                              <Badge
+                                variant="outline"
+                                className="flex items-center gap-1 text-xs font-medium"
+                              >
+                                <TextIcon className="size-3" />
+                                <span className="ml-0.5">Text</span>
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="break-words text-sm leading-relaxed">
+                            <span className="font-semibold text-orange-600">
+                              {ann.subject.annotationValue}
+                            </span>
+                            {' '}
+                            <span className="text-muted-foreground">
+                              &rarr;
+                            </span>
+                            {' '}
+                            <span className="font-semibold text-blue-600">
+                              {ann.predicate.annotationValue}
+                            </span>
+                            {' '}
+                            <span className="text-muted-foreground">
+                              &rarr;
+                            </span>
+                            {' '}
+                            <span className="font-semibold text-green-600">
+                              {ann.object.annotationValue}
+                            </span>
+                          </div>
                         </button>
 
                         {/* Selection checkbox - visible on hover or when selected */}
-                        <div className={`absolute right-2 top-2 transition-opacity ${
-                          isChecked || someSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                        }`}
+                        <div
+                          className={`absolute right-2 top-2 transition-opacity ${
+                            isChecked || someSelected
+                              ? 'opacity-100'
+                              : 'opacity-0 group-hover:opacity-100'
+                          }`}
                         >
                           <Checkbox
                             checked={isChecked}
-                            onCheckedChange={checked => onAnnotationSelect(ann.id, checked === true)}
+                            onCheckedChange={checked =>
+                              onAnnotationSelect(ann.id, checked === true)}
                             onClick={e => e.stopPropagation()}
-                            className="bg-white shadow-sm"
+                            className="bg-background shadow-sm"
                           />
                         </div>
                       </div>
@@ -309,12 +405,14 @@ export function AnnotationsSidebar({
                 selected annotation
                 {selectedAnnotations.size > 1 ? 's' : ''}
               </strong>
-              ?
-              This action cannot be undone.
+              ? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowConfirmDialog(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setShowConfirmDialog(false)}
+            >
               Cancel
             </Button>
             <Button variant="destructive" onClick={handleConfirmDelete}>
