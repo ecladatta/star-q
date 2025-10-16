@@ -1,22 +1,20 @@
 'use client'
 import type { DocumentMetadata } from '@/actions/corpus/corpusActions'
-import type { Corpus, Document } from '@/db/schema'
+import type { Document } from '@/db/schema'
 import { Search } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 
 type DocumentSidebarProps = {
-  corpus: Corpus
   documents: DocumentMetadata[]
   currentDocument?: Document
 }
 
-export function DocumentSidebar({ corpus, documents, currentDocument }: DocumentSidebarProps) {
+export function DocumentSidebar({ documents, currentDocument }: DocumentSidebarProps) {
   const currentDocumentRef = useRef<HTMLLIElement>(null)
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -34,16 +32,9 @@ export function DocumentSidebar({ corpus, documents, currentDocument }: Document
   }, [currentDocument?.id])
 
   return (
-    <aside className="fixed left-0 top-0 hidden h-screen w-[280px] border-r bg-background pt-16 lg:block">
+    <aside className="fixed left-0 top-0 hidden h-screen w-[280px] border-r bg-background pt-12 lg:block">
       <div className="flex h-full flex-col">
         <div className="border-b bg-muted/30 p-4">
-          <div className="mb-3">
-            <Link href={`/corpus/${corpus.id}`} passHref>
-              <Button variant="outline" className="w-full">
-                Back to Corpus
-              </Button>
-            </Link>
-          </div>
           <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold">
             Documents
             <Badge variant="secondary" className="ml-auto">

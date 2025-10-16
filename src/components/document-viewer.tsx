@@ -160,7 +160,6 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
     <div className="flex">
       {documentData && (
         <DocumentSidebar
-          corpus={corpus}
           documents={documents}
           currentDocument={document}
         />
