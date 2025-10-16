@@ -1,6 +1,7 @@
 import type { CurrentAnnotation, DocumentAnnotation } from '@/types/types'
 import {
   ChevronDownIcon,
+  FilterIcon,
   Loader2Icon,
   TableIcon,
   TextIcon,
@@ -23,12 +24,40 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Separator } from '@/components/ui/separator'
 import { getAnnotationType } from '@/lib/utils'
 import { Badge } from './ui/badge'
 import { Label } from './ui/label'
 
 type SortOption = 'creation' | 'alphabetical' | 'position'
+
+type EntityFilterState = 'any' | 'with' | 'without'
+
+type FilterOptions = {
+  types: {
+    text: boolean
+    table: boolean
+    joint: boolean
+  }
+  entities: {
+    subject: EntityFilterState
+    predicate: EntityFilterState
+    object: EntityFilterState
+  }
+}
 
 type AnnotationsSidebarProps = {
   annotations: DocumentAnnotation[]
@@ -55,21 +84,73 @@ export function AnnotationsSidebar({
 }: AnnotationsSidebarProps) {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const [sortOption, setSortOption] = useState<SortOption>('position')
+  const [filters, setFilters] = useState<FilterOptions>({
+    types: {
+      text: true,
+      table: true,
+      joint: true,
+    },
+    entities: {
+      subject: 'any',
+      predicate: 'any',
+      object: 'any',
+    },
+  })
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const annotationRefs = useRef<Map<string, HTMLLIElement>>(new Map())
 
-  const sortedAnnotations = useMemo(() => {
-    const sorted = [...annotations]
+  const filteredAndSortedAnnotations = useMemo(() => {
+    // First filter annotations
+    const filtered = annotations.filter((ann) => {
+      const annotationType = getAnnotationType(ann)
 
+      // Filter by annotation type
+      if (!filters.types[annotationType]) {
+        return false
+      }
+
+      // Filter by entity assignment (3-way toggle: any, with, without)
+      const subjectHasEntity = !!ann.subject.entityLabel
+      const predicateHasEntity = !!ann.predicate.entityLabel
+      const objectHasEntity = !!ann.object.entityLabel
+
+      // Subject filter
+      if (filters.entities.subject === 'with' && !subjectHasEntity) {
+        return false
+      }
+      if (filters.entities.subject === 'without' && subjectHasEntity) {
+        return false
+      }
+
+      // Predicate filter
+      if (filters.entities.predicate === 'with' && !predicateHasEntity) {
+        return false
+      }
+      if (filters.entities.predicate === 'without' && predicateHasEntity) {
+        return false
+      }
+
+      // Object filter
+      if (filters.entities.object === 'with' && !objectHasEntity) {
+        return false
+      }
+      if (filters.entities.object === 'without' && objectHasEntity) {
+        return false
+      }
+
+      return true
+    })
+
+    // Then sort filtered annotations
     switch (sortOption) {
       case 'alphabetical':
-        return sorted.sort((a, b) => {
+        return filtered.sort((a, b) => {
           const aText = `${a.subject.annotationValue} ${a.predicate.annotationValue} ${a.object.annotationValue}`
           const bText = `${b.subject.annotationValue} ${b.predicate.annotationValue} ${b.object.annotationValue}`
           return aText.localeCompare(bText)
         })
       case 'position':
-        return sorted.sort((a, b) => {
+        return filtered.sort((a, b) => {
           // Sort by element index first
           if (a.subject.elementIndex !== b.subject.elementIndex) {
             return a.subject.elementIndex - b.subject.elementIndex
@@ -98,18 +179,61 @@ export function AnnotationsSidebar({
         })
       case 'creation':
       default:
-        return sorted // Keep original order (creation order)
+        return filtered // Keep original order (creation order)
     }
-  }, [annotations, sortOption])
+  }, [annotations, sortOption, filters])
 
   const allSelected
-    = sortedAnnotations.length > 0
-      && sortedAnnotations.every(ann => selectedAnnotations.has(ann.id))
+    = filteredAndSortedAnnotations.length > 0
+      && filteredAndSortedAnnotations.every(ann => selectedAnnotations.has(ann.id))
   const someSelected = selectedAnnotations.size > 0
 
   const handleSelectAll = (checked: boolean) => {
-    sortedAnnotations.forEach((ann) => {
+    filteredAndSortedAnnotations.forEach((ann) => {
       onAnnotationSelect(ann.id, checked)
+    })
+  }
+
+  const handleTypeFilterChange = (type: keyof FilterOptions['types'], checked: boolean) => {
+    setFilters(prev => ({
+      ...prev,
+      types: {
+        ...prev.types,
+        [type]: checked,
+      },
+    }))
+  }
+
+  const handleEntityFilterChange = (entity: keyof FilterOptions['entities'], state: EntityFilterState) => {
+    setFilters(prev => ({
+      ...prev,
+      entities: {
+        ...prev.entities,
+        [entity]: state,
+      },
+    }))
+  }
+
+  const hasActiveFilters
+    = !filters.types.text
+      || !filters.types.table
+      || !filters.types.joint
+      || filters.entities.subject !== 'any'
+      || filters.entities.predicate !== 'any'
+      || filters.entities.object !== 'any'
+
+  const resetFilters = () => {
+    setFilters({
+      types: {
+        text: true,
+        table: true,
+        joint: true,
+      },
+      entities: {
+        subject: 'any',
+        predicate: 'any',
+        object: 'any',
+      },
     })
   }
 
@@ -163,7 +287,7 @@ export function AnnotationsSidebar({
         }
       }
     }
-  }, [currentAnnotation?.id, sortedAnnotations])
+  }, [currentAnnotation?.id, filteredAndSortedAnnotations])
 
   if (annotations.length === 0) {
     return null
@@ -177,7 +301,15 @@ export function AnnotationsSidebar({
             <h2 className="mb-2 flex items-center gap-2 text-lg font-semibold">
               Annotations
               <Badge variant="secondary" className="ml-auto">
-                {annotations.length}
+                {filteredAndSortedAnnotations.length}
+                {filteredAndSortedAnnotations.length !== annotations.length && (
+                  <span className="text-muted-foreground">
+                    {' '}
+                    /
+                    {' '}
+                    {annotations.length}
+                  </span>
+                )}
               </Badge>
             </h2>
 
@@ -201,7 +333,7 @@ export function AnnotationsSidebar({
                 </Label>
               </div>
 
-              {/* Sort dropdown */}
+              {/* Sort and Filter controls */}
               <div className="flex items-center gap-2">
                 <Label className="shrink-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Sort by
@@ -236,6 +368,161 @@ export function AnnotationsSidebar({
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
+
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={hasActiveFilters ? 'border-blue-500 bg-blue-50' : ''}
+                    >
+                      <FilterIcon className="size-4" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[280px]" align="end">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-semibold">Filters</h4>
+                        {hasActiveFilters && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={resetFilters}
+                            className="h-auto p-1 text-xs"
+                          >
+                            Reset
+                          </Button>
+                        )}
+                      </div>
+
+                      <div className="space-y-3">
+                        <div>
+                          <Label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                            Annotation Type
+                          </Label>
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <Checkbox
+                                id="filter-text"
+                                checked={filters.types.text}
+                                onCheckedChange={checked =>
+                                  handleTypeFilterChange('text', checked === true)}
+                              />
+                              <Label
+                                htmlFor="filter-text"
+                                className="flex cursor-pointer items-center gap-1 text-sm font-normal"
+                              >
+                                <TextIcon className="size-3" />
+                                Text
+                              </Label>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Checkbox
+                                id="filter-table"
+                                checked={filters.types.table}
+                                onCheckedChange={checked =>
+                                  handleTypeFilterChange('table', checked === true)}
+                              />
+                              <Label
+                                htmlFor="filter-table"
+                                className="flex cursor-pointer items-center gap-1 text-sm font-normal"
+                              >
+                                <TableIcon className="size-3" />
+                                Table
+                              </Label>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Checkbox
+                                id="filter-joint"
+                                checked={filters.types.joint}
+                                onCheckedChange={checked =>
+                                  handleTypeFilterChange('joint', checked === true)}
+                              />
+                              <Label
+                                htmlFor="filter-joint"
+                                className="flex cursor-pointer items-center gap-1 text-sm font-normal"
+                              >
+                                <TextIcon className="size-3" />
+                                <span className="text-xs">+</span>
+                                <TableIcon className="size-3" />
+                                Joint
+                              </Label>
+                            </div>
+                          </div>
+                        </div>
+
+                        <Separator />
+
+                        <div>
+                          <Label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                            Entity Assignment
+                          </Label>
+                          <div className="space-y-3">
+                            <div className="space-y-1.5">
+                              <Label htmlFor="filter-subject" className="text-xs text-muted-foreground">
+                                Subject
+                              </Label>
+                              <Select
+                                value={filters.entities.subject}
+                                onValueChange={value =>
+                                  handleEntityFilterChange('subject', value as EntityFilterState)}
+                              >
+                                <SelectTrigger id="filter-subject" className="h-8 text-xs">
+                                  <SelectValue placeholder="Select filter..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="any">Any (show all)</SelectItem>
+                                  <SelectItem value="with">Must have entity</SelectItem>
+                                  <SelectItem value="without">Must not have entity</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <Label htmlFor="filter-predicate" className="text-xs text-muted-foreground">
+                                Predicate
+                              </Label>
+                              <Select
+                                value={filters.entities.predicate}
+                                onValueChange={value =>
+                                  handleEntityFilterChange('predicate', value as EntityFilterState)}
+                              >
+                                <SelectTrigger id="filter-predicate" className="h-8 text-xs">
+                                  <SelectValue placeholder="Select filter..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="any">Any (show all)</SelectItem>
+                                  <SelectItem value="with">Must have entity</SelectItem>
+                                  <SelectItem value="without">Must not have entity</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            <div className="space-y-1.5">
+                              <Label htmlFor="filter-object" className="text-xs text-muted-foreground">
+                                Object
+                              </Label>
+                              <Select
+                                value={filters.entities.object}
+                                onValueChange={value =>
+                                  handleEntityFilterChange('object', value as EntityFilterState)}
+                              >
+                                <SelectTrigger id="filter-object" className="h-8 text-xs">
+                                  <SelectValue placeholder="Select filter..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="any">Any (show all)</SelectItem>
+                                  <SelectItem value="with">Must have entity</SelectItem>
+                                  <SelectItem value="without">Must not have entity</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
 
               {/* Selection controls */}
@@ -285,107 +572,115 @@ export function AnnotationsSidebar({
 
           <div className="min-h-0 flex-1 overflow-hidden">
             <ScrollArea className="size-full" ref={scrollAreaRef}>
-              <ul className="space-y-2 p-4">
-                {sortedAnnotations.map((ann) => {
-                  const isSelected = currentAnnotation?.id === ann.id
-                  const isChecked = selectedAnnotations.has(ann.id)
-                  const annotationType = getAnnotationType(ann)
-                  return (
-                    <li
-                      key={ann.id}
-                      ref={(el) => {
-                        if (el) {
-                          annotationRefs.current.set(ann.id, el)
-                        } else {
-                          annotationRefs.current.delete(ann.id)
-                        }
-                      }}
-                    >
-                      <div className="group relative">
-                        <button
-                          type="button"
-                          className={`w-full rounded-lg border p-3 text-left transition-all ${
-                            isSelected
-                              ? 'border-blue-500 bg-blue-50 shadow-md ring-2 ring-blue-500/20'
-                              : 'border-border bg-card hover:border-blue-300 hover:shadow-sm'
-                          }`}
-                          onClick={() => onAnnotationClick(ann)}
-                        >
-                          <div className="mb-2 flex items-center gap-2">
-                            {annotationType === 'joint' && (
-                              <Badge
-                                variant="secondary"
-                                className="flex items-center gap-1 text-xs font-medium"
-                              >
-                                <TextIcon className="size-3" />
-                                +
-                                <TableIcon className="size-3" />
-                                <span className="ml-0.5">Joint</span>
-                              </Badge>
-                            )}
-                            {annotationType === 'table' && (
-                              <Badge
-                                variant="outline"
-                                className="flex items-center gap-1 text-xs font-medium"
-                              >
-                                <TableIcon className="size-3" />
-                                <span className="ml-0.5">Table</span>
-                              </Badge>
-                            )}
-                            {annotationType === 'text' && (
-                              <Badge
-                                variant="outline"
-                                className="flex items-center gap-1 text-xs font-medium"
-                              >
-                                <TextIcon className="size-3" />
-                                <span className="ml-0.5">Text</span>
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="break-words text-sm leading-relaxed">
-                            <span className="font-semibold text-orange-600">
-                              {ann.subject.annotationValue}
-                            </span>
-                            {' '}
-                            <span className="text-muted-foreground">
-                              &rarr;
-                            </span>
-                            {' '}
-                            <span className="font-semibold text-blue-600">
-                              {ann.predicate.annotationValue}
-                            </span>
-                            {' '}
-                            <span className="text-muted-foreground">
-                              &rarr;
-                            </span>
-                            {' '}
-                            <span className="font-semibold text-green-600">
-                              {ann.object.annotationValue}
-                            </span>
-                          </div>
-                        </button>
-
-                        {/* Selection checkbox - visible on hover or when selected */}
-                        <div
-                          className={`absolute right-2 top-2 transition-opacity ${
-                            isChecked || someSelected
-                              ? 'opacity-100'
-                              : 'opacity-0 group-hover:opacity-100'
-                          }`}
-                        >
-                          <Checkbox
-                            checked={isChecked}
-                            onCheckedChange={checked =>
-                              onAnnotationSelect(ann.id, checked === true)}
-                            onClick={e => e.stopPropagation()}
-                            className="bg-background shadow-sm"
-                          />
-                        </div>
-                      </div>
-                    </li>
+              {filteredAndSortedAnnotations.length === 0
+                ? (
+                    <div className="flex h-32 items-center justify-center p-4 text-center text-sm text-muted-foreground">
+                      No annotations match the current filters
+                    </div>
                   )
-                })}
-              </ul>
+                : (
+                    <ul className="space-y-2 p-4">
+                      {filteredAndSortedAnnotations.map((ann) => {
+                        const isSelected = currentAnnotation?.id === ann.id
+                        const isChecked = selectedAnnotations.has(ann.id)
+                        const annotationType = getAnnotationType(ann)
+                        return (
+                          <li
+                            key={ann.id}
+                            ref={(el) => {
+                              if (el) {
+                                annotationRefs.current.set(ann.id, el)
+                              } else {
+                                annotationRefs.current.delete(ann.id)
+                              }
+                            }}
+                          >
+                            <div className="group relative">
+                              <button
+                                type="button"
+                                className={`w-full rounded-lg border p-3 text-left transition-all ${
+                                  isSelected
+                                    ? 'border-blue-500 bg-blue-50 shadow-md ring-2 ring-blue-500/20'
+                                    : 'border-border bg-card hover:border-blue-300 hover:shadow-sm'
+                                }`}
+                                onClick={() => onAnnotationClick(ann)}
+                              >
+                                <div className="mb-2 flex items-center gap-2">
+                                  {annotationType === 'joint' && (
+                                    <Badge
+                                      variant="secondary"
+                                      className="flex items-center gap-1 text-xs font-medium"
+                                    >
+                                      <TextIcon className="size-3" />
+                                      +
+                                      <TableIcon className="size-3" />
+                                      <span className="ml-0.5">Joint</span>
+                                    </Badge>
+                                  )}
+                                  {annotationType === 'table' && (
+                                    <Badge
+                                      variant="outline"
+                                      className="flex items-center gap-1 text-xs font-medium"
+                                    >
+                                      <TableIcon className="size-3" />
+                                      <span className="ml-0.5">Table</span>
+                                    </Badge>
+                                  )}
+                                  {annotationType === 'text' && (
+                                    <Badge
+                                      variant="outline"
+                                      className="flex items-center gap-1 text-xs font-medium"
+                                    >
+                                      <TextIcon className="size-3" />
+                                      <span className="ml-0.5">Text</span>
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="break-words text-sm leading-relaxed">
+                                  <span className="font-semibold text-orange-600">
+                                    {ann.subject.annotationValue}
+                                  </span>
+                                  {' '}
+                                  <span className="text-muted-foreground">
+                                    &rarr;
+                                  </span>
+                                  {' '}
+                                  <span className="font-semibold text-blue-600">
+                                    {ann.predicate.annotationValue}
+                                  </span>
+                                  {' '}
+                                  <span className="text-muted-foreground">
+                                    &rarr;
+                                  </span>
+                                  {' '}
+                                  <span className="font-semibold text-green-600">
+                                    {ann.object.annotationValue}
+                                  </span>
+                                </div>
+                              </button>
+
+                              {/* Selection checkbox - visible on hover or when selected */}
+                              <div
+                                className={`absolute right-2 top-2 transition-opacity ${
+                                  isChecked || someSelected
+                                    ? 'opacity-100'
+                                    : 'opacity-0 group-hover:opacity-100'
+                                }`}
+                              >
+                                <Checkbox
+                                  checked={isChecked}
+                                  onCheckedChange={checked =>
+                                    onAnnotationSelect(ann.id, checked === true)}
+                                  onClick={e => e.stopPropagation()}
+                                  className="bg-background shadow-sm"
+                                />
+                              </div>
+                            </div>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  )}
             </ScrollArea>
           </div>
         </div>
