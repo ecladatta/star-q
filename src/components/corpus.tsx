@@ -18,6 +18,7 @@ import {
 import {
   ArrowDownIcon,
   ArrowUpIcon,
+  BarChart3Icon,
   ChevronLeftIcon,
   ChevronRightIcon,
   ChevronsLeftIcon,
@@ -26,11 +27,10 @@ import {
   CopyIcon,
   EditIcon,
   FileDownIcon,
-  FilePenIcon,
   FileUpIcon,
   FolderOpenIcon,
   Loader2Icon,
-  MoreHorizontalIcon,
+  MoreVerticalIcon,
   PlusCircleIcon,
   Trash2Icon,
 } from 'lucide-react'
@@ -371,16 +371,10 @@ const columns: ColumnDef<CorpusWithCounts, any>[] = [
     ),
     cell: ({ row, table }) => (
       <>
-        <Link href={`/corpus/${row.original.id}`}>
-          <Button variant="outline" size="sm">
-            <FilePenIcon className="size-4" />
-            Open
-          </Button>
-        </Link>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="sm">
-              <MoreHorizontalIcon className="size-4" />
+              <MoreVerticalIcon className="size-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -388,6 +382,12 @@ const columns: ColumnDef<CorpusWithCounts, any>[] = [
               <a href={`/corpus/${row.original.id}`}>
                 <FolderOpenIcon className="mr-2 size-4" />
                 Open
+              </a>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <a href={`/corpus/${row.original.id}/analytics`}>
+                <BarChart3Icon className="mr-2 size-4" />
+                Analytics
               </a>
             </DropdownMenuItem>
             <DropdownMenuItem

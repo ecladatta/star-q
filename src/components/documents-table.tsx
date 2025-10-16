@@ -27,7 +27,7 @@ import {
   DownloadIcon,
   FilePenIcon,
   Loader2Icon,
-  MoreHorizontalIcon,
+  MoreVerticalIcon,
   Trash2Icon,
 } from 'lucide-react'
 import Link from 'next/link'
@@ -383,7 +383,7 @@ const columns: ColumnDef<DocumentMetadata, any>[] = [
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="size-8 p-0">
-              <MoreHorizontalIcon className="size-4" />
+              <MoreVerticalIcon className="size-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start">

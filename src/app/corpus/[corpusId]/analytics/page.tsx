@@ -1,16 +1,17 @@
-import { BarChart3Icon } from 'lucide-react'
 import Link from 'next/link'
-import React from 'react'
+import React, { Suspense } from 'react'
+import { getCorpusAnalytics } from '@/actions/analytics/analyticsActions'
 import { getCorpus } from '@/actions/corpus/corpusActions'
-import { getDocumentsMetadata } from '@/actions/document/documentActions'
-import CorpusSettingsButton from '@/components/corpus-settings-button'
-import DocumentsTable from '@/components/documents-table'
+import { AnalyticsContent } from '@/components/analytics-content'
+import { AnalyticsSkeleton } from '@/components/analytics-skeleton'
 import { Button } from '@/components/ui/button'
 
-export default async function CorpusPage({ params }: { params: Promise<{ corpusId: string }> }) {
+export default async function AnalyticsPage({ params }: { params: Promise<{ corpusId: string }> }) {
   const corpusId = (await params).corpusId
-  const documentsList = await getDocumentsMetadata(corpusId)
   const corpus = await getCorpus(corpusId)
+
+  // Start fetching analytics data but don't await it
+  const analyticsPromise = getCorpusAnalytics(corpusId)
 
   if (!corpus) {
     return (
@@ -30,29 +31,24 @@ export default async function CorpusPage({ params }: { params: Promise<{ corpusI
   }
 
   return (
-    <div className="container mx-auto flex size-full min-h-screen max-w-6xl flex-col px-4 py-12 sm:px-6 lg:px-8">
+    <div className="container mx-auto flex size-full min-h-screen max-w-7xl flex-col px-4 py-12 sm:px-6 lg:px-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">
-            Corpus:
-            {' '}
             {corpus.title}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Select a document to start annotating
+            Detailed analytics about this corpus
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Link href={`/corpus/${corpusId}/analytics`}>
-            <Button variant="outline">
-              <BarChart3Icon className="mr-2 size-4" />
-              Analytics
-            </Button>
-          </Link>
-          <CorpusSettingsButton corpus={corpus} />
-        </div>
+        <Link href={`/corpus/${corpusId}`}>
+          <Button variant="outline">Back to Corpus</Button>
+        </Link>
       </div>
-      <DocumentsTable documents={documentsList} />
+
+      <Suspense fallback={<AnalyticsSkeleton />}>
+        <AnalyticsContent analyticsPromise={analyticsPromise} />
+      </Suspense>
     </div>
   )
 }
