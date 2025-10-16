@@ -2,7 +2,9 @@ import type { Dispatch, SetStateAction } from 'react'
 import type { CurrentAnnotation, DocumentAnnotationComponent, Entity, EntityType } from '@/types/types'
 import { PopoverClose } from '@radix-ui/react-popover'
 import { ArrowLeftRightIcon, CopyIcon, Loader2Icon, SaveIcon, Trash2Icon } from 'lucide-react'
-import { useEffect } from 'react'
+import { useCallback, useEffect } from 'react'
+import { toast } from 'sonner'
+import { v4 as uuidv4 } from 'uuid'
 import { EntitySelector } from '@/components/entity-selector'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -92,28 +94,52 @@ export function AnnotationForm({
     })
   }
 
-  const handleCloneAnnotation = () => {
+  const handleCloneAnnotation = useCallback(() => {
     if (!currentAnnotation)
       return
 
-    // Create a copy without the id to make it a new annotation
+    // Create a copy without the id to make it a new annotation with new component IDs
+    const cloneComponent = (comp: DocumentAnnotationComponent | undefined): DocumentAnnotationComponent | undefined => {
+      if (!comp) {
+        return undefined
+      }
+      return {
+        ...comp,
+        id: uuidv4(),
+      }
+    }
+
     const clonedAnnotation: CurrentAnnotation = {
-      subject: currentAnnotation.subject ? { ...currentAnnotation.subject } : undefined,
-      predicate: currentAnnotation.predicate ? { ...currentAnnotation.predicate } : undefined,
-      object: currentAnnotation.object ? { ...currentAnnotation.object } : undefined,
+      subject: cloneComponent(currentAnnotation.subject),
+      predicate: cloneComponent(currentAnnotation.predicate),
+      object: cloneComponent(currentAnnotation.object),
     }
 
     setCurrentAnnotation(clonedAnnotation)
-  }
+    toast.success('Annotation cloned! Edit and save to create a new annotation.')
+  }, [currentAnnotation, setCurrentAnnotation])
 
-  // Keyboard shortcut for saving annotation (Ctrl+S / Cmd+S)
+  // Keyboard shortcuts for saving (Ctrl+S / Cmd+S) and cloning (C)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement
+      const isInputField = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.contentEditable === 'true'
+
+      // Ctrl+S / Cmd+S to save
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault()
         e.stopPropagation()
         if (hasAllTags && !annotationFormLoading && !isDeletingAnnotation) {
           onSave()
+        }
+      }
+
+      // C to clone (only if we're editing an existing annotation and not in an input field)
+      if (e.key === 'c' && currentAnnotation?.id && !isInputField && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        e.preventDefault()
+        e.stopPropagation()
+        if (!annotationFormLoading && !isDeletingAnnotation) {
+          handleCloneAnnotation()
         }
       }
     }
@@ -122,7 +148,7 @@ export function AnnotationForm({
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [hasAllTags, annotationFormLoading, isDeletingAnnotation, onSave])
+  }, [hasAllTags, annotationFormLoading, isDeletingAnnotation, onSave, currentAnnotation, handleCloneAnnotation])
 
   if (!hasAnyTags)
     return null
@@ -164,7 +190,7 @@ export function AnnotationForm({
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    Clone annotation
+                    Clone annotation (C)
                   </TooltipContent>
                 </Tooltip>
                 <Popover>

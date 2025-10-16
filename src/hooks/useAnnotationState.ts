@@ -413,6 +413,34 @@ export function useAnnotationState(
     popover.hidePopover()
   }, [handleMentionAssociation, addToCurrentAnnotation, popover])
 
+  const handleCloneAnnotation = useCallback(() => {
+    if (!popover.popoverState.annotation) {
+      return
+    }
+
+    const annotation = popover.popoverState.annotation
+
+    // Create cloned components with new IDs
+    const cloneComponent = (comp: DocumentAnnotationComponent | undefined): DocumentAnnotationComponent | undefined => {
+      if (!comp) {
+        return undefined
+      }
+      return {
+        ...comp,
+        id: uuidv4(),
+      }
+    }
+
+    setCurrentAnnotation({
+      subject: cloneComponent(annotation.subject),
+      predicate: cloneComponent(annotation.predicate),
+      object: cloneComponent(annotation.object),
+    })
+
+    popover.hidePopover()
+    toast.success('Annotation cloned! Edit and save to create a new annotation.')
+  }, [popover])
+
   useKeyboardShortcuts({
     popoverVisible: popover.popoverState.visible,
     hasSelection: selection.hasSelection(),
@@ -427,6 +455,7 @@ export function useAnnotationState(
     onClearAnnotation: () => setCurrentAnnotation(null),
     onHidePopover: popover.hidePopover,
     onToggleAnnotations: () => setShowAnnotations(!showAnnotations),
+    onCloneAnnotation: handleCloneAnnotation,
   })
 
   return {

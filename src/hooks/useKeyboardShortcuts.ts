@@ -10,6 +10,7 @@ type KeyboardShortcutsConfig = {
   onClearAnnotation: () => void
   onHidePopover: () => void
   onToggleAnnotations: () => void
+  onCloneAnnotation: () => void
 }
 
 export function useKeyboardShortcuts({
@@ -21,6 +22,7 @@ export function useKeyboardShortcuts({
   onClearAnnotation,
   onHidePopover,
   onToggleAnnotations,
+  onCloneAnnotation,
 }: KeyboardShortcutsConfig) {
   useLayoutEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -64,6 +66,12 @@ export function useKeyboardShortcuts({
         onEditCurrentAnnotation()
       }
 
+      // Clone key (c) - only when popover is visible with annotation
+      if (key === 'c' && popoverVisible && currentAnnotation) {
+        e.preventDefault()
+        onCloneAnnotation()
+      }
+
       // Toggle annotations visibility (h)
       if (key === 'h') {
         e.preventDefault()
@@ -82,5 +90,6 @@ export function useKeyboardShortcuts({
     onClearAnnotation,
     onHidePopover,
     onToggleAnnotations,
+    onCloneAnnotation,
   ])
 }
