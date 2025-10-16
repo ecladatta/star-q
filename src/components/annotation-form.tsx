@@ -134,7 +134,13 @@ export function AnnotationForm({
         hasAnyTags ? 'translate-y-0' : 'translate-y-full',
       )}
     >
-      <Card className="mb-6 rounded-none sm:rounded-xl">
+      <Card
+        className={cn(
+          'mb-6 w-full rounded-lg border text-left transition-all',
+          currentAnnotation?.id
+          && 'border-blue-500 shadow-md ring-2 ring-blue-500/20',
+        )}
+      >
         <CardHeader className="flex flex-row pb-4">
           <div>
             <CardTitle>
