@@ -171,7 +171,7 @@ export function AnnotationsSidebar({
 
   return (
     <>
-      <aside className="fixed right-0 top-0 hidden h-screen w-[280px] border-l bg-background pt-16 md:block">
+      <aside className="fixed right-0 top-0 hidden h-screen w-[280px] border-l bg-background pt-12 md:block">
         <div className="flex h-full flex-col">
           <div className="border-b bg-muted/30 p-4">
             <h2 className="mb-2 flex items-center gap-2 text-lg font-semibold">
