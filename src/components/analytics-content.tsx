@@ -462,7 +462,7 @@ export function AnalyticsContent({ analyticsPromise }: AnalyticsContentProps) {
           {analytics.propertyStats.length > 0
             ? (
                 <div className="space-y-4">
-                  {analytics.propertyStats.slice(0, 20).map((stat) => {
+                  {analytics.propertyStats.map((stat) => {
                     const propertyKey = `${stat.label || 'null'}:${stat.value || 'null'}`
                     const documents = analytics.documentsByProperty.get(propertyKey) || []
 
@@ -511,13 +511,6 @@ export function AnalyticsContent({ analyticsPromise }: AnalyticsContentProps) {
                       </Collapsible>
                     )
                   })}
-                  {analytics.propertyStats.length > 20 && (
-                    <p className="text-center text-sm text-muted-foreground">
-                      Showing top 20 properties out of
-                      {' '}
-                      {analytics.propertyStats.length}
-                    </p>
-                  )}
                 </div>
               )
             : (
