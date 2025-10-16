@@ -1,7 +1,7 @@
 'use client'
 
 import type { CorpusAnalytics } from '@/actions/analytics/analyticsActions'
-import { BarChart3Icon, FileTextIcon, TableIcon } from 'lucide-react'
+import { AlertTriangleIcon, BarChart3Icon, FileTextIcon, TableIcon } from 'lucide-react'
 import Link from 'next/link'
 import React, { use } from 'react'
 import { Badge } from '@/components/ui/badge'
@@ -222,6 +222,113 @@ export function AnalyticsContent({ analyticsPromise }: AnalyticsContentProps) {
         </CardContent>
       </Card>
 
+      {/* Documents with Unassigned Predicates */}
+      {analytics.documentsWithUnassignedPredicates.length > 0 && (
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertTriangleIcon className="size-5 text-yellow-500" />
+              Documents with Unassigned Predicates
+            </CardTitle>
+            <CardDescription>
+              Documents containing annotations where the predicate (relation) has no entity assigned
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Collapsible defaultOpen={analytics.documentsWithUnassignedPredicates.length <= 5}>
+              <CollapsibleTrigger className="mb-4 flex w-full items-center justify-between rounded-lg border bg-yellow-50 p-3 hover:bg-yellow-100 dark:bg-yellow-950/20 dark:hover:bg-yellow-950/30">
+                <div className="flex items-center space-x-2">
+                  <span className="font-medium">View Documents</span>
+                  <Badge variant="secondary">{analytics.documentsWithUnassignedPredicates.length}</Badge>
+                </div>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-2 space-y-2">
+                {analytics.documentsWithUnassignedPredicates.map(doc => (
+                  <Link
+                    key={doc.documentId}
+                    href={`/document/${doc.documentId}?predicate=without`}
+                    className="flex items-center justify-between rounded-md border bg-muted/50 p-3 transition-colors hover:bg-muted"
+                  >
+                    <span className="text-sm font-medium">{doc.documentTitle}</span>
+                    <Badge variant="destructive">
+                      {doc.unassignedPredicateCount}
+                      {' '}
+                      unassigned
+                    </Badge>
+                  </Link>
+                ))}
+              </CollapsibleContent>
+            </Collapsible>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Documents with Unassigned Entities */}
+      {analytics.documentsWithUnassignedEntities.length > 0 && (
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertTriangleIcon className="size-5 text-orange-500" />
+              Documents with Unassigned Entities
+            </CardTitle>
+            <CardDescription>
+              Documents containing annotations where the subject or object has no entity assigned
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Collapsible defaultOpen={analytics.documentsWithUnassignedEntities.length <= 5}>
+              <CollapsibleTrigger className="mb-4 flex w-full items-center justify-between rounded-lg border bg-orange-50 p-3 hover:bg-orange-100 dark:bg-orange-950/20 dark:hover:bg-orange-950/30">
+                <div className="flex items-center space-x-2">
+                  <span className="font-medium">View Documents</span>
+                  <Badge variant="secondary">{analytics.documentsWithUnassignedEntities.length}</Badge>
+                </div>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-2 space-y-2">
+                {analytics.documentsWithUnassignedEntities.map((doc) => {
+                  // Build query params based on what's unassigned
+                  const params = new URLSearchParams()
+                  if (doc.unassignedSubjectCount > 0) {
+                    params.append('subject', 'without')
+                  }
+                  if (doc.unassignedObjectCount > 0) {
+                    params.append('object', 'without')
+                  }
+                  const queryString = params.toString()
+
+                  return (
+                    <Link
+                      key={doc.documentId}
+                      href={`/document/${doc.documentId}?${queryString}`}
+                      className="flex items-center justify-between rounded-md border bg-muted/50 p-3 transition-colors hover:bg-muted"
+                    >
+                      <span className="text-sm font-medium">{doc.documentTitle}</span>
+                      <div className="flex items-center gap-2">
+                        {doc.unassignedSubjectCount > 0 && (
+                          <Badge variant="destructive">
+                            {doc.unassignedSubjectCount}
+                            {' '}
+                            subject
+                            {doc.unassignedSubjectCount !== 1 ? 's' : ''}
+                          </Badge>
+                        )}
+                        {doc.unassignedObjectCount > 0 && (
+                          <Badge variant="destructive">
+                            {doc.unassignedObjectCount}
+                            {' '}
+                            object
+                            {doc.unassignedObjectCount !== 1 ? 's' : ''}
+                          </Badge>
+                        )}
+                      </div>
+                    </Link>
+                  )
+                })}
+              </CollapsibleContent>
+            </Collapsible>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Property Statistics */}
       <Card className="mb-8">
         <CardHeader>
@@ -247,8 +354,6 @@ export function AnalyticsContent({ analyticsPromise }: AnalyticsContentProps) {
                           <TableRow>
                             <TableHead>Label</TableHead>
                             <TableHead>Value</TableHead>
-                            <TableHead>Type</TableHead>
-                            <TableHead>Datatype</TableHead>
                             <TableHead className="text-right">Count</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -262,25 +367,20 @@ export function AnalyticsContent({ analyticsPromise }: AnalyticsContentProps) {
                                   {stat.label || <span className="text-muted-foreground">—</span>}
                                 </TableCell>
                                 <TableCell>
-                                  {stat.value || <span className="text-muted-foreground">—</span>}
-                                </TableCell>
-                                <TableCell>
-                                  {stat.isCustom
-                                    ? (
-                                        <Badge variant="secondary">Custom</Badge>
-                                      )
-                                    : (
-                                        <Badge variant="outline">Standard</Badge>
-                                      )}
-                                </TableCell>
-                                <TableCell>
-                                  {stat.datatype
-                                    ? (
-                                        <Badge variant="outline">{stat.datatype}</Badge>
-                                      )
-                                    : (
-                                        <span className="text-muted-foreground">—</span>
-                                      )}
+                                  {stat.value
+                                    ? stat.isCustom
+                                      ? stat.value
+                                      : (
+                                          <Link
+                                            href={`https://www.wikidata.org/wiki/${stat.value.startsWith('P') ? 'Property:' : ''}${stat.value}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-blue-600 underline"
+                                          >
+                                            {stat.value}
+                                          </Link>
+                                        )
+                                    : <span className="text-muted-foreground">—</span>}
                                 </TableCell>
                                 <TableCell className="text-right">{stat.count}</TableCell>
                               </TableRow>
@@ -323,8 +423,6 @@ export function AnalyticsContent({ analyticsPromise }: AnalyticsContentProps) {
                           <TableRow>
                             <TableHead>Label</TableHead>
                             <TableHead>Value</TableHead>
-                            <TableHead>Type</TableHead>
-                            <TableHead>Datatype</TableHead>
                             <TableHead className="text-right">Count</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -338,25 +436,20 @@ export function AnalyticsContent({ analyticsPromise }: AnalyticsContentProps) {
                                   {stat.label || <span className="text-muted-foreground">—</span>}
                                 </TableCell>
                                 <TableCell>
-                                  {stat.value || <span className="text-muted-foreground">—</span>}
-                                </TableCell>
-                                <TableCell>
-                                  {stat.isCustom
-                                    ? (
-                                        <Badge variant="secondary">Custom</Badge>
-                                      )
-                                    : (
-                                        <Badge variant="outline">Standard</Badge>
-                                      )}
-                                </TableCell>
-                                <TableCell>
-                                  {stat.datatype
-                                    ? (
-                                        <Badge variant="outline">{stat.datatype}</Badge>
-                                      )
-                                    : (
-                                        <span className="text-muted-foreground">—</span>
-                                      )}
+                                  {stat.value
+                                    ? stat.isCustom
+                                      ? stat.value
+                                      : (
+                                          <Link
+                                            href={`https://www.wikidata.org/wiki/${stat.value.startsWith('P') ? 'Property:' : ''}${stat.value}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-blue-600 underline"
+                                          >
+                                            {stat.value}
+                                          </Link>
+                                        )
+                                    : <span className="text-muted-foreground">—</span>}
                                 </TableCell>
                                 <TableCell className="text-right">{stat.count}</TableCell>
                               </TableRow>

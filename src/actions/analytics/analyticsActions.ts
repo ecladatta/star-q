@@ -56,6 +56,20 @@ export type CorpusAnalytics = {
       annotationCount: number
     }>
   }
+  documentsWithUnassignedPredicates: Array<{
+    documentId: string
+    documentTitle: string
+    annotationCount: number
+    unassignedPredicateCount: number
+  }>
+  documentsWithUnassignedEntities: Array<{
+    documentId: string
+    documentTitle: string
+    annotationCount: number
+    unassignedSubjectCount: number
+    unassignedObjectCount: number
+    totalUnassignedCount: number
+  }>
 }
 
 export async function getCorpusAnalytics(corpusId: string): Promise<CorpusAnalytics> {
@@ -265,6 +279,64 @@ export async function getCorpusAnalytics(corpusId: string): Promise<CorpusAnalyt
   const tableOnlyDocs = await getDocumentsByIds(tableOnlyDocIds)
   const jointDocs = await getDocumentsByIds(jointDocIds)
 
+  // Get documents with unassigned predicates (predicates where entityValue is null or empty string)
+  // Note: entityLabel might exist (like "brand_of") but entityValue would be null or empty
+  const docsWithUnassignedPredicates = await db
+    .select({
+      documentId: document.id,
+      documentTitle: document.title,
+      totalAnnotationCount: countDistinct(annotation.id),
+      unassignedPredicateCount: sql<number>`COUNT(DISTINCT CASE WHEN (${annotationComponent.entityValue} IS NULL OR ${annotationComponent.entityValue} = '') THEN ${annotation.id} END)`.as('unassigned_predicate_count'),
+    })
+    .from(annotation)
+    .innerJoin(annotationComponent, eq(annotationComponent.id, annotation.predicateId))
+    .innerJoin(document, eq(document.id, annotation.documentId))
+    .where(eq(document.corpusId, corpusId))
+    .groupBy(document.id, document.title)
+    .having(sql`COUNT(DISTINCT CASE WHEN (${annotationComponent.entityValue} IS NULL OR ${annotationComponent.entityValue} = '') THEN ${annotation.id} END) > 0`)
+    .orderBy(desc(sql`COUNT(DISTINCT CASE WHEN (${annotationComponent.entityValue} IS NULL OR ${annotationComponent.entityValue} = '') THEN ${annotation.id} END)`))
+
+  const documentsWithUnassignedPredicates = docsWithUnassignedPredicates.map(doc => ({
+    documentId: doc.documentId,
+    documentTitle: doc.documentTitle,
+    annotationCount: doc.totalAnnotationCount,
+    unassignedPredicateCount: doc.unassignedPredicateCount,
+  }))
+
+  // Get documents with unassigned entities (subjects or objects where entityValue is null or empty string)
+  const docsWithUnassignedEntities = await db
+    .select({
+      documentId: document.id,
+      documentTitle: document.title,
+      totalAnnotationCount: countDistinct(annotation.id),
+      unassignedSubjectCount: sql<number>`COUNT(DISTINCT CASE WHEN (subject.entity_value IS NULL OR subject.entity_value = '') THEN ${annotation.id} END)`.as('unassigned_subject_count'),
+      unassignedObjectCount: sql<number>`COUNT(DISTINCT CASE WHEN (object.entity_value IS NULL OR object.entity_value = '') THEN ${annotation.id} END)`.as('unassigned_object_count'),
+    })
+    .from(annotation)
+    .innerJoin(document, eq(document.id, annotation.documentId))
+    .innerJoin(sql`${annotationComponent} AS subject`, sql`subject.id = ${annotation.subjectId}`)
+    .innerJoin(sql`${annotationComponent} AS object`, sql`object.id = ${annotation.objectId}`)
+    .where(eq(document.corpusId, corpusId))
+    .groupBy(document.id, document.title)
+    .having(sql`(
+      COUNT(DISTINCT CASE WHEN (subject.entity_value IS NULL OR subject.entity_value = '') THEN ${annotation.id} END) > 0
+      OR
+      COUNT(DISTINCT CASE WHEN (object.entity_value IS NULL OR object.entity_value = '') THEN ${annotation.id} END) > 0
+    )`)
+    .orderBy(desc(sql`(
+      COUNT(DISTINCT CASE WHEN (subject.entity_value IS NULL OR subject.entity_value = '') THEN ${annotation.id} END) +
+      COUNT(DISTINCT CASE WHEN (object.entity_value IS NULL OR object.entity_value = '') THEN ${annotation.id} END)
+    )`))
+
+  const documentsWithUnassignedEntities = docsWithUnassignedEntities.map(doc => ({
+    documentId: doc.documentId,
+    documentTitle: doc.documentTitle,
+    annotationCount: doc.totalAnnotationCount,
+    unassignedSubjectCount: doc.unassignedSubjectCount,
+    unassignedObjectCount: doc.unassignedObjectCount,
+    totalUnassignedCount: doc.unassignedSubjectCount + doc.unassignedObjectCount,
+  }))
+
   return {
     totalDocuments,
     documentsWithAnnotations,
@@ -285,5 +357,7 @@ export async function getCorpusAnalytics(corpusId: string): Promise<CorpusAnalyt
       tableOnly: tableOnlyDocs,
       joint: jointDocs,
     },
+    documentsWithUnassignedPredicates,
+    documentsWithUnassignedEntities,
   }
 }
