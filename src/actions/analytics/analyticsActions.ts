@@ -208,6 +208,7 @@ export async function getCorpusAnalytics(corpusId: string): Promise<CorpusAnalyt
       annotationComponent.entityCustom,
     )
     .orderBy(desc(count()))
+    .limit(50)
 
   const entityStats = entityStatsQuery.map(stat => ({
     label: stat.label,
@@ -219,75 +220,20 @@ export async function getCorpusAnalytics(corpusId: string): Promise<CorpusAnalyt
 
   const uniqueEntities = entityStats.length
 
-  // Get documents by property (predicates)
+  // OPTIMIZATION: Instead of querying documents for each property/entity individually,
+  // we'll fetch document lists only on-demand via a separate lazy-loading mechanism.
+  // For initial page load, we'll just return empty maps to avoid performance issues.
   const documentsByProperty = new Map<string, Array<{
     documentId: string
     documentTitle: string
     annotationCount: number
   }>>()
 
-  // For each unique property, get the documents that have annotations with that property
-  for (const property of propertyStats) {
-    const docsForProperty = await db
-      .select({
-        documentId: document.id,
-        documentTitle: document.title,
-        annotationCount: count(annotation.id),
-      })
-      .from(document)
-      .innerJoin(annotation, eq(annotation.documentId, document.id))
-      .innerJoin(
-        annotationComponent,
-        sql`${annotationComponent.id} = ${annotation.predicateId}`,
-      )
-      .where(
-        and(
-          eq(document.corpusId, corpusId),
-          property.label ? eq(annotationComponent.entityLabel, property.label) : sql`${annotationComponent.entityLabel} IS NULL`,
-          property.value ? eq(annotationComponent.entityValue, property.value) : sql`${annotationComponent.entityValue} IS NULL`,
-        ),
-      )
-      .groupBy(document.id, document.title)
-      .orderBy(desc(count(annotation.id)))
-
-    const propertyKey = `${property.label || 'null'}:${property.value || 'null'}`
-    documentsByProperty.set(propertyKey, docsForProperty)
-  }
-
-  // Get documents by entity (subjects and objects)
   const documentsByEntity = new Map<string, Array<{
     documentId: string
     documentTitle: string
     annotationCount: number
   }>>()
-
-  // For each unique entity, get the documents that have annotations with that entity
-  for (const entity of entityStats) {
-    const docsForEntity = await db
-      .select({
-        documentId: document.id,
-        documentTitle: document.title,
-        annotationCount: count(annotation.id),
-      })
-      .from(document)
-      .innerJoin(annotation, eq(annotation.documentId, document.id))
-      .innerJoin(
-        annotationComponent,
-        sql`${annotationComponent.id} IN (${annotation.subjectId}, ${annotation.objectId})`,
-      )
-      .where(
-        and(
-          eq(document.corpusId, corpusId),
-          entity.label ? eq(annotationComponent.entityLabel, entity.label) : sql`${annotationComponent.entityLabel} IS NULL`,
-          entity.value ? eq(annotationComponent.entityValue, entity.value) : sql`${annotationComponent.entityValue} IS NULL`,
-        ),
-      )
-      .groupBy(document.id, document.title)
-      .orderBy(desc(count(annotation.id)))
-
-    const entityKey = `${entity.label || 'null'}:${entity.value || 'null'}`
-    documentsByEntity.set(entityKey, docsForEntity)
-  }
 
   // Get document details for each annotation type
   const getDocumentsByIds = async (docIds: Set<string>) => {
