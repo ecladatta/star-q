@@ -10,6 +10,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { useAnnotationState } from '@/hooks/useAnnotationState'
 import { useDocumentElements } from '@/hooks/useDocumentElements'
 import { useSelectionHandlers } from '@/hooks/useSelectionState'
@@ -107,7 +108,38 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
     popover.hidePopover()
   }
 
-  const copyDocumentAsMarkdown = () => {
+  const copyTextOnly = () => {
+    if (!documentData)
+      return
+
+    const title = documentData._source.identificationMetadata.title
+    let markdown = `# ${title}\n\n`
+
+    combinedElements.forEach((element) => {
+      // Only copy text elements, skip tables
+      if (element.type === 'text') {
+        const textValue = element.value as string
+        const heading = element.data.title
+        const level = element.data.level
+
+        if (heading && level) {
+          markdown += `${'#'.repeat(level)} ${heading}\n\n`
+        } else if (heading) {
+          markdown += `**${heading}**\n\n`
+        }
+
+        markdown += `${textValue}\n\n`
+      }
+    })
+
+    navigator.clipboard.writeText(markdown).then(() => {
+      setCopiedDocument(true)
+      setTimeout(() => setCopiedDocument(false), 2000)
+      toast.success('Text copied to clipboard as Markdown!')
+    })
+  }
+
+  const copyWholeDocument = () => {
     if (!documentData)
       return
 
@@ -248,23 +280,34 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
                       </DialogContent>
                     </Dialog>
                     <div className="ml-auto flex justify-end">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={copyDocumentAsMarkdown}
-                      >
-                        {copiedDocument
-                          ? (
-                              <>
-                                <Check className="size-4" />
-                              </>
-                            )
-                          : (
-                              <>
-                                <Copy className="size-4" />
-                              </>
-                            )}
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                          >
+                            {copiedDocument
+                              ? (
+                                  <>
+                                    <Check className="size-4" />
+                                  </>
+                                )
+                              : (
+                                  <>
+                                    <Copy className="size-4" />
+                                  </>
+                                )}
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={copyTextOnly}>
+                            Copy Text Only
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={copyWholeDocument}>
+                            Copy Whole Document
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                 </CardHeader>
