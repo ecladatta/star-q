@@ -62,13 +62,17 @@ export type CorpusAnalytics = {
     annotationCount: number
     unassignedPredicateCount: number
   }>
-  documentsWithUnassignedEntities: Array<{
+  documentsWithUnassignedSubjects: Array<{
     documentId: string
     documentTitle: string
     annotationCount: number
     unassignedSubjectCount: number
+  }>
+  documentsWithUnassignedObjects: Array<{
+    documentId: string
+    documentTitle: string
+    annotationCount: number
     unassignedObjectCount: number
-    totalUnassignedCount: number
   }>
 }
 
@@ -286,7 +290,7 @@ export async function getCorpusAnalytics(corpusId: string): Promise<CorpusAnalyt
       documentId: document.id,
       documentTitle: document.title,
       totalAnnotationCount: countDistinct(annotation.id),
-      unassignedPredicateCount: sql<number>`COUNT(DISTINCT CASE WHEN ((${annotationComponent.entityValue} IS NULL OR ${annotationComponent.entityValue} = '') AND ${annotationComponent.entityCustomId} IS NULL) THEN ${annotation.id} END)`.as('unassigned_predicate_count'),
+      unassignedPredicateCount: sql<number>`CAST(COUNT(DISTINCT CASE WHEN ((${annotationComponent.entityValue} IS NULL OR ${annotationComponent.entityValue} = '') AND ${annotationComponent.entityCustomId} IS NULL) THEN ${annotation.id} END) AS INTEGER)`.as('unassigned_predicate_count'),
     })
     .from(annotation)
     .innerJoin(annotationComponent, eq(annotationComponent.id, annotation.predicateId))
@@ -300,42 +304,55 @@ export async function getCorpusAnalytics(corpusId: string): Promise<CorpusAnalyt
     documentId: doc.documentId,
     documentTitle: doc.documentTitle,
     annotationCount: doc.totalAnnotationCount,
-    unassignedPredicateCount: doc.unassignedPredicateCount,
+    unassignedPredicateCount: Number(doc.unassignedPredicateCount),
   }))
 
-  // Get documents with unassigned entities (subjects or objects where both entityValue and entityCustomId are null/empty)
+  // Get documents with unassigned subjects (subjects where both entityValue and entityCustomId are null/empty)
   // Note: Custom entities store entityValue as NULL and use entityCustomId, so we need to check both
-  const docsWithUnassignedEntities = await db
+  const docsWithUnassignedSubjects = await db
     .select({
       documentId: document.id,
       documentTitle: document.title,
       totalAnnotationCount: countDistinct(annotation.id),
-      unassignedSubjectCount: sql<number>`COUNT(DISTINCT CASE WHEN ((subject.entity_value IS NULL OR subject.entity_value = '') AND subject.entity_custom_id IS NULL) THEN ${annotation.id} END)`.as('unassigned_subject_count'),
-      unassignedObjectCount: sql<number>`COUNT(DISTINCT CASE WHEN ((object.entity_value IS NULL OR object.entity_value = '') AND object.entity_custom_id IS NULL) THEN ${annotation.id} END)`.as('unassigned_object_count'),
+      unassignedSubjectCount: sql<number>`CAST(COUNT(DISTINCT CASE WHEN ((${annotationComponent}.entity_value IS NULL OR ${annotationComponent}.entity_value = '') AND ${annotationComponent}.entity_custom_id IS NULL) THEN ${annotation.id} END) AS INTEGER)`.as('unassigned_subject_count'),
     })
     .from(annotation)
+    .innerJoin(annotationComponent, eq(annotationComponent.id, annotation.subjectId))
     .innerJoin(document, eq(document.id, annotation.documentId))
-    .innerJoin(sql`${annotationComponent} AS subject`, sql`subject.id = ${annotation.subjectId}`)
-    .innerJoin(sql`${annotationComponent} AS object`, sql`object.id = ${annotation.objectId}`)
     .where(eq(document.corpusId, corpusId))
     .groupBy(document.id, document.title)
-    .having(sql`(
-      COUNT(DISTINCT CASE WHEN ((subject.entity_value IS NULL OR subject.entity_value = '') AND subject.entity_custom_id IS NULL) THEN ${annotation.id} END) > 0
-      OR
-      COUNT(DISTINCT CASE WHEN ((object.entity_value IS NULL OR object.entity_value = '') AND object.entity_custom_id IS NULL) THEN ${annotation.id} END) > 0
-    )`)
-    .orderBy(desc(sql`(
-      COUNT(DISTINCT CASE WHEN ((subject.entity_value IS NULL OR subject.entity_value = '') AND subject.entity_custom_id IS NULL) THEN ${annotation.id} END) +
-      COUNT(DISTINCT CASE WHEN ((object.entity_value IS NULL OR object.entity_value = '') AND object.entity_custom_id IS NULL) THEN ${annotation.id} END)
-    )`))
+    .having(sql`COUNT(DISTINCT CASE WHEN ((${annotationComponent}.entity_value IS NULL OR ${annotationComponent}.entity_value = '') AND ${annotationComponent}.entity_custom_id IS NULL) THEN ${annotation.id} END) > 0`)
+    .orderBy(desc(sql`COUNT(DISTINCT CASE WHEN ((${annotationComponent}.entity_value IS NULL OR ${annotationComponent}.entity_value = '') AND ${annotationComponent}.entity_custom_id IS NULL) THEN ${annotation.id} END)`))
 
-  const documentsWithUnassignedEntities = docsWithUnassignedEntities.map(doc => ({
+  const documentsWithUnassignedSubjects = docsWithUnassignedSubjects.map(doc => ({
     documentId: doc.documentId,
     documentTitle: doc.documentTitle,
     annotationCount: doc.totalAnnotationCount,
-    unassignedSubjectCount: doc.unassignedSubjectCount,
-    unassignedObjectCount: doc.unassignedObjectCount,
-    totalUnassignedCount: doc.unassignedSubjectCount + doc.unassignedObjectCount,
+    unassignedSubjectCount: Number(doc.unassignedSubjectCount),
+  }))
+
+  // Get documents with unassigned objects (objects where both entityValue and entityCustomId are null/empty)
+  // Note: Objects can be literals, so this is informational only and won't affect the score
+  const docsWithUnassignedObjects = await db
+    .select({
+      documentId: document.id,
+      documentTitle: document.title,
+      totalAnnotationCount: countDistinct(annotation.id),
+      unassignedObjectCount: sql<number>`CAST(COUNT(DISTINCT CASE WHEN ((${annotationComponent}.entity_value IS NULL OR ${annotationComponent}.entity_value = '') AND ${annotationComponent}.entity_custom_id IS NULL) THEN ${annotation.id} END) AS INTEGER)`.as('unassigned_object_count'),
+    })
+    .from(annotation)
+    .innerJoin(annotationComponent, eq(annotationComponent.id, annotation.objectId))
+    .innerJoin(document, eq(document.id, annotation.documentId))
+    .where(eq(document.corpusId, corpusId))
+    .groupBy(document.id, document.title)
+    .having(sql`COUNT(DISTINCT CASE WHEN ((${annotationComponent}.entity_value IS NULL OR ${annotationComponent}.entity_value = '') AND ${annotationComponent}.entity_custom_id IS NULL) THEN ${annotation.id} END) > 0`)
+    .orderBy(desc(sql`COUNT(DISTINCT CASE WHEN ((${annotationComponent}.entity_value IS NULL OR ${annotationComponent}.entity_value = '') AND ${annotationComponent}.entity_custom_id IS NULL) THEN ${annotation.id} END)`))
+
+  const documentsWithUnassignedObjects = docsWithUnassignedObjects.map(doc => ({
+    documentId: doc.documentId,
+    documentTitle: doc.documentTitle,
+    annotationCount: doc.totalAnnotationCount,
+    unassignedObjectCount: Number(doc.unassignedObjectCount),
   }))
 
   return {
@@ -359,6 +376,7 @@ export async function getCorpusAnalytics(corpusId: string): Promise<CorpusAnalyt
       joint: jointDocs,
     },
     documentsWithUnassignedPredicates,
-    documentsWithUnassignedEntities,
+    documentsWithUnassignedSubjects,
+    documentsWithUnassignedObjects,
   }
 }

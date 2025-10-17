@@ -1,8 +1,10 @@
 import { BarChart3Icon } from 'lucide-react'
 import Link from 'next/link'
-import React from 'react'
+import React, { Suspense } from 'react'
+import { getCorpusAnalytics } from '@/actions/analytics/analyticsActions'
 import { getCorpus, getCorpusAnnotationsCount } from '@/actions/corpus/corpusActions'
 import { getDocumentsMetadata } from '@/actions/document/documentActions'
+import { CompletionScore, CompletionScoreSkeleton } from '@/components/completion-score'
 import CorpusSettingsButton from '@/components/corpus-settings-button'
 import DocumentsTable from '@/components/documents-table'
 import { Button } from '@/components/ui/button'
@@ -12,6 +14,7 @@ export default async function CorpusPage({ params }: { params: Promise<{ corpusI
   const documentsList = await getDocumentsMetadata(corpusId)
   const corpus = await getCorpus(corpusId)
   const totalAnnotations = await getCorpusAnnotationsCount(corpusId)
+  const analyticsPromise = getCorpusAnalytics(corpusId)
 
   if (!corpus) {
     return (
@@ -49,6 +52,9 @@ export default async function CorpusPage({ params }: { params: Promise<{ corpusI
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Suspense fallback={<CompletionScoreSkeleton />}>
+            <CompletionScore analyticsPromise={analyticsPromise} />
+          </Suspense>
           <Link href={`/corpus/${corpusId}/analytics`}>
             <Button variant="outline">
               <BarChart3Icon className="mr-2 size-4" />

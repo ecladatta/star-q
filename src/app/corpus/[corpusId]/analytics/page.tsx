@@ -4,13 +4,13 @@ import { getCorpusAnalytics } from '@/actions/analytics/analyticsActions'
 import { getCorpus } from '@/actions/corpus/corpusActions'
 import { AnalyticsContent } from '@/components/analytics-content'
 import { AnalyticsSkeleton } from '@/components/analytics-skeleton'
+import { CompletionScore, CompletionScoreSkeleton } from '@/components/completion-score'
 import { Button } from '@/components/ui/button'
 
 export default async function AnalyticsPage({ params }: { params: Promise<{ corpusId: string }> }) {
   const corpusId = (await params).corpusId
   const corpus = await getCorpus(corpusId)
 
-  // Start fetching analytics data but don't await it
   const analyticsPromise = getCorpusAnalytics(corpusId)
 
   if (!corpus) {
@@ -41,9 +41,14 @@ export default async function AnalyticsPage({ params }: { params: Promise<{ corp
             Detailed analytics about this corpus
           </p>
         </div>
-        <Link href={`/corpus/${corpusId}`}>
-          <Button variant="outline">Back to Corpus</Button>
-        </Link>
+        <div className="flex items-center gap-3">
+          <Suspense fallback={<CompletionScoreSkeleton />}>
+            <CompletionScore analyticsPromise={analyticsPromise} />
+          </Suspense>
+          <Link href={`/corpus/${corpusId}`}>
+            <Button variant="outline">Back to Corpus</Button>
+          </Link>
+        </div>
       </div>
 
       <Suspense fallback={<AnalyticsSkeleton />}>

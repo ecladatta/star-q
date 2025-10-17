@@ -1,9 +1,7 @@
-'use client'
-
 import type { CorpusAnalytics } from '@/actions/analytics/analyticsActions'
 import { AlertTriangleIcon, BarChart3Icon, FileTextIcon, TableIcon } from 'lucide-react'
 import Link from 'next/link'
-import React, { use } from 'react'
+import React from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
@@ -13,8 +11,8 @@ type AnalyticsContentProps = {
   analyticsPromise: Promise<CorpusAnalytics>
 }
 
-export function AnalyticsContent({ analyticsPromise }: AnalyticsContentProps) {
-  const analytics = use(analyticsPromise)
+export async function AnalyticsContent({ analyticsPromise }: AnalyticsContentProps) {
+  const analytics = await analyticsPromise
 
   return (
     <>
@@ -263,66 +261,82 @@ export function AnalyticsContent({ analyticsPromise }: AnalyticsContentProps) {
         </Card>
       )}
 
-      {/* Documents with Unassigned Entities */}
-      {analytics.documentsWithUnassignedEntities.length > 0 && (
+      {/* Documents with Unassigned Subjects */}
+      {analytics.documentsWithUnassignedSubjects.length > 0 && (
         <Card className="mb-8">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <AlertTriangleIcon className="size-5 text-orange-500" />
-              Documents with Unassigned Entities
+              Documents with Unassigned Subjects
             </CardTitle>
             <CardDescription>
-              Documents containing annotations where the subject or object has no entity assigned
+              Documents containing annotations where the subject has no entity assigned
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Collapsible defaultOpen={analytics.documentsWithUnassignedEntities.length <= 5}>
+            <Collapsible defaultOpen={analytics.documentsWithUnassignedSubjects.length <= 5}>
               <CollapsibleTrigger className="mb-4 flex w-full items-center justify-between rounded-lg border bg-orange-50 p-3 hover:bg-orange-100 dark:bg-orange-950/20 dark:hover:bg-orange-950/30">
                 <div className="flex items-center space-x-2">
                   <span className="font-medium">View Documents</span>
-                  <Badge variant="secondary">{analytics.documentsWithUnassignedEntities.length}</Badge>
+                  <Badge variant="secondary">{analytics.documentsWithUnassignedSubjects.length}</Badge>
                 </div>
               </CollapsibleTrigger>
               <CollapsibleContent className="mt-2 space-y-2">
-                {analytics.documentsWithUnassignedEntities.map((doc) => {
-                  // Build query params based on what's unassigned
-                  const params = new URLSearchParams()
-                  if (doc.unassignedSubjectCount > 0) {
-                    params.append('subject', 'without')
-                  }
-                  if (doc.unassignedObjectCount > 0) {
-                    params.append('object', 'without')
-                  }
-                  const queryString = params.toString()
+                {analytics.documentsWithUnassignedSubjects.map(doc => (
+                  <Link
+                    key={doc.documentId}
+                    href={`/document/${doc.documentId}?subject=without`}
+                    className="flex items-center justify-between rounded-md border bg-muted/50 p-3 transition-colors hover:bg-muted"
+                  >
+                    <span className="text-sm font-medium">{doc.documentTitle}</span>
+                    <Badge variant="destructive">
+                      {doc.unassignedSubjectCount}
+                      {' '}
+                      unassigned
+                    </Badge>
+                  </Link>
+                ))}
+              </CollapsibleContent>
+            </Collapsible>
+          </CardContent>
+        </Card>
+      )}
 
-                  return (
-                    <Link
-                      key={doc.documentId}
-                      href={`/document/${doc.documentId}?${queryString}`}
-                      className="flex items-center justify-between rounded-md border bg-muted/50 p-3 transition-colors hover:bg-muted"
-                    >
-                      <span className="text-sm font-medium">{doc.documentTitle}</span>
-                      <div className="flex items-center gap-2">
-                        {doc.unassignedSubjectCount > 0 && (
-                          <Badge variant="destructive">
-                            {doc.unassignedSubjectCount}
-                            {' '}
-                            subject
-                            {doc.unassignedSubjectCount !== 1 ? 's' : ''}
-                          </Badge>
-                        )}
-                        {doc.unassignedObjectCount > 0 && (
-                          <Badge variant="destructive">
-                            {doc.unassignedObjectCount}
-                            {' '}
-                            object
-                            {doc.unassignedObjectCount !== 1 ? 's' : ''}
-                          </Badge>
-                        )}
-                      </div>
-                    </Link>
-                  )
-                })}
+      {/* Documents with Unassigned Objects */}
+      {analytics.documentsWithUnassignedObjects.length > 0 && (
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertTriangleIcon className="size-5 text-blue-500" />
+              Documents with Unassigned Objects
+            </CardTitle>
+            <CardDescription>
+              Documents containing annotations where the object has no entity assigned (objects can be literals, so this is informational only)
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Collapsible defaultOpen={analytics.documentsWithUnassignedObjects.length <= 5}>
+              <CollapsibleTrigger className="mb-4 flex w-full items-center justify-between rounded-lg border bg-blue-50 p-3 hover:bg-blue-100 dark:bg-blue-950/20 dark:hover:bg-blue-950/30">
+                <div className="flex items-center space-x-2">
+                  <span className="font-medium">View Documents</span>
+                  <Badge variant="secondary">{analytics.documentsWithUnassignedObjects.length}</Badge>
+                </div>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-2 space-y-2">
+                {analytics.documentsWithUnassignedObjects.map(doc => (
+                  <Link
+                    key={doc.documentId}
+                    href={`/document/${doc.documentId}?object=without`}
+                    className="flex items-center justify-between rounded-md border bg-muted/50 p-3 transition-colors hover:bg-muted"
+                  >
+                    <span className="text-sm font-medium">{doc.documentTitle}</span>
+                    <Badge variant="secondary">
+                      {doc.unassignedObjectCount}
+                      {' '}
+                      unassigned
+                    </Badge>
+                  </Link>
+                ))}
               </CollapsibleContent>
             </Collapsible>
           </CardContent>
