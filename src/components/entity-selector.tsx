@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { Entity, EntityDatatype, EntityType } from '@/types/types'
-import { Calendar1Icon, CalendarClockIcon, CalendarIcon, CheckIcon, ChevronsUpDownIcon, ClockIcon, FilterIcon, GlobeIcon, ToggleLeftIcon, TypeIcon } from 'lucide-react'
+import { Calendar1Icon, CalendarClockIcon, CalendarIcon, CheckIcon, ChevronsUpDownIcon, ClockIcon, FilterIcon, GlobeIcon, ToggleLeftIcon, TypeIcon, XIcon } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
@@ -209,6 +209,22 @@ export function EntitySelector({ type, value, onValueChange, text, corpusId }: {
           />
           <CommandList className={isSearching ? 'opacity-50' : ''}>
             <CommandEmpty>No entities found.</CommandEmpty>
+            {value && (
+              <>
+                <CommandGroup>
+                  <CommandItem
+                    onSelect={() => {
+                      onValueChange(null)
+                      setOpen(false)
+                    }}
+                  >
+                    <XIcon className="size-4" />
+                    <span>Clear entity</span>
+                  </CommandItem>
+                </CommandGroup>
+                <CommandSeparator />
+              </>
+            )}
 
             {/* Current value if not in search results */}
             {value && !searchResults.some(entity => entity.value === value.value) && (
