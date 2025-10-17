@@ -188,6 +188,31 @@ function CombinedElement({
       }, 50)
     }
 
+    // Determine which annotation components are in this table
+    const hasSubject = currentAnnotation?.subject?.elementIndex === elementIndex
+    const hasPredicate = currentAnnotation?.predicate?.elementIndex === elementIndex
+    const hasObject = currentAnnotation?.object?.elementIndex === elementIndex
+
+    // Build the border style based on which components are present
+    const borderLayers: string[] = []
+    let borderOffset = 0
+    const borderConfig = [
+      { present: hasSubject, color: '#FFE4B5' },
+      { present: hasPredicate, color: '#ADD8E6' },
+      { present: hasObject, color: '#90EE90' },
+    ]
+    borderConfig.forEach(({ present, color }) => {
+      if (present) {
+        if (borderOffset > 0) {
+          borderLayers.push(`0 0 0 ${borderOffset + 1}px white`)
+          borderOffset += 1
+        }
+        borderLayers.push(`0 0 0 ${borderOffset + 3}px ${color}`)
+        borderOffset += 3
+      }
+    })
+    const boxShadowStyle = borderLayers.length > 0 ? borderLayers.join(', ') : undefined
+
     return (
       <div key={elementIndex} className="group mb-6" id={`element-${elementIndex}`}>
         <div className="mb-2 flex items-center justify-between">
@@ -216,7 +241,10 @@ function CombinedElement({
             </Button>
           </div>
         </div>
-        <ScrollArea className="flex max-h-[60vh] w-full flex-col overflow-y-auto rounded-xl border">
+        <ScrollArea
+          className="flex max-h-[60vh] w-full flex-col overflow-y-auto rounded-xl border transition-shadow duration-200"
+          style={{ boxShadow: boxShadowStyle }}
+        >
           <Table>
             <TableHeader className="bg-muted/50">
               {splits.slice(0, 1).map((row, rowIndex) => (
