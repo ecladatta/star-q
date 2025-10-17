@@ -735,7 +735,7 @@ export function AnnotationsSidebar({
                                     </Badge>
                                   )}
                                 </div>
-                                <div className="break-words text-sm leading-relaxed">
+                                <div className="overflow-hidden text-sm leading-relaxed [overflow-wrap:anywhere]">
                                   <span className="font-semibold text-orange-600">
                                     {ann.subject.annotationValue}
                                   </span>
