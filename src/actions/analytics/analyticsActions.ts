@@ -187,7 +187,10 @@ export async function getCorpusAnalytics(corpusId: string): Promise<CorpusAnalyt
       annotationComponent.entityDatatype,
       annotationComponent.entityCustom,
     )
-    .orderBy(desc(count()))
+    .orderBy(
+      desc(count()),
+      annotationComponent.entityLabel,
+    )
 
   const propertyStats = propertyStatsQuery.map(stat => ({
     label: stat.label,
@@ -221,7 +224,7 @@ export async function getCorpusAnalytics(corpusId: string): Promise<CorpusAnalyt
       annotationComponent.entityDatatype,
       annotationComponent.entityCustom,
     )
-    .orderBy(desc(count()))
+    .orderBy(desc(count()), annotationComponent.entityLabel)
     .limit(50)
 
   const entityStats = entityStatsQuery.map(stat => ({
@@ -270,7 +273,7 @@ export async function getCorpusAnalytics(corpusId: string): Promise<CorpusAnalyt
         ),
       )
       .groupBy(document.id, document.title)
-      .orderBy(desc(count(annotation.id)))
+      .orderBy(desc(count(annotation.id)), document.title)
 
     return docs
   }
