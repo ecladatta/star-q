@@ -20,6 +20,7 @@ export type Entity = {
   customId: string | null
   datatype: EntityDatatype | null
   type: EntityType
+  description?: string | null
 }
 
 export type DocumentAnnotationComponent = {

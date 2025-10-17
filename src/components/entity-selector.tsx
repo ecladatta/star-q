@@ -40,6 +40,7 @@ async function searchEntities(type: EntityType, searchTerm: string, corpusId?: s
         customId: null,
         datatype: null,
         type,
+        description: result.description || null,
       }))
     } catch (error) {
       console.error('Wikidata search error:', error)
@@ -197,7 +198,7 @@ export function EntitySelector({ type, value, onValueChange, text, corpusId }: {
           )}
         </div>
       </PopoverTrigger>
-      <PopoverContent className="p-0">
+      <PopoverContent className="w-80 p-0">
         <Command shouldFilter={false}>
           <CommandInput
             placeholder="Search entity..."
@@ -239,12 +240,21 @@ export function EntitySelector({ type, value, onValueChange, text, corpusId }: {
                   className="flex rounded-none border-b"
                 >
                   <CheckIcon className="size-4" />
-                  <span>{value.label}</span>
-                  <span className="truncate text-xs text-muted-foreground" title={value.value}>
-                    (
-                    {value.value}
-                    )
-                  </span>
+                  <div className="flex flex-1 flex-col gap-0.5">
+                    <div className="flex items-center gap-2">
+                      <span>{value.label}</span>
+                      <span className="truncate text-xs text-muted-foreground" title={value.value}>
+                        (
+                        {value.value}
+                        )
+                      </span>
+                    </div>
+                    {value.description && (
+                      <span className="line-clamp-2 text-xs text-muted-foreground">
+                        {value.description}
+                      </span>
+                    )}
+                  </div>
                   {value.custom
                     ? (
                         <span className="ml-auto text-xs text-purple-600">Corpus</span>
@@ -283,12 +293,21 @@ export function EntitySelector({ type, value, onValueChange, text, corpusId }: {
                         value?.value === entity.value ? '' : 'hidden',
                       )}
                     />
-                    <span>{entity.label}</span>
-                    <span className="text-xs text-muted-foreground">
-                      (
-                      {entity.value}
-                      )
-                    </span>
+                    <div className="flex flex-1 flex-col gap-0.5">
+                      <div className="flex items-center gap-2">
+                        <span>{entity.label}</span>
+                        <span className="text-xs text-muted-foreground">
+                          (
+                          {entity.value}
+                          )
+                        </span>
+                      </div>
+                      {entity.description && (
+                        <span className="line-clamp-2 text-xs text-muted-foreground">
+                          {entity.description}
+                        </span>
+                      )}
+                    </div>
                     <span className="ml-auto text-xs text-purple-600">Corpus</span>
                   </CommandItem>
                 ))}
@@ -314,12 +333,21 @@ export function EntitySelector({ type, value, onValueChange, text, corpusId }: {
                         value?.value === entity.value ? '' : 'hidden',
                       )}
                     />
-                    <span>{entity.label}</span>
-                    <span className="text-xs text-muted-foreground">
-                      (
-                      {entity.value}
-                      )
-                    </span>
+                    <div className="flex flex-1 flex-col gap-0.5">
+                      <div className="flex items-center gap-2">
+                        <span>{entity.label}</span>
+                        <span className="text-xs text-muted-foreground">
+                          (
+                          {entity.value}
+                          )
+                        </span>
+                      </div>
+                      {entity.description && (
+                        <span className="line-clamp-2 text-xs text-muted-foreground">
+                          {entity.description}
+                        </span>
+                      )}
+                    </div>
                     <Link
                       href={`https://www.wikidata.org/wiki/${entity.value.startsWith('P') ? 'Property:' : ''}${entity.value}`}
                       target="_blank"
