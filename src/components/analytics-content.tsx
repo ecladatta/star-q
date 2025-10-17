@@ -142,7 +142,7 @@ export async function AnalyticsContent({ analyticsPromise }: AnalyticsContentPro
                   {analytics.documentsByAnnotationType.textOnly.map(doc => (
                     <Link
                       key={doc.documentId}
-                      href={`/document/${doc.documentId}`}
+                      href={`/document/${doc.documentId}?types=text`}
                       className="flex items-center justify-between rounded-md border bg-muted/50 p-2 transition-colors hover:bg-muted"
                     >
                       <span className="text-sm">{doc.documentTitle}</span>
@@ -172,7 +172,7 @@ export async function AnalyticsContent({ analyticsPromise }: AnalyticsContentPro
                   {analytics.documentsByAnnotationType.tableOnly.map(doc => (
                     <Link
                       key={doc.documentId}
-                      href={`/document/${doc.documentId}`}
+                      href={`/document/${doc.documentId}?types=table`}
                       className="flex items-center justify-between rounded-md border bg-muted/50 p-2 transition-colors hover:bg-muted"
                     >
                       <span className="text-sm">{doc.documentTitle}</span>
@@ -202,7 +202,7 @@ export async function AnalyticsContent({ analyticsPromise }: AnalyticsContentPro
                   {analytics.documentsByAnnotationType.joint.map(doc => (
                     <Link
                       key={doc.documentId}
-                      href={`/document/${doc.documentId}`}
+                      href={`/document/${doc.documentId}?types=joint`}
                       className="flex items-center justify-between rounded-md border bg-muted/50 p-2 transition-colors hover:bg-muted"
                     >
                       <span className="text-sm">{doc.documentTitle}</span>
