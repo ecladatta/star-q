@@ -2,7 +2,7 @@
 import { and, count, countDistinct, desc, eq, isNotNull, sql } from 'drizzle-orm'
 import { auth } from '@/auth'
 import { db } from '@/db/drizzle'
-import { annotation, annotationComponent, corpus, document } from '@/db/schema'
+import { annotation, annotationComponent, corpus, corpusCustomEntity, document } from '@/db/schema'
 
 export type CorpusAnalytics = {
   totalDocuments: number
@@ -173,9 +173,9 @@ export async function getCorpusAnalytics(corpusId: string): Promise<CorpusAnalyt
   // Filter out unassigned predicates (where both entityValue and entityCustomId are null/empty)
   const propertyStatsQuery = await db
     .select({
-      label: annotationComponent.entityLabel,
-      value: annotationComponent.entityValue,
-      datatype: annotationComponent.entityDatatype,
+      label: sql<string | null>`COALESCE(${annotationComponent.entityLabel}, ${corpusCustomEntity.label})`.as('label'),
+      value: sql<string | null>`COALESCE(${annotationComponent.entityValue}, ${corpusCustomEntity.value})`.as('value'),
+      datatype: sql<string | null>`COALESCE(${annotationComponent.entityDatatype}, ${corpusCustomEntity.datatype})`.as('datatype'),
       isCustom: annotationComponent.entityCustom,
       count: count(),
     })
@@ -185,6 +185,7 @@ export async function getCorpusAnalytics(corpusId: string): Promise<CorpusAnalyt
       sql`${annotationComponent.id} = ${annotation.predicateId}`,
     )
     .innerJoin(document, eq(document.id, annotation.documentId))
+    .leftJoin(corpusCustomEntity, eq(annotationComponent.entityCustomId, corpusCustomEntity.id))
     .where(
       and(
         eq(document.corpusId, corpusId),
@@ -192,14 +193,14 @@ export async function getCorpusAnalytics(corpusId: string): Promise<CorpusAnalyt
       ),
     )
     .groupBy(
-      annotationComponent.entityLabel,
-      annotationComponent.entityValue,
-      annotationComponent.entityDatatype,
+      sql`COALESCE(${annotationComponent.entityLabel}, ${corpusCustomEntity.label})`,
+      sql`COALESCE(${annotationComponent.entityValue}, ${corpusCustomEntity.value})`,
+      sql`COALESCE(${annotationComponent.entityDatatype}, ${corpusCustomEntity.datatype})`,
       annotationComponent.entityCustom,
     )
     .orderBy(
       desc(count()),
-      annotationComponent.entityLabel,
+      sql`COALESCE(${annotationComponent.entityLabel}, ${corpusCustomEntity.label})`,
     )
 
   const propertyStats = propertyStatsQuery.map(stat => ({
@@ -216,9 +217,9 @@ export async function getCorpusAnalytics(corpusId: string): Promise<CorpusAnalyt
   // Filter out unassigned entities (where both entityValue and entityCustomId are null/empty)
   const entityStatsQuery = await db
     .select({
-      label: annotationComponent.entityLabel,
-      value: annotationComponent.entityValue,
-      datatype: annotationComponent.entityDatatype,
+      label: sql<string | null>`COALESCE(${annotationComponent.entityLabel}, ${corpusCustomEntity.label})`.as('label'),
+      value: sql<string | null>`COALESCE(${annotationComponent.entityValue}, ${corpusCustomEntity.value})`.as('value'),
+      datatype: sql<string | null>`COALESCE(${annotationComponent.entityDatatype}, ${corpusCustomEntity.datatype})`.as('datatype'),
       isCustom: annotationComponent.entityCustom,
       count: count(),
     })
@@ -228,6 +229,7 @@ export async function getCorpusAnalytics(corpusId: string): Promise<CorpusAnalyt
       sql`${annotationComponent.id} IN (${annotation.subjectId}, ${annotation.objectId})`,
     )
     .innerJoin(document, eq(document.id, annotation.documentId))
+    .leftJoin(corpusCustomEntity, eq(annotationComponent.entityCustomId, corpusCustomEntity.id))
     .where(
       and(
         eq(document.corpusId, corpusId),
@@ -235,12 +237,15 @@ export async function getCorpusAnalytics(corpusId: string): Promise<CorpusAnalyt
       ),
     )
     .groupBy(
-      annotationComponent.entityLabel,
-      annotationComponent.entityValue,
-      annotationComponent.entityDatatype,
+      sql`COALESCE(${annotationComponent.entityLabel}, ${corpusCustomEntity.label})`,
+      sql`COALESCE(${annotationComponent.entityValue}, ${corpusCustomEntity.value})`,
+      sql`COALESCE(${annotationComponent.entityDatatype}, ${corpusCustomEntity.datatype})`,
       annotationComponent.entityCustom,
     )
-    .orderBy(desc(count()), annotationComponent.entityLabel)
+    .orderBy(
+      desc(count()),
+      sql`COALESCE(${annotationComponent.entityLabel}, ${corpusCustomEntity.label})`,
+    )
     .limit(50)
 
   const entityStats = entityStatsQuery.map(stat => ({
