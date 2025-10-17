@@ -40,14 +40,20 @@ export async function importFullCorpusExportDocuments(
       })
     }
 
-    for (const doc of corpusData.documents) {
+    for (let i = 0; i < corpusData.documents.length; i++) {
+      const doc = corpusData.documents[i]
       try {
         // Insert document with content
+        // Add millisecond offset to preserve array order even if original timestamps are identical
+        // TODO: We might want to add a dedicated 'order' field to documents in the future
+        const baseCreatedAt = doc.createdAt ? new Date(doc.createdAt) : new Date()
+        const createdAtWithOffset = new Date(baseCreatedAt.getTime() + i)
+
         const [documentId] = await tx.insert(document).values({
           corpusId,
           title: doc.title,
           raw: doc.raw as DocumentData,
-          createdAt: doc.createdAt ? new Date(doc.createdAt) : new Date(),
+          createdAt: createdAtWithOffset,
           updatedAt: doc.updatedAt ? new Date(doc.updatedAt) : new Date(),
           completedAt: doc.completedAt ? new Date(doc.completedAt) : null,
         }).returning({ id: document.id })
