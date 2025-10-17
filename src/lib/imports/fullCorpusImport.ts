@@ -64,6 +64,10 @@ export async function importFullCorpusExportDocuments(
                   // If entityCustomId exists, replace with new ID from mapping
                   if (data.entityCustomId && customEntityIdMap[data.entityCustomId]) {
                     data.entityCustomId = customEntityIdMap[data.entityCustomId]
+                    // For custom entities, clear the entity fields as they should be fetched from corpusCustomEntity
+                    data.entityLabel = null
+                    data.entityValue = null
+                    data.entityDatatype = null
                   }
                   const [insertedComp] = await tx.insert(annotationComponent).values(data).returning({ id: annotationComponent.id })
                   return insertedComp
