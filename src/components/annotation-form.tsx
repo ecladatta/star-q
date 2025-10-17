@@ -119,6 +119,36 @@ export function AnnotationForm({
     toast.success('Annotation cloned! Edit and save to create a new annotation.')
   }, [currentAnnotation, setCurrentAnnotation])
 
+  const scrollToElement = (component: DocumentAnnotationComponent | undefined) => {
+    if (!component)
+      return
+
+    // Try to find the specific mark element by its data attributes
+    const elementContainer = document.getElementById(`element-${component.elementIndex}`)
+    if (!elementContainer) {
+      return
+    }
+
+    // For table annotations, find the specific cell
+    if (component.annotationType === 'table' && component.annotationRow !== null && component.annotationCell !== null) {
+      const cell = elementContainer.querySelector(`[data-cell="${component.annotationRow}-${component.annotationCell}"]`)
+      if (cell) {
+        cell.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        return
+      }
+    }
+
+    // For text annotations, find the specific mark by start/end offsets
+    const marks = elementContainer.querySelectorAll(`[data-start="${component.annotationStart}"][data-end="${component.annotationEnd}"]`)
+    if (marks.length > 0) {
+      marks[0].scrollIntoView({ behavior: 'smooth', block: 'center' })
+      return
+    }
+
+    // Fallback to scrolling to the element container
+    elementContainer.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
+
   // Keyboard shortcuts for saving (Ctrl+S / Cmd+S) and cloning (C)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -267,7 +297,12 @@ export function AnnotationForm({
         <CardContent>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div>
-              <div className="mb-1 flex items-center justify-between truncate rounded-md px-2 py-0.5 text-sm font-semibold" style={{ backgroundColor: TYPE_TO_COLOR.subject }}>
+              <button
+                type="button"
+                className="mb-1 flex w-full items-center justify-between truncate rounded-md px-2 py-0.5 text-sm font-semibold transition-opacity hover:opacity-80"
+                style={{ backgroundColor: TYPE_TO_COLOR.subject }}
+                onClick={() => scrollToElement(subjectTag)}
+              >
                 <Tooltip>
                   <TooltipTrigger className="truncate">
                     {subjectTag?.annotationValue ?? '\u00A0'}
@@ -282,12 +317,15 @@ export function AnnotationForm({
                   <button
                     type="button"
                     className="ml-2 shrink-0"
-                    onClick={() => removeTag('subject')}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      removeTag('subject')
+                    }}
                   >
                     ✕
                   </button>
                 )}
-              </div>
+              </button>
               <EntitySelector
                 type="subject"
                 value={getEntityValue(currentAnnotation?.subject, 'subject')}
@@ -297,7 +335,12 @@ export function AnnotationForm({
               />
             </div>
             <div>
-              <div className="mb-1 flex items-center justify-between truncate rounded-md px-2 py-0.5 text-sm font-semibold" style={{ backgroundColor: TYPE_TO_COLOR.predicate }}>
+              <button
+                type="button"
+                className="mb-1 flex w-full items-center justify-between truncate rounded-md px-2 py-0.5 text-sm font-semibold transition-opacity hover:opacity-80"
+                style={{ backgroundColor: TYPE_TO_COLOR.predicate }}
+                onClick={() => scrollToElement(predicateTag)}
+              >
                 <Tooltip>
                   <TooltipTrigger className="truncate">
                     {predicateTag?.annotationValue ?? '\u00A0'}
@@ -312,12 +355,15 @@ export function AnnotationForm({
                   <button
                     type="button"
                     className="ml-2"
-                    onClick={() => removeTag('predicate')}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      removeTag('predicate')
+                    }}
                   >
                     ✕
                   </button>
                 )}
-              </div>
+              </button>
               <div className="flex min-w-0 items-center gap-1">
                 <div className="min-w-0 flex-1">
                   <EntitySelector
@@ -345,7 +391,12 @@ export function AnnotationForm({
               </div>
             </div>
             <div>
-              <div className="mb-1 flex items-center justify-between truncate rounded-md px-2 py-0.5 text-sm font-semibold" style={{ backgroundColor: TYPE_TO_COLOR.object }}>
+              <button
+                type="button"
+                className="mb-1 flex w-full items-center justify-between truncate rounded-md px-2 py-0.5 text-sm font-semibold transition-opacity hover:opacity-80"
+                style={{ backgroundColor: TYPE_TO_COLOR.object }}
+                onClick={() => scrollToElement(objectTag)}
+              >
                 <Tooltip>
                   <TooltipTrigger className="truncate">
                     {objectTag?.annotationValue ?? '\u00A0'}
@@ -360,12 +411,15 @@ export function AnnotationForm({
                   <button
                     type="button"
                     className="ml-2"
-                    onClick={() => removeTag('object')}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      removeTag('object')
+                    }}
                   >
                     ✕
                   </button>
                 )}
-              </div>
+              </button>
               <EntitySelector
                 type="object"
                 value={getEntityValue(currentAnnotation?.object, 'object')}
