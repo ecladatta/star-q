@@ -662,7 +662,14 @@ export function AnnotationsSidebar({
             </div>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-hidden">
+          <div className={`relative min-h-0 flex-1 overflow-visible ${hasActiveFilters ? 'border border-blue-500/30' : ''}`}>
+            {hasActiveFilters && (
+              <div className="absolute left-1/2 top-0 z-20 -translate-x-1/2 -translate-y-4">
+                <span className="rounded border border-blue-100 bg-blue-50 px-2 py-[2px] text-[10px] font-medium text-blue-600 shadow-sm">
+                  Filtered
+                </span>
+              </div>
+            )}
             <ScrollArea className="size-full" ref={scrollAreaRef}>
               {filteredAndSortedAnnotations.length === 0
                 ? (
