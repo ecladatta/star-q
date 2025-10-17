@@ -3,12 +3,12 @@ import type { AnnotationMention, DocumentAnnotation, EntityType } from '@/types/
 
 import { PopoverClose } from '@radix-ui/react-popover'
 import { BoxIcon, CopyIcon, EditIcon, LinkIcon, Loader2Icon, Trash2Icon, UserIcon } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { annotationComponentMatchesMention, cn } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
 
 const ENTITY_ORDER: EntityType[] = ['subject', 'predicate', 'object']
@@ -106,24 +106,6 @@ export function AnnotationListPopover({
     onClose()
   }, [mentionData, onCreateMention, onClose])
 
-  const matchesMention = useCallback((component: DocumentAnnotation['subject'] | undefined) => {
-    return annotationComponentMatchesMention(component, mentionData)
-  }, [mentionData])
-
-  const mentionTargetMeta = useMemo(() => {
-    if (!mentionData?.value)
-      return null
-
-    for (const annotation of annotations) {
-      for (const entityType of ENTITY_ORDER) {
-        if (matchesMention(annotation[entityType]))
-          return ENTITY_META[entityType]
-      }
-    }
-
-    return null
-  }, [annotations, matchesMention, mentionData])
-
   useEffect(() => {
     if (!visible)
       return
@@ -175,8 +157,6 @@ export function AnnotationListPopover({
   if (!visible || annotations.length === 0)
     return null
 
-  const MentionHighlightIcon = mentionTargetMeta?.icon
-
   return (
     <TooltipProvider delayDuration={200}>
       <div
@@ -203,15 +183,14 @@ export function AnnotationListPopover({
           >
             <div className="space-y-4">
               <div>
-                <h4 className="mb-3 text-sm font-semibold">
+                <h4 className="mb-3 truncate text-sm font-semibold">
                   {annotations.length === 1 ? 'Annotation' : `${annotations.length} Annotations`}
-                  {mentionData?.value && mentionTargetMeta && MentionHighlightIcon && (
+                  {mentionData?.value && (
                     <>
                       {' '}
-                      for
-                      <span className={cn('text-xs text-muted-foreground', mentionTargetMeta.highlightTextClass)}>
-                        <MentionHighlightIcon className={mentionTargetMeta.highlightIconClass} />
-                        {' '}
+                      for:
+                      {' '}
+                      <span className="text-xs text-muted-foreground">
                         {mentionData.value}
                       </span>
                     </>
@@ -226,7 +205,7 @@ export function AnnotationListPopover({
                             <div className="flex min-w-0 flex-col gap-1 text-xs">
                               {ENTITY_ORDER.map((entityType) => {
                                 const component = annotation[entityType]
-                                if (!component || matchesMention(component))
+                                if (!component)
                                   return null
 
                                 const meta = ENTITY_META[entityType]
