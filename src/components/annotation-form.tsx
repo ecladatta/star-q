@@ -297,11 +297,18 @@ export function AnnotationForm({
         <CardContent>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div>
-              <button
-                type="button"
-                className="mb-1 flex w-full items-center justify-between truncate rounded-md px-2 py-0.5 text-sm font-semibold transition-opacity hover:opacity-80"
+              <div
+                role="button"
+                tabIndex={0}
+                className="mb-1 flex w-full cursor-pointer items-center justify-between truncate rounded-md px-2 py-0.5 text-sm font-semibold transition-opacity hover:opacity-80"
                 style={{ backgroundColor: TYPE_TO_COLOR.subject }}
                 onClick={() => scrollToElement(subjectTag)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    scrollToElement(subjectTag)
+                  }
+                }}
               >
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -327,7 +334,7 @@ export function AnnotationForm({
                     ✕
                   </button>
                 )}
-              </button>
+              </div>
               <EntitySelector
                 type="subject"
                 value={getEntityValue(currentAnnotation?.subject, 'subject')}
@@ -337,11 +344,18 @@ export function AnnotationForm({
               />
             </div>
             <div>
-              <button
-                type="button"
-                className="mb-1 flex w-full items-center justify-between truncate rounded-md px-2 py-0.5 text-sm font-semibold transition-opacity hover:opacity-80"
+              <div
+                role="button"
+                tabIndex={0}
+                className="mb-1 flex w-full cursor-pointer items-center justify-between truncate rounded-md px-2 py-0.5 text-sm font-semibold transition-opacity hover:opacity-80"
                 style={{ backgroundColor: TYPE_TO_COLOR.predicate }}
                 onClick={() => scrollToElement(predicateTag)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    scrollToElement(predicateTag)
+                  }
+                }}
               >
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -367,7 +381,7 @@ export function AnnotationForm({
                     ✕
                   </button>
                 )}
-              </button>
+              </div>
               <div className="flex min-w-0 items-center gap-1">
                 <div className="min-w-0 flex-1">
                   <EntitySelector
@@ -395,11 +409,18 @@ export function AnnotationForm({
               </div>
             </div>
             <div>
-              <button
-                type="button"
-                className="mb-1 flex w-full items-center justify-between truncate rounded-md px-2 py-0.5 text-sm font-semibold transition-opacity hover:opacity-80"
+              <div
+                role="button"
+                tabIndex={0}
+                className="mb-1 flex w-full cursor-pointer items-center justify-between truncate rounded-md px-2 py-0.5 text-sm font-semibold transition-opacity hover:opacity-80"
                 style={{ backgroundColor: TYPE_TO_COLOR.object }}
                 onClick={() => scrollToElement(objectTag)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    scrollToElement(objectTag)
+                  }
+                }}
               >
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -425,7 +446,7 @@ export function AnnotationForm({
                     ✕
                   </button>
                 )}
-              </button>
+              </div>
               <EntitySelector
                 type="object"
                 value={getEntityValue(currentAnnotation?.object, 'object')}
