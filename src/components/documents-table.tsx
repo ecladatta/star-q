@@ -358,7 +358,9 @@ const columns: ColumnDef<DocumentMetadata, any>[] = [
       <DataTableColumnHeader column={column} title="Completed" />
     ),
     cell: ({ row }) => (
-      <div>{row.original.completedAt?.toLocaleString() ?? 'No'}</div>
+      <div suppressHydrationWarning>
+        {row.original.completedAt?.toLocaleString() ?? 'No'}
+      </div>
     ),
     filterFn: (row, columnId, filterValue) => {
       if (filterValue === true) {
