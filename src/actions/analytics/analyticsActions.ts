@@ -170,6 +170,7 @@ export async function getCorpusAnalytics(corpusId: string): Promise<CorpusAnalyt
   }
 
   // Get unique properties (predicates only)
+  // Filter out unassigned predicates (where both entityValue and entityCustomId are null/empty)
   const propertyStatsQuery = await db
     .select({
       label: annotationComponent.entityLabel,
@@ -184,7 +185,12 @@ export async function getCorpusAnalytics(corpusId: string): Promise<CorpusAnalyt
       sql`${annotationComponent.id} = ${annotation.predicateId}`,
     )
     .innerJoin(document, eq(document.id, annotation.documentId))
-    .where(eq(document.corpusId, corpusId))
+    .where(
+      and(
+        eq(document.corpusId, corpusId),
+        sql`NOT ((${annotationComponent.entityValue} IS NULL OR ${annotationComponent.entityValue} = '') AND ${annotationComponent.entityCustomId} IS NULL)`,
+      ),
+    )
     .groupBy(
       annotationComponent.entityLabel,
       annotationComponent.entityValue,
@@ -207,6 +213,7 @@ export async function getCorpusAnalytics(corpusId: string): Promise<CorpusAnalyt
   const uniqueProperties = propertyStats.length
 
   // Get unique entities (subjects and objects only)
+  // Filter out unassigned entities (where both entityValue and entityCustomId are null/empty)
   const entityStatsQuery = await db
     .select({
       label: annotationComponent.entityLabel,
@@ -221,7 +228,12 @@ export async function getCorpusAnalytics(corpusId: string): Promise<CorpusAnalyt
       sql`${annotationComponent.id} IN (${annotation.subjectId}, ${annotation.objectId})`,
     )
     .innerJoin(document, eq(document.id, annotation.documentId))
-    .where(eq(document.corpusId, corpusId))
+    .where(
+      and(
+        eq(document.corpusId, corpusId),
+        sql`NOT ((${annotationComponent.entityValue} IS NULL OR ${annotationComponent.entityValue} = '') AND ${annotationComponent.entityCustomId} IS NULL)`,
+      ),
+    )
     .groupBy(
       annotationComponent.entityLabel,
       annotationComponent.entityValue,
