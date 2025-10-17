@@ -353,7 +353,7 @@ export function AnalyticsContent({ analyticsPromise }: AnalyticsContentProps) {
                         <TableHeader>
                           <TableRow>
                             <TableHead>Label</TableHead>
-                            <TableHead>Value</TableHead>
+                            <TableHead>Identifier</TableHead>
                             <TableHead className="text-right">Count</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -422,7 +422,7 @@ export function AnalyticsContent({ analyticsPromise }: AnalyticsContentProps) {
                         <TableHeader>
                           <TableRow>
                             <TableHead>Label</TableHead>
-                            <TableHead>Value</TableHead>
+                            <TableHead>Identifier</TableHead>
                             <TableHead className="text-right">Count</TableHead>
                           </TableRow>
                         </TableHeader>
