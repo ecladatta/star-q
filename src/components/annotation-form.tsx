@@ -149,7 +149,7 @@ export function AnnotationForm({
     elementContainer.scrollIntoView({ behavior: 'smooth', block: 'center' })
   }
 
-  // Keyboard shortcuts for saving (Ctrl+S / Cmd+S) and cloning (C)
+  // Keyboard shortcuts for saving (Ctrl+S / Cmd+S), cloning (C), and deleting (Delete)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement
@@ -164,12 +164,25 @@ export function AnnotationForm({
         }
       }
 
-      // C to clone (only if we're editing an existing annotation and not in an input field)
+      // C to clone
       if (e.key === 'c' && currentAnnotation?.id && !isInputField && !e.ctrlKey && !e.altKey && !e.metaKey) {
         e.preventDefault()
         e.stopPropagation()
         if (!annotationFormLoading && !isDeletingAnnotation) {
           handleCloneAnnotation()
+        }
+      }
+
+      // Delete to open deletion confirmation
+      if (e.key === 'Delete' && currentAnnotation?.id && !isInputField && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        e.preventDefault()
+        e.stopPropagation()
+        if (!annotationFormLoading && !isDeletingAnnotation) {
+          // Trigger the popover to open
+          const deleteButton = document.querySelector('[data-delete-annotation-trigger]') as HTMLButtonElement
+          if (deleteButton) {
+            deleteButton.click()
+          }
         }
       }
     }
@@ -227,13 +240,13 @@ export function AnnotationForm({
                   <Tooltip>
                     <PopoverTrigger asChild>
                       <TooltipTrigger asChild>
-                        <Button variant="destructive" disabled={isDeletingAnnotation}>
+                        <Button variant="destructive" disabled={isDeletingAnnotation} data-delete-annotation-trigger>
                           {isDeletingAnnotation ? <Loader2Icon className="animate-spin" /> : <Trash2Icon />}
                         </Button>
                       </TooltipTrigger>
                     </PopoverTrigger>
                     <TooltipContent>
-                      Delete annotation
+                      Delete annotation (Delete)
                     </TooltipContent>
                   </Tooltip>
                   <PopoverContent side="top">

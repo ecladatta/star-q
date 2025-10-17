@@ -456,6 +456,15 @@ export function useAnnotationState(
     onHidePopover: popover.hidePopover,
     onToggleAnnotations: () => setShowAnnotations(!showAnnotations),
     onCloneAnnotation: handleCloneAnnotation,
+    onDeleteAnnotation: () => {
+      if (popover.popoverState.annotation) {
+        // Trigger the delete button click to open the confirmation popover
+        const deleteButton = document.querySelector('[data-delete-annotation-popover-trigger]') as HTMLButtonElement
+        if (deleteButton) {
+          deleteButton.click()
+        }
+      }
+    },
   })
 
   return {

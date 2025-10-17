@@ -64,13 +64,14 @@ export function SelectionPopover({
                           <Button
                             variant="outline"
                             className="border-red-400 text-red-500 hover:text-red-500 focus-visible:ring-red-500"
+                            data-delete-annotation-popover-trigger
                           >
                             <Trash2Icon />
                           </Button>
                         </TooltipTrigger>
                       </PopoverTrigger>
                       <TooltipContent>
-                        Delete annotation
+                        Delete annotation (Delete)
                       </TooltipContent>
                     </Tooltip>
                     <PopoverContent side="top">
