@@ -34,8 +34,8 @@ export function DocumentHeader({ corpus, document, documentData }: DocumentHeade
 
   return (
     <>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-3xl font-bold">
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-xl font-bold sm:text-3xl">
           Corpus:
           {' '}
           <Link href={`/corpus/${corpus.id}`} className="underline">
@@ -46,7 +46,8 @@ export function DocumentHeader({ corpus, document, documentData }: DocumentHeade
           onClick={toggleCompletion}
           disabled={isPending}
           variant={isCompleted ? 'default' : 'outline'}
-          className="gap-2"
+          size="sm"
+          className="w-full gap-2 self-start sm:w-auto sm:self-auto"
         >
           {isCompleted ? <Check className="size-4" /> : <Circle className="size-4" />}
           {isCompleted ? 'Completed' : 'Mark as Complete'}

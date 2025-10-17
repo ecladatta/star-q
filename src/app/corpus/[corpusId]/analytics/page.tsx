@@ -31,22 +31,22 @@ export default async function AnalyticsPage({ params }: { params: Promise<{ corp
   }
 
   return (
-    <div className="container mx-auto flex size-full min-h-screen max-w-7xl flex-col px-4 py-12 sm:px-6 lg:px-8">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">
+    <div className="container mx-auto flex min-h-screen max-w-7xl flex-col px-4 py-6 sm:px-6 sm:py-12 lg:px-8">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex-1">
+          <h1 className="text-2xl font-bold sm:text-3xl">
             {corpus.title}
           </h1>
           <p className="text-sm text-muted-foreground">
             Detailed analytics about this corpus
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <Suspense fallback={<CompletionScoreSkeleton />}>
             <CompletionScore analyticsPromise={analyticsPromise} />
           </Suspense>
           <Link href={`/corpus/${corpusId}`}>
-            <Button variant="outline">Back to Corpus</Button>
+            <Button variant="outline" size="sm" className="w-full sm:w-auto">Back to Corpus</Button>
           </Link>
         </div>
       </div>
