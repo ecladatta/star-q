@@ -122,20 +122,29 @@ export async function duplicateCorpus(id: string, newTitle?: string) {
   const documentIdMap = new Map<string, string>()
 
   if (documents.length > 0) {
-    const newDocuments = await db.insert(document)
-      .values(
-        documents.map(doc => ({
-          corpusId: newCorpus.id,
-          title: doc.title,
-          raw: doc.raw,
-        })),
-      )
-      .returning()
+    const BATCH_SIZE = 500
+    const documentBatches = []
 
-    // Create mapping of old document IDs to new document IDs
-    documents.forEach((oldDoc, index) => {
-      documentIdMap.set(oldDoc.id, newDocuments[index].id)
-    })
+    for (let i = 0; i < documents.length; i += BATCH_SIZE) {
+      documentBatches.push(documents.slice(i, i + BATCH_SIZE))
+    }
+
+    for (const batch of documentBatches) {
+      const newDocuments = await db.insert(document)
+        .values(
+          batch.map(doc => ({
+            corpusId: newCorpus.id,
+            title: doc.title,
+            raw: doc.raw,
+          })),
+        )
+        .returning()
+
+      // Create mapping of old document IDs to new document IDs
+      batch.forEach((oldDoc, index) => {
+        documentIdMap.set(oldDoc.id, newDocuments[index].id)
+      })
+    }
   }
 
   if (documentIdMap.size > 0) {
@@ -147,11 +156,11 @@ export async function duplicateCorpus(id: string, newTitle?: string) {
 
     if (annotations.length > 0) {
       // Get all annotation components that are referenced by these annotations
-      const componentIds = [
+      const componentIds = Array.from(new Set([
         ...annotations.map(anno => anno.subjectId),
         ...annotations.map(anno => anno.predicateId),
         ...annotations.map(anno => anno.objectId),
-      ]
+      ]))
 
       const components = await db.select()
         .from(annotationComponent)
@@ -161,45 +170,72 @@ export async function duplicateCorpus(id: string, newTitle?: string) {
       const componentIdMap = new Map<string, string>()
 
       if (components.length > 0) {
-        const newComponents = await db.insert(annotationComponent)
-          .values(
-            components.map(comp => ({
-              entityLabel: comp.entityLabel,
-              entityValue: comp.entityValue,
-              entityCustom: comp.entityCustom,
-              // Map old custom entity ID to new custom entity ID
-              entityCustomId: comp.entityCustomId ? customEntityIdMap.get(comp.entityCustomId) || null : null,
-              entityDatatype: comp.entityDatatype,
-              annotationStart: comp.annotationStart,
-              annotationEnd: comp.annotationEnd,
-              annotationRow: comp.annotationRow,
-              annotationCell: comp.annotationCell,
-              annotationValue: comp.annotationValue,
-              annotationType: comp.annotationType,
-              annotationTag: comp.annotationTag,
-              elementIndex: comp.elementIndex,
-            })),
-          )
-          .returning()
+        const BATCH_SIZE = 500
+        const componentBatches = []
 
-        // Create mapping of old component IDs to new component IDs
-        components.forEach((oldComponent, index) => {
-          componentIdMap.set(oldComponent.id, newComponents[index].id)
-        })
+        for (let i = 0; i < components.length; i += BATCH_SIZE) {
+          componentBatches.push(components.slice(i, i + BATCH_SIZE))
+        }
+
+        for (const batch of componentBatches) {
+          const newComponents = await db.insert(annotationComponent)
+            .values(
+              batch.map((comp) => {
+                // Map old custom entity ID to new custom entity ID
+                let mappedEntityCustomId: string | null = null
+                if (comp.entityCustomId) {
+                  mappedEntityCustomId = customEntityIdMap.get(comp.entityCustomId) ?? null
+                }
+
+                return {
+                  entityLabel: comp.entityLabel,
+                  entityValue: comp.entityValue,
+                  entityCustom: comp.entityCustom,
+                  entityCustomId: mappedEntityCustomId,
+                  entityDatatype: comp.entityDatatype,
+                  annotationStart: comp.annotationStart,
+                  annotationEnd: comp.annotationEnd,
+                  annotationRow: comp.annotationRow,
+                  annotationCell: comp.annotationCell,
+                  annotationValue: comp.annotationValue,
+                  annotationType: comp.annotationType,
+                  annotationTag: comp.annotationTag,
+                  elementIndex: comp.elementIndex,
+                }
+              }),
+            )
+            .returning()
+
+          // Create mapping of old component IDs to new component IDs
+          batch.forEach((oldComponent, index) => {
+            componentIdMap.set(oldComponent.id, newComponents[index].id)
+          })
+        }
       }
 
       // Insert annotations with updated document IDs and component IDs
-      await db.insert(annotation).values(
-        annotations.map(anno => ({
-          documentId: documentIdMap.get(anno.documentId)!,
-          subjectId: componentIdMap.get(anno.subjectId)!,
-          predicateId: componentIdMap.get(anno.predicateId)!,
-          objectId: componentIdMap.get(anno.objectId)!,
-          userId: anno.userId,
-          createdAt: anno.createdAt,
-          updatedAt: anno.updatedAt,
-        })),
-      )
+      if (annotations.length > 0) {
+        const BATCH_SIZE = 500
+        const annotationBatches = []
+
+        for (let i = 0; i < annotations.length; i += BATCH_SIZE) {
+          annotationBatches.push(annotations.slice(i, i + BATCH_SIZE))
+        }
+
+        for (const batch of annotationBatches) {
+          await db.insert(annotation).values(
+            batch.map(anno => ({
+              documentId: documentIdMap.get(anno.documentId)!,
+              subjectId: componentIdMap.get(anno.subjectId)!,
+              predicateId: componentIdMap.get(anno.predicateId)!,
+              objectId: componentIdMap.get(anno.objectId)!,
+              userId: anno.userId,
+              createdAt: anno.createdAt,
+              updatedAt: anno.updatedAt,
+            })),
+          )
+        }
+      }
     }
   }
 
