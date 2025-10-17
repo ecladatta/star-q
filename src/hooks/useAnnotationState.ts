@@ -1,4 +1,5 @@
 import type {
+  AnnotationMention,
   CurrentAnnotation,
   DocumentAnnotation,
   DocumentAnnotationComponent,
@@ -56,6 +57,25 @@ function createEntityFromComponent(component: DocumentAnnotationComponent, type:
     customId: component.entityCustomId || null,
     datatype: component.entityDatatype || null,
     type,
+  }
+}
+
+function createComponentFromMention(type: EntityType, mention: AnnotationMention): DocumentAnnotationComponent {
+  return {
+    id: uuidv4(),
+    entityLabel: null,
+    entityValue: null,
+    entityCustom: null,
+    entityCustomId: null,
+    entityDatatype: null,
+    annotationStart: mention.start,
+    annotationEnd: mention.end,
+    annotationRow: mention.row,
+    annotationCell: mention.cell,
+    annotationValue: mention.value,
+    annotationType: mention.annotationType,
+    annotationTag: type,
+    elementIndex: mention.elementIndex,
   }
 }
 
@@ -405,20 +425,29 @@ export function useAnnotationState(
   }, [createAnnotationComponent, selection])
 
   const handleSelectionMentionAssociation = useCallback((type: EntityType) => {
+    const mention = popover.popoverState.mentionData
+    if (mention) {
+      setCurrentAnnotation(prev => ({
+        ...prev,
+        [type]: createComponentFromMention(type, mention),
+      }))
+      popover.hidePopover()
+      return
+    }
+
     if (popover.popoverState.annotation && popover.popoverState.componentId) {
       handleMentionAssociation(type)
     } else {
       addToCurrentAnnotation(type)
     }
     popover.hidePopover()
-  }, [handleMentionAssociation, addToCurrentAnnotation, popover])
+  }, [addToCurrentAnnotation, handleMentionAssociation, popover])
 
-  const handleCloneAnnotation = useCallback(() => {
-    if (!popover.popoverState.annotation) {
+  const handleCloneAnnotation = useCallback((annotation?: DocumentAnnotation) => {
+    const annotationToClone = annotation || popover.popoverState.annotation
+    if (!annotationToClone) {
       return
     }
-
-    const annotation = popover.popoverState.annotation
 
     // Create cloned components with new IDs
     const cloneComponent = (comp: DocumentAnnotationComponent | undefined): DocumentAnnotationComponent | undefined => {
@@ -432,9 +461,9 @@ export function useAnnotationState(
     }
 
     setCurrentAnnotation({
-      subject: cloneComponent(annotation.subject),
-      predicate: cloneComponent(annotation.predicate),
-      object: cloneComponent(annotation.object),
+      subject: cloneComponent(annotationToClone.subject),
+      predicate: cloneComponent(annotationToClone.predicate),
+      object: cloneComponent(annotationToClone.object),
     })
 
     popover.hidePopover()
@@ -491,6 +520,7 @@ export function useAnnotationState(
     handleMentionAssociation,
     handleSelectionMentionAssociation,
     addToCurrentAnnotation,
+    handleCloneAnnotation,
 
     // Sub-hooks
     selection,

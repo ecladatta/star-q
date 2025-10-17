@@ -2,10 +2,9 @@
 import type { DocumentMetadata } from '@/actions/corpus/corpusActions'
 import type { Corpus, Document } from '@/db/schema'
 import type { Offset } from '@/lib/utils'
-import type { DocumentAnnotation, DocumentData } from '@/types/types'
+import type { DocumentAnnotation, DocumentData, EntityType } from '@/types/types'
 import { Check, Copy, InfoIcon } from 'lucide-react'
-import { useState } from 'react'
-
+import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
@@ -14,8 +13,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useAnnotationState } from '@/hooks/useAnnotationState'
 import { useDocumentElements } from '@/hooks/useDocumentElements'
 import { useSelectionHandlers } from '@/hooks/useSelectionState'
-import { cn, isMac } from '@/lib/utils'
+import { annotationComponentsShareSegment, cn, isMac } from '@/lib/utils'
 import { AnnotationForm } from './annotation-form'
+import { AnnotationListPopover } from './annotation-list-popover'
 import { AnnotationsSidebar } from './annotations-sidebar'
 import CombinedElement from './combined-element'
 import { DocumentHeader } from './document-header'
@@ -28,6 +28,8 @@ type DocumentViewerProps = {
   document?: Document
   annotations?: DocumentAnnotation[]
 }
+
+const ANNOTATION_ROLES: EntityType[] = ['subject', 'predicate', 'object']
 
 export function DocumentViewer({ corpus, documents, document, annotations }: DocumentViewerProps) {
   const [showAnnotations, setShowAnnotations] = useState(true)
@@ -51,6 +53,7 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
     createAnnotation,
     deleteAnnotationById,
     handleSelectionMentionAssociation,
+    handleCloneAnnotation,
     selection,
     popover,
   } = annotationState
@@ -61,11 +64,31 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
     popover,
   )
 
+  const componentById = useMemo(() => {
+    const map = new Map<string, DocumentAnnotation['subject']>()
+    for (const element of documentElements) {
+      for (const component of element.components) {
+        map.set(component.id, component)
+      }
+    }
+    return map
+  }, [documentElements])
+
   const handleSplitClick = ({ componentId }: Offset) => {
-    const ann = documentAnnotations.find(ann =>
-      ann.subjectId === componentId || ann.predicateId === componentId || ann.objectId === componentId,
+    if (!componentId)
+      return
+
+    const clickedComponent = componentById.get(componentId)
+    if (!clickedComponent)
+      return
+
+    const matchingAnnotations = documentAnnotations.filter(annotation =>
+      ANNOTATION_ROLES.some(role =>
+        annotationComponentsShareSegment(annotation[role], clickedComponent),
+      ),
     )
-    if (!ann)
+
+    if (matchingAnnotations.length === 0)
       return
 
     const domSelection = window.getSelection()
@@ -73,12 +96,22 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
       return
 
     const rect = domSelection.getRangeAt(0).getClientRects()[0]
-    popover.setPopoverState({
+
+    popover.showPopover({
       top: rect.top + window.scrollY - 80,
       left: rect.left + window.scrollX,
-      visible: true,
-      annotation: ann,
+      annotation: null,
       componentId,
+      annotations: matchingAnnotations,
+      mentionData: {
+        start: clickedComponent.annotationStart,
+        end: clickedComponent.annotationEnd,
+        elementIndex: clickedComponent.elementIndex,
+        row: clickedComponent.annotationRow,
+        cell: clickedComponent.annotationCell,
+        value: clickedComponent.annotationValue,
+        annotationType: clickedComponent.annotationType,
+      },
     })
   }
 
@@ -346,14 +379,34 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
             corpusId={corpus.id}
           />
 
-          <SelectionPopover
-            popoverState={popover.popoverState}
-            onClose={popover.hidePopover}
-            onDelete={deleteAnnotationById}
-            isDeletingAnnotation={isDeletingAnnotation}
-            onMentionAssociation={handleSelectionMentionAssociation}
-            onEditAnnotation={handleEditAnnotation}
-          />
+          {/* Show AnnotationListPopover when clicking on existing annotations with shared segments */}
+          {popover.popoverState.visible && (popover.popoverState.annotations?.length ?? 0) > 0 && (
+            <AnnotationListPopover
+              visible={true}
+              top={popover.popoverState.top}
+              left={popover.popoverState.left}
+              annotations={popover.popoverState.annotations ?? []}
+              onClose={popover.hidePopover}
+              onEdit={handleEditAnnotation}
+              onClone={handleCloneAnnotation}
+              onDelete={deleteAnnotationById}
+              isDeletingAnnotation={isDeletingAnnotation}
+              onCreateMention={handleSelectionMentionAssociation}
+              mentionData={popover.popoverState.mentionData ?? null}
+            />
+          )}
+
+          {/* Show SelectionPopover when making a new text selection */}
+          {popover.popoverState.visible && (popover.popoverState.annotations?.length ?? 0) === 0 && (
+            <SelectionPopover
+              popoverState={popover.popoverState}
+              onClose={popover.hidePopover}
+              onDelete={deleteAnnotationById}
+              isDeletingAnnotation={isDeletingAnnotation}
+              onMentionAssociation={handleSelectionMentionAssociation}
+              onEditAnnotation={handleEditAnnotation}
+            />
+          )}
         </div>
       </main>
 

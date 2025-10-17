@@ -1,4 +1,4 @@
-import type { DocumentAnnotation, DocumentElement } from '@/types/types'
+import type { AnnotationMention, DocumentAnnotation, DocumentElement } from '@/types/types'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { selectionIsEmpty } from '@/lib/utils'
 
@@ -8,6 +8,18 @@ export type PopoverState = {
   annotation: DocumentAnnotation | null
   componentId: string | undefined | null
   visible: boolean
+  annotations: DocumentAnnotation[]
+  mentionData: AnnotationMention | null
+}
+
+const INITIAL_POPOVER_STATE: PopoverState = {
+  top: 0,
+  left: 0,
+  annotation: null,
+  componentId: null,
+  visible: false,
+  annotations: [],
+  mentionData: null,
 }
 
 export type SelectionOffset = {
@@ -92,26 +104,17 @@ export function useSelectionState() {
 }
 
 export function usePopoverState() {
-  const [popoverState, setPopoverState] = useState<PopoverState>({
-    top: 0,
-    left: 0,
-    annotation: null,
-    componentId: null,
-    visible: false,
-  })
+  const [popoverState, setPopoverState] = useState<PopoverState>(INITIAL_POPOVER_STATE)
 
   const hidePopover = useCallback(() => {
-    setPopoverState(prev => ({ ...prev, visible: false }))
+    setPopoverState(INITIAL_POPOVER_STATE)
   }, [])
 
-  const showPopover = useCallback((config: Partial<Omit<PopoverState, 'visible'>>) => {
-    setPopoverState(prev => ({
-      ...prev,
+  const showPopover = useCallback((config: Omit<PopoverState, 'visible'>) => {
+    setPopoverState({
       ...config,
       visible: true,
-      top: typeof config.top === 'number' ? config.top : prev.top,
-      left: typeof config.left === 'number' ? config.left : prev.left,
-    }))
+    })
   }, [])
 
   const updatePopoverPosition = useCallback((top: number, left: number) => {
@@ -174,6 +177,8 @@ function useTextSelectionHandler(
         left: rect.left + window.scrollX,
         annotation: null,
         componentId: null,
+        annotations: [],
+        mentionData: null,
       })
     } catch (error) {
       console.warn('Error handling text selection:', error)
@@ -222,6 +227,9 @@ function useTableSelectionHandler(
       top: rect.top + window.scrollY + POPOVER_OFFSET_Y,
       left: rect.left + window.scrollX,
       annotation: null,
+      componentId: null,
+      annotations: [],
+      mentionData: null,
     })
 
     return true
@@ -258,6 +266,9 @@ function useTableSelectionHandler(
           top: rect.top + window.scrollY + POPOVER_OFFSET_Y,
           left: rect.left + window.scrollX + rect.width / 2,
           annotation: null,
+          componentId: null,
+          annotations: [],
+          mentionData: null,
         })
       }
     }, SELECTION_TIMEOUT)

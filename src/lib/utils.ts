@@ -1,5 +1,5 @@
 import type { ClassValue } from 'clsx'
-import type { DocumentAnnotation, ExportModel } from '@/types/types'
+import type { AnnotationMention, DocumentAnnotation, DocumentAnnotationComponent, ExportModel } from '@/types/types'
 import { clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 
@@ -223,4 +223,62 @@ export function getAnnotationType(annotation: DocumentAnnotation): AnnotationTyp
   }
 
   return 'joint'
+}
+
+type AnnotationSegmentLike = {
+  elementIndex: number
+  annotationStart: number
+  annotationEnd: number
+  annotationRow: number | null
+  annotationCell: number | null
+}
+
+function rowsMatch(componentRow: number | null, segmentRow: number | null) {
+  return componentRow === segmentRow
+}
+
+function cellsMatch(componentCell: number | null, segmentCell: number | null) {
+  return componentCell === segmentCell
+}
+
+function componentMatchesSegment(component: DocumentAnnotationComponent, segment: AnnotationSegmentLike) {
+  return (
+    component.elementIndex === segment.elementIndex
+    && component.annotationStart === segment.annotationStart
+    && component.annotationEnd === segment.annotationEnd
+    && rowsMatch(component.annotationRow, segment.annotationRow)
+    && cellsMatch(component.annotationCell, segment.annotationCell)
+  )
+}
+
+export function annotationComponentMatchesMention(
+  component: DocumentAnnotationComponent | null | undefined,
+  mention: AnnotationMention | null | undefined,
+) {
+  if (!component || !mention)
+    return false
+
+  return componentMatchesSegment(component, {
+    annotationStart: mention.start,
+    annotationEnd: mention.end,
+    annotationRow: mention.row,
+    annotationCell: mention.cell,
+    elementIndex: mention.elementIndex,
+  })
+}
+
+export function annotationComponentsShareSegment(
+  a: DocumentAnnotationComponent | null | undefined,
+  b: DocumentAnnotationComponent | null | undefined,
+) {
+  if (!a || !b)
+    return false
+
+  return componentMatchesSegment(a, {
+    annotationStart: b.annotationStart,
+    annotationEnd: b.annotationEnd,
+    annotationRow: b.annotationRow,
+    annotationCell: b.annotationCell,
+    elementIndex: b.elementIndex,
+  })
 }

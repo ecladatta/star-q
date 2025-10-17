@@ -111,7 +111,8 @@ export function SelectionPopover({
               <TooltipTrigger asChild>
                 <Button
                   variant="outline"
-                  className="border-orange-400 focus-visible:ring-orange-500"
+                  size="sm"
+                  className="flex-1 border-orange-400 text-orange-700 hover:bg-orange-50 focus-visible:ring-orange-500"
                   onClick={() => onMentionAssociation('subject')}
                 >
                   <UserIcon />
@@ -131,7 +132,8 @@ export function SelectionPopover({
               <TooltipTrigger asChild>
                 <Button
                   variant="outline"
-                  className="border-blue-400 focus-visible:ring-blue-500"
+                  size="sm"
+                  className="flex-1 border-blue-400 text-blue-700 hover:bg-blue-50 focus-visible:ring-blue-500"
                   onClick={() => onMentionAssociation('predicate')}
                 >
                   <LinkIcon />
@@ -151,7 +153,8 @@ export function SelectionPopover({
               <TooltipTrigger asChild>
                 <Button
                   variant="outline"
-                  className="border-green-400 focus-visible:ring-green-500"
+                  size="sm"
+                  className="flex-1 border-green-400 text-green-700 hover:bg-green-50 focus-visible:ring-green-500"
                   onClick={() => onMentionAssociation('object')}
                 >
                   <BoxIcon />

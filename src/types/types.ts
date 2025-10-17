@@ -40,6 +40,16 @@ export type DocumentAnnotationComponent = {
   elementIndex: number
 }
 
+export type AnnotationMention = {
+  start: number
+  end: number
+  elementIndex: number
+  row: number | null
+  cell: number | null
+  value: string
+  annotationType: 'text' | 'table'
+}
+
 export type DocumentAnnotation = {
   id: string
   subjectId: string
