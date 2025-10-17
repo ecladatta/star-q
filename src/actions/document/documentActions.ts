@@ -25,6 +25,7 @@ export async function getDocumentsMetadata(corpusId: string): Promise<DocumentMe
     .where(eq(document.corpusId, corpusId))
     .leftJoin(annotation, eq(annotation.documentId, document.id))
     .groupBy(document.id)
+    .orderBy(document.createdAt)
 }
 
 export async function getDocument(id: string): Promise<Document> {
