@@ -74,28 +74,32 @@ export function SelectionPopover({
                       </TooltipContent>
                     </Tooltip>
                     <PopoverContent side="top">
-                      <div className="flex flex-col items-center">
-                        <p>Are you sure you want to delete this annotation?</p>
-                        <div className="mt-2 flex gap-2">
-                          <Button
-                            variant="destructive"
-                            onClick={async () => {
-                              if (popoverState.annotation) {
-                                await onDelete(popoverState.annotation.id)
-                                onClose()
-                              }
-                            }}
-                            disabled={isDeletingAnnotation}
-                          >
-                            {isDeletingAnnotation ? <Loader2Icon className="animate-spin" /> : 'Delete'}
-                          </Button>
-                          <PopoverClose asChild>
-                            <Button variant="ghost" disabled={isDeletingAnnotation}>
-                              Cancel
+                      <form onSubmit={async (e) => {
+                        e.preventDefault()
+                        if (popoverState.annotation) {
+                          await onDelete(popoverState.annotation.id)
+                          onClose()
+                        }
+                      }}
+                      >
+                        <div className="flex flex-col items-center">
+                          <p>Are you sure you want to delete this annotation?</p>
+                          <div className="mt-2 flex gap-2">
+                            <Button
+                              type="submit"
+                              variant="destructive"
+                              disabled={isDeletingAnnotation}
+                            >
+                              {isDeletingAnnotation ? <Loader2Icon className="animate-spin" /> : 'Delete'}
                             </Button>
-                          </PopoverClose>
+                            <PopoverClose asChild>
+                              <Button type="button" variant="ghost" disabled={isDeletingAnnotation}>
+                                Cancel
+                              </Button>
+                            </PopoverClose>
+                          </div>
                         </div>
-                      </div>
+                      </form>
                     </PopoverContent>
                   </Popover>
                 </TooltipProvider>
