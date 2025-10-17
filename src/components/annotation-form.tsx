@@ -304,8 +304,10 @@ export function AnnotationForm({
                 onClick={() => scrollToElement(subjectTag)}
               >
                 <Tooltip>
-                  <TooltipTrigger className="truncate">
-                    {subjectTag?.annotationValue ?? '\u00A0'}
+                  <TooltipTrigger asChild>
+                    <span className="truncate">
+                      {subjectTag?.annotationValue ?? '\u00A0'}
+                    </span>
                   </TooltipTrigger>
                   {subjectTag?.annotationValue && (
                     <TooltipContent>
@@ -342,8 +344,10 @@ export function AnnotationForm({
                 onClick={() => scrollToElement(predicateTag)}
               >
                 <Tooltip>
-                  <TooltipTrigger className="truncate">
-                    {predicateTag?.annotationValue ?? '\u00A0'}
+                  <TooltipTrigger asChild>
+                    <span className="truncate">
+                      {predicateTag?.annotationValue ?? '\u00A0'}
+                    </span>
                   </TooltipTrigger>
                   {predicateTag?.annotationValue && (
                     <TooltipContent>
@@ -398,8 +402,10 @@ export function AnnotationForm({
                 onClick={() => scrollToElement(objectTag)}
               >
                 <Tooltip>
-                  <TooltipTrigger className="truncate">
-                    {objectTag?.annotationValue ?? '\u00A0'}
+                  <TooltipTrigger asChild>
+                    <span className="truncate">
+                      {objectTag?.annotationValue ?? '\u00A0'}
+                    </span>
                   </TooltipTrigger>
                   {objectTag?.annotationValue && (
                     <TooltipContent>
