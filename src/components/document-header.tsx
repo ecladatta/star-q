@@ -34,7 +34,7 @@ export function DocumentHeader({ corpus, document, documentData }: DocumentHeade
 
   return (
     <>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-3xl font-bold">
           Corpus:
           {' '}

@@ -32,7 +32,7 @@ export default async function AnalyticsPage({ params }: { params: Promise<{ corp
 
   return (
     <div className="container mx-auto flex size-full min-h-screen max-w-7xl flex-col px-4 py-12 sm:px-6 lg:px-8">
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold">
             {corpus.title}
