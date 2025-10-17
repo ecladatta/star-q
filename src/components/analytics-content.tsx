@@ -225,7 +225,7 @@ export async function AnalyticsContent({ analyticsPromise }: AnalyticsContentPro
         <Card className="mb-8">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <AlertTriangleIcon className="size-5 text-yellow-500" />
+              <AlertTriangleIcon className="size-5" style={{ color: '#ADD8E6' }} />
               Documents with Unassigned Predicates
             </CardTitle>
             <CardDescription>
@@ -234,7 +234,7 @@ export async function AnalyticsContent({ analyticsPromise }: AnalyticsContentPro
           </CardHeader>
           <CardContent>
             <Collapsible defaultOpen={analytics.documentsWithUnassignedPredicates.length <= 5}>
-              <CollapsibleTrigger className="mb-4 flex w-full items-center justify-between rounded-lg border bg-yellow-50 p-3 hover:bg-yellow-100 dark:bg-yellow-950/20 dark:hover:bg-yellow-950/30">
+              <CollapsibleTrigger className="mb-4 flex w-full items-center justify-between rounded-lg border p-3 hover:opacity-90" style={{ backgroundColor: '#ADD8E6' }}>
                 <div className="flex items-center space-x-2">
                   <span className="font-medium">View Documents</span>
                   <Badge variant="secondary">{analytics.documentsWithUnassignedPredicates.length}</Badge>
@@ -266,7 +266,7 @@ export async function AnalyticsContent({ analyticsPromise }: AnalyticsContentPro
         <Card className="mb-8">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <AlertTriangleIcon className="size-5 text-orange-500" />
+              <AlertTriangleIcon className="size-5" style={{ color: '#FFE4B5' }} />
               Documents with Unassigned Subjects
             </CardTitle>
             <CardDescription>
@@ -275,7 +275,7 @@ export async function AnalyticsContent({ analyticsPromise }: AnalyticsContentPro
           </CardHeader>
           <CardContent>
             <Collapsible defaultOpen={analytics.documentsWithUnassignedSubjects.length <= 5}>
-              <CollapsibleTrigger className="mb-4 flex w-full items-center justify-between rounded-lg border bg-orange-50 p-3 hover:bg-orange-100 dark:bg-orange-950/20 dark:hover:bg-orange-950/30">
+              <CollapsibleTrigger className="mb-4 flex w-full items-center justify-between rounded-lg border p-3 hover:opacity-90" style={{ backgroundColor: '#FFE4B5' }}>
                 <div className="flex items-center space-x-2">
                   <span className="font-medium">View Documents</span>
                   <Badge variant="secondary">{analytics.documentsWithUnassignedSubjects.length}</Badge>
@@ -307,16 +307,16 @@ export async function AnalyticsContent({ analyticsPromise }: AnalyticsContentPro
         <Card className="mb-8">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <AlertTriangleIcon className="size-5 text-blue-500" />
+              <AlertTriangleIcon className="size-5" style={{ color: '#90EE90' }} />
               Documents with Unassigned Objects
             </CardTitle>
             <CardDescription>
-              Documents containing annotations where the object has no entity assigned (objects can be literals, so this is informational only)
+              Documents containing annotations where the object has no entity assigned
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Collapsible defaultOpen={analytics.documentsWithUnassignedObjects.length <= 5}>
-              <CollapsibleTrigger className="mb-4 flex w-full items-center justify-between rounded-lg border bg-blue-50 p-3 hover:bg-blue-100 dark:bg-blue-950/20 dark:hover:bg-blue-950/30">
+              <CollapsibleTrigger className="mb-4 flex w-full items-center justify-between rounded-lg border p-3 hover:opacity-90" style={{ backgroundColor: '#90EE90' }}>
                 <div className="flex items-center space-x-2">
                   <span className="font-medium">View Documents</span>
                   <Badge variant="secondary">{analytics.documentsWithUnassignedObjects.length}</Badge>
