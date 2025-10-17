@@ -1,11 +1,11 @@
-import { BarChart3Icon } from 'lucide-react'
+import { MoreVerticalIcon } from 'lucide-react'
 import Link from 'next/link'
 import React, { Suspense } from 'react'
 import { getCorpusAnalytics } from '@/actions/analytics/analyticsActions'
 import { getCorpus, getCorpusAnnotationsCount } from '@/actions/corpus/corpusActions'
 import { getDocumentsMetadata } from '@/actions/document/documentActions'
 import { CompletionScore, CompletionScoreSkeleton } from '@/components/completion-score'
-import CorpusSettingsButton from '@/components/corpus-settings-button'
+import { CorpusActions } from '@/components/corpus-actions'
 import DocumentsTable from '@/components/documents-table'
 import { Button } from '@/components/ui/button'
 
@@ -52,16 +52,21 @@ export default async function CorpusPage({ params }: { params: Promise<{ corpusI
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Suspense fallback={<CompletionScoreSkeleton />}>
-            <CompletionScore analyticsPromise={analyticsPromise} />
-          </Suspense>
           <Link href={`/corpus/${corpusId}/analytics`}>
-            <Button variant="outline" size="sm" className="w-full sm:w-auto">
-              <BarChart3Icon className="mr-2 size-4" />
-              Analytics
-            </Button>
+            <Suspense fallback={<CompletionScoreSkeleton />}>
+              <CompletionScore analyticsPromise={analyticsPromise} />
+            </Suspense>
           </Link>
-          <CorpusSettingsButton corpus={corpus} />
+          <CorpusActions
+            corpus={corpus}
+            showOpenAction={false}
+            triggerButton={(
+              <Button variant="outline" size="sm" className="w-full sm:w-auto">
+                <MoreVerticalIcon className="mr-2 size-4" />
+                Actions
+              </Button>
+            )}
+          />
         </div>
       </div>
       <DocumentsTable documents={documentsList} />

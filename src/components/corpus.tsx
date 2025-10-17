@@ -18,31 +18,25 @@ import {
 import {
   ArrowDownIcon,
   ArrowUpIcon,
-  BarChart3Icon,
   ChevronLeftIcon,
   ChevronRightIcon,
   ChevronsLeftIcon,
   ChevronsRightIcon,
   ChevronsUpDownIcon,
-  CopyIcon,
-  EditIcon,
-  FileDownIcon,
   FileUpIcon,
-  FolderOpenIcon,
   Loader2Icon,
-  MoreVerticalIcon,
   PlusCircleIcon,
-  Trash2Icon,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useRef, useState } from 'react'
 import * as React from 'react'
-import { addCorpus, deleteCorpus, duplicateCorpus, renameCorpus } from '@/actions/corpus/corpusActions'
+import { addCorpus } from '@/actions/corpus/corpusActions'
 import { importDocuments } from '@/actions/imports/importActions'
+import { CorpusActions } from '@/components/corpus-actions'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -69,39 +63,15 @@ type DataTableColumnHeaderProps<TData, TValue> = {
 type DataTableProps = {
   columns: ColumnDef<CorpusWithCounts, any>[]
   data: CorpusWithCounts[]
-  handleRenameClick: (corpus: Corpus) => void
-  handleDuplicateClick: (corpus: CorpusWithCounts) => void
-  handleImportClick: (corpus: Corpus) => void
-  handleExportClick: (corpus: Corpus) => void
-  handleDeleteClick: (corpus: Corpus) => void
-  isDeleting: boolean
-  corpusToDelete: Corpus | null
 }
 
 type DataTablePaginationProps<TData> = {
   table: TableType<TData>
 }
 
-type CorpusTableMeta = {
-  handleRenameClick: (corpus: Corpus) => void
-  handleDuplicateClick: (corpus: CorpusWithCounts) => void
-  handleImportClick: (corpus: Corpus) => void
-  handleExportClick: (corpus: Corpus) => void
-  handleDeleteClick: (corpus: Corpus) => void
-  isDeleting: boolean
-  corpusToDelete: Corpus | null
-}
-
 function DataTable({
   columns,
   data,
-  handleRenameClick,
-  handleDuplicateClick,
-  handleImportClick,
-  handleExportClick,
-  handleDeleteClick,
-  isDeleting,
-  corpusToDelete,
 }: DataTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
@@ -123,15 +93,6 @@ function DataTable({
       columnFilters,
       globalFilter,
     },
-    meta: {
-      handleRenameClick,
-      handleDuplicateClick,
-      handleImportClick,
-      handleExportClick,
-      handleDeleteClick,
-      isDeleting,
-      corpusToDelete,
-    } satisfies CorpusTableMeta,
   })
 
   return (
@@ -369,93 +330,25 @@ const columns: ColumnDef<CorpusWithCounts, any>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Actions" />
     ),
-    cell: ({ row, table }) => (
-      <>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm">
-              <MoreVerticalIcon className="size-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem asChild>
-              <a href={`/corpus/${row.original.id}`}>
-                <FolderOpenIcon className="mr-2 size-4" />
-                Open
-              </a>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <a href={`/corpus/${row.original.id}/analytics`}>
-                <BarChart3Icon className="mr-2 size-4" />
-                Analytics
-              </a>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => (table.options.meta as CorpusTableMeta)?.handleRenameClick(row.original)}
-            >
-              <EditIcon className="mr-2 size-4" />
-              Rename
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => (table.options.meta as CorpusTableMeta)?.handleDuplicateClick(row.original)}
-            >
-              <CopyIcon className="mr-2 size-4" />
-              Duplicate
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => (table.options.meta as CorpusTableMeta)?.handleImportClick(row.original)}>
-              <FileUpIcon className="mr-2 size-4" />
-              Import
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => (table.options.meta as CorpusTableMeta)?.handleExportClick(row.original)}>
-              <FileDownIcon className="mr-2 size-4" />
-              Export
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => (table.options.meta as CorpusTableMeta)?.handleDeleteClick(row.original)}
-              disabled={(table.options.meta as CorpusTableMeta)?.isDeleting && (table.options.meta as CorpusTableMeta)?.corpusToDelete?.id === row.original.id}
-              className="text-red-600 focus:text-red-600"
-            >
-              {(table.options.meta as CorpusTableMeta)?.isDeleting && (table.options.meta as CorpusTableMeta)?.corpusToDelete?.id === row.original.id
-                ? (
-                    <Loader2Icon className="mr-2 size-4 animate-spin" />
-                  )
-                : (
-                    <Trash2Icon className="mr-2 size-4" />
-                  )}
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </>
+    cell: ({ row }) => (
+      <CorpusActions corpus={row.original} showOpenAction />
     ),
   },
 ]
 
 export function Corpuses({ corpuses }: CorpusesProps) {
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const newCorpusFileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
-  const [isExporting, setIsExporting] = useState(false)
   const [newCorpusName, setNewCorpusName] = useState('')
   const [isAdding, setIsAdding] = useState(false)
   const [showNewCorpusDialog, setShowNewCorpusDialog] = useState(false)
   const [newCorpusFile, setNewCorpusFile] = useState<File | null>(null)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [isDuplicating, setIsDuplicating] = useState(false)
-  const [isRenaming, setIsRenaming] = useState(false)
-  const [corpusToDelete, setCorpusToDelete] = useState<Corpus | null>(null)
-  const [corpusToDuplicate, setCorpusToDuplicate] = useState<(Corpus & { documentsCount: number, annotationsCount: number }) | null>(null)
-  const [newDuplicateTitle, setNewDuplicateTitle] = useState('')
-  const [corpusToRename, setCorpusToRename] = useState<Corpus | null>(null)
-  const [newRenameTitle, setNewRenameTitle] = useState('')
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [isImporting, setIsImporting] = useState(false)
   const [showImportDialog, setShowImportDialog] = useState(false)
-  const [corpusToImport, setCorpusToImport] = useState<Corpus | null>(null)
   const [importedCount, setImportedCount] = useState(0)
+  const [newCorpusId, setNewCorpusId] = useState<string | null>(null)
 
-  // Shared file import logic
   const handleFileImport = async (file: File, targetCorpusId: string) => {
     try {
       setUploadError(null)
@@ -465,7 +358,7 @@ export function Corpuses({ corpuses }: CorpusesProps) {
       formData.append('file', file)
       const { count, errors } = await importDocuments(targetCorpusId, formData)
       setImportedCount(count)
-      setCorpusToImport({ id: targetCorpusId } as Corpus)
+      setNewCorpusId(targetCorpusId)
       if (errors && errors.length > 0) {
         setUploadError(errors.join('\n'))
       }
@@ -479,101 +372,6 @@ export function Corpuses({ corpuses }: CorpusesProps) {
       }
     } finally {
       setIsImporting(false)
-    }
-  }
-
-  const handleImportClick = (corpus: Corpus) => {
-    setCorpusToImport(corpus)
-    setUploadError(null)
-    // Reset the file input value to ensure change event fires even for the same file
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''
-    }
-    setTimeout(() => {
-      fileInputRef.current?.click()
-    }, 0)
-  }
-
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file || !corpusToImport) {
-      return
-    }
-
-    await handleFileImport(file, corpusToImport.id)
-
-    // Reset the file input
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''
-    }
-  }
-
-  const handleExportClick = async (corpus: Corpus) => {
-    setIsExporting(true)
-    try {
-      window.open(`/api/corpus/${corpus.id}/export`, '_blank')
-    } catch (error) {
-      console.error('Export failed:', error)
-    } finally {
-      setIsExporting(false)
-    }
-  }
-
-  const handleDeleteClick = (corpus: Corpus) => {
-    setCorpusToDelete(corpus)
-  }
-
-  const confirmDelete = async () => {
-    if (!corpusToDelete) {
-      return
-    }
-    setIsDeleting(true)
-    await deleteCorpus(corpusToDelete.id)
-    setCorpusToDelete(null)
-    setIsDeleting(false)
-  }
-
-  const handleDuplicateClick = (corpus: Corpus & { documentsCount: number, annotationsCount: number }) => {
-    setCorpusToDuplicate(corpus)
-    setNewDuplicateTitle(`${corpus.title} (copy)`)
-  }
-
-  const confirmDuplicate = async () => {
-    if (!corpusToDuplicate || !newDuplicateTitle.trim()) {
-      return
-    }
-    try {
-      setIsDuplicating(true)
-      await duplicateCorpus(corpusToDuplicate.id, newDuplicateTitle)
-      setCorpusToDuplicate(null)
-      setNewDuplicateTitle('')
-      router.refresh()
-    } catch (error) {
-      console.error('Duplication failed:', error)
-    } finally {
-      setIsDuplicating(false)
-    }
-  }
-
-  const handleRenameClick = (corpus: Corpus) => {
-    setCorpusToRename(corpus)
-    setNewRenameTitle(corpus.title || '')
-  }
-
-  const confirmRename = async () => {
-    if (!corpusToRename || !newRenameTitle.trim()) {
-      return
-    }
-    try {
-      setIsRenaming(true)
-      await renameCorpus(corpusToRename.id, newRenameTitle)
-      setCorpusToRename(null)
-      setNewRenameTitle('')
-      router.refresh()
-    } catch (error) {
-      console.error('Rename failed:', error)
-    } finally {
-      setIsRenaming(false)
     }
   }
 
@@ -644,13 +442,6 @@ export function Corpuses({ corpuses }: CorpusesProps) {
               <DataTable
                 columns={columns}
                 data={corpuses}
-                handleRenameClick={handleRenameClick}
-                handleDuplicateClick={handleDuplicateClick}
-                handleImportClick={handleImportClick}
-                handleExportClick={handleExportClick}
-                handleDeleteClick={handleDeleteClick}
-                isDeleting={isDeleting}
-                corpusToDelete={corpusToDelete}
               />
             )
           : (
@@ -754,49 +545,7 @@ export function Corpuses({ corpuses }: CorpusesProps) {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isExporting} onOpenChange={setIsExporting}>
-        <DialogContent className="m-0 size-full max-w-full p-0 sm:h-auto sm:max-w-[800px] sm:rounded-lg sm:p-6 sm:shadow-lg">
-          <DialogHeader>
-            <DialogTitle></DialogTitle>
-          </DialogHeader>
-          <div className="p-4">
-            <h2 className="mb-4 text-xl font-semibold">Exporting documents...</h2>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsExporting(false)}>Cancel</Button>
-            <Button type="submit" disabled={isExporting}>Download</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={!!corpusToDelete} onOpenChange={() => setCorpusToDelete(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirm Deletion</DialogTitle>
-          </DialogHeader>
-          <div className="text-sm text-gray-600">
-            <p>
-              Are you sure you want to delete the corpus "
-              <strong>{corpusToDelete?.title}</strong>
-              "?
-            </p>
-            <p>
-              This action cannot be undone and will also:
-            </p>
-            <ul className="ml-4 list-inside list-disc">
-              <li>Delete all documents attached to this corpus</li>
-              <li>Delete all annotations attached to this corpus</li>
-            </ul>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCorpusToDelete(null)}>Cancel</Button>
-            <Button variant="destructive" onClick={confirmDelete} disabled={isDeleting}>
-              {isDeleting ? <Loader2Icon className="size-4 animate-spin" /> : <Trash2Icon className="size-4" />}
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Import Status Dialog - Only for new corpus creation */}
       <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
         <DialogContent>
           <DialogHeader>
@@ -826,11 +575,11 @@ export function Corpuses({ corpuses }: CorpusesProps) {
             )}
           </div>
           <DialogFooter>
-            {!isImporting && (
+            {!isImporting && newCorpusId && (
               <Button
                 variant="outline"
                 onClick={() => {
-                  router.push(`/corpus/${corpusToImport?.id}`)
+                  router.push(`/corpus/${newCorpusId}`)
                 }}
               >
                 View documents
@@ -839,106 +588,8 @@ export function Corpuses({ corpuses }: CorpusesProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <Dialog open={!!corpusToDuplicate} onOpenChange={open => !open && setCorpusToDuplicate(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Duplicate Corpus</DialogTitle>
-            <DialogDescription>
-              Create a copy of this corpus with all its documents and annotations.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="text-sm text-gray-600">
-              <p>
-                You are about to duplicate the corpus "
-                <strong>{corpusToDuplicate?.title}</strong>
-                ".
-              </p>
-              <p className="mt-2">
-                This will copy:
-              </p>
-              <ul className="ml-4 list-inside list-disc">
-                <li>
-                  {corpusToDuplicate?.documentsCount}
-                  {' '}
-                  documents
-                </li>
-                <li>
-                  {corpusToDuplicate?.annotationsCount}
-                  {' '}
-                  annotations
-                </li>
-              </ul>
-            </div>
-            <div className="mt-4">
-              <Label htmlFor="new-corpus-name">
-                New corpus name
-              </Label>
-              <Input
-                id="new-corpus-name"
-                value={newDuplicateTitle}
-                onChange={e => setNewDuplicateTitle(e.target.value)}
-                className="mt-1"
-                placeholder="Enter a name for the new corpus"
-                required
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCorpusToDuplicate(null)}>Cancel</Button>
-            <Button
-              onClick={confirmDuplicate}
-              disabled={isDuplicating || !newDuplicateTitle.trim()}
-            >
-              {isDuplicating ? <Loader2Icon className="mr-2 size-4 animate-spin" /> : <CopyIcon className="mr-2 size-4" />}
-              {isDuplicating ? 'Duplicating...' : 'Duplicate'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      <Dialog open={!!corpusToRename} onOpenChange={open => !open && setCorpusToRename(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Rename Corpus</DialogTitle>
-            <DialogDescription>
-              Enter a new name for this corpus.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="mt-4">
-              <Label htmlFor="rename-corpus-name">
-                Corpus name
-              </Label>
-              <Input
-                id="rename-corpus-name"
-                value={newRenameTitle}
-                onChange={e => setNewRenameTitle(e.target.value)}
-                className="mt-1"
-                placeholder="Enter the new corpus name"
-                required
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCorpusToRename(null)}>Cancel</Button>
-            <Button
-              onClick={confirmRename}
-              disabled={isRenaming || !newRenameTitle.trim()}
-            >
-              {isRenaming ? <Loader2Icon className="mr-2 size-4 animate-spin" /> : <EditIcon className="mr-2 size-4" />}
-              {isRenaming ? 'Renaming...' : 'Rename'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-      {/* Hidden file inputs */}
-      <input
-        type="file"
-        ref={fileInputRef}
-        style={{ display: 'none' }}
-        accept=".json,.jsonl,.zip"
-        onChange={handleFileChange}
-      />
+
+      {/* Hidden file input for new corpus creation */}
       <input
         type="file"
         ref={newCorpusFileInputRef}
