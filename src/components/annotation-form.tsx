@@ -76,12 +76,16 @@ export function AnnotationForm({
 
   const handleSwapSubjectObject = () => {
     setCurrentAnnotation((prev) => {
-      if (!prev?.subject || !prev?.object)
+      if (!prev)
         return prev
+
+      const newSubject = prev.object ? { ...prev.object, annotationTag: 'subject' } : undefined
+      const newObject = prev.subject ? { ...prev.subject, annotationTag: 'object' } : undefined
+
       return {
         ...prev,
-        subject: prev.object,
-        object: prev.subject,
+        subject: newSubject,
+        object: newObject,
       }
     })
   }
