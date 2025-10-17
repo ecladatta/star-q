@@ -215,8 +215,12 @@ export function getAnnotationType(annotation: DocumentAnnotation): AnnotationTyp
   if (hasText && hasTable) {
     return 'joint'
   }
-  if (hasTable) {
+  if (types.every(type => type === 'table')) {
     return 'table'
   }
-  return 'text'
+  if (types.every(type => type === 'text')) {
+    return 'text'
+  }
+
+  return 'joint'
 }

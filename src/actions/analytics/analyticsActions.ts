@@ -129,7 +129,6 @@ export async function getCorpusAnalytics(corpusId: string): Promise<CorpusAnalyt
   const totalAnnotations = totalAnnotationsResult.count
 
   // Get text-only, table-only, and joint annotations
-  // An annotation is joint if it has components from both text and table types
   const annotationsWithTypes = await db
     .select({
       annotationId: annotation.id,
@@ -152,20 +151,19 @@ export async function getCorpusAnalytics(corpusId: string): Promise<CorpusAnalyt
   const jointDocIds = new Set<string>()
 
   for (const anno of annotationsWithTypes) {
-    const types = new Set([anno.subjectType, anno.predicateType, anno.objectType])
+    const types = [anno.subjectType, anno.predicateType, anno.objectType]
+    const hasText = types.includes('text')
+    const hasTable = types.includes('table')
 
-    if (types.has('text') && types.has('table')) {
-      // Has both text and table components
+    if (hasText && hasTable) {
       jointAnnotations++
       jointDocIds.add(anno.documentId)
-    } else if (types.has('text')) {
-      // Only text components
-      textOnlyAnnotations++
-      textOnlyDocIds.add(anno.documentId)
-    } else if (types.has('table')) {
-      // Only table components
+    } else if (types.every(type => type === 'table')) {
       tableOnlyAnnotations++
       tableOnlyDocIds.add(anno.documentId)
+    } else if (types.every(type => type === 'text')) {
+      textOnlyAnnotations++
+      textOnlyDocIds.add(anno.documentId)
     }
   }
 
