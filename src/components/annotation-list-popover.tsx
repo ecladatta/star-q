@@ -273,14 +273,16 @@ export function AnnotationListPopover({
                                           <PopoverClose asChild>
                                             <Button variant="ghost" size="sm">Cancel</Button>
                                           </PopoverClose>
-                                          <Button
-                                            variant="destructive"
-                                            size="sm"
-                                            onClick={() => handleDelete(annotation.id)}
-                                            disabled={isDeletingAnnotation || deletingId === annotation.id}
-                                          >
-                                            {deletingId === annotation.id ? <Loader2Icon className="animate-spin" /> : 'Delete'}
-                                          </Button>
+                                          <PopoverClose asChild>
+                                            <Button
+                                              variant="destructive"
+                                              size="sm"
+                                              onClick={() => handleDelete(annotation.id)}
+                                              disabled={isDeletingAnnotation || deletingId === annotation.id}
+                                            >
+                                              {deletingId === annotation.id ? <Loader2Icon className="animate-spin" /> : 'Delete'}
+                                            </Button>
+                                          </PopoverClose>
                                         </div>
                                       </div>
                                     </PopoverContent>
