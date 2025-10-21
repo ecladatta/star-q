@@ -305,13 +305,19 @@ export function useAnnotationState(
         setCurrentAnnotation(null)
       }
 
+      // Update popover state to remove the deleted annotation
+      popover.setPopoverState(prev => ({
+        ...prev,
+        annotations: prev.annotations.filter(ann => ann.id !== annotationId),
+      }))
+
       toast.success('Annotation deleted!')
     } catch (error) {
       toast.error(`Failed to delete annotation: ${(error as Error)?.message || 'Unknown error'}`)
     } finally {
       setLoadingState('deletingAnnotation', false)
     }
-  }, [currentAnnotation, setLoadingState])
+  }, [currentAnnotation, setLoadingState, popover])
 
   const createAnnotationComponent = useCallback((type: EntityType): DocumentAnnotationComponent | null => {
     if (!selection.hasSelection()) {
