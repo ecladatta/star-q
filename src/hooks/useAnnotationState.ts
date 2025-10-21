@@ -60,6 +60,31 @@ function createEntityFromComponent(component: DocumentAnnotationComponent, type:
   }
 }
 
+function componentsAreEqual(comp1: DocumentAnnotationComponent, comp2: DocumentAnnotationComponent): boolean {
+  return (
+    comp1.elementIndex === comp2.elementIndex
+    && comp1.annotationStart === comp2.annotationStart
+    && comp1.annotationEnd === comp2.annotationEnd
+    && comp1.annotationRow === comp2.annotationRow
+    && comp1.annotationCell === comp2.annotationCell
+    && comp1.annotationValue === comp2.annotationValue
+    && comp1.annotationType === comp2.annotationType
+  )
+}
+
+function isDuplicateAnnotation(
+  subject: DocumentAnnotationComponent,
+  predicate: DocumentAnnotationComponent,
+  object: DocumentAnnotationComponent,
+  existingAnnotations: DocumentAnnotation[],
+): boolean {
+  return existingAnnotations.some(annotation =>
+    componentsAreEqual(annotation.subject, subject)
+    && componentsAreEqual(annotation.predicate, predicate)
+    && componentsAreEqual(annotation.object, object),
+  )
+}
+
 function createComponentFromMention(type: EntityType, mention: AnnotationMention): DocumentAnnotationComponent {
   return {
     id: uuidv4(),
@@ -219,6 +244,13 @@ export function useAnnotationState(
         )
         toast.success('Annotation updated!')
       } else {
+        // Check for duplicate annotations before creating new one
+        if (isDuplicateAnnotation(subject, predicate, object, documentAnnotations)) {
+          toast.error('An identical annotation already exists')
+          setLoadingState('annotationForm', false)
+          return
+        }
+
         // Create new annotation
         const annotationId = await addAnnotation(
           documentId,
@@ -246,7 +278,7 @@ export function useAnnotationState(
     } finally {
       setLoadingState('annotationForm', false)
     }
-  }, [currentAnnotation, popover, setLoadingState])
+  }, [currentAnnotation, popover, setLoadingState, documentAnnotations])
 
   const handleAnnotationSelect = useCallback((annotationId: string, selected: boolean) => {
     setSelectedAnnotations((prev) => {
