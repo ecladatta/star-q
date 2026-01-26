@@ -29,7 +29,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useRef, useState } from 'react'
+import { ChangeEvent, HTMLAttributes, useRef, useState } from 'react'
 import { addCorpus } from '@/actions/corpus/corpusActions'
 import { importDocuments } from '@/actions/imports/importActions'
 import { CorpusActions } from '@/components/corpus-actions'
@@ -57,7 +57,7 @@ type CorpusWithCounts = Corpus & { documentsCount: number, annotationsCount: num
 type DataTableColumnHeaderProps<TData, TValue> = {
   column: Column<TData, TValue>
   title: string
-} & React.HTMLAttributes<HTMLDivElement>
+} & HTMLAttributes<HTMLDivElement>
 
 type DataTableProps = {
   columns: ColumnDef<CorpusWithCounts, any>[]
@@ -72,9 +72,9 @@ function DataTable({
   columns,
   data,
 }: DataTableProps) {
-  const [sorting, setSorting] = React.useState<SortingState>([])
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
-  const [globalFilter, setGlobalFilter] = React.useState('')
+  const [sorting, setSorting] = useState<SortingState>([])
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
+  const [globalFilter, setGlobalFilter] = useState('')
 
   const table = useReactTable<CorpusWithCounts>({
     data,
@@ -405,7 +405,7 @@ export function Corpuses({ corpuses }: CorpusesProps) {
     }
   }
 
-  const handleNewCorpusFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleNewCorpusFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     setNewCorpusFile(file || null)
   }

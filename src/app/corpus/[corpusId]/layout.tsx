@@ -1,11 +1,12 @@
 import { getCorpus } from '@/actions/corpus/corpusActions'
 import Header from '@/components/header'
+import { ReactNode } from 'react'
 
 export default async function CorpusLayout({
   children,
   params,
 }: {
-  children: React.ReactNode
+  children: ReactNode
   params: Promise<{ corpusId: string }>
 }) {
   const { corpusId } = await params

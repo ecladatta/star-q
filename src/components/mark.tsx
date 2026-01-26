@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils'
+import { KeyboardEvent, MouseEvent } from 'react'
 
 export type MarkProps = {
   content: string
@@ -12,7 +13,7 @@ export type MarkProps = {
 }
 
 function Mark(props: MarkProps) {
-  const handleKeyUp = (e: React.KeyboardEvent) => {
+  const handleKeyUp = (e: KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.stopPropagation()
       e.preventDefault()
@@ -20,7 +21,7 @@ function Mark(props: MarkProps) {
     }
   }
 
-  const handleMouseUp = (e: React.MouseEvent) => {
+  const handleMouseUp = (e: MouseEvent) => {
     const selection = window.getSelection()
     const hasSelection = selection && !selection.isCollapsed && selection.toString().trim().length > 0
     // If there's no selection, treat it as a click on the annotation

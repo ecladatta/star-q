@@ -3,7 +3,7 @@ import type { Corpus, Document } from '@/db/schema'
 import type { DocumentData } from '@/types/types'
 import { Check, Circle } from 'lucide-react'
 import Link from 'next/link'
-import { useState, useTransition } from 'react'
+import { Fragment, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { markDocumentAsCompleted } from '@/actions/document/documentActions'
 import { Button } from '@/components/ui/button'
@@ -84,7 +84,7 @@ export function DocumentHeader({ corpus, document, documentData }: DocumentHeade
             {Array.isArray(documentData._source.identificationMetadata.url)
               ? (
                   documentData._source.identificationMetadata.url.map((url, i) => (
-                    <React.Fragment key={url}>
+                    <Fragment key={url}>
                       {i > 0 && ', '}
                       <Link
                         href={url}
@@ -94,7 +94,7 @@ export function DocumentHeader({ corpus, document, documentData }: DocumentHeade
                       >
                         {url}
                       </Link>
-                    </React.Fragment>
+                    </Fragment>
                   ))
                 )
               : (

@@ -31,7 +31,7 @@ import {
   Trash2Icon,
 } from 'lucide-react'
 import Link from 'next/link'
-import { useState } from 'react'
+import { HTMLAttributes, useState } from 'react'
 import { toast } from 'sonner'
 import {
   deleteDocument,
@@ -76,7 +76,7 @@ import { Label } from './ui/label'
 type DataTableColumnHeaderProps<TData, TValue> = {
   column: Column<TData, TValue>
   title: string
-} & React.HTMLAttributes<HTMLDivElement>
+} & HTMLAttributes<HTMLDivElement>
 
 type DataTableProps = {
   columns: ColumnDef<DocumentMetadata, any>[]
@@ -103,9 +103,9 @@ function DataTable({
   setDocumentToDelete,
   handleMarkCompleted,
 }: DataTableProps) {
-  const [sorting, setSorting] = React.useState<SortingState>([])
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
-  const [globalFilter, setGlobalFilter] = React.useState('')
+  const [sorting, setSorting] = useState<SortingState>([])
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
+  const [globalFilter, setGlobalFilter] = useState('')
 
   const table = useReactTable<DocumentMetadata>({
     data,

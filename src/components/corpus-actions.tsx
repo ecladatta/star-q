@@ -14,7 +14,7 @@ import {
   Trash2Icon,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useRef, useState } from 'react'
+import { ChangeEvent, ReactNode, useRef, useState } from 'react'
 import { deleteCorpus, duplicateCorpus, renameCorpus } from '@/actions/corpus/corpusActions'
 import { importDocuments } from '@/actions/imports/importActions'
 import { CorpusSettingsDialog } from '@/components/corpus-settings-dialog'
@@ -41,7 +41,7 @@ import { InvalidJsonLinesError, UnsupportedFileTypeError } from '@/lib/utils'
 type CorpusActionsProps = {
   corpus: Corpus & { documentsCount?: number, annotationsCount?: number }
   showOpenAction?: boolean
-  triggerButton?: React.ReactNode
+  triggerButton?: ReactNode
 }
 
 export function CorpusActions({ corpus, showOpenAction = true, triggerButton }: CorpusActionsProps) {
@@ -74,7 +74,7 @@ export function CorpusActions({ corpus, showOpenAction = true, triggerButton }: 
     }, 0)
   }
 
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) {
       return

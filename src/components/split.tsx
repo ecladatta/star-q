@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils'
 import Mark from './mark'
+import { KeyboardEvent, MouseEvent } from 'react'
 
 function Split(props: {
   start: number
@@ -15,12 +16,12 @@ function Split(props: {
     return <Mark {...props} />
   }
 
-  const handleClick = (e: React.MouseEvent) => {
+  const handleClick = (e: MouseEvent) => {
     e.stopPropagation()
     props.onClick({ start: props.start, end: props.end })
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.stopPropagation()
       e.preventDefault()
