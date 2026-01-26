@@ -1,13 +1,13 @@
 import { DrizzleAdapter } from '@auth/drizzle-adapter'
 import { eq } from 'drizzle-orm'
 import NextAuth from 'next-auth'
-import authConfig from './auth.config'
+import authConfig, { isAuthEnabled } from './auth.config'
 import { db } from './db/drizzle'
 import { users } from './db/schema'
 
 export const { auth, handlers, signIn, signOut } = NextAuth({
   ...authConfig,
-  adapter: DrizzleAdapter(db),
+  adapter: isAuthEnabled() ? DrizzleAdapter(db) : undefined,
   callbacks: {
     ...authConfig.callbacks,
     async session({ token, session }) {
@@ -21,6 +21,10 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       return session
     },
     async jwt({ token, user }) {
+      if (!isAuthEnabled()) {
+        return token
+      }
+
       const [dbUser] = await db
         .select()
         .from(users)

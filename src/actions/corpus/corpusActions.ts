@@ -3,18 +3,14 @@ import type { Column, SQL, SQLWrapper } from 'drizzle-orm'
 import type { Corpus, CorpusCustomEntity, Document } from '@/db/schema'
 import { and, count, countDistinct, desc, eq, getTableColumns, inArray, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
-import { auth } from '@/auth'
 import { db } from '@/db/drizzle'
 import { annotation, annotationComponent, corpus, corpusCustomEntity, document } from '@/db/schema'
+import { requireAuth } from '@/lib/auth-utils'
 
 export type DocumentMetadata = Omit<Document, 'raw'> & { annotationsCount: number }
 
 export async function getCorpuses() {
-  const session = await auth()
-  const userId = session?.user?.id
-  if (!userId) {
-    throw new Error('User not authenticated')
-  }
+  await requireAuth()
 
   return db.select({
     ...getTableColumns(corpus),
@@ -29,11 +25,7 @@ export async function getCorpuses() {
 }
 
 export async function addCorpus(title: string) {
-  const session = await auth()
-  const userId = session?.user?.id
-  if (!userId) {
-    throw new Error('User not authenticated')
-  }
+  await requireAuth()
 
   const [result] = await db.insert(corpus).values({ title }).returning({ id: corpus.id })
   revalidatePath('/')
@@ -41,33 +33,21 @@ export async function addCorpus(title: string) {
 }
 
 export async function deleteCorpus(id: string) {
-  const session = await auth()
-  const userId = session?.user?.id
-  if (!userId) {
-    throw new Error('User not authenticated')
-  }
+  await requireAuth()
 
   await db.delete(corpus).where(eq(corpus.id, id))
   revalidatePath('/')
 }
 
 export async function getCorpus(id: string): Promise<Corpus> {
-  const session = await auth()
-  const userId = session?.user?.id
-  if (!userId) {
-    throw new Error('User not authenticated')
-  }
+  await requireAuth()
 
   const [data] = await db.select().from(corpus).where(eq(corpus.id, id))
   return data
 }
 
 export async function getCorpusAnnotationsCount(corpusId: string): Promise<number> {
-  const session = await auth()
-  const userId = session?.user?.id
-  if (!userId) {
-    throw new Error('User not authenticated')
-  }
+  await requireAuth()
 
   const [result] = await db
     .select({ count: count(annotation.id) })
@@ -79,11 +59,7 @@ export async function getCorpusAnnotationsCount(corpusId: string): Promise<numbe
 }
 
 export async function duplicateCorpus(id: string, newTitle?: string) {
-  const session = await auth()
-  const userId = session?.user?.id
-  if (!userId) {
-    throw new Error('User not authenticated')
-  }
+  await requireAuth()
 
   const [originalCorpus] = await db.select().from(corpus).where(eq(corpus.id, id))
   if (!originalCorpus) {
@@ -244,32 +220,20 @@ export async function duplicateCorpus(id: string, newTitle?: string) {
 }
 
 export async function renameCorpus(id: string, newTitle: string) {
-  const session = await auth()
-  const userId = session?.user?.id
-  if (!userId) {
-    throw new Error('User not authenticated')
-  }
+  await requireAuth()
 
   await db.update(corpus).set({ title: newTitle }).where(eq(corpus.id, id))
   revalidatePath('/')
 }
 
 export async function getCorpusCustomEntities(corpusId: string): Promise<CorpusCustomEntity[]> {
-  const session = await auth()
-  const userId = session?.user?.id
-  if (!userId) {
-    throw new Error('User not authenticated')
-  }
+  await requireAuth()
 
   return db.select().from(corpusCustomEntity).where(eq(corpusCustomEntity.corpusId, corpusId))
 }
 
 export async function addCorpusCustomEntity(corpusId: string, label: string, value: string, datatype: string, customType: 'entity' | 'relation') {
-  const session = await auth()
-  const userId = session?.user?.id
-  if (!userId) {
-    throw new Error('User not authenticated')
-  }
+  await requireAuth()
 
   const [result] = await db.insert(corpusCustomEntity).values({
     corpusId,
@@ -283,11 +247,7 @@ export async function addCorpusCustomEntity(corpusId: string, label: string, val
 }
 
 export async function findOrCreateCorpusCustomEntity(corpusId: string, label: string, value: string, datatype: string, entityType: 'subject' | 'predicate' | 'object') {
-  const session = await auth()
-  const userId = session?.user?.id
-  if (!userId) {
-    throw new Error('User not authenticated')
-  }
+  await requireAuth()
 
   // Map entityType to customType
   const customType: 'entity' | 'relation' = entityType === 'predicate' ? 'relation' : 'entity'
@@ -322,11 +282,7 @@ export async function findOrCreateCorpusCustomEntity(corpusId: string, label: st
 }
 
 export async function updateCorpusCustomEntity(id: string, label: string, value: string, datatype: string, customType: 'entity' | 'relation') {
-  const session = await auth()
-  const userId = session?.user?.id
-  if (!userId) {
-    throw new Error('User not authenticated')
-  }
+  await requireAuth()
 
   await db.update(corpusCustomEntity).set({
     label,
@@ -339,11 +295,7 @@ export async function updateCorpusCustomEntity(id: string, label: string, value:
 }
 
 export async function deleteCorpusCustomEntity(id: string) {
-  const session = await auth()
-  const userId = session?.user?.id
-  if (!userId) {
-    throw new Error('User not authenticated')
-  }
+  await requireAuth()
 
   await db.delete(corpusCustomEntity).where(eq(corpusCustomEntity.id, id))
   revalidatePath(`/corpus/*`)
@@ -360,11 +312,7 @@ function levenshtein(
 }
 
 export async function searchCorpusCustomEntities(corpusId: string, searchTerm: string, entityType: 'subject' | 'predicate' | 'object') {
-  const session = await auth()
-  const userId = session?.user?.id
-  if (!userId) {
-    throw new Error('User not authenticated')
-  }
+  await requireAuth()
 
   // Map entityType to customType
   const customType: 'entity' | 'relation' = entityType === 'predicate' ? 'relation' : 'entity'

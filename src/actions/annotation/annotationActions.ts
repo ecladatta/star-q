@@ -5,9 +5,9 @@ import { eq, getTableColumns } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { revalidatePath } from 'next/cache'
 import { findOrCreateCorpusCustomEntity } from '@/actions/corpus/corpusActions'
-import { auth } from '@/auth'
 import { db } from '@/db/drizzle'
 import { annotation, annotationComponent, corpusCustomEntity, document } from '@/db/schema'
+import { getOptionalUserId, requireAuth } from '@/lib/auth-utils'
 
 async function upsertAnnotationComponent(
   component: AnnotationComponent,
@@ -15,12 +15,6 @@ async function upsertAnnotationComponent(
   corpusId: string,
   existingId?: string,
 ) {
-  const session = await auth()
-  const userId = session?.user?.id
-  if (!userId) {
-    throw new Error('User not authenticated')
-  }
-
   let entityCustomId: string | null = null
   let entityLabel: string | null = null
   let entityValue: string | null = null
@@ -70,11 +64,9 @@ export async function addAnnotation(
   objectAnnotation: AnnotationComponent,
   objectEntity: Entity | null,
 ) {
-  const session = await auth()
-  const userId = session?.user?.id
-  if (!userId) {
-    throw new Error('User not authenticated')
-  }
+  await requireAuth()
+
+  const userId = await getOptionalUserId()
 
   // Get corpus ID from document
   const [doc] = await db.select({ corpusId: document.corpusId }).from(document).where(eq(document.id, documentId))
@@ -110,11 +102,7 @@ export async function updateAnnotation(
   objectAnnotation: AnnotationComponent,
   objectEntity: Entity | null,
 ) {
-  const session = await auth()
-  const userId = session?.user?.id
-  if (!userId) {
-    throw new Error('User not authenticated')
-  }
+  await requireAuth()
 
   const annotationData = await getAnnotationById(id)
 
@@ -129,11 +117,7 @@ export async function updateAnnotation(
 }
 
 export async function getAnnotations(documentId: string): Promise<DocumentAnnotation[]> {
-  const session = await auth()
-  const userId = session?.user?.id
-  if (!userId) {
-    throw new Error('User not authenticated')
-  }
+  await requireAuth()
 
   const component1 = alias(annotationComponent, 'component1')
   const component2 = alias(annotationComponent, 'component2')
@@ -207,11 +191,7 @@ export async function getAnnotations(documentId: string): Promise<DocumentAnnota
 }
 
 export async function getAnnotationById(id: string): Promise<DocumentAnnotation> {
-  const session = await auth()
-  const userId = session?.user?.id
-  if (!userId) {
-    throw new Error('User not authenticated')
-  }
+  await requireAuth()
 
   const component1 = alias(annotationComponent, 'component1')
   const component2 = alias(annotationComponent, 'component2')
@@ -286,11 +266,7 @@ export async function getAnnotationById(id: string): Promise<DocumentAnnotation>
 }
 
 export async function deleteAnnotation(id: string) {
-  const session = await auth()
-  const userId = session?.user?.id
-  if (!userId) {
-    throw new Error('User not authenticated')
-  }
+  await requireAuth()
 
   const annotationData = await getAnnotationById(id)
 
@@ -305,11 +281,7 @@ export async function deleteAnnotation(id: string) {
 }
 
 export async function deleteAnnotations(ids: string[]) {
-  const session = await auth()
-  const userId = session?.user?.id
-  if (!userId) {
-    throw new Error('User not authenticated')
-  }
+  await requireAuth()
 
   if (ids.length === 0) {
     return

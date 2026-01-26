@@ -36,6 +36,22 @@ To install and run the Annotation Tool locally, follow these steps:
 
 7. Open your browser and navigate to `http://localhost:3000`.
 
+## Authentication (Optional)
+
+To enable GitHub authentication, set the following environment variables:
+
+```bash
+AUTH_ENABLED=true
+GITHUB_ID=your_github_client_id
+GITHUB_SECRET=your_github_client_secret
+```
+
+To optionally restrict access to specific users when authentication is enabled, set:
+
+```bash
+ALLOWED_EMAILS=user1@example.com,user2@example.com
+```
+
 ## Deployment in Production
 
 To deploy the Annotation Tool in production, follow these steps:

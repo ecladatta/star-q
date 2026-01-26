@@ -5,16 +5,12 @@ import type { DocumentData } from '@/types/types'
 import { count, eq, getTableColumns } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 
-import { auth } from '@/auth'
 import { db } from '@/db/drizzle'
 import { annotation, document } from '@/db/schema'
+import { requireAuth } from '@/lib/auth-utils'
 
 export async function getDocumentsMetadata(corpusId: string): Promise<DocumentMetadata[]> {
-  const session = await auth()
-  const userId = session?.user?.id
-  if (!userId) {
-    throw new Error('User not authenticated')
-  }
+  await requireAuth()
 
   const { raw, ...documentColumns } = getTableColumns(document)
   return db.select({
@@ -29,33 +25,21 @@ export async function getDocumentsMetadata(corpusId: string): Promise<DocumentMe
 }
 
 export async function getDocument(id: string): Promise<Document> {
-  const session = await auth()
-  const userId = session?.user?.id
-  if (!userId) {
-    throw new Error('User not authenticated')
-  }
+  await requireAuth()
 
   const [data] = await db.select().from(document).where(eq(document.id, id))
   return data
 }
 
 export async function getRawDocumentData(id: string): Promise<DocumentData | null> {
-  const session = await auth()
-  const userId = session?.user?.id
-  if (!userId) {
-    throw new Error('User not authenticated')
-  }
+  await requireAuth()
 
   const [data] = await db.select({ raw: document.raw }).from(document).where(eq(document.id, id))
   return data?.raw || null
 }
 
 export async function markDocumentAsCompleted(id: string, value: Date | null) {
-  const session = await auth()
-  const userId = session?.user?.id
-  if (!userId) {
-    throw new Error('User not authenticated')
-  }
+  await requireAuth()
 
   const [doc] = await db.select({ corpusId: document.corpusId }).from(document).where(eq(document.id, id))
   await db.update(document).set({ completedAt: value }).where(eq(document.id, id))
@@ -66,11 +50,7 @@ export async function markDocumentAsCompleted(id: string, value: Date | null) {
 }
 
 export async function deleteDocument(id: string) {
-  const session = await auth()
-  const userId = session?.user?.id
-  if (!userId) {
-    throw new Error('User not authenticated')
-  }
+  await requireAuth()
 
   await db.delete(document).where(eq(document.id, id))
   revalidatePath('/')

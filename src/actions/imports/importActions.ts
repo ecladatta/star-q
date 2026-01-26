@@ -4,12 +4,15 @@ import { importCorpuswalkerDocuments } from '@/lib/imports/corpuswalkerImport'
 import { importFullCorpusExportDocuments } from '@/lib/imports/fullCorpusImport'
 import { importIritDocuments } from '@/lib/imports/iritImport'
 import { importLabelStudioDocuments } from '@/lib/imports/labelstudioImport'
+import { requireAuth } from '@/lib/auth-utils'
 import { determineImportType, UnsupportedFileTypeError } from '@/lib/utils'
 
 /**
  * Main import function that determines the file type and routes to the appropriate importer
  */
 export async function importDocuments(corpusId: string, formData: FormData) {
+  await requireAuth()
+
   const file = formData.get('file') as File
 
   if (!file) {

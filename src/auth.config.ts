@@ -14,11 +14,19 @@ function isEmailAllowed(email: string | null | undefined): boolean {
   return emailList.includes(email.toLowerCase())
 }
 
+export function isAuthEnabled(): boolean {
+  return process.env.AUTH_ENABLED === 'true'
+}
+
+const providers = isAuthEnabled()
+  ? [GitHub({
+      clientId: process.env.GITHUB_ID,
+      clientSecret: process.env.GITHUB_SECRET,
+    })]
+  : []
+
 export default {
-  providers: [GitHub({
-    clientId: process.env.GITHUB_ID,
-    clientSecret: process.env.GITHUB_SECRET,
-  })],
+  providers,
   callbacks: {
     async signIn({ user }) {
       if (!isEmailAllowed(user.email)) {
@@ -27,6 +35,10 @@ export default {
       return true
     },
     authorized({ auth, request: { method, nextUrl } }) {
+      if (!isAuthEnabled()) {
+        return true
+      }
+
       const isLoggedIn = !!auth?.user
       const isOnAuthApi = nextUrl.pathname.startsWith('/api/auth')
 
@@ -35,7 +47,7 @@ export default {
       }
 
       if (method === 'POST' && !isLoggedIn) {
-        return NextResponse.json('Invalid auth token', { status: 401 })
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
       }
 
       return isLoggedIn

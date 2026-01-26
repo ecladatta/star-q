@@ -1,6 +1,7 @@
 import type { Corpus, Document } from '@/db/schema'
 import Link from 'next/link'
 import { auth, signIn, signOut } from '@/auth'
+import { isAuthEnabled } from '@/auth.config'
 import { Button } from './ui/button'
 
 type HeaderProps = {
@@ -9,7 +10,8 @@ type HeaderProps = {
 }
 
 async function Header({ corpus, document }: HeaderProps) {
-  const session = await auth()
+  const authEnabled = isAuthEnabled()
+  const session = authEnabled ? await auth() : null
 
   return (
     <header className="fixed inset-x-0 top-0 z-10 border-b bg-white">
@@ -52,38 +54,40 @@ async function Header({ corpus, document }: HeaderProps) {
             )}
           </div>
 
-          <div className="flex items-center gap-3">
-            {session
-              ? (
-                  <>
-                    <span className="max-w-[120px] truncate text-sm sm:max-w-[200px]" aria-label={session.user?.name ?? undefined}>
-                      {session.user?.name}
-                      <span className="hidden text-xs text-gray-500 sm:inline">
-                        {session.user?.email && ` (${session.user.email})`}
+          {authEnabled && (
+            <div className="flex items-center gap-3">
+              {session
+                ? (
+                    <>
+                      <span className="max-w-[120px] truncate text-sm sm:max-w-[200px]" aria-label={session.user?.name ?? undefined}>
+                        {session.user?.name}
+                        <span className="hidden text-xs text-gray-500 sm:inline">
+                          {session.user?.email && ` (${session.user.email})`}
+                        </span>
                       </span>
-                    </span>
 
+                      <form
+                        action={async () => {
+                          'use server'
+                          await signOut()
+                        }}
+                      >
+                        <Button variant="outline" type="submit">Sign out</Button>
+                      </form>
+                    </>
+                  )
+                : (
                     <form
                       action={async () => {
                         'use server'
-                        await signOut()
+                        await signIn()
                       }}
                     >
-                      <Button variant="outline" type="submit">Sign out</Button>
+                      <Button variant="outline" type="submit">Sign in</Button>
                     </form>
-                  </>
-                )
-              : (
-                  <form
-                    action={async () => {
-                      'use server'
-                      await signIn()
-                    }}
-                  >
-                    <Button variant="outline" type="submit">Sign in</Button>
-                  </form>
-                )}
-          </div>
+                  )}
+            </div>
+          )}
         </div>
       </nav>
     </header>

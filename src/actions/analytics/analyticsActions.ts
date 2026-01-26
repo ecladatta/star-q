@@ -1,8 +1,8 @@
 'use server'
 import { and, count, countDistinct, desc, eq, isNotNull, sql } from 'drizzle-orm'
-import { auth } from '@/auth'
 import { db } from '@/db/drizzle'
 import { annotation, annotationComponent, corpus, corpusCustomEntity, document } from '@/db/schema'
+import { requireAuth } from '@/lib/auth-utils'
 
 export type CorpusAnalytics = {
   totalDocuments: number
@@ -77,13 +77,9 @@ export type CorpusAnalytics = {
 }
 
 export async function getCorpusAnalytics(corpusId: string): Promise<CorpusAnalytics> {
-  const session = await auth()
-  const userId = session?.user?.id
-  if (!userId) {
-    throw new Error('User not authenticated')
-  }
+  await requireAuth()
 
-  // Verify corpus exists and user has access
+  // Verify corpus exists
   const [corpusData] = await db.select().from(corpus).where(eq(corpus.id, corpusId))
   if (!corpusData) {
     throw new Error('Corpus not found')
