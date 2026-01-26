@@ -188,7 +188,11 @@ export function AnnotationsSidebar({
     }
 
     const newUrl = `${pathname}${params.toString() ? `?${params.toString()}` : ''}`
-    router.replace(newUrl, { scroll: false })
+    const currentUrl = `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`
+
+    if (newUrl !== currentUrl) {
+      router.replace(newUrl, { scroll: false })
+    }
   }, [sortOption, filters, pathname, router, searchParams])
 
   const filteredAndSortedAnnotations = useMemo(() => {
