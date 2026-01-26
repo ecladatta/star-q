@@ -6,6 +6,7 @@ import type {
   SortingState,
   Table as TableType,
 } from '@tanstack/react-table'
+import type { HTMLAttributes } from 'react'
 import type { DocumentMetadata } from '@/actions/corpus/corpusActions'
 import {
   flexRender,
@@ -31,7 +32,7 @@ import {
   Trash2Icon,
 } from 'lucide-react'
 import Link from 'next/link'
-import { HTMLAttributes, useState } from 'react'
+import { useState } from 'react'
 import { toast } from 'sonner'
 import {
   deleteDocument,

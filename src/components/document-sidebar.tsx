@@ -54,7 +54,7 @@ export function DocumentSidebar({ documents, currentDocument }: DocumentSidebarP
   }, [currentDocument?.id])
 
   return (
-    <aside className="fixed left-0 top-0 hidden h-screen w-[280px] border-r bg-background pt-12 lg:block">
+    <aside className="fixed top-0 left-0 hidden h-screen w-[280px] border-r bg-background pt-12 lg:block">
       <div className="flex h-full flex-col">
         <div className="border-b bg-muted/30 p-4">
           <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold">
@@ -64,7 +64,7 @@ export function DocumentSidebar({ documents, currentDocument }: DocumentSidebarP
             </Badge>
           </h2>
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="text"
               placeholder="Search documents..."
@@ -104,7 +104,7 @@ export function DocumentSidebar({ documents, currentDocument }: DocumentSidebarP
                     >
                       <div className="flex items-start justify-between gap-2">
                         <span
-                          className="flex-1 truncate whitespace-normal font-medium"
+                          className="flex-1 truncate font-medium whitespace-normal"
                           title={doc.title}
                         >
                           {originalIndex + 1}

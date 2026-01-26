@@ -120,7 +120,7 @@ export async function CompletionScore({ analyticsPromise }: CompletionScoreProps
         </div>
       </div>
 
-      <div className="pointer-events-none absolute left-0 top-full z-50 mt-2 w-80 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100">
+      <div className="pointer-events-none absolute top-full left-0 z-50 mt-2 w-80 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100">
         <div className="rounded-lg border bg-popover p-4 text-popover-foreground shadow-lg">
           <div className="mb-2 text-sm font-semibold">Score Breakdown:</div>
           <div className="space-y-2 text-xs">

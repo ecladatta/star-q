@@ -1,6 +1,6 @@
+import type { KeyboardEvent, MouseEvent } from 'react'
 import { cn } from '@/lib/utils'
 import Mark from './mark'
-import { KeyboardEvent, MouseEvent } from 'react'
 
 function Split(props: {
   start: number

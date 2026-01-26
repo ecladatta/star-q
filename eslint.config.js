@@ -1,7 +1,7 @@
 import antfu from '@antfu/eslint-config'
 import nextPlugin from '@next/eslint-plugin-next'
+import eslintPluginBetterTailwindcss from 'eslint-plugin-better-tailwindcss'
 import jsxA11y from 'eslint-plugin-jsx-a11y'
-import tailwind from 'eslint-plugin-tailwindcss'
 
 export default antfu(
   {
@@ -21,8 +21,26 @@ export default antfu(
 
     ignores: ['migrations/**/*', 'next-env.d.ts', 'src/components/ui/*'],
   },
-  ...tailwind.configs['flat/recommended'],
   jsxA11y.flatConfigs.recommended,
+  {
+    plugins: {
+      'better-tailwindcss': eslintPluginBetterTailwindcss,
+    },
+    rules: {
+      ...eslintPluginBetterTailwindcss.configs['recommended-warn'].rules,
+      ...eslintPluginBetterTailwindcss.configs['recommended-error'].rules,
+      'better-tailwindcss/enforce-consistent-line-wrapping': 'warn',
+      'better-tailwindcss/enforce-consistent-class-order': 'warn',
+      'better-tailwindcss/no-unknown-classes': ['error', {
+        ignore: ['toaster', 'typography', 'typography-disabled'],
+      }],
+    },
+    settings: {
+      'better-tailwindcss': {
+        entryPoint: './src/app/globals.css',
+      },
+    },
+  },
   {
     plugins: {
       '@next/next': nextPlugin,
@@ -30,6 +48,7 @@ export default antfu(
     rules: {
       ...nextPlugin.configs.recommended.rules,
       ...nextPlugin.configs['core-web-vitals'].rules,
+      'better-tailwindcss/enforce-consistent-line-wrapping': 'off',
     },
   },
   {
@@ -42,7 +61,8 @@ export default antfu(
   },
   {
     settings: {
-      'tailwindcss': {
+      'better-tailwindcss': {
+        entryPoint: 'src/app/globals.css',
         callees: ['cn', 'clsx'],
       },
       'jsx-a11y': {

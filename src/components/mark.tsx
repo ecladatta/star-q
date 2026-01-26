@@ -1,5 +1,5 @@
+import type { KeyboardEvent, MouseEvent } from 'react'
 import { cn } from '@/lib/utils'
-import { KeyboardEvent, MouseEvent } from 'react'
 
 export type MarkProps = {
   content: string
@@ -39,7 +39,7 @@ function Mark(props: MarkProps) {
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions
     <span
       className={cn(
-        'cursor-pointer select-text whitespace-pre-wrap px-1 transition-opacity duration-300',
+        'cursor-pointer px-1 whitespace-pre-wrap transition-opacity duration-300 select-text',
         props.isCurrentAnnotation
           ? 'border-2 border-black/20 opacity-100 shadow-md'
           : 'opacity-70',
@@ -57,7 +57,7 @@ function Mark(props: MarkProps) {
     >
       {props.content}
       {props.tag && (
-        <span className="ml-1.5 select-none text-[0.7em] font-medium">{props.tag}</span>
+        <span className="ml-1.5 text-[0.7em] font-medium select-none">{props.tag}</span>
       )}
     </span>
   )

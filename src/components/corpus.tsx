@@ -6,6 +6,7 @@ import type {
   SortingState,
   Table as TableType,
 } from '@tanstack/react-table'
+import type { ChangeEvent, HTMLAttributes } from 'react'
 import type { Corpus } from '@/db/schema'
 import {
   flexRender,
@@ -29,7 +30,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ChangeEvent, HTMLAttributes, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { addCorpus } from '@/actions/corpus/corpusActions'
 import { importDocuments } from '@/actions/imports/importActions'
 import { CorpusActions } from '@/components/corpus-actions'
@@ -561,7 +562,7 @@ export function Corpuses({ corpuses }: CorpusesProps) {
               </div>
             )}
             {!isImporting && uploadError && (
-              <div className="mb-2 max-h-48 overflow-y-auto rounded border border-red-200 bg-red-50 p-2">
+              <div className="mb-2 max-h-48 overflow-y-auto rounded-sm border border-red-200 bg-red-50 p-2">
                 <p className="whitespace-pre-line text-red-500">{uploadError}</p>
               </div>
             )}

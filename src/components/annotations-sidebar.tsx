@@ -391,7 +391,7 @@ export function AnnotationsSidebar({
 
   return (
     <>
-      <aside className="fixed right-0 top-0 hidden h-screen w-[280px] border-l bg-background pt-12 md:block">
+      <aside className="fixed top-0 right-0 hidden h-screen w-[280px] border-l bg-background pt-12 md:block">
         <div className="flex h-full flex-col">
           <div className="border-b bg-muted/30 p-4">
             <h2 className="mb-2 flex items-center gap-2 text-lg font-semibold">
@@ -431,7 +431,7 @@ export function AnnotationsSidebar({
 
               {/* Sort and Filter controls */}
               <div className="flex items-center gap-2">
-                <Label className="shrink-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <Label className="shrink-0 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                   Sort by
                 </Label>
                 <DropdownMenu>
@@ -493,7 +493,7 @@ export function AnnotationsSidebar({
 
                       <div className="space-y-3">
                         <div>
-                          <Label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          <Label className="mb-2 block text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                             Annotation Type
                           </Label>
                           <div className="space-y-2">
@@ -550,7 +550,7 @@ export function AnnotationsSidebar({
                         <Separator />
 
                         <div>
-                          <Label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          <Label className="mb-2 block text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                             Entity Assignment
                           </Label>
                           <div className="space-y-3">
@@ -668,8 +668,8 @@ export function AnnotationsSidebar({
 
           <div className={`relative min-h-0 flex-1 overflow-visible ${hasActiveFilters ? 'border border-blue-500/30' : ''}`}>
             {hasActiveFilters && (
-              <div className="absolute left-1/2 top-0 z-20 -translate-x-1/2 -translate-y-4">
-                <span className="rounded border border-blue-100 bg-blue-50 px-2 py-[2px] text-[10px] font-medium text-blue-600 shadow-xs">
+              <div className="absolute top-0 left-1/2 z-20 -translate-x-1/2 -translate-y-4">
+                <span className="rounded-sm border border-blue-100 bg-blue-50 px-2 py-[2px] text-[10px] font-medium text-blue-600 shadow-xs">
                   Filtered
                 </span>
               </div>
@@ -739,7 +739,7 @@ export function AnnotationsSidebar({
                                     </Badge>
                                   )}
                                 </div>
-                                <div className="overflow-hidden text-sm leading-relaxed wrap-anywhere">
+                                <div className="overflow-hidden text-sm/relaxed wrap-anywhere">
                                   <span className="font-semibold text-orange-600">
                                     {ann.subject.annotationValue}
                                   </span>
@@ -764,7 +764,7 @@ export function AnnotationsSidebar({
 
                               {/* Selection checkbox - visible on hover or when selected */}
                               <div
-                                className={`absolute right-2 top-2 transition-opacity ${
+                                className={`absolute top-2 right-2 transition-opacity ${
                                   isChecked || someSelected
                                     ? 'opacity-100'
                                     : 'opacity-0 group-hover:opacity-100'

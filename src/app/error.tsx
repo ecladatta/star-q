@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect } from 'react'
 import { AlertCircle, RefreshCcw } from 'lucide-react'
+import { useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -27,8 +27,8 @@ export default function Error({
     <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
-            <AlertCircle className="h-6 w-6 text-destructive" />
+          <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-destructive/10">
+            <AlertCircle className="size-6 text-destructive" />
           </div>
           <CardTitle className="text-2xl">Something went wrong!</CardTitle>
           <CardDescription>
@@ -51,7 +51,7 @@ export default function Error({
             className="w-full"
             variant="default"
           >
-            <RefreshCcw className="h-4 w-4" />
+            <RefreshCcw className="size-4" />
             Try again
           </Button>
           <Button

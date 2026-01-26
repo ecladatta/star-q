@@ -1,5 +1,6 @@
 'use client'
 
+import type { ChangeEvent, ReactNode } from 'react'
 import type { Corpus } from '@/db/schema'
 import {
   BarChart3Icon,
@@ -14,7 +15,7 @@ import {
   Trash2Icon,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { ChangeEvent, ReactNode, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { deleteCorpus, duplicateCorpus, renameCorpus } from '@/actions/corpus/corpusActions'
 import { importDocuments } from '@/actions/imports/importActions'
 import { CorpusSettingsDialog } from '@/components/corpus-settings-dialog'
@@ -253,7 +254,7 @@ export function CorpusActions({ corpus, showOpenAction = true, triggerButton }: 
               </div>
             )}
             {!isImporting && uploadError && (
-              <div className="mb-2 max-h-48 overflow-y-auto rounded border border-red-200 bg-red-50 p-2">
+              <div className="mb-2 max-h-48 overflow-y-auto rounded-sm border border-red-200 bg-red-50 p-2">
                 <p className="whitespace-pre-line text-red-500">{uploadError}</p>
               </div>
             )}

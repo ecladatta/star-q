@@ -268,15 +268,15 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
                             <div className="space-y-2 text-sm">
                               <div className="flex justify-between">
                                 <span>Mark as Subject</span>
-                                <kbd className="rounded bg-muted px-2 py-1 text-xs">S</kbd>
+                                <kbd className="rounded-sm bg-muted px-2 py-1 text-xs">S</kbd>
                               </div>
                               <div className="flex justify-between">
                                 <span>Mark as Predicate</span>
-                                <kbd className="rounded bg-muted px-2 py-1 text-xs">P</kbd>
+                                <kbd className="rounded-sm bg-muted px-2 py-1 text-xs">P</kbd>
                               </div>
                               <div className="flex justify-between">
                                 <span>Mark as Object</span>
-                                <kbd className="rounded bg-muted px-2 py-1 text-xs">O</kbd>
+                                <kbd className="rounded-sm bg-muted px-2 py-1 text-xs">O</kbd>
                               </div>
                             </div>
                           </div>
@@ -285,19 +285,19 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
                             <div className="space-y-2 text-sm">
                               <div className="flex justify-between">
                                 <span>Edit annotation (when popover visible)</span>
-                                <kbd className="rounded bg-muted px-2 py-1 text-xs">E</kbd>
+                                <kbd className="rounded-sm bg-muted px-2 py-1 text-xs">E</kbd>
                               </div>
                               <div className="flex justify-between">
                                 <span>Clone annotation (when popover visible)</span>
-                                <kbd className="rounded bg-muted px-2 py-1 text-xs">C</kbd>
+                                <kbd className="rounded-sm bg-muted px-2 py-1 text-xs">C</kbd>
                               </div>
                               <div className="flex justify-between">
                                 <span>Toggle annotations visibility</span>
-                                <kbd className="rounded bg-muted px-2 py-1 text-xs">H</kbd>
+                                <kbd className="rounded-sm bg-muted px-2 py-1 text-xs">H</kbd>
                               </div>
                               <div className="flex justify-between">
                                 <span>Clear/Cancel</span>
-                                <kbd className="rounded bg-muted px-2 py-1 text-xs">Esc</kbd>
+                                <kbd className="rounded-sm bg-muted px-2 py-1 text-xs">Esc</kbd>
                               </div>
                             </div>
                           </div>
@@ -306,11 +306,11 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
                             <div className="space-y-2 text-sm">
                               <div className="flex justify-between">
                                 <span>Clone annotation</span>
-                                <kbd className="rounded bg-muted px-2 py-1 text-xs">C</kbd>
+                                <kbd className="rounded-sm bg-muted px-2 py-1 text-xs">C</kbd>
                               </div>
                               <div className="flex justify-between">
                                 <span>Save annotation</span>
-                                <kbd className="rounded bg-muted px-2 py-1 text-xs">
+                                <kbd className="rounded-sm bg-muted px-2 py-1 text-xs">
                                   {ctrlKey}
                                   +S
                                 </kbd>

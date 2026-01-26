@@ -1,8 +1,8 @@
+import type { ReactNode } from 'react'
 import type { Corpus } from '@/db/schema'
 import { getCorpus } from '@/actions/corpus/corpusActions'
 import { getDocument } from '@/actions/document/documentActions'
 import Header from '@/components/header'
-import { ReactNode } from 'react'
 
 export default async function DocumentLayout({
   children,
