@@ -45,7 +45,7 @@ export function DocumentHeader({ corpus, document, documentData }: DocumentHeade
         <Button
           onClick={toggleCompletion}
           disabled={isPending}
-          variant={isCompleted ? 'default' : 'outline-solid'}
+          variant={isCompleted ? 'default' : 'outline'}
           size="sm"
           className="w-full gap-2 self-start sm:w-auto sm:self-auto"
         >
