@@ -1,5 +1,4 @@
 import type { CorpusAnalytics } from '@/actions/analytics/analyticsActions'
-import React from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
 
 type CompletionScoreProps = {

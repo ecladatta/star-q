@@ -2,14 +2,22 @@
   "compilerOptions": {
     "incremental": true,
     "target": "ES2017",
-    "jsx": "preserve",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "jsx": "react-jsx",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
     "baseUrl": ".",
     "module": "esnext",
     "moduleResolution": "node",
     "paths": {
-      "@/*": ["./src/*"],
-      "react": ["./node_modules/@types/react"]
+      "@/*": [
+        "./src/*"
+      ],
+      "react": [
+        "./node_modules/@types/react"
+      ]
     },
     "resolveJsonModule": true,
     "allowJs": true,
@@ -33,7 +41,10 @@
     "next.config.ts",
     "**/*.ts",
     "**/*.tsx",
-    ".next/types/**/*.ts"
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules"
+  ]
 }

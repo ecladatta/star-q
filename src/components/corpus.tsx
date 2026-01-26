@@ -30,7 +30,6 @@ import {
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useRef, useState } from 'react'
-import * as React from 'react'
 import { addCorpus } from '@/actions/corpus/corpusActions'
 import { importDocuments } from '@/actions/imports/importActions'
 import { CorpusActions } from '@/components/corpus-actions'

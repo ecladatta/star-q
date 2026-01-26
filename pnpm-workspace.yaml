@@ -1,0 +1,8 @@
+shellEmulator: true
+
+trustPolicy: no-downgrade
+
+onlyBuiltDependencies:
+  - esbuild
+  - sharp
+  - wtf_wikipedia

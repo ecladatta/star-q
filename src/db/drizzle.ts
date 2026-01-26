@@ -1,7 +1,7 @@
 import { config } from 'dotenv'
 import { drizzle } from 'drizzle-orm/node-postgres'
 
-config({ path: '.env' })
+config({ path: '.env', quiet: true })
 
 export const db = drizzle({
   connection: {

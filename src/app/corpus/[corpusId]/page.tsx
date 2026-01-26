@@ -1,6 +1,6 @@
 import { MoreVerticalIcon } from 'lucide-react'
 import Link from 'next/link'
-import React, { Suspense } from 'react'
+import { Suspense } from 'react'
 import { getCorpusAnalytics } from '@/actions/analytics/analyticsActions'
 import { getCorpus, getCorpusAnnotationsCount } from '@/actions/corpus/corpusActions'
 import { getDocumentsMetadata } from '@/actions/document/documentActions'

@@ -1,7 +1,6 @@
 import type { CorpusAnalytics } from '@/actions/analytics/analyticsActions'
 import { AlertTriangleIcon, BarChart3Icon, FileTextIcon, TableIcon } from 'lucide-react'
 import Link from 'next/link'
-import React from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'

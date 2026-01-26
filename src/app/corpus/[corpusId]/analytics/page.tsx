@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import React, { Suspense } from 'react'
+import { Suspense } from 'react'
 import { getCorpusAnalytics } from '@/actions/analytics/analyticsActions'
 import { getCorpus } from '@/actions/corpus/corpusActions'
 import { AnalyticsContent } from '@/components/analytics-content'
