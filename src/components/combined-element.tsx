@@ -257,7 +257,7 @@ function CombinedElement({
                         key={cellIndex}
                         role="button"
                         tabIndex={0}
-                        className={cn('relative select-text p-3 font-medium transition-all duration-200', isHovered ? '!bg-blue-50 shadow-[inset_0_0_0_1px_rgb(147_197_253)]' : 'hover:!bg-blue-50 hover:shadow-[inset_0_0_0_1px_rgb(147_197_253)]')}
+                        className={cn('relative select-text p-3 font-medium transition-all duration-200', isHovered ? 'bg-blue-50! shadow-[inset_0_0_0_1px_rgb(147_197_253)]' : 'hover:bg-blue-50! hover:shadow-[inset_0_0_0_1px_rgb(147_197_253)]')}
                         onMouseEnter={() => setHoveredCell({ row: 0, cell: cellIndex })}
                         onMouseLeave={() => setHoveredCell(null)}
                         onMouseUp={() => handleCellMouseUp(0, cellIndex)}
@@ -294,7 +294,7 @@ function CombinedElement({
                         key={cellIndex}
                         role="button"
                         tabIndex={0}
-                        className={cn('relative select-text p-3 transition-all duration-200', isHovered ? '!bg-blue-50 shadow-[inset_0_0_0_1px_rgb(147_197_253)]' : 'hover:!bg-blue-50 hover:shadow-[inset_0_0_0_1px_rgb(147_197_253)]')}
+                        className={cn('relative select-text p-3 transition-all duration-200', isHovered ? 'bg-blue-50! shadow-[inset_0_0_0_1px_rgb(147_197_253)]' : 'hover:bg-blue-50! hover:shadow-[inset_0_0_0_1px_rgb(147_197_253)]')}
                         onMouseEnter={() => setHoveredCell({ row: actualRowIndex, cell: cellIndex })}
                         onMouseLeave={() => setHoveredCell(null)}
                         onMouseUp={() => handleCellMouseUp(actualRowIndex, cellIndex)}

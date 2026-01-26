@@ -98,7 +98,7 @@ export function DocumentSidebar({ documents, currentDocument }: DocumentSidebarP
                         'block w-full rounded-lg border p-3 text-left transition-all',
                         isSelected
                           ? 'border-blue-500 bg-blue-50 shadow-md ring-2 ring-blue-500/20'
-                          : 'border-border bg-card hover:border-blue-300 hover:shadow-sm',
+                          : 'border-border bg-card hover:border-blue-300 hover:shadow-xs',
                         isLoading && 'opacity-70',
                       )}
                     >

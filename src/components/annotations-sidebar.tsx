@@ -411,7 +411,7 @@ export function AnnotationsSidebar({
 
             <div className="space-y-3">
               {/* Highlight toggle */}
-              <div className="flex items-center gap-2 rounded-lg bg-background p-2 shadow-sm">
+              <div className="flex items-center gap-2 rounded-lg bg-background p-2 shadow-xs">
                 <Checkbox
                   id="show-annotations"
                   checked={showAnnotations}
@@ -622,7 +622,7 @@ export function AnnotationsSidebar({
               </div>
 
               {/* Selection controls */}
-              <div className="flex items-center gap-2 rounded-lg bg-background p-2 shadow-sm">
+              <div className="flex items-center gap-2 rounded-lg bg-background p-2 shadow-xs">
                 <Checkbox
                   id="select-all"
                   checked={allSelected}
@@ -669,7 +669,7 @@ export function AnnotationsSidebar({
           <div className={`relative min-h-0 flex-1 overflow-visible ${hasActiveFilters ? 'border border-blue-500/30' : ''}`}>
             {hasActiveFilters && (
               <div className="absolute left-1/2 top-0 z-20 -translate-x-1/2 -translate-y-4">
-                <span className="rounded border border-blue-100 bg-blue-50 px-2 py-[2px] text-[10px] font-medium text-blue-600 shadow-sm">
+                <span className="rounded border border-blue-100 bg-blue-50 px-2 py-[2px] text-[10px] font-medium text-blue-600 shadow-xs">
                   Filtered
                 </span>
               </div>
@@ -704,7 +704,7 @@ export function AnnotationsSidebar({
                                 className={`w-full rounded-lg border p-3 text-left transition-all ${
                                   isSelected
                                     ? 'border-blue-500 bg-blue-50 shadow-md ring-2 ring-blue-500/20'
-                                    : 'border-border bg-card hover:border-blue-300 hover:shadow-sm'
+                                    : 'border-border bg-card hover:border-blue-300 hover:shadow-xs'
                                 }`}
                                 onClick={() => onAnnotationClick(ann)}
                               >
@@ -739,7 +739,7 @@ export function AnnotationsSidebar({
                                     </Badge>
                                   )}
                                 </div>
-                                <div className="overflow-hidden text-sm leading-relaxed [overflow-wrap:anywhere]">
+                                <div className="overflow-hidden text-sm leading-relaxed wrap-anywhere">
                                   <span className="font-semibold text-orange-600">
                                     {ann.subject.annotationValue}
                                   </span>
@@ -775,7 +775,7 @@ export function AnnotationsSidebar({
                                   onCheckedChange={checked =>
                                     onAnnotationSelect(ann.id, checked === true)}
                                   onClick={e => e.stopPropagation()}
-                                  className="bg-background shadow-sm"
+                                  className="bg-background shadow-xs"
                                 />
                               </div>
                             </div>
