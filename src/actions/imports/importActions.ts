@@ -1,10 +1,10 @@
 'use server'
 import { revalidatePath } from 'next/cache'
+import { requireAuth } from '@/lib/auth-utils'
 import { importCorpuswalkerDocuments } from '@/lib/imports/corpuswalkerImport'
 import { importFullCorpusExportDocuments } from '@/lib/imports/fullCorpusImport'
 import { importIritDocuments } from '@/lib/imports/iritImport'
 import { importLabelStudioDocuments } from '@/lib/imports/labelstudioImport'
-import { requireAuth } from '@/lib/auth-utils'
 import { determineImportType, UnsupportedFileTypeError } from '@/lib/utils'
 
 /**
