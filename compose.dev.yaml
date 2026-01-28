@@ -22,7 +22,7 @@ services:
     image: postgres:17
     restart: unless-stopped
     ports:
-      - ${POSTGRES_PORT:-5432}
+      - ${POSTGRES_PORT:-5432}:${POSTGRES_PORT:-5432}
     environment:
       PGPORT: ${POSTGRES_PORT:-5432}
       POSTGRES_USER: ${POSTGRES_USER}
