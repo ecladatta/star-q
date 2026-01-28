@@ -23,7 +23,7 @@ export async function importLabelStudioDocuments(
     return { ids: importedDocumentsIds, errors }
   }
 
-  for (const item of parsedJson) {
+  for (const [index, item] of parsedJson.entries()) {
     try {
       // Convert Label Studio format to Corpus Walker format
       const raw: DocumentData = {
@@ -52,6 +52,7 @@ export async function importLabelStudioDocuments(
         corpusId,
         title: item.id,
         raw,
+        order: index + 1,
       }).returning({ id: document.id })
 
       importedDocumentsIds.push(documentId.id)

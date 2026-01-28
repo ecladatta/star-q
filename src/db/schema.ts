@@ -114,6 +114,7 @@ export const document = pgTable('document', {
   title: text('title').notNull(),
   raw: jsonb('raw').$type<DocumentData>().notNull(),
   completedAt: timestamp('completed_at'),
+  order: integer('order').notNull(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 })

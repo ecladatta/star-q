@@ -14,7 +14,7 @@ export async function importCorpuswalkerDocuments(
   const errors: string[] = []
   const lines = content.split('\n').filter(line => line.trim() !== '')
 
-  for (const line of lines) {
+  for (const [index, line] of lines.entries()) {
     try {
       const parsedJson = JSON.parse(line) as DocumentData
       if (!('_index' in parsedJson)) {
@@ -26,6 +26,7 @@ export async function importCorpuswalkerDocuments(
         corpusId,
         title: parsedJson._source.identificationMetadata.title || parsedJson._source.identificationMetadata.id,
         raw: parsedJson as DocumentData,
+        order: index + 1,
       }).returning({ id: document.id })
 
       importedDocumentsIds.push(documentId.id)

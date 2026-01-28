@@ -92,7 +92,7 @@ export async function duplicateCorpus(id: string, newTitle?: string) {
     })
   }
 
-  const documents = await db.select().from(document).where(eq(document.corpusId, id))
+  const documents = await db.select().from(document).where(eq(document.corpusId, id)).orderBy(document.order)
 
   // Create a mapping from old document IDs to new document IDs to link annotations
   const documentIdMap = new Map<string, string>()
@@ -112,6 +112,7 @@ export async function duplicateCorpus(id: string, newTitle?: string) {
             corpusId: newCorpus.id,
             title: doc.title,
             raw: doc.raw,
+            order: doc.order,
           })),
         )
         .returning()

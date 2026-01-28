@@ -313,7 +313,7 @@ async function processTablesMetadataFile(
 /**
  * Creates a document record in the database.
  */
-async function createDocumentInDb(docData: ProcessedDocument): Promise<string> {
+async function createDocumentInDb(docData: ProcessedDocument, order: number): Promise<string> {
   const textsForDb = docData.paragraphs.map((paragraph, index) => {
     const precedingTextLength = docData.paragraphs
       .slice(0, index)
@@ -356,6 +356,7 @@ async function createDocumentInDb(docData: ProcessedDocument): Promise<string> {
     corpusId: docData.corpusId,
     title: docData.title,
     raw: documentPayload,
+    order,
   }).returning({ id: document.id })
 
   if (!insertedDocument || !insertedDocument.id) {
@@ -734,7 +735,7 @@ export async function importIritDocuments(
     await processTablesMetadataFile(tablesMetadataFile, documentsByUrl, corpusId, extractedTableFiles)
   }
 
-  for (const [, docData] of documentsByUrl.entries()) {
+  for (const [index, [, docData]] of Array.from(documentsByUrl.entries()).entries()) {
     if (docData.paragraphs.length === 0 && docData.tables.length === 0) {
       // eslint-disable-next-line no-console
       console.log(`Skipping document ${docData.title} (URL: ${docData.url}) as it has no content.`)
@@ -742,7 +743,7 @@ export async function importIritDocuments(
     }
 
     try {
-      const documentId = await createDocumentInDb(docData)
+      const documentId = await createDocumentInDb(docData, index + 1)
       importedDocumentIds.push(documentId)
       await createAnnotationsInDb(docData, documentId)
     } catch (error) {
