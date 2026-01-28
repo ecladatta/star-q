@@ -99,6 +99,7 @@ export type DocumentExport = {
   createdAt: string
   updatedAt: string | null
   completedAt: string | null
+  order: number
   raw: DocumentData | null
   annotations: CurrentAnnotation[]
 }

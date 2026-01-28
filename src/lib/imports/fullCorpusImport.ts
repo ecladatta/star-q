@@ -53,7 +53,7 @@ export async function importFullCorpusExportDocuments(
           createdAt: baseCreatedAt,
           updatedAt: doc.updatedAt ? new Date(doc.updatedAt) : new Date(),
           completedAt: doc.completedAt ? new Date(doc.completedAt) : null,
-          order: i + 1,
+          order: doc.order ?? (i + 1),
         }).returning({ id: document.id })
 
         // Insert annotations for this document

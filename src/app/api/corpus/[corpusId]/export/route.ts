@@ -13,7 +13,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   const corpusData: ExportModel = {
     exportMeta: {
-      version: '1.0',
+      version: '1.1',
       type: 'full-corpus-export',
     },
     id: corpus.id,
@@ -30,6 +30,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
         createdAt: document.createdAt.toISOString(),
         updatedAt: document.updatedAt ? document.updatedAt.toISOString() : null,
         completedAt: document.completedAt ? document.completedAt.toISOString() : null,
+        order: document.order,
         raw: rawContent,
         annotations: docAnnotations.map((annotation: any) => ({
           id: annotation.id,
