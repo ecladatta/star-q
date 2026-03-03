@@ -106,6 +106,10 @@ export async function updateAnnotation(
 
   const annotationData = await getAnnotationById(id)
 
+  if (!annotationData.documentId) {
+    throw new Error('Document ID not found in annotation')
+  }
+
   await Promise.all([
     upsertAnnotationComponent(subjectAnnotation, subjectEntity, annotationData.corpusId!, annotationData.subject.id),
     upsertAnnotationComponent(predicateAnnotation, predicateEntity, annotationData.corpusId!, annotationData.predicate.id),
