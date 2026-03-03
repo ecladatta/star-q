@@ -370,6 +370,17 @@ const columns: ColumnDef<DocumentMetadata, any>[] = [
     },
   },
   {
+    accessorKey: 'updatedAt',
+    header: ({ column }) => (
+      <DataTableColumnHeader column={column} title="Last Updated" />
+    ),
+    cell: ({ row }) => (
+      <div suppressHydrationWarning>
+        {row.original.updatedAt.toLocaleString()}
+      </div>
+    ),
+  },
+  {
     accessorKey: 'actions',
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Actions" />
