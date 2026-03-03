@@ -1,7 +1,7 @@
 'use server'
 import type { AnnotationComponent } from '@/db/schema'
 import type { DocumentAnnotation, Entity, EntityType } from '@/types/types'
-import { eq, getTableColumns } from 'drizzle-orm'
+import { eq, getTableColumns, inArray } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { revalidatePath } from 'next/cache'
 import { findOrCreateCorpusCustomEntity } from '@/actions/corpus/corpusActions'
@@ -88,6 +88,8 @@ export async function addAnnotation(
     userId,
   }).returning({ id: annotation.id })
 
+  await db.update(document).set({ updatedAt: new Date() }).where(eq(document.id, documentId))
+
   revalidatePath(`/document/${documentId}`)
 
   return annotationId.id
@@ -115,6 +117,7 @@ export async function updateAnnotation(
     upsertAnnotationComponent(predicateAnnotation, predicateEntity, annotationData.corpusId!, annotationData.predicate.id),
     upsertAnnotationComponent(objectAnnotation, objectEntity, annotationData.corpusId!, annotationData.object.id),
     db.update(annotation).set({ updatedAt: new Date() }).where(eq(annotation.id, id)),
+    db.update(document).set({ updatedAt: new Date() }).where(eq(document.id, annotationData.documentId)),
   ])
 
   revalidatePath(`/document/${annotationData.documentId}`)
@@ -281,6 +284,10 @@ export async function deleteAnnotation(id: string) {
     await trx.delete(annotationComponent).where(eq(annotationComponent.id, annotationData.object.id))
   })
 
+  if (annotationData.documentId) {
+    await db.update(document).set({ updatedAt: new Date() }).where(eq(document.id, annotationData.documentId))
+  }
+
   revalidatePath(`/document/${annotationData.documentId}`)
 }
 
@@ -293,6 +300,11 @@ export async function deleteAnnotations(ids: string[]) {
 
   // Get all annotation data first
   const annotationsData = await Promise.all(ids.map(id => getAnnotationById(id)))
+  const uniqueDocumentIds = [...new Set(
+    annotationsData
+      .map(data => data.documentId)
+      .filter((id): id is string => id !== null && id !== undefined),
+  )]
 
   await db.transaction(async (trx) => {
     // Delete all annotations
@@ -306,10 +318,14 @@ export async function deleteAnnotations(ids: string[]) {
       await trx.delete(annotationComponent).where(eq(annotationComponent.id, annotationData.predicate.id))
       await trx.delete(annotationComponent).where(eq(annotationComponent.id, annotationData.object.id))
     }
+
+    await trx
+      .update(document)
+      .set({ updatedAt: new Date() })
+      .where(inArray(document.id, uniqueDocumentIds))
   })
 
   // Revalidate all unique document pages
-  const uniqueDocumentIds = [...new Set(annotationsData.map(data => data.documentId))]
   for (const documentId of uniqueDocumentIds) {
     revalidatePath(`/document/${documentId}`)
   }
