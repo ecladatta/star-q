@@ -308,9 +308,7 @@ export async function deleteAnnotations(ids: string[]) {
 
   await db.transaction(async (trx) => {
     // Delete all annotations
-    for (const id of ids) {
-      await trx.delete(annotation).where(eq(annotation.id, id))
-    }
+    await trx.delete(annotation).where(inArray(annotation.id, ids))
 
     // Delete all associated components
     for (const annotationData of annotationsData) {
