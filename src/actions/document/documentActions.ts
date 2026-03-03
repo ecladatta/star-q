@@ -2,7 +2,7 @@
 import type { DocumentMetadata } from '@/actions/corpus/corpusActions'
 import type { Document } from '@/db/schema'
 import type { DocumentData } from '@/types/types'
-import { count, eq, getTableColumns } from 'drizzle-orm'
+import { count, eq, getTableColumns, inArray } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 
 import { db } from '@/db/drizzle'
@@ -38,22 +38,52 @@ export async function getRawDocumentData(id: string): Promise<DocumentData | nul
   return data?.raw || null
 }
 
-export async function markDocumentAsCompleted(id: string, value: Date | null) {
+export async function markDocumentsAsCompleted(ids: string[], value: Date | null) {
   await requireAuth()
 
-  const [doc] = await db.select({ corpusId: document.corpusId }).from(document).where(eq(document.id, id))
-  await db.update(document).set({ completedAt: value }).where(eq(document.id, id))
-  revalidatePath(`/document/${id}`)
-  if (doc?.corpusId) {
-    revalidatePath(`/corpus/${doc.corpusId}`)
-  }
+  const docs = await db
+    .select({ corpusId: document.corpusId, id: document.id })
+    .from(document)
+    .where(inArray(document.id, ids))
+
+  if (docs.length === 0)
+    return
+
+  await db.update(document).set({ completedAt: value }).where(inArray(document.id, ids))
+
+  const uniqueCorpusIds = Array.from(
+    new Set(docs.map(d => d.corpusId).filter(Boolean)),
+  ) as string[]
+
+  ids.forEach(id => revalidatePath(`/document/${id}`))
+  uniqueCorpusIds.forEach(id => revalidatePath(`/corpus/${id}`))
 }
 
-export async function deleteDocument(id: string) {
+export async function deleteDocuments(ids: string[]) {
   await requireAuth()
 
-  await db.delete(document).where(eq(document.id, id))
-  await db.update(corpus).set({ updatedAt: new Date() }).where(eq(corpus.id, document.corpusId))
+  const docs = await db
+    .select({ corpusId: document.corpusId, id: document.id })
+    .from(document)
+    .where(inArray(document.id, ids))
+
+  if (docs.length === 0)
+    return
+
+  const uniqueCorpusIds = Array.from(
+    new Set(docs.map(d => d.corpusId).filter(Boolean)),
+  ) as string[]
+
+  await db.delete(document).where(inArray(document.id, ids))
+
+  if (uniqueCorpusIds.length) {
+    await db
+      .update(corpus)
+      .set({ updatedAt: new Date() })
+      .where(inArray(corpus.id, uniqueCorpusIds))
+  }
 
   revalidatePath('/')
+  ids.forEach(id => revalidatePath(`/document/${id}`))
+  uniqueCorpusIds.forEach(id => revalidatePath(`/corpus/${id}`))
 }

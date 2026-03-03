@@ -5,7 +5,7 @@ import { Check, Circle } from 'lucide-react'
 import Link from 'next/link'
 import { Fragment, useState, useTransition } from 'react'
 import { toast } from 'sonner'
-import { markDocumentAsCompleted } from '@/actions/document/documentActions'
+import { markDocumentsAsCompleted } from '@/actions/document/documentActions'
 import { Button } from '@/components/ui/button'
 
 type DocumentHeaderProps = {
@@ -22,7 +22,7 @@ export function DocumentHeader({ corpus, document, documentData }: DocumentHeade
     startTransition(async () => {
       try {
         const newValue = isCompleted ? null : new Date()
-        await markDocumentAsCompleted(document.id, newValue)
+        await markDocumentsAsCompleted([document.id], newValue)
         setIsCompleted(!isCompleted)
         toast.success(isCompleted ? 'Document marked as incomplete' : 'Document marked as complete')
       } catch (error) {

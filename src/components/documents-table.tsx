@@ -32,12 +32,12 @@ import {
   Trash2Icon,
 } from 'lucide-react'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import {
-  deleteDocument,
+  deleteDocuments,
   getRawDocumentData,
-  markDocumentAsCompleted,
+  markDocumentsAsCompleted,
 } from '@/actions/document/documentActions'
 import { Button } from '@/components/ui/button'
 
@@ -85,6 +85,12 @@ type DataTableProps = {
   filteredDocuments: DocumentMetadata[]
   setDocumentToDelete: (doc: DocumentMetadata) => void
   handleMarkCompleted: (doc: DocumentMetadata) => void
+  loadingIds: string[]
+  isBulkMarking: boolean
+  isBulkDeleting: boolean
+  onSelectionChange: (docs: DocumentMetadata[]) => void
+  onBulkMarkCompleted: () => void
+  onBulkDelete: () => void
 }
 
 type DataTablePaginationProps<TData> = {
@@ -95,6 +101,7 @@ type DocumentTableMeta = {
   filteredDocuments: DocumentMetadata[]
   handleMarkCompleted: (doc: DocumentMetadata) => void
   setDocumentToDelete: (doc: DocumentMetadata) => void
+  loadingIds: string[]
 }
 
 function DataTable({
@@ -103,10 +110,17 @@ function DataTable({
   filteredDocuments,
   setDocumentToDelete,
   handleMarkCompleted,
+  loadingIds,
+  isBulkMarking,
+  isBulkDeleting,
+  onSelectionChange,
+  onBulkMarkCompleted,
+  onBulkDelete,
 }: DataTableProps) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [globalFilter, setGlobalFilter] = useState('')
+  const [rowSelection, setRowSelection] = useState({})
 
   const table = useReactTable<DocumentMetadata>({
     data,
@@ -123,13 +137,26 @@ function DataTable({
       sorting,
       columnFilters,
       globalFilter,
+      rowSelection,
     },
+    onRowSelectionChange: setRowSelection,
+    enableRowSelection: true,
     meta: {
       filteredDocuments,
       handleMarkCompleted,
       setDocumentToDelete,
+      loadingIds,
     } satisfies DocumentTableMeta,
   })
+
+  // propagate selected rows back to parent
+  useEffect(() => {
+    const selected = table
+      .getSelectedRowModel()
+      .rows
+      .map(r => r.original)
+    onSelectionChange(selected)
+  }, [rowSelection, table, onSelectionChange])
 
   return (
     <div>
@@ -154,6 +181,34 @@ function DataTable({
           </Label>
         </div>
       </div>
+      {table.getSelectedRowModel().rows.length > 0 && (
+        <div className="mb-4 flex items-center gap-2">
+          <span className="text-sm font-medium">
+            {table.getSelectedRowModel().rows.length}
+            {' '}
+            selected
+          </span>
+          {(() => {
+            const selected = table.getSelectedRowModel().rows
+            const hasIncomplete = selected.some(r => !r.original.completedAt)
+            return (
+              <Button size="sm" onClick={onBulkMarkCompleted} disabled={isBulkMarking}>
+                {isBulkMarking && <Loader2Icon className="mr-1 size-4 animate-spin" />}
+                {hasIncomplete ? 'Mark completed' : 'Mark not completed'}
+              </Button>
+            )
+          })()}
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={onBulkDelete}
+            disabled={isBulkDeleting}
+          >
+            {isBulkDeleting && <Loader2Icon className="mr-1 size-4 animate-spin" />}
+            Delete
+          </Button>
+        </div>
+      )}
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -332,6 +387,23 @@ async function downloadRawDocumentData(id: string, title: string) {
 
 const columns: ColumnDef<DocumentMetadata, any>[] = [
   {
+    id: 'select',
+    header: ({ table }) => (
+      <Checkbox
+        checked={table.getIsAllRowsSelected()}
+        aria-checked={table.getIsSomeRowsSelected() ? 'mixed' : undefined}
+        onCheckedChange={checked => table.toggleAllRowsSelected(!!checked)}
+      />
+    ),
+    cell: ({ row }) => (
+      <Checkbox
+        checked={row.getIsSelected()}
+        disabled={!row.getCanSelect()}
+        onCheckedChange={checked => row.toggleSelected(!!checked)}
+      />
+    ),
+  },
+  {
     accessorKey: 'title',
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Title" />
@@ -357,11 +429,32 @@ const columns: ColumnDef<DocumentMetadata, any>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Completed" />
     ),
-    cell: ({ row }) => (
-      <div suppressHydrationWarning>
-        {row.original.completedAt?.toLocaleString() ?? 'No'}
-      </div>
-    ),
+    cell: ({ row, table }) => {
+      const completed = !!row.original.completedAt
+      const isLoading = (table.options.meta as DocumentTableMeta)?.loadingIds?.includes(row.original.id) ?? false
+      const toggle = () =>
+        (table.options.meta as DocumentTableMeta)
+          .handleMarkCompleted(row.original)
+      return (
+        <div className="flex items-center gap-2">
+          {isLoading
+            ? <Loader2Icon className="size-4 animate-spin" />
+            : (
+                <Checkbox
+                  checked={completed}
+                  onCheckedChange={toggle}
+                  className="shrink-0 rounded-full"
+                  disabled={isLoading}
+                />
+              )}
+          <span suppressHydrationWarning className="text-sm">
+            {row.original.completedAt
+              ? row.original.completedAt.toLocaleString()
+              : 'Not completed'}
+          </span>
+        </div>
+      )
+    },
     filterFn: (row, columnId, filterValue) => {
       if (filterValue === true) {
         return !row.original.completedAt
@@ -495,12 +588,64 @@ export default function DocumentsTable({
   const [documentToDelete, setDocumentToDelete]
     = useState<DocumentMetadata | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [selectedDocuments, setSelectedDocuments] = useState<
+    DocumentMetadata[]
+  >([])
+  const [loadingIds, setLoadingIds] = useState<string[]>([])
+  const [isBulkMarking, setIsBulkMarking] = useState(false)
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false)
+  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false)
+
+  const handleBulkMarkCompleted = async () => {
+    if (selectedDocuments.length === 0)
+      return
+
+    setIsBulkMarking(true)
+
+    const hasIncomplete = selectedDocuments.some(d => !d.completedAt)
+    const value = hasIncomplete ? new Date() : null
+
+    await markDocumentsAsCompleted(
+      selectedDocuments.map(d => d.id),
+      value,
+    )
+
+    toast.success(
+      hasIncomplete
+        ? 'Selected documents marked as completed'
+        : 'Selected documents marked as not completed',
+    )
+
+    // update timestamps locally so UI reflects the change without losing selection
+    setSelectedDocuments(
+      selectedDocuments.map(d => ({ ...d, completedAt: value })),
+    )
+    setIsBulkMarking(false)
+  }
+
+  const confirmBulkDelete = () => {
+    if (selectedDocuments.length === 0)
+      return
+    setShowBulkDeleteDialog(true)
+  }
+
+  const performBulkDelete = async () => {
+    setIsBulkDeleting(true)
+    await deleteDocuments(selectedDocuments.map(d => d.id))
+    setIsBulkDeleting(false)
+    // clear selection since those documents are gone
+    setSelectedDocuments([])
+    setShowBulkDeleteDialog(false)
+  }
 
   const handleMarkCompleted = async (document: DocumentMetadata) => {
-    await markDocumentAsCompleted(
-      document.id,
+    setLoadingIds(ids => [...ids, document.id])
+    await markDocumentsAsCompleted(
+      [document.id],
       document.completedAt ? null : new Date(),
     )
+    setLoadingIds(ids => ids.filter(id => id !== document.id))
+
     toast.success(
       document.completedAt
         ? 'Document marked as not completed'
@@ -513,7 +658,7 @@ export default function DocumentsTable({
       return
     }
     setIsDeleting(true)
-    await deleteDocument(documentToDelete.id)
+    await deleteDocuments([documentToDelete.id])
     setDocumentToDelete(null)
     setIsDeleting(false)
   }
@@ -526,6 +671,12 @@ export default function DocumentsTable({
         filteredDocuments={documents}
         setDocumentToDelete={setDocumentToDelete}
         handleMarkCompleted={handleMarkCompleted}
+        loadingIds={loadingIds}
+        isBulkMarking={isBulkMarking}
+        isBulkDeleting={isBulkDeleting}
+        onSelectionChange={setSelectedDocuments}
+        onBulkMarkCompleted={handleBulkMarkCompleted}
+        onBulkDelete={confirmBulkDelete}
       />
       <Dialog
         open={!!documentToDelete}
@@ -558,6 +709,48 @@ export default function DocumentsTable({
               disabled={isDeleting}
             >
               {isDeleting
+                ? (
+                    <Loader2Icon className="size-4 animate-spin" />
+                  )
+                : (
+                    <Trash2Icon className="size-4" />
+                  )}
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={showBulkDeleteDialog}
+        onOpenChange={() => setShowBulkDeleteDialog(false)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Deletion</DialogTitle>
+          </DialogHeader>
+          <div className="text-sm text-gray-600">
+            <p>
+              Are you sure you want to delete
+              {' '}
+              <strong>{selectedDocuments.length}</strong>
+              {' '}
+              documents?
+            </p>
+            <p>This action cannot be undone and will also:</p>
+            <ul className="ml-4 list-inside list-disc">
+              <li>Delete all annotations attached to these documents</li>
+            </ul>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowBulkDeleteDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={performBulkDelete}
+              disabled={isBulkDeleting}
+            >
+              {isBulkDeleting
                 ? (
                     <Loader2Icon className="size-4 animate-spin" />
                   )
