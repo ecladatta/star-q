@@ -6,7 +6,7 @@ import { count, eq, getTableColumns } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 
 import { db } from '@/db/drizzle'
-import { annotation, document } from '@/db/schema'
+import { annotation, corpus, document } from '@/db/schema'
 import { requireAuth } from '@/lib/auth-utils'
 
 export async function getDocumentsMetadata(corpusId: string): Promise<DocumentMetadata[]> {
@@ -53,5 +53,7 @@ export async function deleteDocument(id: string) {
   await requireAuth()
 
   await db.delete(document).where(eq(document.id, id))
+  await db.update(corpus).set({ updatedAt: new Date() }).where(eq(corpus.id, document.corpusId))
+
   revalidatePath('/')
 }
