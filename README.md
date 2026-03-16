@@ -64,13 +64,12 @@ To optionally restrict access to specific users when authentication is enabled, 
 ALLOWED_EMAILS=user1@example.com,user2@example.com
 ```
 
-## Deployment in Production
+## API Routes
 
-To deploy the Annotation Tool in production, follow these steps:
+The following API routes are available:
 
-1. Copy `.env.example` to `.env` and update the environment variables.
-
-2. Build and run the Docker containers:
-    ```bash
-    docker compose -f compose.prod.yaml up -d --build
-    ```
+- `GET /api/corpus` - List all corpuses.
+- `GET /api/corpus/[corpusId]` - Get metadata for a corpus.
+- `GET /api/corpus/[corpusId]/analytics` - Get analytics for a corpus.
+- `GET /api/corpus/[corpusId]/entities` - Get custom entities for a corpus.
+- `GET /api/corpus/[corpusId]/export` - Export a corpus (JSON download).
