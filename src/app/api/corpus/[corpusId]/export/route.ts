@@ -3,11 +3,11 @@ import type { ExportModel } from '@/types/types'
 import { getAnnotations } from '@/actions/annotation/annotationActions'
 import { getCorpus, getCorpusCustomEntities } from '@/actions/corpus/corpusActions'
 import { getDocumentsMetadata, getRawDocumentData } from '@/actions/document/documentActions'
-import { withErrorHandling } from '@/lib/api-utils'
+import { withApiHandler } from '@/lib/api-utils'
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ corpusId: string }> }) {
   const { corpusId } = await params
-  return withErrorHandling(async () => {
+  return withApiHandler(async () => {
     const corpus = await getCorpus(corpusId)
     const documents = await getDocumentsMetadata(corpusId)
     const customEntities = await getCorpusCustomEntities(corpusId)

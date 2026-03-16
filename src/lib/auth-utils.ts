@@ -24,19 +24,12 @@ export async function isApiKeyAuthenticated(): Promise<boolean> {
  * Throws an error if auth is enabled but user is not authenticated.
  */
 export async function requireAuth(): Promise<string | null> {
-  const apiKey = process.env.API_KEY
-
-  // If API_KEY is configured, a valid key always grants access
-  if (apiKey && await isApiKeyAuthenticated()) {
+  if (!isAuthEnabled()) {
     return null
   }
 
-  // If auth is disabled and no API_KEY is set, allow all
-  if (!isAuthEnabled()) {
-    if (apiKey) {
-      // API_KEY is set but the request didn't provide it (or provided a wrong one)
-      throw new UnauthorizedError()
-    }
+  // AUTH_ENABLED=true: accept API key as alternative to a session
+  if (await isApiKeyAuthenticated()) {
     return null
   }
 

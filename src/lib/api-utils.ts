@@ -1,6 +1,19 @@
+import { headers } from 'next/headers'
+import { isAuthEnabled } from '@/auth.config'
 import { UnauthorizedError } from './auth-utils'
 
-export async function withErrorHandling(handler: () => Promise<Response>): Promise<Response> {
+export async function withApiHandler(handler: () => Promise<Response>): Promise<Response> {
+  // When AUTH_ENABLED=false but API_KEY is configured, enforce it on API routes
+  if (!isAuthEnabled()) {
+    const apiKey = process.env.API_KEY
+    if (apiKey) {
+      const headersList = await headers()
+      if (headersList.get('x-api-key') !== apiKey) {
+        return Response.json({ error: 'Unauthorized' }, { status: 401 })
+      }
+    }
+  }
+
   try {
     return await handler()
   } catch (error) {
