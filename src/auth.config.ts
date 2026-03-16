@@ -34,8 +34,17 @@ export default {
       }
       return true
     },
-    authorized({ auth, request: { method, nextUrl } }) {
+    authorized({ auth, request: { method, nextUrl, headers } }) {
       if (!isAuthEnabled()) {
+        return true
+      }
+
+      const apiKey = process.env.API_KEY
+      const requestApiKey = headers.get?.('x-api-key')
+      const isOnApiRoute = nextUrl.pathname.startsWith('/api')
+
+      // Allow API access via API key without requiring NextAuth login
+      if (apiKey && isOnApiRoute && requestApiKey === apiKey) {
         return true
       }
 

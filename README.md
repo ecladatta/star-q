@@ -3,7 +3,19 @@
 ## Overview
 The Annotation Tool is a web-based application designed to facilitate the annotation of texts and tables.
 
+## Deployment in Production
+
+To deploy the Annotation Tool in production, follow these steps:
+
+1. Copy `.env.example` to `.env` and update the environment variables.
+
+2. Build and run the Docker containers:
+    ```bash
+    docker compose -f compose.prod.yaml up -d --build
+    ```
+
 ## Development
+
 To install and run the Annotation Tool locally, follow these steps:
 
 1. Clone the repository:
