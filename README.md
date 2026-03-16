@@ -73,3 +73,166 @@ The following API routes are available:
 - `GET /api/corpus/[corpusId]/analytics` - Get analytics for a corpus.
 - `GET /api/corpus/[corpusId]/entities` - Get custom entities for a corpus.
 - `GET /api/corpus/[corpusId]/export` - Export a corpus (JSON download).
+
+## Corpus export format
+
+When exporting a corpus via the "Export" button in the UI or the `GET /api/corpus/[corpusId]/export` API route, the corpus data is returned in a structured JSON format.
+This export includes all documents, annotations, and custom entities associated with the corpus, along with metadata about the export itself.
+
+### Top-level structure
+
+<!-- eslint-skip -->
+```json
+{
+  "exportMeta": {
+    "version": "1.2",
+    "type": "full-corpus-export"
+  },
+  "id": "<corpusId>",
+  "title": "<corpusTitle>",
+  "createdAt": "<ISO 8601 timestamp>",
+  "updatedAt": "<ISO 8601 timestamp>",
+  "documents": [ /* DocumentExport[] */ ],
+  "customEntities": [ /* CorpusCustomEntity[] */ ]
+}
+```
+
+### DocumentExport
+
+Each exported document follows this shape:
+
+- `id`: document UUID
+- `title`: document title
+- `createdAt`: creation timestamp (ISO)
+- `updatedAt`: last update timestamp (ISO) or `null`
+- `completedAt`: completion timestamp (ISO) or `null`
+- `order`: numeric ordering for the document within the corpus
+- `raw`: raw extracted document data or `null` (see `DocumentData` below)
+- `annotations`: list of annotation triples (subject/predicate/object)
+
+Example:
+
+<!-- eslint-skip -->
+```json
+{
+  "id": "<documentId>",
+  "title": "<documentTitle>",
+  "createdAt": "<ISO 8601 timestamp>",
+  "updatedAt": "<ISO 8601 timestamp>" | null,
+  "completedAt": "<ISO 8601 timestamp>" | null,
+  "order": <number>,
+  "raw": <DocumentData|null>,
+  "annotations": [
+    {
+      "id": "<annotationId>",
+      "subject": { /* DocumentAnnotationComponent */ },
+      "predicate": { /* DocumentAnnotationComponent */ },
+      "object": { /* DocumentAnnotationComponent */ }
+    }
+  ]
+}
+```
+
+#### DocumentData
+
+The `raw` field contains the extracted document data that was imported into the system. It has this form:
+
+<!-- eslint-skip -->
+```json
+{
+  "_source": {
+    "identificationMetadata": {
+      "id": "<sourceId>",
+      "versionDate": "<ISO 8601 timestamp>",
+      "hash": "<hash>",
+      "title": "<optional title>",
+      "wikidata": "<optional wikidata id>",
+      "url": "<optional url or urls>"
+    },
+    "extractionMetadata": [
+      {
+        "technology": "<extractor name>" | null,
+        "texts": [
+          {
+            "startOffset": <number>?,
+            "endOffset": <number>?,
+            "value": "<text chunk>"
+          }
+        ],
+        "tables": [
+          {
+            "startOffset": <number>?,
+            "endOffset": <number>?,
+            "tableData": [["cell", ...], ...]
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+### DocumentAnnotationComponent
+
+Annotations are stored as a triple of `subject`, `predicate`, and `object`, each encoded as a `DocumentAnnotationComponent`:
+
+- `id`: UUID of the annotation component
+- `entityLabel`: resolved label (custom labeling or inferred from extracted text)
+- `entityValue`: resolved value (often same as label)
+- `entityCustom`: `true` if this value comes from a custom entity definition
+- `entityCustomId`: UUID of the custom entity (if `entityCustom`)
+- `entityDatatype`: one of: `integer`, `decimal`, `boolean`, `string`, `date`, `time`, `datetime`, `year`, `month`, `day`, `url`
+- `annotationStart` / `annotationEnd`: character offsets into the source text
+- `annotationRow` / `annotationCell`: row/cell indices (for table annotations) or `null`
+- `annotationValue`: the extracted string value for the annotation
+- `annotationType`: `text` or `table`
+- `annotationTag`: UI tag for the annotation
+- `elementIndex`: index of the text/table element this annotation belongs to
+
+Example:
+
+```json
+{
+  "id": "<componentId>",
+  "entityLabel": "Author",
+  "entityValue": "Jane Doe",
+  "entityCustom": false,
+  "entityCustomId": null,
+  "entityDatatype": "string",
+  "annotationStart": 123,
+  "annotationEnd": 131,
+  "annotationRow": null,
+  "annotationCell": null,
+  "annotationValue": "Jane Doe",
+  "annotationType": "text",
+  "annotationTag": "",
+  "elementIndex": 0
+}
+```
+
+### CorpusCustomEntity
+
+Custom entities are defined per corpus and used to pre-populate annotation values.
+
+- `id`: UUID
+- `corpusId`: UUID of the parent corpus
+- `label`: display label for the entity
+- `value`: value stored on the entity
+- `datatype`: entity datatype (`string` by default)
+- `customType`: either `entity` or `relation`
+- `createdAt` / `updatedAt`: timestamps
+
+Example:
+
+```json
+{
+  "id": "<uuid>",
+  "corpusId": "<corpusId>",
+  "label": "Location",
+  "value": "New York",
+  "datatype": "string",
+  "customType": "entity",
+  "createdAt": "<ISO 8601 timestamp>",
+  "updatedAt": "<ISO 8601 timestamp>"
+}
+```
