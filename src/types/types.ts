@@ -111,7 +111,6 @@ export type ExportModel = {
   }
   id: string
   title: string | null
-  content: string | null
   createdAt: string | null
   updatedAt: string | null
   documents: DocumentExport[]

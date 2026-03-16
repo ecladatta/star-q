@@ -85,6 +85,13 @@
       "when": 1769595891223,
       "tag": "0011_mushy_bloodaxe",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1773653441611,
+      "tag": "0012_cheerful_starhawk",
+      "breakpoints": true
     }
   ]
 }

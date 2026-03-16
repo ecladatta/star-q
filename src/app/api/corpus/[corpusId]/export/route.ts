@@ -13,12 +13,11 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   const corpusData: ExportModel = {
     exportMeta: {
-      version: '1.1',
+      version: '1.2',
       type: 'full-corpus-export',
     },
     id: corpus.id,
     title: corpus.title,
-    content: corpus.content,
     createdAt: corpus.createdAt ? corpus.createdAt.toISOString() : null,
     updatedAt: corpus.updatedAt ? corpus.updatedAt.toISOString() : null,
     documents: await Promise.all(documents.map(async (document) => {

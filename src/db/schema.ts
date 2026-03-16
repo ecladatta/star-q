@@ -90,7 +90,6 @@ export const authenticators = pgTable(
 export const corpus = pgTable('corpus', {
   id: uuid('id').primaryKey().$defaultFn(() => randomUUID()),
   title: text('title'),
-  content: text('content'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 })
