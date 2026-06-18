@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { Entity, EntityDatatype, EntityType } from '@/types/types'
+import type { AnnotationComponentRole, Entity, EntityDatatype, EntityType } from '@/types/types'
 import { Calendar1Icon, CalendarClockIcon, CalendarIcon, CheckIcon, ChevronsUpDownIcon, ClockIcon, FilterIcon, GlobeIcon, ToggleLeftIcon, TypeIcon, XIcon } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import WBK from 'wikibase-sdk'
 import { addCorpusCustomEntity, searchCorpusCustomEntities } from '@/actions/corpus/corpusActions'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from '@/components/ui/command'
+import { entityTypeForComponentRole } from '@/lib/annotation-roles'
 import { cn } from '@/lib/utils'
 import { Button } from './ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
@@ -109,12 +110,13 @@ const TYPES_ICONS: Record<EntityDatatype, ReactNode> = {
 }
 
 export function EntitySelector({ type, value, onValueChange, text, corpusId }: {
-  type: EntityType
+  type: AnnotationComponentRole
   value: Entity | null
   onValueChange: (arg0: Entity | null) => any
   text?: string
   corpusId?: string
 }) {
+  const entityType = entityTypeForComponentRole(type)
   const [open, setOpen] = useState(false)
   const [searchResults, setSearchResults] = useState<Entity[]>([])
   const [searchTerm, setSearchTerm] = useState('')
@@ -123,12 +125,12 @@ export function EntitySelector({ type, value, onValueChange, text, corpusId }: {
   useEffect(() => {
     if (text && !value?.value) {
       setIsSearching(true)
-      searchEntities(type, text, corpusId).then((results) => {
+      searchEntities(entityType, text, corpusId).then((results) => {
         setSearchResults(results)
         setIsSearching(false)
       })
     }
-  }, [text, type, value, corpusId])
+  }, [text, entityType, value, corpusId])
 
   useEffect(() => {
     setSearchTerm('')
@@ -142,7 +144,7 @@ export function EntitySelector({ type, value, onValueChange, text, corpusId }: {
 
     setIsSearching(true)
     try {
-      const results = await searchEntities(type, term, corpusId)
+      const results = await searchEntities(entityType, term, corpusId)
       setSearchResults(results)
     } catch (error) {
       console.error('Search error:', error)
@@ -373,7 +375,7 @@ export function EntitySelector({ type, value, onValueChange, text, corpusId }: {
                     onSelect={async () => {
                       try {
                       // Create the entity in the database
-                        const customType: 'entity' | 'relation' = type === 'predicate' ? 'relation' : 'entity'
+                        const customType: 'entity' | 'relation' = entityType === 'predicate' ? 'relation' : 'entity'
                         const customId = await addCorpusCustomEntity(
                           corpusId,
                           searchTerm,
@@ -388,7 +390,7 @@ export function EntitySelector({ type, value, onValueChange, text, corpusId }: {
                           custom: true,
                           customId,
                           datatype: 'string',
-                          type,
+                          type: entityType,
                         }
 
                         onValueChange(newEntity)

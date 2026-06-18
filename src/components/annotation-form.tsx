@@ -1,7 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react'
-import type { CurrentAnnotation, DocumentAnnotationComponent, Entity, EntityType } from '@/types/types'
+import type { AnnotationComponentRole, CurrentAnnotation, DocumentAnnotationComponent, Entity, EntityType } from '@/types/types'
 import { PopoverClose } from '@radix-ui/react-popover'
-import { ArrowLeftRightIcon, CopyIcon, Loader2Icon, SaveIcon, Trash2Icon } from 'lucide-react'
+import { ArrowLeftRightIcon, CopyIcon, Loader2Icon, PlusIcon, SaveIcon, Trash2Icon } from 'lucide-react'
 import { useCallback, useEffect } from 'react'
 import { toast } from 'sonner'
 import { v4 as uuidv4 } from 'uuid'
@@ -10,8 +10,11 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { entityTypeForComponentRole } from '@/lib/annotation-roles'
 import { TYPE_TO_COLOR } from '@/lib/constants'
 import { cn, isMac } from '@/lib/utils'
+
+type QualifierSide = 'predicate' | 'value'
 
 type AnnotationFormProps = {
   currentAnnotation: CurrentAnnotation | null
@@ -36,6 +39,11 @@ export function AnnotationForm({
   annotationFormLoading,
   isDeletingAnnotation,
   corpusId,
+  addQualifier,
+  removeQualifier,
+  assignSelectionToQualifier,
+  updateQualifierEntity,
+  hasActiveSelection,
 }: AnnotationFormProps) {
   const subjectTag = currentAnnotation?.subject
   const predicateTag = currentAnnotation?.predicate
@@ -43,11 +51,14 @@ export function AnnotationForm({
 
   const hasAnyTags = Boolean(subjectTag || predicateTag || objectTag)
   const hasAllTags = Boolean(subjectTag && predicateTag && objectTag)
+  const qualifiers = currentAnnotation?.qualifiers ?? []
 
   // Helper function to get entity data
-  const getEntityValue = (component: DocumentAnnotationComponent | undefined, entityType: EntityType): Entity | null => {
+  const getEntityValue = (component: DocumentAnnotationComponent | undefined, role: AnnotationComponentRole): Entity | null => {
     if (!component?.entityValue)
       return null
+
+    const entityType = entityTypeForComponentRole(role)
 
     return {
       label: component.entityLabel || '',
@@ -107,6 +118,113 @@ export function AnnotationForm({
     })
   }
 
+  const scrollToElement = (component: DocumentAnnotationComponent | undefined) => {
+    if (!component)
+      return
+
+    // Try to find the specific mark element by its data attributes
+    const elementContainer = document.getElementById(`element-${component.elementIndex}`)
+    if (!elementContainer) {
+      return
+    }
+
+    // For table annotations, find the specific cell
+    if (component.annotationType === 'table' && component.annotationRow !== null && component.annotationCell !== null) {
+      const cell = elementContainer.querySelector(`[data-cell="${component.annotationRow}-${component.annotationCell}"]`)
+      if (cell) {
+        cell.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        return
+      }
+    }
+
+    // For text annotations, find the specific mark by start/end offsets
+    const marks = elementContainer.querySelectorAll(`[data-start="${component.annotationStart}"][data-end="${component.annotationEnd}"]`)
+    if (marks.length > 0) {
+      marks[0].scrollIntoView({ behavior: 'smooth', block: 'center' })
+      return
+    }
+
+    // Fallback to scrolling to the element container
+    elementContainer.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }
+
+  const renderQualifierSide = (
+    qualifierId: string,
+    side: QualifierSide,
+    component: DocumentAnnotationComponent | undefined,
+  ) => {
+    const role: AnnotationComponentRole = side === 'predicate' ? 'qualifier-predicate' : 'qualifier-value'
+    const sideLabel = side === 'predicate' ? 'Predicate' : 'Value'
+
+    return (
+      <div className="min-w-0">
+        <div className="mb-1 flex min-w-0 items-center gap-1">
+          <div
+            role={component ? 'button' : undefined}
+            tabIndex={component ? 0 : undefined}
+            className={cn(
+              'flex min-w-0 flex-1 items-center rounded-md px-2 py-0.5 text-sm font-semibold',
+              component && 'cursor-pointer transition-opacity hover:opacity-80',
+            )}
+            style={{ backgroundColor: TYPE_TO_COLOR[role] }}
+            onClick={() => scrollToElement(component)}
+            onKeyDown={(e) => {
+              if (component && (e.key === 'Enter' || e.key === ' ')) {
+                e.preventDefault()
+                scrollToElement(component)
+              }
+            }}
+          >
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="truncate">
+                  {component?.annotationValue ?? `${sideLabel} text`}
+                </span>
+              </TooltipTrigger>
+              {component?.annotationValue && (
+                <TooltipContent>
+                  {component.annotationValue}
+                </TooltipContent>
+              )}
+            </Tooltip>
+          </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 shrink-0 px-2"
+                onClick={() => assignSelectionToQualifier(qualifierId, side)}
+                disabled={!hasActiveSelection || annotationFormLoading || isDeletingAnnotation}
+              >
+                Set
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {`Set qualifier ${side} from current selection`}
+            </TooltipContent>
+          </Tooltip>
+        </div>
+        {component
+          ? (
+              <EntitySelector
+                type={role}
+                value={getEntityValue(component, role)}
+                onValueChange={newValue => updateQualifierEntity(qualifierId, side, newValue)}
+                text={component.annotationValue}
+                corpusId={corpusId}
+              />
+            )
+          : (
+              <div className="flex h-9 items-center rounded-md border border-dashed px-3 text-sm text-muted-foreground">
+                Set text from selection
+              </div>
+            )}
+      </div>
+    )
+  }
+
   const handleCloneAnnotation = useCallback(() => {
     if (!currentAnnotation)
       return
@@ -139,36 +257,6 @@ export function AnnotationForm({
     setCurrentAnnotation(clonedAnnotation)
     toast.success('Annotation cloned! Edit and save to create a new annotation.')
   }, [currentAnnotation, setCurrentAnnotation])
-
-  const scrollToElement = (component: DocumentAnnotationComponent | undefined) => {
-    if (!component)
-      return
-
-    // Try to find the specific mark element by its data attributes
-    const elementContainer = document.getElementById(`element-${component.elementIndex}`)
-    if (!elementContainer) {
-      return
-    }
-
-    // For table annotations, find the specific cell
-    if (component.annotationType === 'table' && component.annotationRow !== null && component.annotationCell !== null) {
-      const cell = elementContainer.querySelector(`[data-cell="${component.annotationRow}-${component.annotationCell}"]`)
-      if (cell) {
-        cell.scrollIntoView({ behavior: 'smooth', block: 'center' })
-        return
-      }
-    }
-
-    // For text annotations, find the specific mark by start/end offsets
-    const marks = elementContainer.querySelectorAll(`[data-start="${component.annotationStart}"][data-end="${component.annotationEnd}"]`)
-    if (marks.length > 0) {
-      marks[0].scrollIntoView({ behavior: 'smooth', block: 'center' })
-      return
-    }
-
-    // Fallback to scrolling to the element container
-    elementContainer.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  }
 
   // Keyboard shortcuts for saving (Ctrl+S / Cmd+S), cloning (C), and deleting (Delete)
   useEffect(() => {
@@ -332,7 +420,7 @@ export function AnnotationForm({
             </Tooltip>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="max-h-[min(70vh,32rem)] overflow-y-auto">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div>
               <div
@@ -494,6 +582,62 @@ export function AnnotationForm({
               />
             </div>
           </div>
+          {currentAnnotation && (
+            <div className="mt-4 border-t pt-3">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold">Qualifiers</h3>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addQualifier}
+                  disabled={annotationFormLoading || isDeletingAnnotation}
+                >
+                  <PlusIcon />
+                  Add qualifier
+                </Button>
+              </div>
+              <div className="flex flex-col gap-2">
+                {qualifiers.length === 0 && (
+                  <div className="rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground">
+                    No qualifiers
+                  </div>
+                )}
+                {qualifiers.map((qualifier, index) => (
+                  <div key={qualifier.id} className="rounded-md border p-2">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <span className="text-xs font-medium text-muted-foreground">
+                        Qualifier
+                        {' '}
+                        {index + 1}
+                      </span>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="size-7 text-destructive hover:text-destructive"
+                            onClick={() => removeQualifier(qualifier.id)}
+                            disabled={annotationFormLoading || isDeletingAnnotation}
+                          >
+                            <Trash2Icon />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          Remove qualifier
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                    <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2">
+                      {renderQualifierSide(qualifier.id, 'predicate', qualifier.predicate)}
+                      {renderQualifierSide(qualifier.id, 'value', qualifier.value)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
