@@ -3,6 +3,8 @@ import type { DocumentData, ExportModel } from '@/types/types'
 import { db } from '@/db/drizzle'
 import { annotation, annotationComponent, annotationQualifier, corpusCustomEntity, document } from '@/db/schema'
 
+const POSTGRES_INTEGER_MAX = 2_147_483_647
+
 function isComponentRecord(value: unknown): value is Record<string, any> {
   return typeof value === 'object' && value !== null
 }
@@ -49,6 +51,20 @@ function getInvalidComponentFields(data: Record<string, any>) {
   }
 
   return invalidFields
+}
+
+function normalizeQualifierPosition(position: unknown, qualifierIndex: number): number {
+  if (
+    typeof position === 'number'
+    && Number.isInteger(position)
+    && Number.isSafeInteger(position)
+    && position >= 0
+    && position <= POSTGRES_INTEGER_MAX
+  ) {
+    return position
+  }
+
+  return qualifierIndex
 }
 
 /**
@@ -166,6 +182,7 @@ export async function importFullCorpusExportDocuments(
                     continue
                   }
 
+                  const qualifierPosition = normalizeQualifierPosition(qualifier.position, qualifierIndex)
                   const qualifierPredicateData = prepareComponentData(qualifier.predicate, `qualifier[${qualifierIndex}].predicate`)
                   const qualifierValueData = prepareComponentData(qualifier.value, `qualifier[${qualifierIndex}].value`)
                   if (!qualifierPredicateData || !qualifierValueData) {
@@ -180,7 +197,7 @@ export async function importFullCorpusExportDocuments(
                     annotationId: insertedAnnotation.id,
                     predicateId: qualifierPredicateId,
                     valueId: qualifierValueId,
-                    position: typeof qualifier.position === 'number' ? qualifier.position : qualifierIndex,
+                    position: qualifierPosition,
                   })
                 } catch (qualifierErr) {
                   errors.push(`Error inserting annotation qualifier at index ${qualifierIndex} in document ${doc.title}: ${qualifierErr}`)
