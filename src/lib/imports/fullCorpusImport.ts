@@ -20,6 +20,37 @@ function remapCustomEntityId(
   return data
 }
 
+function getInvalidComponentFields(data: Record<string, any>) {
+  const invalidFields: string[] = []
+
+  if (!Number.isInteger(data.annotationStart)) {
+    invalidFields.push('annotationStart')
+  }
+  if (!Number.isInteger(data.annotationEnd)) {
+    invalidFields.push('annotationEnd')
+  }
+  if (typeof data.annotationValue !== 'string') {
+    invalidFields.push('annotationValue')
+  }
+  if (data.annotationType !== 'text' && data.annotationType !== 'table') {
+    invalidFields.push('annotationType')
+  }
+  if (typeof data.annotationTag !== 'string') {
+    invalidFields.push('annotationTag')
+  }
+  if (!Number.isInteger(data.elementIndex)) {
+    invalidFields.push('elementIndex')
+  }
+  if (data.annotationRow !== null && data.annotationRow !== undefined && !Number.isInteger(data.annotationRow)) {
+    invalidFields.push('annotationRow')
+  }
+  if (data.annotationCell !== null && data.annotationCell !== undefined && !Number.isInteger(data.annotationCell)) {
+    invalidFields.push('annotationCell')
+  }
+
+  return invalidFields
+}
+
 /**
  * Import documents and annotations from a full corpus export
  */
@@ -84,6 +115,12 @@ export async function importFullCorpusExportDocuments(
                 }
 
                 const { id: _id, ...data } = comp
+                const invalidFields = getInvalidComponentFields(data)
+                if (invalidFields.length > 0) {
+                  errors.push(`Annotation component '${key}' has invalid required field(s): ${invalidFields.join(', ')} in document ${doc.title}`)
+                  return null
+                }
+
                 return remapCustomEntityId(data, customEntityIdMap) as typeof annotationComponent.$inferInsert
               }
 
@@ -95,18 +132,23 @@ export async function importFullCorpusExportDocuments(
                 return insertedComp.id
               }
 
-              const insertComponent = async (comp: unknown, key: string) => {
-                const data = prepareComponentData(comp, key)
-                return data ? insertPreparedComponent(data) : null
-              }
-
-              // Insert annotation components (subject, predicate, object)
-              const componentIds = await Promise.all((['subject', 'predicate', 'object'] as const).map(key => insertComponent(ann[key], key)))
-              if (componentIds.includes(null)) {
+              const baseComponentData = (['subject', 'predicate', 'object'] as const).map(key => prepareComponentData(ann[key], key))
+              if (baseComponentData.includes(null)) {
                 errors.push(`Skipping annotation in document ${doc.title} due to invalid component.`)
                 continue
               }
-              const [subjectId, predicateId, objectId] = componentIds as [string, string, string]
+              const [subjectData, predicateData, objectData] = baseComponentData as [
+                typeof annotationComponent.$inferInsert,
+                typeof annotationComponent.$inferInsert,
+                typeof annotationComponent.$inferInsert,
+              ]
+
+              // Insert annotation components (subject, predicate, object)
+              const [subjectId, predicateId, objectId] = await Promise.all([
+                insertPreparedComponent(subjectData),
+                insertPreparedComponent(predicateData),
+                insertPreparedComponent(objectData),
+              ])
 
               // Insert annotation record
               const [insertedAnnotation] = await tx.insert(annotation).values({
