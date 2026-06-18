@@ -37,7 +37,6 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { InvalidJsonLinesError, UnsupportedFileTypeError } from '@/lib/utils'
 
 type CorpusActionsProps = {
   corpus: Corpus & { documentsCount?: number, annotationsCount?: number }
@@ -93,14 +92,8 @@ export function CorpusActions({ corpus, showOpenAction = true, triggerButton }: 
         setUploadError(errors.join('\n'))
       }
       router.refresh()
-    } catch (err) {
-      if (err instanceof UnsupportedFileTypeError) {
-        setUploadError('Unsupported file type. Please upload a JSON or ZIP file.')
-      } else if (err instanceof InvalidJsonLinesError) {
-        setUploadError('Invalid JSON lines format. Please check the file and try again.')
-      } else {
-        setUploadError('Failed to upload the file. Please try again.')
-      }
+    } catch {
+      setUploadError('Failed to upload the file. Please try again.')
     } finally {
       setIsImporting(false)
       if (fileInputRef.current) {

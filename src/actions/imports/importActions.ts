@@ -5,18 +5,30 @@ import { importCorpuswalkerDocuments } from '@/lib/imports/corpuswalkerImport'
 import { importFullCorpusExportDocuments } from '@/lib/imports/fullCorpusImport'
 import { importIritDocuments } from '@/lib/imports/iritImport'
 import { importLabelStudioDocuments } from '@/lib/imports/labelstudioImport'
-import { determineImportType, UnsupportedFileTypeError } from '@/lib/utils'
+import { determineImportType } from '@/lib/utils'
+
+type ImportDocumentsResult = {
+  count: number
+  errors: string[]
+}
+
+function importError(message: string): ImportDocumentsResult {
+  return {
+    count: 0,
+    errors: [message],
+  }
+}
 
 /**
  * Main import function that determines the file type and routes to the appropriate importer
  */
-export async function importDocuments(corpusId: string, formData: FormData) {
+export async function importDocuments(corpusId: string, formData: FormData): Promise<ImportDocumentsResult> {
   await requireAuth()
 
   const file = formData.get('file') as File
 
   if (!file) {
-    throw new Error('File not found')
+    return importError('No file was provided for import.')
   }
 
   // Determine import type based on file content and name
@@ -24,7 +36,7 @@ export async function importDocuments(corpusId: string, formData: FormData) {
   const importType = await determineImportType(content, file.name)
 
   if (importType === 'unknown') {
-    throw new UnsupportedFileTypeError('File format is not supported')
+    return importError('File format is not supported. Please upload a JSON, JSONL, or ZIP file.')
   }
 
   let result: { ids: string[], errors: string[] } = { ids: [], errors: [] }

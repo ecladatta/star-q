@@ -47,7 +47,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { cn, InvalidJsonLinesError, UnsupportedFileTypeError } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 
 export type CorpusesProps = {
   corpuses: (Corpus & { documentsCount: number, annotationsCount: number })[]
@@ -362,14 +362,8 @@ export function Corpuses({ corpuses }: CorpusesProps) {
       if (errors && errors.length > 0) {
         setUploadError(errors.join('\n'))
       }
-    } catch (err) {
-      if (err instanceof UnsupportedFileTypeError) {
-        setUploadError('Unsupported file type. Please upload a JSON or ZIP file.')
-      } else if (err instanceof InvalidJsonLinesError) {
-        setUploadError('Invalid JSON lines format. Please check the file and try again.')
-      } else {
-        setUploadError('Failed to upload the file. Please try again.')
-      }
+    } catch {
+      setUploadError('Failed to upload the file. Please try again.')
     } finally {
       setIsImporting(false)
     }
