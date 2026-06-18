@@ -39,9 +39,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
-import { getAnnotationComponentDisplayText, getAnnotationComponentTitle } from '@/lib/annotation-roles'
-import { TYPE_TO_COLOR } from '@/lib/constants'
 import { getAnnotationType } from '@/lib/utils'
+import { QualifierSummary } from './qualifier-summary'
 import { Badge } from './ui/badge'
 import { Label } from './ui/label'
 
@@ -762,40 +761,7 @@ export function AnnotationsSidebar({
                                     {ann.object.annotationValue}
                                   </span>
                                 </div>
-                                {ann.qualifiers.length > 0 && (
-                                  <div className="mt-2 border-t border-dashed pt-2">
-                                    <div className="mb-1 flex items-center gap-1 text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
-                                      <span>Qualifiers</span>
-                                      <span>{ann.qualifiers.length}</span>
-                                    </div>
-                                    <div className="space-y-1">
-                                      {ann.qualifiers.map(qualifier => (
-                                        <div
-                                          key={qualifier.id}
-                                          className="flex min-w-0 items-center gap-1 rounded-md bg-muted/60 px-1.5 py-1 text-[11px] leading-tight"
-                                        >
-                                          <span
-                                            className="min-w-0 flex-1 truncate rounded-sm px-1.5 py-0.5 font-medium text-slate-800"
-                                            style={{ backgroundColor: TYPE_TO_COLOR['qualifier-predicate'] }}
-                                            title={getAnnotationComponentTitle(qualifier.predicate)}
-                                          >
-                                            {getAnnotationComponentDisplayText(qualifier.predicate)}
-                                          </span>
-                                          <span className="shrink-0 text-muted-foreground">
-                                            &rarr;
-                                          </span>
-                                          <span
-                                            className="min-w-0 flex-1 truncate rounded-sm px-1.5 py-0.5 font-medium text-slate-800"
-                                            style={{ backgroundColor: TYPE_TO_COLOR['qualifier-value'] }}
-                                            title={getAnnotationComponentTitle(qualifier.value)}
-                                          >
-                                            {getAnnotationComponentDisplayText(qualifier.value)}
-                                          </span>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
+                                <QualifierSummary qualifiers={ann.qualifiers} className="mt-2 pt-2" />
                               </button>
 
                               {/* Selection checkbox - visible on hover or when selected */}

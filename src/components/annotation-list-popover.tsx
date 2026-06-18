@@ -9,8 +9,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { getAnnotationComponentDisplayText, getAnnotationComponentTitle } from '@/lib/annotation-roles'
-import { TYPE_TO_COLOR } from '@/lib/constants'
 import { cn } from '@/lib/utils'
+import { QualifierSummary } from './qualifier-summary'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
 
 const ENTITY_ORDER: EntityType[] = ['subject', 'predicate', 'object']
@@ -225,41 +225,7 @@ export function AnnotationListPopover({
                                   </div>
                                 )
                               })}
-                              {annotation.qualifiers.length > 0 && (
-                                <div className="mt-1 border-t border-dashed pt-1.5">
-                                  <div className="mb-1 text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
-                                    Qualifiers
-                                    {' '}
-                                    {annotation.qualifiers.length}
-                                  </div>
-                                  <div className="space-y-1">
-                                    {annotation.qualifiers.map(qualifier => (
-                                      <div
-                                        key={qualifier.id}
-                                        className="flex min-w-0 items-center gap-1 rounded-md bg-muted/60 px-1.5 py-1 text-[11px] leading-tight"
-                                      >
-                                        <span
-                                          className="min-w-0 flex-1 truncate rounded-sm px-1.5 py-0.5 font-medium text-slate-800"
-                                          style={{ backgroundColor: TYPE_TO_COLOR['qualifier-predicate'] }}
-                                          title={getAnnotationComponentTitle(qualifier.predicate)}
-                                        >
-                                          {getAnnotationComponentDisplayText(qualifier.predicate)}
-                                        </span>
-                                        <span className="shrink-0 text-muted-foreground">
-                                          &rarr;
-                                        </span>
-                                        <span
-                                          className="min-w-0 flex-1 truncate rounded-sm px-1.5 py-0.5 font-medium text-slate-800"
-                                          style={{ backgroundColor: TYPE_TO_COLOR['qualifier-value'] }}
-                                          title={getAnnotationComponentTitle(qualifier.value)}
-                                        >
-                                          {getAnnotationComponentDisplayText(qualifier.value)}
-                                        </span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
+                              <QualifierSummary qualifiers={annotation.qualifiers} className="mt-1 pt-1.5" />
                             </div>
                             <div className="flex shrink-0 items-center gap-1">
                               <Tooltip>
