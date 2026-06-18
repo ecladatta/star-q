@@ -1,10 +1,15 @@
 'use server'
 import type { AnnotationComponent } from '@/db/schema'
-import type { AnnotationQualifierInput, DocumentAnnotation, DocumentAnnotationQualifier, Entity } from '@/types/types'
-import { asc, eq, getTableColumns, inArray } from 'drizzle-orm'
+import type {
+  AnnotationComponentRole,
+  AnnotationQualifierInput,
+  DocumentAnnotation,
+  DocumentAnnotationQualifier,
+  Entity,
+} from '@/types/types'
+import { and, asc, eq, getTableColumns, inArray } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { revalidatePath } from 'next/cache'
-import { findOrCreateCorpusCustomEntity } from '@/actions/corpus/corpusActions'
 import { db } from '@/db/drizzle'
 import { annotation, annotationComponent, annotationQualifier, corpusCustomEntity, document } from '@/db/schema'
 import { entityTypeForComponentRole } from '@/lib/annotation-roles'
@@ -38,6 +43,45 @@ function resolveComponentCustomEntity<T extends ComponentWithCustomEntity>(
   }
 }
 
+function customTypeForComponentRole(role: AnnotationComponentRole): 'entity' | 'relation' {
+  return entityTypeForComponentRole(role) === 'predicate' ? 'relation' : 'entity'
+}
+
+async function findOrCreateAnnotationCustomEntity(
+  executor: DbExecutor,
+  corpusId: string,
+  label: string,
+  value: string,
+  datatype: NonNullable<Entity['datatype']>,
+  role: AnnotationComponentRole,
+): Promise<string> {
+  const customType = customTypeForComponentRole(role)
+  const [existing] = await executor.select({ id: corpusCustomEntity.id })
+    .from(corpusCustomEntity)
+    .where(
+      and(
+        eq(corpusCustomEntity.corpusId, corpusId),
+        eq(corpusCustomEntity.value, value),
+        eq(corpusCustomEntity.customType, customType),
+      ),
+    )
+    .limit(1)
+
+  if (existing) {
+    return existing.id
+  }
+
+  const [result] = await executor.insert(corpusCustomEntity).values({
+    corpusId,
+    label,
+    value,
+    datatype,
+    customType,
+  }).returning({ id: corpusCustomEntity.id })
+
+  return result.id
+}
+
 async function upsertAnnotationComponent(
   component: AnnotationComponent,
   entity: Entity | null,
@@ -51,13 +95,13 @@ async function upsertAnnotationComponent(
 
   if (entity?.custom && entity.label && entity.value && entity.datatype) {
     // For custom entities, save to corpus custom entities and only store the ID
-    const entityType = entityTypeForComponentRole(component.annotationTag)
-    entityCustomId = await findOrCreateCorpusCustomEntity(
+    entityCustomId = await findOrCreateAnnotationCustomEntity(
+      executor,
       corpusId,
       entity.label,
       entity.value,
       entity.datatype,
-      entityType,
+      component.annotationTag,
     )
     // Don't store label/value for custom entities, they'll be fetched from corpusCustomEntity
   } else if (entity && !entity.custom) {
