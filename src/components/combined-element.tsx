@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { getAnnotationComponents } from '@/lib/annotation-roles'
 import { TYPE_TO_COLOR } from '@/lib/constants'
 import { cn, splitWithOffsets } from '@/lib/utils'
 import Split from './split'
@@ -27,9 +28,7 @@ export type CombinedElementProps = {
 function isComponentFromCurrentAnnotation(componentId: string, currentAnnotation: CurrentAnnotation | null): boolean {
   if (!currentAnnotation)
     return false
-  return componentId === currentAnnotation.subject?.id
-    || componentId === currentAnnotation.predicate?.id
-    || componentId === currentAnnotation.object?.id
+  return getAnnotationComponents(currentAnnotation).some(component => component.id === componentId)
 }
 
 function CombinedElement({
@@ -77,18 +76,14 @@ function CombinedElement({
 
     // Extract current annotation offsets for this element to handle overlaps
     const currentAnnotationOffsets = currentAnnotation
-      ? [
-          currentAnnotation.subject,
-          currentAnnotation.predicate,
-          currentAnnotation.object,
-        ]
+      ? getAnnotationComponents(currentAnnotation)
           .filter(component => component && component.elementIndex === elementIndex)
           .map(component => ({
-            start: component!.annotationStart,
-            end: component!.annotationEnd,
-            row: component!.annotationRow ?? undefined,
-            cell: component!.annotationCell ?? undefined,
-            componentId: component!.id,
+            start: component.annotationStart,
+            end: component.annotationEnd,
+            row: component.annotationRow ?? undefined,
+            cell: component.annotationCell ?? undefined,
+            componentId: component.id,
           }))
       : []
 
@@ -140,11 +135,7 @@ function CombinedElement({
 
         // Extract current annotation offsets for this specific cell
         const currentAnnotationOffsets = currentAnnotation
-          ? [
-              currentAnnotation.subject,
-              currentAnnotation.predicate,
-              currentAnnotation.object,
-            ]
+          ? getAnnotationComponents(currentAnnotation)
               .filter(component =>
                 component
                 && component.elementIndex === elementIndex
@@ -152,10 +143,10 @@ function CombinedElement({
                 && component.annotationCell === cellIndex,
               )
               .map(component => ({
-                start: component!.annotationStart,
-                end: component!.annotationEnd,
-                id: component!.id,
-                componentId: component!.id,
+                start: component.annotationStart,
+                end: component.annotationEnd,
+                id: component.id,
+                componentId: component.id,
               }))
           : []
 
@@ -188,28 +179,24 @@ function CombinedElement({
       }, 50)
     }
 
-    // Determine which annotation components are in this table
-    const hasSubject = currentAnnotation?.subject?.elementIndex === elementIndex
-    const hasPredicate = currentAnnotation?.predicate?.elementIndex === elementIndex
-    const hasObject = currentAnnotation?.object?.elementIndex === elementIndex
-
     // Build the border style based on which components are present
     const borderLayers: string[] = []
     let borderOffset = 0
-    const borderConfig = [
-      { present: hasSubject, color: '#FFE4B5' },
-      { present: hasPredicate, color: '#ADD8E6' },
-      { present: hasObject, color: '#90EE90' },
-    ]
-    borderConfig.forEach(({ present, color }) => {
-      if (present) {
-        if (borderOffset > 0) {
-          borderLayers.push(`0 0 0 ${borderOffset + 1}px white`)
-          borderOffset += 1
-        }
-        borderLayers.push(`0 0 0 ${borderOffset + 3}px ${color}`)
-        borderOffset += 3
+    const borderConfig = currentAnnotation
+      ? getAnnotationComponents(currentAnnotation)
+          .filter(component => component.elementIndex === elementIndex)
+          .filter((component, index, components) =>
+            components.findIndex(candidate => candidate.annotationTag === component.annotationTag) === index,
+          )
+          .map(component => ({ color: TYPE_TO_COLOR[component.annotationTag] }))
+      : []
+    borderConfig.forEach(({ color }) => {
+      if (borderOffset > 0) {
+        borderLayers.push(`0 0 0 ${borderOffset + 1}px white`)
+        borderOffset += 1
       }
+      borderLayers.push(`0 0 0 ${borderOffset + 3}px ${color}`)
+      borderOffset += 3
     })
     const boxShadowStyle = borderLayers.length > 0 ? borderLayers.join(', ') : undefined
 

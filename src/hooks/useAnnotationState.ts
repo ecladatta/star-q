@@ -1,6 +1,9 @@
 import type {
+  AnnotationComponentRole,
   AnnotationMention,
+  AnnotationQualifierInput,
   CurrentAnnotation,
+  CurrentAnnotationQualifier,
   DocumentAnnotation,
   DocumentAnnotationComponent,
   DocumentElement,
@@ -18,8 +21,11 @@ import {
   getAnnotationById,
   updateAnnotation,
 } from '@/actions/annotation/annotationActions'
+import { entityTypeForComponentRole, getAnnotationComponents } from '@/lib/annotation-roles'
 import { useKeyboardShortcuts } from './useKeyboardShortcuts'
 import { usePopoverState, useSelectionState } from './useSelectionState'
+
+type QualifierSide = 'predicate' | 'value'
 
 class AnnotationError extends Error {
   constructor(message: string, public code?: string) {
@@ -49,15 +55,89 @@ function validateAnnotationTriple(subject?: DocumentAnnotationComponent, predica
   return null
 }
 
-function createEntityFromComponent(component: DocumentAnnotationComponent, type: EntityType): Entity {
+function validateAnnotationQualifiers(qualifiers?: CurrentAnnotationQualifier[]): string[] {
+  if (!qualifiers) {
+    return []
+  }
+
+  return qualifiers.flatMap((qualifier, index) => {
+    const qualifierNumber = index + 1
+    const hasPredicateComponent = Boolean(qualifier.predicate)
+    const hasValueComponent = Boolean(qualifier.value)
+    const hasPredicate = validateAnnotationComponent(qualifier.predicate)
+    const hasValue = validateAnnotationComponent(qualifier.value)
+
+    if (!hasPredicateComponent && !hasValueComponent) {
+      return [`Qualifier ${qualifierNumber} is empty; remove it or fill both fields`]
+    }
+    if (!hasPredicate) {
+      return [`Qualifier ${qualifierNumber} predicate is required`]
+    }
+    if (!hasValue) {
+      return [`Qualifier ${qualifierNumber} value is required`]
+    }
+    return []
+  })
+}
+
+function createEntityFromComponent(component: DocumentAnnotationComponent): Entity {
   return {
     label: component.entityLabel || '',
     value: component.entityValue || '',
     custom: component.entityCustom || false,
     customId: component.entityCustomId || null,
     datatype: component.entityDatatype || null,
-    type,
+    type: entityTypeForComponentRole(component.annotationTag),
   }
+}
+
+function createQualifierInputs(qualifiers: CurrentAnnotationQualifier[]): AnnotationQualifierInput[] {
+  return qualifiers.map((qualifier, index) => {
+    const validationError = validateAnnotationQualifiers([qualifier])[0]
+    if (validationError || !qualifier.predicate || !qualifier.value) {
+      throw new AnnotationError(validationError ?? 'Invalid qualifier', 'VALIDATION_ERROR')
+    }
+
+    return {
+      id: qualifier.id,
+      predicate: qualifier.predicate,
+      predicateEntity: createEntityFromComponent(qualifier.predicate),
+      value: qualifier.value,
+      valueEntity: createEntityFromComponent(qualifier.value),
+      position: index,
+    }
+  })
+}
+
+function updateComponentEntity(
+  component: DocumentAnnotationComponent,
+  newValue: Entity | null,
+): DocumentAnnotationComponent {
+  return {
+    ...component,
+    entityLabel: newValue?.label || null,
+    entityValue: newValue?.value || null,
+    entityCustom: newValue?.custom || false,
+    entityCustomId: newValue?.customId || null,
+    entityDatatype: newValue?.datatype || null,
+  }
+}
+
+function reindexQualifiers(qualifiers: CurrentAnnotationQualifier[]): CurrentAnnotationQualifier[] {
+  return qualifiers.map((qualifier, position) => ({
+    ...qualifier,
+    position,
+  }))
+}
+
+function setQualifierComponent(
+  qualifier: CurrentAnnotationQualifier,
+  side: QualifierSide,
+  component: DocumentAnnotationComponent,
+): CurrentAnnotationQualifier {
+  return side === 'predicate'
+    ? { ...qualifier, predicate: component }
+    : { ...qualifier, value: component }
 }
 
 function componentsAreEqual(comp1: DocumentAnnotationComponent, comp2: DocumentAnnotationComponent): boolean {
@@ -85,7 +165,7 @@ function isDuplicateAnnotation(
   )
 }
 
-function createComponentFromMention(type: EntityType, mention: AnnotationMention): DocumentAnnotationComponent {
+function createComponentFromMention(role: AnnotationComponentRole, mention: AnnotationMention): DocumentAnnotationComponent {
   return {
     id: uuidv4(),
     entityLabel: null,
@@ -99,7 +179,7 @@ function createComponentFromMention(type: EntityType, mention: AnnotationMention
     annotationCell: mention.cell,
     annotationValue: mention.value,
     annotationType: mention.annotationType,
-    annotationTag: type,
+    annotationTag: role,
     elementIndex: mention.elementIndex,
   }
 }
@@ -139,6 +219,7 @@ export function useAnnotationState(
         errors.push(`${name} is required`)
       }
     })
+    errors.push(...validateAnnotationQualifiers(currentAnnotation.qualifiers))
 
     return { isValid: errors.length === 0, errors }
   }, [currentAnnotation])
@@ -152,8 +233,7 @@ export function useAnnotationState(
         return
 
       const activeAnnotation = annotation.id === currentAnnotation?.id ? currentAnnotation : annotation
-      const components = [activeAnnotation.subject, activeAnnotation.predicate, activeAnnotation.object]
-        .filter((comp): comp is DocumentAnnotationComponent => !!comp)
+      const components = getAnnotationComponents(activeAnnotation)
 
       components.forEach((component) => {
         const elementIndex = component.elementIndex
@@ -168,11 +248,7 @@ export function useAnnotationState(
 
     // Process current annotation being built
     if (currentAnnotation) {
-      const currentComponents = [
-        currentAnnotation.subject,
-        currentAnnotation.predicate,
-        currentAnnotation.object,
-      ].filter((comp): comp is DocumentAnnotationComponent => !!comp)
+      const currentComponents = getAnnotationComponents(currentAnnotation)
 
       currentComponents.forEach((component) => {
         const elementIndex = component.elementIndex
@@ -216,13 +292,21 @@ export function useAnnotationState(
     if (validationError) {
       throw new AnnotationError(validationError, 'VALIDATION_ERROR')
     }
+    const qualifierValidationErrors = validateAnnotationQualifiers(currentAnnotation?.qualifiers)
+    if (qualifierValidationErrors.length > 0) {
+      throw new AnnotationError(qualifierValidationErrors[0], 'VALIDATION_ERROR')
+    }
+
+    const qualifierInputs = currentAnnotation?.qualifiers === undefined
+      ? undefined
+      : createQualifierInputs(currentAnnotation.qualifiers)
 
     setLoadingState('annotationForm', true)
 
     try {
-      const selectedSubject = createEntityFromComponent(subject, 'subject')
-      const selectedPredicate = createEntityFromComponent(predicate, 'predicate')
-      const selectedObject = createEntityFromComponent(object, 'object')
+      const selectedSubject = createEntityFromComponent(subject)
+      const selectedPredicate = createEntityFromComponent(predicate)
+      const selectedObject = createEntityFromComponent(object)
 
       let updatedAnnotation: DocumentAnnotation
 
@@ -236,6 +320,7 @@ export function useAnnotationState(
           selectedPredicate,
           object,
           selectedObject,
+          qualifierInputs,
         )
         updatedAnnotation = await getAnnotationById(currentAnnotation.id)
 
@@ -260,6 +345,7 @@ export function useAnnotationState(
           selectedPredicate,
           object,
           selectedObject,
+          qualifierInputs ?? [],
         )
         updatedAnnotation = await getAnnotationById(annotationId)
 
@@ -351,7 +437,7 @@ export function useAnnotationState(
     }
   }, [currentAnnotation, setLoadingState, popover])
 
-  const createAnnotationComponent = useCallback((type: EntityType): DocumentAnnotationComponent | null => {
+  const createAnnotationComponent = useCallback((role: AnnotationComponentRole): DocumentAnnotationComponent | null => {
     if (!selection.hasSelection()) {
       toast.error('Please select some text to annotate.')
       return null
@@ -406,7 +492,7 @@ export function useAnnotationState(
       annotationCell: tableSelection?.cellIndex ?? null,
       annotationValue: trimmedText,
       annotationType: currentElementType,
-      annotationTag: type,
+      annotationTag: role,
       elementIndex: currentElementIndex,
     }
   }, [selection, combinedElements])
@@ -416,13 +502,7 @@ export function useAnnotationState(
       return
 
     const { annotation, componentId } = popover.popoverState
-    const componentMapping: Record<string, DocumentAnnotationComponent | undefined> = {
-      [annotation.subjectId]: annotation.subject,
-      [annotation.predicateId]: annotation.predicate,
-      [annotation.objectId]: annotation.object,
-    }
-
-    const component = componentMapping[componentId]
+    const component = getAnnotationComponents(annotation).find(component => component.id === componentId)
     if (!component)
       return
 
@@ -461,6 +541,88 @@ export function useAnnotationState(
 
     selection.clearSelection()
   }, [createAnnotationComponent, selection])
+
+  const addQualifier = useCallback(() => {
+    setCurrentAnnotation((prev) => {
+      const qualifiers = prev?.qualifiers ?? []
+      return {
+        ...prev,
+        qualifiers: [
+          ...qualifiers,
+          { id: uuidv4(), position: qualifiers.length },
+        ],
+      }
+    })
+  }, [])
+
+  const removeQualifier = useCallback((qualifierId: string) => {
+    setCurrentAnnotation((prev) => {
+      if (!prev?.qualifiers) {
+        return prev
+      }
+
+      return {
+        ...prev,
+        qualifiers: reindexQualifiers(prev.qualifiers.filter(qualifier => qualifier.id !== qualifierId)),
+      }
+    })
+  }, [])
+
+  const assignSelectionToQualifier = useCallback((qualifierId: string, side: QualifierSide) => {
+    const role: AnnotationComponentRole = side === 'predicate'
+      ? 'qualifier-predicate'
+      : 'qualifier-value'
+    const newComponent = createAnnotationComponent(role)
+    if (!newComponent) {
+      return
+    }
+
+    setCurrentAnnotation((prev) => {
+      const qualifiers = prev?.qualifiers ?? []
+      const existingIndex = qualifiers.findIndex(qualifier => qualifier.id === qualifierId)
+      const qualifierToUpdate = existingIndex >= 0
+        ? qualifiers[existingIndex]
+        : { id: qualifierId, position: qualifiers.length }
+      const updatedQualifier = setQualifierComponent(qualifierToUpdate, side, newComponent)
+      const nextQualifiers = existingIndex >= 0
+        ? qualifiers.map(qualifier => qualifier.id === qualifierId ? updatedQualifier : qualifier)
+        : [...qualifiers, updatedQualifier]
+
+      return {
+        ...prev,
+        qualifiers: reindexQualifiers(nextQualifiers),
+      }
+    })
+
+    selection.clearSelection()
+    popover.hidePopover()
+  }, [createAnnotationComponent, popover, selection])
+
+  const updateQualifierEntity = useCallback((qualifierId: string, side: QualifierSide, newValue: Entity | null) => {
+    setCurrentAnnotation((prev) => {
+      if (!prev?.qualifiers) {
+        return prev
+      }
+
+      return {
+        ...prev,
+        qualifiers: prev.qualifiers.map((qualifier) => {
+          if (qualifier.id !== qualifierId) {
+            return qualifier
+          }
+
+          const component = qualifier[side]
+          if (!component) {
+            return qualifier
+          }
+
+          return side === 'predicate'
+            ? { ...qualifier, predicate: updateComponentEntity(component, newValue) }
+            : { ...qualifier, value: updateComponentEntity(component, newValue) }
+        }),
+      }
+    })
+  }, [])
 
   const handleSelectionMentionAssociation = useCallback((type: EntityType) => {
     const mention = popover.popoverState.mentionData
@@ -502,6 +664,12 @@ export function useAnnotationState(
       subject: cloneComponent(annotationToClone.subject),
       predicate: cloneComponent(annotationToClone.predicate),
       object: cloneComponent(annotationToClone.object),
+      qualifiers: annotationToClone.qualifiers.map((qualifier, position) => ({
+        id: uuidv4(),
+        position,
+        predicate: cloneComponent(qualifier.predicate),
+        value: cloneComponent(qualifier.value),
+      })),
     })
 
     popover.hidePopover()
@@ -558,6 +726,10 @@ export function useAnnotationState(
     handleMentionAssociation,
     handleSelectionMentionAssociation,
     addToCurrentAnnotation,
+    addQualifier,
+    removeQualifier,
+    assignSelectionToQualifier,
+    updateQualifierEntity,
     handleCloneAnnotation,
 
     // Sub-hooks

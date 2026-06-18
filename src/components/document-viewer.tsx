@@ -2,7 +2,7 @@
 import type { DocumentMetadata } from '@/actions/corpus/corpusActions'
 import type { Corpus, Document } from '@/db/schema'
 import type { Offset } from '@/lib/utils'
-import type { DocumentAnnotation, DocumentData, EntityType } from '@/types/types'
+import type { DocumentAnnotation, DocumentAnnotationComponent, DocumentData } from '@/types/types'
 import { Check, Copy, InfoIcon } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
@@ -13,6 +13,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useAnnotationState } from '@/hooks/useAnnotationState'
 import { useDocumentElements } from '@/hooks/useDocumentElements'
 import { useSelectionHandlers } from '@/hooks/useSelectionState'
+import { getAnnotationComponents } from '@/lib/annotation-roles'
 import { annotationComponentsShareSegment, cn, isMac } from '@/lib/utils'
 import { AnnotationForm } from './annotation-form'
 import { AnnotationListPopover } from './annotation-list-popover'
@@ -28,8 +29,6 @@ type DocumentViewerProps = {
   document?: Document
   annotations?: DocumentAnnotation[]
 }
-
-const ANNOTATION_ROLES: EntityType[] = ['subject', 'predicate', 'object']
 
 export function DocumentViewer({ corpus, documents, document, annotations }: DocumentViewerProps) {
   const [showAnnotations, setShowAnnotations] = useState(true)
@@ -54,6 +53,10 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
     deleteAnnotationById,
     handleSelectionMentionAssociation,
     handleCloneAnnotation,
+    addQualifier,
+    removeQualifier,
+    assignSelectionToQualifier,
+    updateQualifierEntity,
     selection,
     popover,
   } = annotationState
@@ -65,7 +68,7 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
   )
 
   const componentById = useMemo(() => {
-    const map = new Map<string, DocumentAnnotation['subject']>()
+    const map = new Map<string, DocumentAnnotationComponent>()
     for (const element of documentElements) {
       for (const component of element.components) {
         map.set(component.id, component)
@@ -83,8 +86,8 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
       return
 
     const matchingAnnotations = documentAnnotations.filter(annotation =>
-      ANNOTATION_ROLES.some(role =>
-        annotationComponentsShareSegment(annotation[role], clickedComponent),
+      getAnnotationComponents(annotation).some(component =>
+        annotationComponentsShareSegment(component, clickedComponent),
       ),
     )
 
@@ -377,6 +380,11 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
             annotationFormLoading={annotationFormLoading}
             isDeletingAnnotation={isDeletingAnnotation}
             corpusId={corpus.id}
+            addQualifier={addQualifier}
+            removeQualifier={removeQualifier}
+            assignSelectionToQualifier={assignSelectionToQualifier}
+            updateQualifierEntity={updateQualifierEntity}
+            hasActiveSelection={selection.hasSelection()}
           />
 
           {/* Show AnnotationListPopover when clicking on existing annotations with shared segments */}

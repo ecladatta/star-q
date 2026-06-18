@@ -21,6 +21,11 @@ type AnnotationFormProps = {
   annotationFormLoading: boolean
   isDeletingAnnotation: boolean
   corpusId: string
+  addQualifier: () => void
+  removeQualifier: (qualifierId: string) => void
+  assignSelectionToQualifier: (qualifierId: string, side: 'predicate' | 'value') => void
+  updateQualifierEntity: (qualifierId: string, side: 'predicate' | 'value', newValue: Entity | null) => void
+  hasActiveSelection: boolean
 }
 
 export function AnnotationForm({
@@ -121,6 +126,14 @@ export function AnnotationForm({
       subject: cloneComponent(currentAnnotation.subject),
       predicate: cloneComponent(currentAnnotation.predicate),
       object: cloneComponent(currentAnnotation.object),
+    }
+    if (currentAnnotation.qualifiers !== undefined) {
+      clonedAnnotation.qualifiers = currentAnnotation.qualifiers.map((qualifier, position) => ({
+        id: uuidv4(),
+        position,
+        predicate: cloneComponent(qualifier.predicate),
+        value: cloneComponent(qualifier.value),
+      }))
     }
 
     setCurrentAnnotation(clonedAnnotation)
