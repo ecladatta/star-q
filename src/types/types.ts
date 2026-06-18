@@ -3,8 +3,8 @@ import type { CorpusCustomEntity, Document } from '@/db/schema'
 export type TextOrTableElement = {
   elementIndex: number
   type: 'text' | 'table'
-  startOffset: number
-  endOffset: number
+  startOffset?: number
+  endOffset?: number
   value: string | string[][]
   data: any
 }
@@ -80,8 +80,8 @@ export type DocumentData = {
     }
     extractionMetadata: {
       technology: string | null
-      texts: { startOffset?: number, endOffset?: number, value: string }[]
-      tables: { startOffset?: number, endOffset?: number, tableData: string[][] }[]
+      texts: { index?: number, startOffset?: number, endOffset?: number, value: string | null }[]
+      tables: { tableNum?: number, startOffset?: number, endOffset?: number, tableData: Array<Array<string | null>> }[]
     }[]
   }
 }
