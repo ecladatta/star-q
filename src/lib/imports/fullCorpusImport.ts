@@ -77,18 +77,27 @@ export async function importFullCorpusExportDocuments(
         if (doc.annotations && doc.annotations.length > 0) {
           for (const ann of doc.annotations) {
             try {
-              const insertComponent = async (comp: unknown, key: string) => {
+              const prepareComponentData = (comp: unknown, key: string) => {
                 if (!isComponentRecord(comp)) {
                   errors.push(`Annotation component '${key}' is not an object: ${JSON.stringify(comp)} in document ${doc.title}`)
                   return null
                 }
 
                 const { id: _id, ...data } = comp
+                return remapCustomEntityId(data, customEntityIdMap) as typeof annotationComponent.$inferInsert
+              }
+
+              const insertPreparedComponent = async (data: typeof annotationComponent.$inferInsert) => {
                 const [insertedComp] = await tx.insert(annotationComponent)
-                  .values(remapCustomEntityId(data, customEntityIdMap) as typeof annotationComponent.$inferInsert)
+                  .values(data)
                   .returning({ id: annotationComponent.id })
 
                 return insertedComp.id
+              }
+
+              const insertComponent = async (comp: unknown, key: string) => {
+                const data = prepareComponentData(comp, key)
+                return data ? insertPreparedComponent(data) : null
               }
 
               // Insert annotation components (subject, predicate, object)
@@ -115,12 +124,15 @@ export async function importFullCorpusExportDocuments(
                     continue
                   }
 
-                  const qualifierPredicateId = await insertComponent(qualifier.predicate, `qualifier[${qualifierIndex}].predicate`)
-                  const qualifierValueId = await insertComponent(qualifier.value, `qualifier[${qualifierIndex}].value`)
-                  if (!qualifierPredicateId || !qualifierValueId) {
+                  const qualifierPredicateData = prepareComponentData(qualifier.predicate, `qualifier[${qualifierIndex}].predicate`)
+                  const qualifierValueData = prepareComponentData(qualifier.value, `qualifier[${qualifierIndex}].value`)
+                  if (!qualifierPredicateData || !qualifierValueData) {
                     errors.push(`Skipping annotation qualifier at index ${qualifierIndex} in document ${doc.title} due to invalid component.`)
                     continue
                   }
+
+                  const qualifierPredicateId = await insertPreparedComponent(qualifierPredicateData)
+                  const qualifierValueId = await insertPreparedComponent(qualifierValueData)
 
                   await tx.insert(annotationQualifier).values({
                     annotationId: insertedAnnotation.id,
