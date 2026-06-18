@@ -61,8 +61,8 @@ export async function importFullCorpusExportDocuments(
           for (const ann of doc.annotations) {
             try {
               // Insert annotation components (subject, predicate, object)
-              const components = await Promise.all(['subject', 'predicate', 'object'].map(async (key) => {
-                const comp = ann[key as keyof typeof ann]
+              const components = await Promise.all((['subject', 'predicate', 'object'] as const).map(async (key) => {
+                const comp = ann[key]
                 if (typeof comp === 'object' && comp !== null) {
                   const { id: _id, ...data } = comp
                   // If entityCustomId exists, replace with new ID from mapping
@@ -87,13 +87,11 @@ export async function importFullCorpusExportDocuments(
               const [subjectComp, predicateComp, objectComp] = components as [ { id: string }, { id: string }, { id: string } ]
 
               // Insert annotation record
-              const { id: _annotationId, ...annotationData } = ann
               await tx.insert(annotation).values({
                 documentId: documentId.id,
                 subjectId: subjectComp.id,
                 predicateId: predicateComp.id,
                 objectId: objectComp.id,
-                ...annotationData,
               })
             } catch (annErr) {
               errors.push(`Error inserting annotation in document ${doc.title}: ${annErr}`)

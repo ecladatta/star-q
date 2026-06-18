@@ -194,6 +194,7 @@ export async function getAnnotations(documentId: string): Promise<DocumentAnnota
         ? result.objectCustomEntity.datatype
         : result.object.entityDatatype,
     },
+    qualifiers: [],
   }))
 }
 
@@ -269,6 +270,7 @@ export async function getAnnotationById(id: string): Promise<DocumentAnnotation>
         ? result.objectCustomEntity.datatype
         : result.object.entityDatatype,
     },
+    qualifiers: [],
   }
 }
 

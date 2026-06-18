@@ -79,8 +79,12 @@ export function AnnotationForm({
       if (!prev)
         return prev
 
-      const newSubject = prev.object ? { ...prev.object, annotationTag: 'subject' } : undefined
-      const newObject = prev.subject ? { ...prev.subject, annotationTag: 'object' } : undefined
+      const newSubject: DocumentAnnotationComponent | undefined = prev.object
+        ? { ...prev.object, annotationTag: 'subject' }
+        : undefined
+      const newObject: DocumentAnnotationComponent | undefined = prev.subject
+        ? { ...prev.subject, annotationTag: 'object' }
+        : undefined
 
       return {
         ...prev,

@@ -1,6 +1,6 @@
 import type { InferSelectModel } from 'drizzle-orm'
 import type { AdapterAccountType } from 'next-auth/adapters'
-import type { DocumentData, EntityDatatype } from '@/types/types'
+import type { AnnotationComponentRole, DocumentData, EntityDatatype } from '@/types/types'
 import { randomUUID } from 'node:crypto'
 import { boolean, integer, jsonb, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core'
 
@@ -132,7 +132,7 @@ export const annotationComponent = pgTable('annotation_component', {
   annotationCell: integer('annotation_cell'),
   annotationValue: text('annotation_value').notNull(),
   annotationType: text('annotation_type').$type<'text' | 'table'>().notNull(),
-  annotationTag: text('annotation_tag').notNull(),
+  annotationTag: text('annotation_tag').$type<AnnotationComponentRole>().notNull(),
   elementIndex: integer('element_index').notNull(),
 })
 export type AnnotationComponent = InferSelectModel<typeof annotationComponent>
