@@ -40,13 +40,15 @@ export type SplitComponent = {
 }
 
 export function splitWithOffsets(
-  text: string,
+  text: string | null | undefined,
   source: string,
   offsets: Array<Offset & { componentId?: string }>,
   currentAnnotationOffsets: Array<Offset & { componentId?: string }> = [],
 ): SplitComponent[] {
-  if (!text || (offsets.length === 0 && currentAnnotationOffsets.length === 0)) {
-    return [{ start: 0, end: text.length, content: text, source }]
+  const safeText = text ?? ''
+
+  if (!safeText || (offsets.length === 0 && currentAnnotationOffsets.length === 0)) {
+    return [{ start: 0, end: safeText.length, content: safeText, source }]
   }
 
   const allOffsets = [...offsets, ...currentAnnotationOffsets]
@@ -76,19 +78,19 @@ export function splitWithOffsets(
   const splits: SplitComponent[] = []
   let i = 0
 
-  while (i < text.length) {
+  while (i < safeText.length) {
     const annotation = characterMap.get(i)
     const start = i
 
     while (
-      i < text.length
+      i < safeText.length
       && characterMap.get(i)?.componentId === annotation?.componentId
     ) {
       i++
     }
 
     const end = i
-    const content = text.slice(start, end)
+    const content = safeText.slice(start, end)
 
     if (annotation) {
       splits.push({
