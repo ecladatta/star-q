@@ -147,6 +147,19 @@ export async function determineJsonType(content: string): Promise<JsonFileType> 
 
 export type ImportType = 'corpuswalker' | 'labelstudio' | 'irit-zip' | 'full-corpus-export' | 'unknown'
 
+function parseFirstJsonLine(content: string): unknown {
+  const firstLine = content.split('\n').find(line => line.trim() !== '')
+  if (!firstLine) {
+    return null
+  }
+
+  return JSON.parse(firstLine)
+}
+
+function isCorpuswalkerDocument(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value) && '_index' in value
+}
+
 export async function determineImportType(content: string, fileName?: string): Promise<ImportType> {
   if (fileName?.toLowerCase().endsWith('.zip')) {
     // Check if it's an IRIT zip format
@@ -155,12 +168,21 @@ export async function determineImportType(content: string, fileName?: string): P
     }
   }
 
+  try {
+    const firstLine = parseFirstJsonLine(content)
+    if (isCorpuswalkerDocument(firstLine)) {
+      return 'corpuswalker'
+    }
+  } catch {
+    // Not a parseable first JSON line; continue to the generic format checks.
+  }
+
   const jsonType = await determineJsonType(content)
   if (jsonType === 'jsonlines') {
     // Check if it's a Corpus Walker JSON Lines file
     try {
-      const firstLine = JSON.parse(content.split('\n')[0])
-      if ('_index' in firstLine) {
+      const firstLine = parseFirstJsonLine(content)
+      if (isCorpuswalkerDocument(firstLine)) {
         return 'corpuswalker'
       }
     } catch {}

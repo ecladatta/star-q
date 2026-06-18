@@ -36,7 +36,7 @@ export async function importDocuments(corpusId: string, formData: FormData): Pro
   const importType = await determineImportType(content, file.name)
 
   if (importType === 'unknown') {
-    return importError('File format is not supported. Please upload a JSON, JSONL, or ZIP file.')
+    return importError('Could not determine file format. Please upload a JSON, JSONL, or ZIP file.')
   }
 
   let result: { ids: string[], errors: string[] } = { ids: [], errors: [] }
