@@ -89,6 +89,14 @@ function normalizeQualifierPosition(position: unknown, qualifierIndex: number): 
   return qualifierIndex <= POSTGRES_INTEGER_MAX ? qualifierIndex : POSTGRES_INTEGER_MAX
 }
 
+function normalizeDocumentOrder(order: unknown, fallbackOrder: number): number | null {
+  if (order === null || order === undefined) {
+    return isPostgresInteger(fallbackOrder) ? fallbackOrder : null
+  }
+
+  return isPostgresInteger(order) ? order : null
+}
+
 /**
  * Import documents and annotations from a full corpus export
  */
@@ -135,6 +143,12 @@ export async function importFullCorpusExportDocuments(
           continue
         }
 
+        const documentOrder = normalizeDocumentOrder((doc as any).order, i + 1)
+        if (documentOrder === null) {
+          errors.push(`Error inserting document ${doc.title}: document order is missing or invalid.`)
+          continue
+        }
+
         // Insert document with content
         const baseCreatedAt = doc.createdAt ? new Date(doc.createdAt) : new Date()
 
@@ -145,7 +159,7 @@ export async function importFullCorpusExportDocuments(
           createdAt: baseCreatedAt,
           updatedAt: doc.updatedAt ? new Date(doc.updatedAt) : new Date(),
           completedAt: doc.completedAt ? new Date(doc.completedAt) : null,
-          order: doc.order ?? (i + 1),
+          order: documentOrder,
         }).returning({ id: document.id })
 
         // Insert annotations for this document
@@ -236,17 +250,23 @@ export async function importFullCorpusExportDocuments(
                     continue
                   }
 
-                  const qualifierPredicateId = await insertPreparedComponent(qualifierPredicateData)
-                  const qualifierValueId = await insertPreparedComponent(qualifierValueData)
+                  await tx.transaction(async (qualifierTx) => {
+                    const [insertedPredicate] = await qualifierTx.insert(annotationComponent)
+                      .values(qualifierPredicateData)
+                      .returning({ id: annotationComponent.id })
+                    const [insertedValue] = await qualifierTx.insert(annotationComponent)
+                      .values(qualifierValueData)
+                      .returning({ id: annotationComponent.id })
 
-                  await tx.insert(annotationQualifier).values({
-                    annotationId: insertedAnnotation.id,
-                    predicateId: qualifierPredicateId,
-                    valueId: qualifierValueId,
-                    position: qualifierPosition,
+                    await qualifierTx.insert(annotationQualifier).values({
+                      annotationId: insertedAnnotation.id,
+                      predicateId: insertedPredicate.id,
+                      valueId: insertedValue.id,
+                      position: qualifierPosition,
+                    })
                   })
                 } catch (qualifierErr) {
-                  errors.push(`Error inserting annotation qualifier at index ${qualifierIndex} in document ${doc.title}: ${qualifierErr}`)
+                  warnings.push(`Error inserting annotation qualifier at index ${qualifierIndex} in document ${doc.title}: ${qualifierErr}`)
                   continue
                 }
               }
