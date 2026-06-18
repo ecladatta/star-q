@@ -61,194 +61,198 @@ export async function getCorpusAnnotationsCount(corpusId: string): Promise<numbe
 export async function duplicateCorpus(id: string, newTitle?: string) {
   await requireAuth()
 
-  const [originalCorpus] = await db.select().from(corpus).where(eq(corpus.id, id))
-  if (!originalCorpus) {
-    throw new Error('Corpus not found')
-  }
-
-  const title = newTitle || `${originalCorpus.title} (copy)`
-  const [newCorpus] = await db.insert(corpus).values({ title }).returning()
-
-  // Copy custom entities first and create mapping
-  const customEntities = await db.select().from(corpusCustomEntity).where(eq(corpusCustomEntity.corpusId, id))
-  const customEntityIdMap = new Map<string, string>()
-
-  if (customEntities.length > 0) {
-    const newCustomEntities = await db.insert(corpusCustomEntity)
-      .values(
-        customEntities.map(entity => ({
-          corpusId: newCorpus.id,
-          label: entity.label,
-          value: entity.value,
-          datatype: entity.datatype,
-          customType: entity.customType,
-        })),
-      )
-      .returning()
-
-    // Create mapping of old custom entity IDs to new custom entity IDs
-    customEntities.forEach((oldEntity, index) => {
-      customEntityIdMap.set(oldEntity.id, newCustomEntities[index].id)
-    })
-  }
-
-  const documents = await db.select().from(document).where(eq(document.corpusId, id)).orderBy(document.order)
-
-  // Create a mapping from old document IDs to new document IDs to link annotations
-  const documentIdMap = new Map<string, string>()
-
-  if (documents.length > 0) {
-    const BATCH_SIZE = 500
-    const documentBatches = []
-
-    for (let i = 0; i < documents.length; i += BATCH_SIZE) {
-      documentBatches.push(documents.slice(i, i + BATCH_SIZE))
+  const newCorpus = await db.transaction(async (trx) => {
+    const [originalCorpus] = await trx.select().from(corpus).where(eq(corpus.id, id))
+    if (!originalCorpus) {
+      throw new Error('Corpus not found')
     }
 
-    for (const batch of documentBatches) {
-      const newDocuments = await db.insert(document)
+    const title = newTitle || `${originalCorpus.title} (copy)`
+    const [newCorpus] = await trx.insert(corpus).values({ title }).returning()
+
+    // Copy custom entities first and create mapping
+    const customEntities = await trx.select().from(corpusCustomEntity).where(eq(corpusCustomEntity.corpusId, id))
+    const customEntityIdMap = new Map<string, string>()
+
+    if (customEntities.length > 0) {
+      const newCustomEntities = await trx.insert(corpusCustomEntity)
         .values(
-          batch.map(doc => ({
+          customEntities.map(entity => ({
             corpusId: newCorpus.id,
-            title: doc.title,
-            raw: doc.raw,
-            order: doc.order,
+            label: entity.label,
+            value: entity.value,
+            datatype: entity.datatype,
+            customType: entity.customType,
           })),
         )
         .returning()
 
-      // Create mapping of old document IDs to new document IDs
-      batch.forEach((oldDoc, index) => {
-        documentIdMap.set(oldDoc.id, newDocuments[index].id)
+      // Create mapping of old custom entity IDs to new custom entity IDs
+      customEntities.forEach((oldEntity, index) => {
+        customEntityIdMap.set(oldEntity.id, newCustomEntities[index].id)
       })
     }
-  }
 
-  if (documentIdMap.size > 0) {
-    // Get all annotations for the documents in the original corpus
-    const oldDocIds = Array.from(documentIdMap.keys())
-    const annotations = await db.select()
-      .from(annotation)
-      .where(inArray(annotation.documentId, oldDocIds))
-    const oldAnnotationIds = annotations.map(anno => anno.id)
-    const qualifiers = oldAnnotationIds.length > 0
-      ? await db.select().from(annotationQualifier).where(inArray(annotationQualifier.annotationId, oldAnnotationIds))
-      : []
+    const documents = await trx.select().from(document).where(eq(document.corpusId, id)).orderBy(document.order)
 
-    if (annotations.length > 0) {
-      // Get all annotation components that are referenced by these annotations
-      const componentIds = Array.from(new Set([
-        ...annotations.map(anno => anno.subjectId),
-        ...annotations.map(anno => anno.predicateId),
-        ...annotations.map(anno => anno.objectId),
-        ...qualifiers.map(qualifier => qualifier.predicateId),
-        ...qualifiers.map(qualifier => qualifier.valueId),
-      ]))
+    // Create a mapping from old document IDs to new document IDs to link annotations
+    const documentIdMap = new Map<string, string>()
 
-      const components = await db.select()
-        .from(annotationComponent)
-        .where(inArray(annotationComponent.id, componentIds))
+    if (documents.length > 0) {
+      const BATCH_SIZE = 500
+      const documentBatches = []
 
-      // Create new annotation components with updated custom entity IDs
-      const componentIdMap = new Map<string, string>()
-
-      if (components.length > 0) {
-        const BATCH_SIZE = 500
-        const componentBatches = []
-
-        for (let i = 0; i < components.length; i += BATCH_SIZE) {
-          componentBatches.push(components.slice(i, i + BATCH_SIZE))
-        }
-
-        for (const batch of componentBatches) {
-          const newComponents = await db.insert(annotationComponent)
-            .values(
-              batch.map((comp) => {
-                // Map old custom entity ID to new custom entity ID
-                let mappedEntityCustomId: string | null = null
-                if (comp.entityCustomId) {
-                  mappedEntityCustomId = customEntityIdMap.get(comp.entityCustomId) ?? null
-                }
-
-                return {
-                  entityLabel: comp.entityLabel,
-                  entityValue: comp.entityValue,
-                  entityCustom: comp.entityCustom,
-                  entityCustomId: mappedEntityCustomId,
-                  entityDatatype: comp.entityDatatype,
-                  annotationStart: comp.annotationStart,
-                  annotationEnd: comp.annotationEnd,
-                  annotationRow: comp.annotationRow,
-                  annotationCell: comp.annotationCell,
-                  annotationValue: comp.annotationValue,
-                  annotationType: comp.annotationType,
-                  annotationTag: comp.annotationTag,
-                  elementIndex: comp.elementIndex,
-                }
-              }),
-            )
-            .returning()
-
-          // Create mapping of old component IDs to new component IDs
-          batch.forEach((oldComponent, index) => {
-            componentIdMap.set(oldComponent.id, newComponents[index].id)
-          })
-        }
+      for (let i = 0; i < documents.length; i += BATCH_SIZE) {
+        documentBatches.push(documents.slice(i, i + BATCH_SIZE))
       }
 
-      // Insert annotations with updated document IDs and component IDs
+      for (const batch of documentBatches) {
+        const newDocuments = await trx.insert(document)
+          .values(
+            batch.map(doc => ({
+              corpusId: newCorpus.id,
+              title: doc.title,
+              raw: doc.raw,
+              order: doc.order,
+            })),
+          )
+          .returning()
+
+        // Create mapping of old document IDs to new document IDs
+        batch.forEach((oldDoc, index) => {
+          documentIdMap.set(oldDoc.id, newDocuments[index].id)
+        })
+      }
+    }
+
+    if (documentIdMap.size > 0) {
+      // Get all annotations for the documents in the original corpus
+      const oldDocIds = Array.from(documentIdMap.keys())
+      const annotations = await trx.select()
+        .from(annotation)
+        .where(inArray(annotation.documentId, oldDocIds))
+      const oldAnnotationIds = annotations.map(anno => anno.id)
+      const qualifiers = oldAnnotationIds.length > 0
+        ? await trx.select().from(annotationQualifier).where(inArray(annotationQualifier.annotationId, oldAnnotationIds))
+        : []
+
       if (annotations.length > 0) {
-        const BATCH_SIZE = 500
-        const annotationBatches = []
-        const annotationIdMap = new Map<string, string>()
+        // Get all annotation components that are referenced by these annotations
+        const componentIds = Array.from(new Set([
+          ...annotations.map(anno => anno.subjectId),
+          ...annotations.map(anno => anno.predicateId),
+          ...annotations.map(anno => anno.objectId),
+          ...qualifiers.map(qualifier => qualifier.predicateId),
+          ...qualifiers.map(qualifier => qualifier.valueId),
+        ]))
 
-        for (let i = 0; i < annotations.length; i += BATCH_SIZE) {
-          annotationBatches.push(annotations.slice(i, i + BATCH_SIZE))
-        }
+        const components = await trx.select()
+          .from(annotationComponent)
+          .where(inArray(annotationComponent.id, componentIds))
 
-        for (const batch of annotationBatches) {
-          const newAnnotations = await db.insert(annotation)
-            .values(
-              batch.map(anno => ({
-                documentId: documentIdMap.get(anno.documentId)!,
-                subjectId: componentIdMap.get(anno.subjectId)!,
-                predicateId: componentIdMap.get(anno.predicateId)!,
-                objectId: componentIdMap.get(anno.objectId)!,
-                userId: anno.userId,
-                createdAt: anno.createdAt,
-                updatedAt: anno.updatedAt,
-              })),
-            )
-            .returning({ id: annotation.id })
+        // Create new annotation components with updated custom entity IDs
+        const componentIdMap = new Map<string, string>()
 
-          batch.forEach((oldAnnotation, index) => {
-            annotationIdMap.set(oldAnnotation.id, newAnnotations[index].id)
-          })
-        }
+        if (components.length > 0) {
+          const BATCH_SIZE = 500
+          const componentBatches = []
 
-        if (qualifiers.length > 0) {
-          const qualifierBatches = []
-
-          for (let i = 0; i < qualifiers.length; i += BATCH_SIZE) {
-            qualifierBatches.push(qualifiers.slice(i, i + BATCH_SIZE))
+          for (let i = 0; i < components.length; i += BATCH_SIZE) {
+            componentBatches.push(components.slice(i, i + BATCH_SIZE))
           }
 
-          for (const batch of qualifierBatches) {
-            await db.insert(annotationQualifier).values(
-              batch.map(qualifier => ({
-                annotationId: annotationIdMap.get(qualifier.annotationId)!,
-                predicateId: componentIdMap.get(qualifier.predicateId)!,
-                valueId: componentIdMap.get(qualifier.valueId)!,
-                position: qualifier.position,
-                createdAt: qualifier.createdAt,
-                updatedAt: qualifier.updatedAt,
-              })),
-            )
+          for (const batch of componentBatches) {
+            const newComponents = await trx.insert(annotationComponent)
+              .values(
+                batch.map((comp) => {
+                  // Map old custom entity ID to new custom entity ID
+                  let mappedEntityCustomId: string | null = null
+                  if (comp.entityCustomId) {
+                    mappedEntityCustomId = customEntityIdMap.get(comp.entityCustomId) ?? null
+                  }
+
+                  return {
+                    entityLabel: comp.entityLabel,
+                    entityValue: comp.entityValue,
+                    entityCustom: comp.entityCustom,
+                    entityCustomId: mappedEntityCustomId,
+                    entityDatatype: comp.entityDatatype,
+                    annotationStart: comp.annotationStart,
+                    annotationEnd: comp.annotationEnd,
+                    annotationRow: comp.annotationRow,
+                    annotationCell: comp.annotationCell,
+                    annotationValue: comp.annotationValue,
+                    annotationType: comp.annotationType,
+                    annotationTag: comp.annotationTag,
+                    elementIndex: comp.elementIndex,
+                  }
+                }),
+              )
+              .returning()
+
+            // Create mapping of old component IDs to new component IDs
+            batch.forEach((oldComponent, index) => {
+              componentIdMap.set(oldComponent.id, newComponents[index].id)
+            })
+          }
+        }
+
+        // Insert annotations with updated document IDs and component IDs
+        if (annotations.length > 0) {
+          const BATCH_SIZE = 500
+          const annotationBatches = []
+          const annotationIdMap = new Map<string, string>()
+
+          for (let i = 0; i < annotations.length; i += BATCH_SIZE) {
+            annotationBatches.push(annotations.slice(i, i + BATCH_SIZE))
+          }
+
+          for (const batch of annotationBatches) {
+            const newAnnotations = await trx.insert(annotation)
+              .values(
+                batch.map(anno => ({
+                  documentId: documentIdMap.get(anno.documentId)!,
+                  subjectId: componentIdMap.get(anno.subjectId)!,
+                  predicateId: componentIdMap.get(anno.predicateId)!,
+                  objectId: componentIdMap.get(anno.objectId)!,
+                  userId: anno.userId,
+                  createdAt: anno.createdAt,
+                  updatedAt: anno.updatedAt,
+                })),
+              )
+              .returning({ id: annotation.id })
+
+            batch.forEach((oldAnnotation, index) => {
+              annotationIdMap.set(oldAnnotation.id, newAnnotations[index].id)
+            })
+          }
+
+          if (qualifiers.length > 0) {
+            const qualifierBatches = []
+
+            for (let i = 0; i < qualifiers.length; i += BATCH_SIZE) {
+              qualifierBatches.push(qualifiers.slice(i, i + BATCH_SIZE))
+            }
+
+            for (const batch of qualifierBatches) {
+              await trx.insert(annotationQualifier).values(
+                batch.map(qualifier => ({
+                  annotationId: annotationIdMap.get(qualifier.annotationId)!,
+                  predicateId: componentIdMap.get(qualifier.predicateId)!,
+                  valueId: componentIdMap.get(qualifier.valueId)!,
+                  position: qualifier.position,
+                  createdAt: qualifier.createdAt,
+                  updatedAt: qualifier.updatedAt,
+                })),
+              )
+            }
           }
         }
       }
     }
-  }
+
+    return newCorpus
+  })
 
   revalidatePath('/')
   return newCorpus
