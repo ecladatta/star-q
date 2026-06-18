@@ -107,7 +107,7 @@ Each exported document follows this shape:
 - `updatedAt`: last update timestamp (ISO) or `null`
 - `completedAt`: completion timestamp (ISO) or `null`
 - `order`: numeric ordering for the document within the corpus
-- `raw`: raw extracted document data or `null` (see `DocumentData` below)
+- `raw`: raw extracted document data (see `DocumentData` below)
 - `annotations`: list of annotation triples with optional qualifiers
 
 Each annotation can include:
@@ -125,7 +125,7 @@ Example:
   "updatedAt": "<ISO 8601 timestamp>" | null,
   "completedAt": "<ISO 8601 timestamp>" | null,
   "order": <number>,
-  "raw": <DocumentData|null>,
+  "raw": <DocumentData>,
   "annotations": [
     {
       "id": "<annotationId>",

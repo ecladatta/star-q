@@ -1,5 +1,5 @@
 'use server'
-import type { DocumentData, ExportModel } from '@/types/types'
+import type { AnnotationComponentRole, ExportModel } from '@/types/types'
 import { db } from '@/db/drizzle'
 import { annotation, annotationComponent, annotationQualifier, corpusCustomEntity, document } from '@/db/schema'
 
@@ -10,15 +10,29 @@ function isComponentRecord(value: unknown): value is Record<string, any> {
   return typeof value === 'object' && value !== null
 }
 
-function remapCustomEntityId(
+function isUuid(value: unknown): value is string {
+  return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+}
+
+function normalizeCustomEntityFields(
   data: Record<string, any>,
   customEntityIdMap: Record<string, string>,
 ) {
-  if (data.entityCustomId && customEntityIdMap[data.entityCustomId]) {
-    data.entityCustomId = customEntityIdMap[data.entityCustomId]
+  const mappedCustomEntityId = typeof data.entityCustomId === 'string'
+    ? customEntityIdMap[data.entityCustomId]
+    : null
+
+  if (isUuid(mappedCustomEntityId)) {
+    data.entityCustomId = mappedCustomEntityId
     data.entityLabel = null
     data.entityValue = null
     data.entityDatatype = null
+    return data
+  }
+
+  data.entityCustomId = null
+  if (data.entityCustom === true) {
+    data.entityCustom = false
   }
   return data
 }
@@ -116,13 +130,18 @@ export async function importFullCorpusExportDocuments(
     for (let i = 0; i < corpusData.documents.length; i++) {
       const doc = corpusData.documents[i]
       try {
+        if (!isComponentRecord(doc.raw)) {
+          errors.push(`Error inserting document ${doc.title}: raw document data is missing or invalid.`)
+          continue
+        }
+
         // Insert document with content
         const baseCreatedAt = doc.createdAt ? new Date(doc.createdAt) : new Date()
 
         const [documentId] = await tx.insert(document).values({
           corpusId,
           title: doc.title,
-          raw: doc.raw as DocumentData,
+          raw: doc.raw,
           createdAt: baseCreatedAt,
           updatedAt: doc.updatedAt ? new Date(doc.updatedAt) : new Date(),
           completedAt: doc.completedAt ? new Date(doc.completedAt) : null,
@@ -133,20 +152,28 @@ export async function importFullCorpusExportDocuments(
         if (doc.annotations && doc.annotations.length > 0) {
           for (const ann of doc.annotations) {
             try {
-              const prepareComponentData = (comp: unknown, key: string, issues: string[]) => {
+              const prepareComponentData = (
+                comp: unknown,
+                key: string,
+                issues: string[],
+                annotationTag?: AnnotationComponentRole,
+              ) => {
                 if (!isComponentRecord(comp)) {
                   issues.push(`Annotation component '${key}' is not an object: ${JSON.stringify(comp)} in document ${doc.title}`)
                   return null
                 }
 
                 const { id: _id, ...data } = comp
+                if (annotationTag) {
+                  data.annotationTag = annotationTag
+                }
                 const invalidFields = getInvalidComponentFields(data)
                 if (invalidFields.length > 0) {
                   issues.push(`Annotation component '${key}' has invalid required field(s): ${invalidFields.join(', ')} in document ${doc.title}`)
                   return null
                 }
 
-                return remapCustomEntityId(data, customEntityIdMap) as typeof annotationComponent.$inferInsert
+                return normalizeCustomEntityFields(data, customEntityIdMap) as typeof annotationComponent.$inferInsert
               }
 
               const insertPreparedComponent = async (data: typeof annotationComponent.$inferInsert) => {
@@ -192,8 +219,18 @@ export async function importFullCorpusExportDocuments(
                   }
 
                   const qualifierPosition = normalizeQualifierPosition(qualifier.position, qualifierIndex)
-                  const qualifierPredicateData = prepareComponentData(qualifier.predicate, `qualifier[${qualifierIndex}].predicate`, warnings)
-                  const qualifierValueData = prepareComponentData(qualifier.value, `qualifier[${qualifierIndex}].value`, warnings)
+                  const qualifierPredicateData = prepareComponentData(
+                    qualifier.predicate,
+                    `qualifier[${qualifierIndex}].predicate`,
+                    warnings,
+                    'qualifier-predicate',
+                  )
+                  const qualifierValueData = prepareComponentData(
+                    qualifier.value,
+                    `qualifier[${qualifierIndex}].value`,
+                    warnings,
+                    'qualifier-value',
+                  )
                   if (!qualifierPredicateData || !qualifierValueData) {
                     warnings.push(`Skipping annotation qualifier at index ${qualifierIndex} in document ${doc.title} due to invalid component.`)
                     continue

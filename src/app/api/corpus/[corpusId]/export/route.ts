@@ -24,6 +24,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       documents: await Promise.all(documents.map(async (document) => {
         const docAnnotations = await getAnnotations(document.id)
         const rawContent = await getRawDocumentData(document.id)
+        if (!rawContent) {
+          throw new Error(`Raw document data not found for document ${document.id}`)
+        }
+
         return {
           id: document.id,
           title: document.title,

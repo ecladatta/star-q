@@ -150,7 +150,7 @@ export type DocumentExport = {
   updatedAt: string | null
   completedAt: string | null
   order: number
-  raw: DocumentData | null
+  raw: DocumentData
   annotations: AnnotationExport[]
 }
 
