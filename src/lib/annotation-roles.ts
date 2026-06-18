@@ -34,3 +34,15 @@ export function getAnnotationComponents(
 
   return [...baseComponents, ...qualifierComponents]
 }
+
+export function getAnnotationComponentDisplayText(component: DocumentAnnotationComponent): string {
+  return component.entityLabel || component.annotationValue
+}
+
+export function getAnnotationComponentTitle(component: DocumentAnnotationComponent): string {
+  if (component.entityLabel && component.entityLabel !== component.annotationValue) {
+    return `${component.annotationValue} (${component.entityLabel})`
+  }
+
+  return component.annotationValue
+}

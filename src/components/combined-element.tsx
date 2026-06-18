@@ -31,6 +31,19 @@ function isComponentFromCurrentAnnotation(componentId: string, currentAnnotation
   return getAnnotationComponents(currentAnnotation).some(component => component.id === componentId)
 }
 
+function getComponentColor(
+  componentId: string | undefined,
+  element: DocumentElement,
+  currentAnnotation: CurrentAnnotation | null,
+): string {
+  const component = element.components.find(annotation => annotation.id === componentId)
+    ?? (currentAnnotation
+      ? getAnnotationComponents(currentAnnotation).find(annotation => annotation.id === componentId)
+      : undefined)
+
+  return component ? TYPE_TO_COLOR[component.annotationTag] : 'lightgrey'
+}
+
 function CombinedElement({
   elementIndex,
   value,
@@ -117,7 +130,7 @@ function CombinedElement({
                 key={`text-split-${split.componentId}-${split.start}-${split.end}`}
                 {...split}
                 onClick={() => handleSplitClick(split)}
-                color={TYPE_TO_COLOR[element.components.find(annotation => annotation.id === split.componentId)?.annotationTag as keyof typeof TYPE_TO_COLOR]}
+                color={getComponentColor(split.componentId, element, currentAnnotation)}
                 isCurrentAnnotation={split.componentId ? isComponentFromCurrentAnnotation(split.componentId, currentAnnotation) : false}
               />
             ))}
@@ -257,9 +270,7 @@ function CombinedElement({
                             key={`table-header-split-${split.componentId}-${split.start}-${split.end}`}
                             {...split}
                             onClick={() => handleSplitClick(split)}
-                            color={TYPE_TO_COLOR[element.components.find(annotation =>
-                              annotation.id === split.componentId,
-                            )?.annotationTag as keyof typeof TYPE_TO_COLOR]}
+                            color={getComponentColor(split.componentId, element, currentAnnotation)}
                             isCurrentAnnotation={split.componentId ? isComponentFromCurrentAnnotation(split.componentId, currentAnnotation) : false}
                           />
                         ))}
@@ -294,9 +305,7 @@ function CombinedElement({
                             key={`table-row-split-${split.componentId}-${split.start}-${split.end}`}
                             {...split}
                             onClick={() => handleSplitClick(split)}
-                            color={TYPE_TO_COLOR[element.components.find(annotation =>
-                              annotation.id === split.componentId,
-                            )?.annotationTag as keyof typeof TYPE_TO_COLOR]}
+                            color={getComponentColor(split.componentId, element, currentAnnotation)}
                             isCurrentAnnotation={split.componentId ? isComponentFromCurrentAnnotation(split.componentId, currentAnnotation) : false}
                           />
                         ))}
