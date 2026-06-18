@@ -388,7 +388,31 @@
           "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "annotation_qualifier_annotation_position_idx": {
+          "name": "annotation_qualifier_annotation_position_idx",
+          "columns": [
+            {
+              "expression": "annotation_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last",
+              "opclass": "uuid_ops"
+            },
+            {
+              "expression": "position",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last",
+              "opclass": "int4_ops"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "annotation_qualifier_annotation_id_annotation_id_fk": {
           "name": "annotation_qualifier_annotation_id_annotation_id_fk",

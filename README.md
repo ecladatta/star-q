@@ -198,7 +198,7 @@ Annotations are stored as a triple of `subject`, `predicate`, and `object`, each
 - `annotationRow` / `annotationCell`: row/cell indices (for table annotations) or `null`
 - `annotationValue`: the extracted string value for the annotation
 - `annotationType`: `text` or `table`
-- `annotationTag`: UI tag for the annotation
+- `annotationTag`: component role; one of `subject`, `predicate`, `object`, `qualifier-predicate`, or `qualifier-value`
 - `elementIndex`: index of the text/table element this annotation belongs to
 
 Example:
@@ -217,7 +217,7 @@ Example:
   "annotationCell": null,
   "annotationValue": "Jane Doe",
   "annotationType": "text",
-  "annotationTag": "",
+  "annotationTag": "subject",
   "elementIndex": 0
 }
 ```

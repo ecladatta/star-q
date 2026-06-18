@@ -2,7 +2,7 @@ import type { InferSelectModel } from 'drizzle-orm'
 import type { AdapterAccountType } from 'next-auth/adapters'
 import type { AnnotationComponentRole, DocumentData, EntityDatatype } from '@/types/types'
 import { randomUUID } from 'node:crypto'
-import { boolean, integer, jsonb, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core'
+import { boolean, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core'
 
 export const users = pgTable('user', {
   id: text('id')
@@ -149,13 +149,19 @@ export const annotation = pgTable('annotation', {
 })
 export type Annotation = InferSelectModel<typeof annotation>
 
-export const annotationQualifier = pgTable('annotation_qualifier', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  annotationId: uuid('annotation_id').references(() => annotation.id, { onDelete: 'cascade' }).notNull(),
-  predicateId: uuid('predicate_id').references(() => annotationComponent.id, { onDelete: 'cascade' }).notNull(),
-  valueId: uuid('value_id').references(() => annotationComponent.id, { onDelete: 'cascade' }).notNull(),
-  position: integer('position').notNull(),
-  createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').defaultNow(),
-})
+export const annotationQualifier = pgTable(
+  'annotation_qualifier',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    annotationId: uuid('annotation_id').references(() => annotation.id, { onDelete: 'cascade' }).notNull(),
+    predicateId: uuid('predicate_id').references(() => annotationComponent.id, { onDelete: 'cascade' }).notNull(),
+    valueId: uuid('value_id').references(() => annotationComponent.id, { onDelete: 'cascade' }).notNull(),
+    position: integer('position').notNull(),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  table => [
+    index('annotation_qualifier_annotation_position_idx').on(table.annotationId, table.position),
+  ],
+)
 export type AnnotationQualifier = InferSelectModel<typeof annotationQualifier>

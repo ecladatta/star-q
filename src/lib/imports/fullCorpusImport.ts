@@ -1,13 +1,26 @@
 'use server'
-import type { AnnotationComponentRole, ExportModel } from '@/types/types'
+import type { AnnotationComponentRole, EntityDatatype, ExportModel } from '@/types/types'
 import { db } from '@/db/drizzle'
 import { annotation, annotationComponent, annotationQualifier, corpusCustomEntity, document } from '@/db/schema'
 
 const POSTGRES_INTEGER_MIN = -2_147_483_648
 const POSTGRES_INTEGER_MAX = 2_147_483_647
+const ENTITY_DATATYPES = new Set<EntityDatatype>([
+  'integer',
+  'decimal',
+  'boolean',
+  'string',
+  'date',
+  'time',
+  'datetime',
+  'year',
+  'month',
+  'day',
+  'url',
+])
 
 function isComponentRecord(value: unknown): value is Record<string, any> {
-  return typeof value === 'object' && value !== null
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 function isUuid(value: unknown): value is string {
@@ -97,6 +110,62 @@ function normalizeDocumentOrder(order: unknown, fallbackOrder: number): number |
   return isPostgresInteger(order) ? order : null
 }
 
+function normalizeDate(value: unknown): Date | null {
+  if (value === null || value === undefined || value === '') {
+    return null
+  }
+
+  const date = new Date(String(value))
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+function getInvalidCustomEntityFields(entity: Record<string, any>) {
+  const invalidFields: string[] = []
+
+  if (!isUuid(entity.id)) {
+    invalidFields.push('id')
+  }
+  if (typeof entity.label !== 'string' || entity.label.length === 0) {
+    invalidFields.push('label')
+  }
+  if (typeof entity.value !== 'string' || entity.value.length === 0) {
+    invalidFields.push('value')
+  }
+  if (!ENTITY_DATATYPES.has(entity.datatype)) {
+    invalidFields.push('datatype')
+  }
+  if (entity.customType !== 'entity' && entity.customType !== 'relation') {
+    invalidFields.push('customType')
+  }
+  if (entity.createdAt && !normalizeDate(entity.createdAt)) {
+    invalidFields.push('createdAt')
+  }
+  if (entity.updatedAt && !normalizeDate(entity.updatedAt)) {
+    invalidFields.push('updatedAt')
+  }
+
+  return invalidFields
+}
+
+function isDocumentData(value: unknown): boolean {
+  if (!isComponentRecord(value) || !isComponentRecord(value._source)) {
+    return false
+  }
+
+  const { identificationMetadata, extractionMetadata } = value._source
+  if (!isComponentRecord(identificationMetadata)) {
+    return false
+  }
+  if (typeof identificationMetadata.id !== 'string'
+    || typeof identificationMetadata.versionDate !== 'string'
+    || typeof identificationMetadata.hash !== 'string') {
+    return false
+  }
+
+  return isComponentRecord(extractionMetadata)
+    || (Array.isArray(extractionMetadata) && extractionMetadata.every(isComponentRecord))
+}
+
 /**
  * Import documents and annotations from a full corpus export
  */
@@ -112,33 +181,46 @@ export async function importFullCorpusExportDocuments(
     // Map old custom entity IDs to new database IDs
     const customEntityIdMap: Record<string, string> = {}
 
-    // Batch insert custom entities
+    // Batch insert valid custom entities and skip malformed rows before DB constraints.
     if (corpusData.customEntities && corpusData.customEntities.length > 0) {
-      const entitiesToInsert = corpusData.customEntities.map((ent) => {
+      const entitiesToInsert = corpusData.customEntities.flatMap((ent, index) => {
+        if (!isComponentRecord(ent)) {
+          warnings.push(`Skipping custom entity at index ${index}: row is not an object.`)
+          return []
+        }
+
+        const invalidFields = getInvalidCustomEntityFields(ent)
+        if (invalidFields.length > 0) {
+          warnings.push(`Skipping custom entity at index ${index}: invalid field(s): ${invalidFields.join(', ')}.`)
+          return []
+        }
+
         const { id: oldId, ...data } = ent
         return {
           ...data,
           corpusId,
-          createdAt: data.createdAt ? new Date(data.createdAt) : null,
-          updatedAt: data.updatedAt ? new Date(data.updatedAt) : null,
+          createdAt: normalizeDate(data.createdAt),
+          updatedAt: normalizeDate(data.updatedAt),
           _oldId: oldId,
         }
       })
 
-      const insertedEntities = await tx.insert(corpusCustomEntity)
-        .values(entitiesToInsert.map(({ _oldId, ...data }) => data))
-        .returning({ id: corpusCustomEntity.id })
+      if (entitiesToInsert.length > 0) {
+        const insertedEntities = await tx.insert(corpusCustomEntity)
+          .values(entitiesToInsert.map(({ _oldId, ...data }) => data))
+          .returning({ id: corpusCustomEntity.id })
 
-      // Map old IDs to new IDs
-      entitiesToInsert.forEach((ent, idx) => {
-        customEntityIdMap[ent._oldId] = insertedEntities[idx].id
-      })
+        // Map old IDs to new IDs
+        entitiesToInsert.forEach((ent, idx) => {
+          customEntityIdMap[ent._oldId] = insertedEntities[idx].id
+        })
+      }
     }
 
     for (let i = 0; i < corpusData.documents.length; i++) {
       const doc = corpusData.documents[i]
       try {
-        if (!isComponentRecord(doc.raw)) {
+        if (!isDocumentData(doc.raw)) {
           errors.push(`Error inserting document ${doc.title}: raw document data is missing or invalid.`)
           continue
         }

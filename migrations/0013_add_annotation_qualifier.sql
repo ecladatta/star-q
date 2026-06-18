@@ -10,4 +10,5 @@ CREATE TABLE "annotation_qualifier" (
 --> statement-breakpoint
 ALTER TABLE "annotation_qualifier" ADD CONSTRAINT "annotation_qualifier_annotation_id_annotation_id_fk" FOREIGN KEY ("annotation_id") REFERENCES "public"."annotation"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "annotation_qualifier" ADD CONSTRAINT "annotation_qualifier_predicate_id_annotation_component_id_fk" FOREIGN KEY ("predicate_id") REFERENCES "public"."annotation_component"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "annotation_qualifier" ADD CONSTRAINT "annotation_qualifier_value_id_annotation_component_id_fk" FOREIGN KEY ("value_id") REFERENCES "public"."annotation_component"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "annotation_qualifier" ADD CONSTRAINT "annotation_qualifier_value_id_annotation_component_id_fk" FOREIGN KEY ("value_id") REFERENCES "public"."annotation_component"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "annotation_qualifier_annotation_position_idx" ON "annotation_qualifier" USING btree ("annotation_id","position");
