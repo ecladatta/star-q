@@ -1,4 +1,4 @@
-import type { DocumentData, TextOrTableElement } from '@/types/types'
+import type { DocumentData, DocumentExtractionMetadata, TextOrTableElement } from '@/types/types'
 import { useEffect, useState } from 'react'
 import wtf from 'wtf_wikipedia'
 
@@ -31,8 +31,13 @@ function indexDocumentElements(elements: UnindexedDocumentElement[]): TextOrTabl
     }))
 }
 
+function getExtractionMetadata(documentData: DocumentData | undefined): DocumentExtractionMetadata | undefined {
+  const extractionMetadata = documentData?._source?.extractionMetadata
+  return Array.isArray(extractionMetadata) ? extractionMetadata[0] : extractionMetadata
+}
+
 export function buildDocumentElements(documentData: DocumentData | undefined): TextOrTableElement[] {
-  const extractionMetadata = documentData?._source?.extractionMetadata?.[0]
+  const extractionMetadata = getExtractionMetadata(documentData)
   if (!extractionMetadata)
     return []
 

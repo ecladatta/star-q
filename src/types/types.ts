@@ -68,6 +68,12 @@ export type DocumentElement = {
   value: string | string[][]
 }
 
+export type DocumentExtractionMetadata = {
+  technology?: string | null
+  texts?: { index?: number, startOffset?: number, endOffset?: number, value: string | null }[]
+  tables?: { tableNum?: number, startOffset?: number, endOffset?: number, tableData: Array<Array<string | null>> }[]
+}
+
 export type DocumentData = {
   _source: {
     identificationMetadata: {
@@ -78,11 +84,7 @@ export type DocumentData = {
       wikidata?: string
       url?: string | string[]
     }
-    extractionMetadata: {
-      technology: string | null
-      texts: { index?: number, startOffset?: number, endOffset?: number, value: string | null }[]
-      tables: { tableNum?: number, startOffset?: number, endOffset?: number, tableData: Array<Array<string | null>> }[]
-    }[]
+    extractionMetadata: DocumentExtractionMetadata | DocumentExtractionMetadata[]
   }
 }
 
