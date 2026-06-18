@@ -13,6 +13,7 @@ import { determineImportType } from '@/lib/utils'
 type ImportDocumentsResult = {
   count: number
   errors: string[]
+  warnings: string[]
 }
 
 type CreateCorpusWithDocumentsImportResult = ImportDocumentsResult & {
@@ -23,6 +24,7 @@ function importError(message: string): ImportDocumentsResult {
   return {
     count: 0,
     errors: [message],
+    warnings: [],
   }
 }
 
@@ -51,7 +53,7 @@ export async function importDocuments(corpusId: string, formData: FormData): Pro
     return importError('Could not determine file format. Please upload a JSON, JSONL, or ZIP file.')
   }
 
-  let result: { ids: string[], errors: string[] } = { ids: [], errors: [] }
+  let result: { ids: string[], errors: string[], warnings?: string[] } = { ids: [], errors: [] }
 
   switch (importType) {
     case 'irit-zip': {
@@ -82,6 +84,7 @@ export async function importDocuments(corpusId: string, formData: FormData): Pro
   return {
     count: result.ids.length,
     errors: result.errors,
+    warnings: result.warnings ?? [],
   }
 }
 

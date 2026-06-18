@@ -3,6 +3,7 @@ import type { DocumentData, ExportModel } from '@/types/types'
 import { db } from '@/db/drizzle'
 import { annotation, annotationComponent, annotationQualifier, corpusCustomEntity, document } from '@/db/schema'
 
+const POSTGRES_INTEGER_MIN = -2_147_483_648
 const POSTGRES_INTEGER_MAX = 2_147_483_647
 
 function isComponentRecord(value: unknown): value is Record<string, any> {
@@ -22,13 +23,23 @@ function remapCustomEntityId(
   return data
 }
 
+function isPostgresInteger(value: unknown): value is number {
+  return (
+    typeof value === 'number'
+    && Number.isInteger(value)
+    && Number.isSafeInteger(value)
+    && value >= POSTGRES_INTEGER_MIN
+    && value <= POSTGRES_INTEGER_MAX
+  )
+}
+
 function getInvalidComponentFields(data: Record<string, any>) {
   const invalidFields: string[] = []
 
-  if (!Number.isInteger(data.annotationStart)) {
+  if (!isPostgresInteger(data.annotationStart)) {
     invalidFields.push('annotationStart')
   }
-  if (!Number.isInteger(data.annotationEnd)) {
+  if (!isPostgresInteger(data.annotationEnd)) {
     invalidFields.push('annotationEnd')
   }
   if (typeof data.annotationValue !== 'string') {
@@ -40,13 +51,13 @@ function getInvalidComponentFields(data: Record<string, any>) {
   if (typeof data.annotationTag !== 'string') {
     invalidFields.push('annotationTag')
   }
-  if (!Number.isInteger(data.elementIndex)) {
+  if (!isPostgresInteger(data.elementIndex)) {
     invalidFields.push('elementIndex')
   }
-  if (data.annotationRow !== null && data.annotationRow !== undefined && !Number.isInteger(data.annotationRow)) {
+  if (data.annotationRow !== null && data.annotationRow !== undefined && !isPostgresInteger(data.annotationRow)) {
     invalidFields.push('annotationRow')
   }
-  if (data.annotationCell !== null && data.annotationCell !== undefined && !Number.isInteger(data.annotationCell)) {
+  if (data.annotationCell !== null && data.annotationCell !== undefined && !isPostgresInteger(data.annotationCell)) {
     invalidFields.push('annotationCell')
   }
 
@@ -55,16 +66,13 @@ function getInvalidComponentFields(data: Record<string, any>) {
 
 function normalizeQualifierPosition(position: unknown, qualifierIndex: number): number {
   if (
-    typeof position === 'number'
-    && Number.isInteger(position)
-    && Number.isSafeInteger(position)
+    isPostgresInteger(position)
     && position >= 0
-    && position <= POSTGRES_INTEGER_MAX
   ) {
     return position
   }
 
-  return qualifierIndex
+  return qualifierIndex <= POSTGRES_INTEGER_MAX ? qualifierIndex : POSTGRES_INTEGER_MAX
 }
 
 /**
@@ -73,9 +81,10 @@ function normalizeQualifierPosition(position: unknown, qualifierIndex: number): 
 export async function importFullCorpusExportDocuments(
   corpusId: string,
   corpusData: ExportModel,
-): Promise<{ ids: string[], errors: string[] }> {
+): Promise<{ ids: string[], errors: string[], warnings: string[] }> {
   const importedDocumentsIds: string[] = []
   const errors: string[] = []
+  const warnings: string[] = []
 
   await db.transaction(async (tx) => {
     // Map old custom entity IDs to new database IDs
@@ -124,16 +133,16 @@ export async function importFullCorpusExportDocuments(
         if (doc.annotations && doc.annotations.length > 0) {
           for (const ann of doc.annotations) {
             try {
-              const prepareComponentData = (comp: unknown, key: string) => {
+              const prepareComponentData = (comp: unknown, key: string, issues: string[]) => {
                 if (!isComponentRecord(comp)) {
-                  errors.push(`Annotation component '${key}' is not an object: ${JSON.stringify(comp)} in document ${doc.title}`)
+                  issues.push(`Annotation component '${key}' is not an object: ${JSON.stringify(comp)} in document ${doc.title}`)
                   return null
                 }
 
                 const { id: _id, ...data } = comp
                 const invalidFields = getInvalidComponentFields(data)
                 if (invalidFields.length > 0) {
-                  errors.push(`Annotation component '${key}' has invalid required field(s): ${invalidFields.join(', ')} in document ${doc.title}`)
+                  issues.push(`Annotation component '${key}' has invalid required field(s): ${invalidFields.join(', ')} in document ${doc.title}`)
                   return null
                 }
 
@@ -148,7 +157,7 @@ export async function importFullCorpusExportDocuments(
                 return insertedComp.id
               }
 
-              const baseComponentData = (['subject', 'predicate', 'object'] as const).map(key => prepareComponentData(ann[key], key))
+              const baseComponentData = (['subject', 'predicate', 'object'] as const).map(key => prepareComponentData(ann[key], key, errors))
               if (baseComponentData.includes(null)) {
                 errors.push(`Skipping annotation in document ${doc.title} due to invalid component.`)
                 continue
@@ -178,15 +187,15 @@ export async function importFullCorpusExportDocuments(
               for (const [qualifierIndex, qualifier] of qualifiers.entries()) {
                 try {
                   if (!isComponentRecord(qualifier)) {
-                    errors.push(`Annotation qualifier at index ${qualifierIndex} is not an object: ${JSON.stringify(qualifier)} in document ${doc.title}`)
+                    warnings.push(`Annotation qualifier at index ${qualifierIndex} is not an object: ${JSON.stringify(qualifier)} in document ${doc.title}`)
                     continue
                   }
 
                   const qualifierPosition = normalizeQualifierPosition(qualifier.position, qualifierIndex)
-                  const qualifierPredicateData = prepareComponentData(qualifier.predicate, `qualifier[${qualifierIndex}].predicate`)
-                  const qualifierValueData = prepareComponentData(qualifier.value, `qualifier[${qualifierIndex}].value`)
+                  const qualifierPredicateData = prepareComponentData(qualifier.predicate, `qualifier[${qualifierIndex}].predicate`, warnings)
+                  const qualifierValueData = prepareComponentData(qualifier.value, `qualifier[${qualifierIndex}].value`, warnings)
                   if (!qualifierPredicateData || !qualifierValueData) {
-                    errors.push(`Skipping annotation qualifier at index ${qualifierIndex} in document ${doc.title} due to invalid component.`)
+                    warnings.push(`Skipping annotation qualifier at index ${qualifierIndex} in document ${doc.title} due to invalid component.`)
                     continue
                   }
 
@@ -222,6 +231,9 @@ export async function importFullCorpusExportDocuments(
   if (errors.length > 0) {
     console.warn('Import errors:', errors)
   }
+  if (warnings.length > 0) {
+    console.warn('Import warnings:', warnings)
+  }
 
-  return { ids: importedDocumentsIds, errors }
+  return { ids: importedDocumentsIds, errors, warnings }
 }
