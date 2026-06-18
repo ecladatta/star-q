@@ -4,7 +4,7 @@ import type { Corpus, CorpusCustomEntity, Document } from '@/db/schema'
 import { and, count, countDistinct, desc, eq, getTableColumns, inArray, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { db } from '@/db/drizzle'
-import { annotation, annotationComponent, corpus, corpusCustomEntity, document } from '@/db/schema'
+import { annotation, annotationComponent, annotationQualifier, corpus, corpusCustomEntity, document } from '@/db/schema'
 import { requireAuth } from '@/lib/auth-utils'
 
 export type DocumentMetadata = Omit<Document, 'raw'> & { annotationsCount: number }
@@ -130,6 +130,10 @@ export async function duplicateCorpus(id: string, newTitle?: string) {
     const annotations = await db.select()
       .from(annotation)
       .where(inArray(annotation.documentId, oldDocIds))
+    const oldAnnotationIds = annotations.map(anno => anno.id)
+    const qualifiers = oldAnnotationIds.length > 0
+      ? await db.select().from(annotationQualifier).where(inArray(annotationQualifier.annotationId, oldAnnotationIds))
+      : []
 
     if (annotations.length > 0) {
       // Get all annotation components that are referenced by these annotations
@@ -137,6 +141,8 @@ export async function duplicateCorpus(id: string, newTitle?: string) {
         ...annotations.map(anno => anno.subjectId),
         ...annotations.map(anno => anno.predicateId),
         ...annotations.map(anno => anno.objectId),
+        ...qualifiers.map(qualifier => qualifier.predicateId),
+        ...qualifiers.map(qualifier => qualifier.valueId),
       ]))
 
       const components = await db.select()
@@ -194,23 +200,51 @@ export async function duplicateCorpus(id: string, newTitle?: string) {
       if (annotations.length > 0) {
         const BATCH_SIZE = 500
         const annotationBatches = []
+        const annotationIdMap = new Map<string, string>()
 
         for (let i = 0; i < annotations.length; i += BATCH_SIZE) {
           annotationBatches.push(annotations.slice(i, i + BATCH_SIZE))
         }
 
         for (const batch of annotationBatches) {
-          await db.insert(annotation).values(
-            batch.map(anno => ({
-              documentId: documentIdMap.get(anno.documentId)!,
-              subjectId: componentIdMap.get(anno.subjectId)!,
-              predicateId: componentIdMap.get(anno.predicateId)!,
-              objectId: componentIdMap.get(anno.objectId)!,
-              userId: anno.userId,
-              createdAt: anno.createdAt,
-              updatedAt: anno.updatedAt,
-            })),
-          )
+          const newAnnotations = await db.insert(annotation)
+            .values(
+              batch.map(anno => ({
+                documentId: documentIdMap.get(anno.documentId)!,
+                subjectId: componentIdMap.get(anno.subjectId)!,
+                predicateId: componentIdMap.get(anno.predicateId)!,
+                objectId: componentIdMap.get(anno.objectId)!,
+                userId: anno.userId,
+                createdAt: anno.createdAt,
+                updatedAt: anno.updatedAt,
+              })),
+            )
+            .returning({ id: annotation.id })
+
+          batch.forEach((oldAnnotation, index) => {
+            annotationIdMap.set(oldAnnotation.id, newAnnotations[index].id)
+          })
+        }
+
+        if (qualifiers.length > 0) {
+          const qualifierBatches = []
+
+          for (let i = 0; i < qualifiers.length; i += BATCH_SIZE) {
+            qualifierBatches.push(qualifiers.slice(i, i + BATCH_SIZE))
+          }
+
+          for (const batch of qualifierBatches) {
+            await db.insert(annotationQualifier).values(
+              batch.map(qualifier => ({
+                annotationId: annotationIdMap.get(qualifier.annotationId)!,
+                predicateId: componentIdMap.get(qualifier.predicateId)!,
+                valueId: componentIdMap.get(qualifier.valueId)!,
+                position: qualifier.position,
+                createdAt: qualifier.createdAt,
+                updatedAt: qualifier.updatedAt,
+              })),
+            )
+          }
         }
       }
     }
