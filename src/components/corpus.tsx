@@ -32,7 +32,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useRef, useState } from 'react'
 import { addCorpus } from '@/actions/corpus/corpusActions'
-import { importDocuments } from '@/actions/imports/importActions'
+import { createCorpusWithDocumentsImport } from '@/actions/imports/importActions'
 import { CorpusActions } from '@/components/corpus-actions'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -349,16 +349,17 @@ export function Corpuses({ corpuses }: CorpusesProps) {
   const [importedCount, setImportedCount] = useState(0)
   const [newCorpusId, setNewCorpusId] = useState<string | null>(null)
 
-  const handleFileImport = async (file: File, targetCorpusId: string) => {
+  const handleCreateCorpusWithFileImport = async (file: File) => {
     try {
       setUploadError(null)
       setShowImportDialog(true)
       setIsImporting(true)
+      setNewCorpusId(null)
       const formData = new FormData()
       formData.append('file', file)
-      const { count, errors } = await importDocuments(targetCorpusId, formData)
+      const { count, errors, corpusId } = await createCorpusWithDocumentsImport(newCorpusName, formData)
       setImportedCount(count)
-      setNewCorpusId(targetCorpusId)
+      setNewCorpusId(corpusId)
       if (errors && errors.length > 0) {
         setUploadError(errors.join('\n'))
       }
@@ -375,11 +376,11 @@ export function Corpuses({ corpuses }: CorpusesProps) {
     }
     try {
       setIsAdding(true)
-      const result = await addCorpus(newCorpusName)
 
-      // If there's a file to import, import it to the new corpus
-      if (newCorpusFile && result?.id) {
-        await handleFileImport(newCorpusFile, result.id)
+      if (newCorpusFile) {
+        await handleCreateCorpusWithFileImport(newCorpusFile)
+      } else {
+        await addCorpus(newCorpusName)
       }
 
       setNewCorpusName('')

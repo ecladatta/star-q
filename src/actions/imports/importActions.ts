@@ -1,5 +1,8 @@
 'use server'
+import { eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
+import { db } from '@/db/drizzle'
+import { corpus } from '@/db/schema'
 import { requireAuth } from '@/lib/auth-utils'
 import { importCorpuswalkerDocuments } from '@/lib/imports/corpuswalkerImport'
 import { importFullCorpusExportDocuments } from '@/lib/imports/fullCorpusImport'
@@ -12,11 +15,20 @@ type ImportDocumentsResult = {
   errors: string[]
 }
 
+type CreateCorpusWithDocumentsImportResult = ImportDocumentsResult & {
+  corpusId: string | null
+}
+
 function importError(message: string): ImportDocumentsResult {
   return {
     count: 0,
     errors: [message],
   }
+}
+
+async function removeCorpus(id: string) {
+  await db.delete(corpus).where(eq(corpus.id, id))
+  revalidatePath('/')
 }
 
 /**
@@ -70,5 +82,34 @@ export async function importDocuments(corpusId: string, formData: FormData): Pro
   return {
     count: result.ids.length,
     errors: result.errors,
+  }
+}
+
+export async function createCorpusWithDocumentsImport(
+  title: string,
+  formData: FormData,
+): Promise<CreateCorpusWithDocumentsImportResult> {
+  await requireAuth()
+
+  const [newCorpus] = await db.insert(corpus).values({ title }).returning({ id: corpus.id })
+
+  try {
+    const result = await importDocuments(newCorpus.id, formData)
+
+    if (result.errors.length > 0) {
+      await removeCorpus(newCorpus.id)
+      return {
+        ...result,
+        corpusId: null,
+      }
+    }
+
+    return {
+      ...result,
+      corpusId: newCorpus.id,
+    }
+  } catch (error) {
+    await removeCorpus(newCorpus.id)
+    throw error
   }
 }
