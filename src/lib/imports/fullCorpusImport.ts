@@ -1,7 +1,24 @@
 'use server'
 import type { DocumentData, ExportModel } from '@/types/types'
 import { db } from '@/db/drizzle'
-import { annotation, annotationComponent, corpusCustomEntity, document } from '@/db/schema'
+import { annotation, annotationComponent, annotationQualifier, corpusCustomEntity, document } from '@/db/schema'
+
+function isComponentRecord(value: unknown): value is Record<string, any> {
+  return typeof value === 'object' && value !== null
+}
+
+function remapCustomEntityId(
+  data: Record<string, any>,
+  customEntityIdMap: Record<string, string>,
+) {
+  if (data.entityCustomId && customEntityIdMap[data.entityCustomId]) {
+    data.entityCustomId = customEntityIdMap[data.entityCustomId]
+    data.entityLabel = null
+    data.entityValue = null
+    data.entityDatatype = null
+  }
+  return data
+}
 
 /**
  * Import documents and annotations from a full corpus export
@@ -60,39 +77,62 @@ export async function importFullCorpusExportDocuments(
         if (doc.annotations && doc.annotations.length > 0) {
           for (const ann of doc.annotations) {
             try {
-              // Insert annotation components (subject, predicate, object)
-              const components = await Promise.all((['subject', 'predicate', 'object'] as const).map(async (key) => {
-                const comp = ann[key]
-                if (typeof comp === 'object' && comp !== null) {
-                  const { id: _id, ...data } = comp
-                  // If entityCustomId exists, replace with new ID from mapping
-                  if (data.entityCustomId && customEntityIdMap[data.entityCustomId]) {
-                    data.entityCustomId = customEntityIdMap[data.entityCustomId]
-                    // For custom entities, clear the entity fields as they should be fetched from corpusCustomEntity
-                    data.entityLabel = null
-                    data.entityValue = null
-                    data.entityDatatype = null
-                  }
-                  const [insertedComp] = await tx.insert(annotationComponent).values(data).returning({ id: annotationComponent.id })
-                  return insertedComp
-                } else {
+              const insertComponent = async (comp: unknown, key: string) => {
+                if (!isComponentRecord(comp)) {
                   errors.push(`Annotation component '${key}' is not an object: ${JSON.stringify(comp)} in document ${doc.title}`)
                   return null
                 }
-              }))
-              if (components.includes(null)) {
+
+                const { id: _id, ...data } = comp
+                const [insertedComp] = await tx.insert(annotationComponent)
+                  .values(remapCustomEntityId(data, customEntityIdMap) as typeof annotationComponent.$inferInsert)
+                  .returning({ id: annotationComponent.id })
+
+                return insertedComp.id
+              }
+
+              // Insert annotation components (subject, predicate, object)
+              const componentIds = await Promise.all((['subject', 'predicate', 'object'] as const).map(key => insertComponent(ann[key], key)))
+              if (componentIds.includes(null)) {
                 errors.push(`Skipping annotation in document ${doc.title} due to invalid component.`)
                 continue
               }
-              const [subjectComp, predicateComp, objectComp] = components as [ { id: string }, { id: string }, { id: string } ]
+              const [subjectId, predicateId, objectId] = componentIds as [string, string, string]
 
               // Insert annotation record
-              await tx.insert(annotation).values({
+              const [insertedAnnotation] = await tx.insert(annotation).values({
                 documentId: documentId.id,
-                subjectId: subjectComp.id,
-                predicateId: predicateComp.id,
-                objectId: objectComp.id,
-              })
+                subjectId,
+                predicateId,
+                objectId,
+              }).returning({ id: annotation.id })
+
+              const qualifiers = Array.isArray((ann as any).qualifiers) ? (ann as any).qualifiers : []
+              for (const [qualifierIndex, qualifier] of qualifiers.entries()) {
+                try {
+                  if (!isComponentRecord(qualifier)) {
+                    errors.push(`Annotation qualifier at index ${qualifierIndex} is not an object: ${JSON.stringify(qualifier)} in document ${doc.title}`)
+                    continue
+                  }
+
+                  const qualifierPredicateId = await insertComponent(qualifier.predicate, `qualifier[${qualifierIndex}].predicate`)
+                  const qualifierValueId = await insertComponent(qualifier.value, `qualifier[${qualifierIndex}].value`)
+                  if (!qualifierPredicateId || !qualifierValueId) {
+                    errors.push(`Skipping annotation qualifier at index ${qualifierIndex} in document ${doc.title} due to invalid component.`)
+                    continue
+                  }
+
+                  await tx.insert(annotationQualifier).values({
+                    annotationId: insertedAnnotation.id,
+                    predicateId: qualifierPredicateId,
+                    valueId: qualifierValueId,
+                    position: typeof qualifier.position === 'number' ? qualifier.position : qualifierIndex,
+                  })
+                } catch (qualifierErr) {
+                  errors.push(`Error inserting annotation qualifier at index ${qualifierIndex} in document ${doc.title}: ${qualifierErr}`)
+                  continue
+                }
+              }
             } catch (annErr) {
               errors.push(`Error inserting annotation in document ${doc.title}: ${annErr}`)
               continue

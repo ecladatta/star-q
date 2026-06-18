@@ -85,7 +85,7 @@ This export includes all documents, annotations, and custom entities associated 
 ```json
 {
   "exportMeta": {
-    "version": "1.2",
+    "version": "1.3",
     "type": "full-corpus-export"
   },
   "id": "<corpusId>",
@@ -108,7 +108,11 @@ Each exported document follows this shape:
 - `completedAt`: completion timestamp (ISO) or `null`
 - `order`: numeric ordering for the document within the corpus
 - `raw`: raw extracted document data or `null` (see `DocumentData` below)
-- `annotations`: list of annotation triples (subject/predicate/object)
+- `annotations`: list of annotation triples with optional qualifiers
+
+Each annotation can include:
+
+- `qualifiers`: ordered list of qualifier predicate/value pairs attached to the annotation. Missing `qualifiers` should be treated as an empty list when importing older exports.
 
 Example:
 
@@ -127,7 +131,15 @@ Example:
       "id": "<annotationId>",
       "subject": { /* DocumentAnnotationComponent */ },
       "predicate": { /* DocumentAnnotationComponent */ },
-      "object": { /* DocumentAnnotationComponent */ }
+      "object": { /* DocumentAnnotationComponent */ },
+      "qualifiers": [
+        {
+          "id": "<qualifierId>",
+          "predicate": { /* DocumentAnnotationComponent */ },
+          "value": { /* DocumentAnnotationComponent */ },
+          "position": 0
+        }
+      ]
     }
   ]
 }
