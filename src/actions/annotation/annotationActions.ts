@@ -279,7 +279,7 @@ export async function updateAnnotation(
   predicateEntity: Entity | null,
   objectAnnotation: AnnotationComponent,
   objectEntity: Entity | null,
-  qualifiers: AnnotationQualifierInput[] = [],
+  qualifiers?: AnnotationQualifierInput[],
 ) {
   await requireAuth()
 
@@ -296,15 +296,17 @@ export async function updateAnnotation(
       upsertAnnotationComponent(objectAnnotation, objectEntity, annotationData.corpusId!, annotationData.object.id, trx),
     ])
 
-    const oldQualifierComponentIds = await getQualifierComponentIds(trx, [id])
+    if (qualifiers !== undefined) {
+      const oldQualifierComponentIds = await getQualifierComponentIds(trx, [id])
 
-    await trx.delete(annotationQualifier).where(eq(annotationQualifier.annotationId, id))
+      await trx.delete(annotationQualifier).where(eq(annotationQualifier.annotationId, id))
 
-    if (oldQualifierComponentIds.length > 0) {
-      await trx.delete(annotationComponent).where(inArray(annotationComponent.id, oldQualifierComponentIds))
+      if (oldQualifierComponentIds.length > 0) {
+        await trx.delete(annotationComponent).where(inArray(annotationComponent.id, oldQualifierComponentIds))
+      }
+
+      await insertAnnotationQualifiers(trx, id, annotationData.corpusId!, qualifiers)
     }
-
-    await insertAnnotationQualifiers(trx, id, annotationData.corpusId!, qualifiers)
 
     await trx.update(annotation).set({ updatedAt: new Date() }).where(eq(annotation.id, id))
     await trx.update(document).set({ updatedAt: new Date() }).where(eq(document.id, annotationData.documentId!))
@@ -436,8 +438,20 @@ export async function deleteAnnotations(ids: string[]) {
     return
   }
 
-  // Get all annotation data first
-  const annotationsData = await Promise.all(ids.map(id => getAnnotationById(id)))
+  const uniqueAnnotationIds = [...new Set(ids)]
+  const annotationsData = await db.select({
+    documentId: annotation.documentId,
+    subjectId: annotation.subjectId,
+    predicateId: annotation.predicateId,
+    objectId: annotation.objectId,
+  })
+    .from(annotation)
+    .where(inArray(annotation.id, uniqueAnnotationIds))
+
+  if (annotationsData.length !== uniqueAnnotationIds.length) {
+    throw new Error('Annotation not found')
+  }
+
   const uniqueDocumentIds = [...new Set(
     annotationsData
       .map(data => data.documentId)
@@ -445,15 +459,15 @@ export async function deleteAnnotations(ids: string[]) {
   )]
 
   await db.transaction(async (trx) => {
-    const qualifierComponentIds = await getQualifierComponentIds(trx, ids)
+    const qualifierComponentIds = await getQualifierComponentIds(trx, uniqueAnnotationIds)
     const componentIds = annotationsData.flatMap(annotationData => [
-      annotationData.subject.id,
-      annotationData.predicate.id,
-      annotationData.object.id,
+      annotationData.subjectId,
+      annotationData.predicateId,
+      annotationData.objectId,
     ])
 
     // Delete all annotations
-    await trx.delete(annotation).where(inArray(annotation.id, ids))
+    await trx.delete(annotation).where(inArray(annotation.id, uniqueAnnotationIds))
 
     // Delete all associated components
     if (componentIds.length > 0 || qualifierComponentIds.length > 0) {
