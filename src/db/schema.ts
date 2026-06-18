@@ -148,3 +148,14 @@ export const annotation = pgTable('annotation', {
   updatedAt: timestamp('updated_at').defaultNow(),
 })
 export type Annotation = InferSelectModel<typeof annotation>
+
+export const annotationQualifier = pgTable('annotation_qualifier', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  annotationId: uuid('annotation_id').references(() => annotation.id, { onDelete: 'cascade' }).notNull(),
+  predicateId: uuid('predicate_id').references(() => annotationComponent.id, { onDelete: 'cascade' }).notNull(),
+  valueId: uuid('value_id').references(() => annotationComponent.id, { onDelete: 'cascade' }).notNull(),
+  position: integer('position').notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+})
+export type AnnotationQualifier = InferSelectModel<typeof annotationQualifier>
