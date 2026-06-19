@@ -823,7 +823,7 @@ export function AnnotationForm({
             </div>
           </div>
           {currentAnnotation && (
-            <div className="mt-4 border-t pt-3">
+            <div className="pt-3">
               <div
                 className={cn(
                   'flex items-center justify-between gap-2',
@@ -837,6 +837,7 @@ export function AnnotationForm({
                   size="sm"
                   onClick={handleAddQualifier}
                   disabled={annotationFormLoading || isDeletingAnnotation}
+                  className="ml-auto"
                 >
                   <PlusIcon />
                   Add qualifier

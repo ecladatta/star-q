@@ -226,13 +226,14 @@ export function AnnotationListPopover({
                               })}
                               <QualifierSummary qualifiers={annotation.qualifiers} className="mt-1 pt-1.5" />
                             </div>
-                            <div className="flex shrink-0 flex-col items-center gap-1">
+                            <div className="grid shrink-0 grid-cols-[1.75rem_1.75rem] grid-rows-[1.75rem_1.75rem] gap-1 self-start">
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="h-7 px-2"
+                                    className="col-start-1 row-start-1 size-7 p-0"
+                                    aria-label="Edit annotation"
                                     onClick={() => onEdit(annotation)}
                                   >
                                     <EditIcon className="size-3.5" />
@@ -245,7 +246,8 @@ export function AnnotationListPopover({
                                   <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="h-7 px-2"
+                                    className="col-start-1 row-start-2 size-7 p-0"
+                                    aria-label="Clone annotation"
                                     onClick={() => onClone(annotation)}
                                   >
                                     <CopyIcon className="size-3.5" />
@@ -253,14 +255,15 @@ export function AnnotationListPopover({
                                 </TooltipTrigger>
                                 <TooltipContent>Clone (C)</TooltipContent>
                               </Tooltip>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Popover>
+                              <Popover>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
                                     <PopoverTrigger asChild>
                                       <Button
                                         variant="ghost"
                                         size="sm"
-                                        className="h-7 px-2 text-red-500 hover:text-red-600"
+                                        className="col-start-2 row-start-1 size-7 p-0 text-red-500 hover:text-red-600"
+                                        aria-label="Delete annotation"
                                         disabled={isDeletingAnnotation || deletingId === annotation.id}
                                       >
                                         {deletingId === annotation.id
@@ -268,30 +271,30 @@ export function AnnotationListPopover({
                                           : <Trash2Icon className="size-3.5" />}
                                       </Button>
                                     </PopoverTrigger>
-                                    <PopoverContent side="top" className="w-64">
-                                      <div className="space-y-3">
-                                        <p className="text-sm">Are you sure you want to delete this annotation?</p>
-                                        <div className="flex justify-end gap-2">
-                                          <PopoverClose asChild>
-                                            <Button variant="ghost" size="sm">Cancel</Button>
-                                          </PopoverClose>
-                                          <PopoverClose asChild>
-                                            <Button
-                                              variant="destructive"
-                                              size="sm"
-                                              onClick={() => handleDelete(annotation.id)}
-                                              disabled={isDeletingAnnotation || deletingId === annotation.id}
-                                            >
-                                              {deletingId === annotation.id ? <Loader2Icon className="animate-spin" /> : 'Delete'}
-                                            </Button>
-                                          </PopoverClose>
-                                        </div>
-                                      </div>
-                                    </PopoverContent>
-                                  </Popover>
-                                </TooltipTrigger>
-                                <TooltipContent>Delete</TooltipContent>
-                              </Tooltip>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Delete</TooltipContent>
+                                </Tooltip>
+                                <PopoverContent side="top" className="w-64">
+                                  <div className="space-y-3">
+                                    <p className="text-sm">Are you sure you want to delete this annotation?</p>
+                                    <div className="flex justify-end gap-2">
+                                      <PopoverClose asChild>
+                                        <Button variant="ghost" size="sm">Cancel</Button>
+                                      </PopoverClose>
+                                      <PopoverClose asChild>
+                                        <Button
+                                          variant="destructive"
+                                          size="sm"
+                                          onClick={() => handleDelete(annotation.id)}
+                                          disabled={isDeletingAnnotation || deletingId === annotation.id}
+                                        >
+                                          {deletingId === annotation.id ? <Loader2Icon className="animate-spin" /> : 'Delete'}
+                                        </Button>
+                                      </PopoverClose>
+                                    </div>
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
                             </div>
                           </div>
                         </CardContent>
