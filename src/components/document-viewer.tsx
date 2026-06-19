@@ -247,7 +247,7 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
   const ctrlKey = isMac() ? '⌘' : 'Ctrl'
 
   return (
-    <div className="flex">
+    <div className="flex min-w-0">
       {documentData && (
         <DocumentSidebar
           documents={documents}
@@ -261,7 +261,7 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
         currentAnnotation && 'pb-80 sm:pb-48',
       )}
       >
-        <div className="container mx-auto p-6 lg:px-12">
+        <div className="container mx-auto max-w-full p-6 lg:px-12">
           {documentData && document && (
             <>
               <DocumentHeader
@@ -270,10 +270,10 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
                 documentData={documentData}
               />
 
-              <Card className="mb-6">
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <CardDescription>Select text or table cells to start annotating</CardDescription>
+              <Card className="mb-6 min-w-0 overflow-hidden">
+                <CardHeader className="min-w-0">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <CardDescription className="min-w-0 flex-1">Select text or table cells to start annotating</CardDescription>
                     <Dialog>
                       <DialogTrigger asChild>
                         <Button variant="ghost" size="sm" className="size-6 p-0">
@@ -345,7 +345,7 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
                         </div>
                       </DialogContent>
                     </Dialog>
-                    <div className="ml-auto flex justify-end">
+                    <div className="ml-auto flex shrink-0 justify-end">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
@@ -377,7 +377,7 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="min-w-0">
                   {combinedElements.map(element => (
                     <CombinedElement
                       key={`element-${element.elementIndex}`}

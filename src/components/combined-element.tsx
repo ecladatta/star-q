@@ -31,6 +31,10 @@ function isComponentFromCurrentAnnotation(componentId: string, currentAnnotation
   return getAnnotationComponents(currentAnnotation).some(component => component.id === componentId)
 }
 
+function normalizeRenderedWhitespace(text: string | null | undefined) {
+  return (text ?? '').replace(/[\u00A0\u202F]/g, ' ')
+}
+
 function getComponentColor(
   componentId: string | undefined,
   element: DocumentElement,
@@ -86,6 +90,7 @@ function CombinedElement({
 
   if (type === 'text') {
     const rawText = value as string
+    const renderedText = normalizeRenderedWhitespace(rawText)
 
     // Extract current annotation offsets for this element to handle overlaps
     const currentAnnotationOffsets = currentAnnotation
@@ -101,7 +106,7 @@ function CombinedElement({
       : []
 
     const splits = splitWithOffsets(
-      rawText,
+      renderedText,
       'text',
       element.components.map(component => ({
         start: component.annotationStart,
@@ -114,10 +119,10 @@ function CombinedElement({
     )
 
     return (
-      <div key={elementIndex} className="mb-4" id={`element-${elementIndex}`}>
-        {createElement(data.level ? `h${data.level}` : 'div', { className: 'mb-2 font-semibold' }, data.title)}
+      <div key={elementIndex} className="mb-4 min-w-0" id={`element-${elementIndex}`}>
+        {createElement(data.level ? `h${data.level}` : 'div', { className: 'mb-2 font-semibold wrap-break-word' }, normalizeRenderedWhitespace(data.title))}
         <div
-          className="text-lg/relaxed"
+          className="min-w-0 text-lg/relaxed wrap-break-word"
           role="textbox"
           tabIndex={0}
           onMouseUp={() => handleTextSelection(elementIndex)}
@@ -129,6 +134,7 @@ function CombinedElement({
               <Split
                 key={`text-split-${split.componentId}-${split.start}-${split.end}`}
                 {...split}
+                className="wrap-break-word"
                 onClick={anchorRect => handleSplitClick(split, anchorRect)}
                 color={getComponentColor(split.componentId, element, currentAnnotation)}
                 isCurrentAnnotation={split.componentId ? isComponentFromCurrentAnnotation(split.componentId, currentAnnotation) : false}
@@ -139,8 +145,9 @@ function CombinedElement({
     )
   } else if (type === 'table') {
     const tableData = value as string[][]
+    const renderedTableData = tableData.map(row => row.map(normalizeRenderedWhitespace))
 
-    const splits = tableData.map((row, rowIndex) =>
+    const splits = renderedTableData.map((row, rowIndex) =>
       row.map((cell, cellIndex) => {
         const cellAnnotations = element.components.filter(
           annotation => annotation.annotationRow === rowIndex && annotation.annotationCell === cellIndex,
@@ -214,11 +221,11 @@ function CombinedElement({
     const boxShadowStyle = borderLayers.length > 0 ? borderLayers.join(', ') : undefined
 
     return (
-      <div key={elementIndex} className="group mb-6" id={`element-${elementIndex}`}>
-        <div className="mb-2 flex items-center justify-between">
-          {data.title && <div className="text-sm font-semibold">{data.title}</div>}
+      <div key={elementIndex} className="group mb-6 min-w-0" id={`element-${elementIndex}`}>
+        <div className="mb-2 flex min-w-0 items-center justify-between">
+          {data.title && <div className="min-w-0 text-sm font-semibold wrap-break-word">{normalizeRenderedWhitespace(data.title)}</div>}
           <div
-            className="group relative ml-auto"
+            className="group relative ml-auto shrink-0"
           >
             <Button
               variant="outline"
@@ -242,7 +249,7 @@ function CombinedElement({
           </div>
         </div>
         <ScrollArea
-          className="flex max-h-[60vh] w-full flex-col overflow-y-auto rounded-xl border transition-shadow duration-200"
+          className="flex max-h-[60vh] w-full min-w-0 flex-col overflow-y-auto rounded-xl border transition-shadow duration-200"
           style={{ boxShadow: boxShadowStyle }}
         >
           <Table>
@@ -262,7 +269,7 @@ function CombinedElement({
                         onMouseLeave={() => setHoveredCell(null)}
                         onMouseUp={() => handleCellMouseUp(0, cellIndex)}
                         aria-label={`Table header cell ${cellIndex + 1}. Click to annotate this cell.`}
-                        title={`Click to annotate header cell: ${tableData[0][cellIndex]}`}
+                        title={`Click to annotate header cell: ${renderedTableData[0][cellIndex]}`}
                         data-cell={`0-${cellIndex}`}
                       >
                         {cellSplits.map(split => (
@@ -297,7 +304,7 @@ function CombinedElement({
                         onMouseLeave={() => setHoveredCell(null)}
                         onMouseUp={() => handleCellMouseUp(actualRowIndex, cellIndex)}
                         aria-label={`Table cell row ${actualRowIndex + 1}, column ${cellIndex + 1}. Click to annotate this cell.`}
-                        title={`Click to annotate cell: ${tableData[actualRowIndex][cellIndex]}`}
+                        title={`Click to annotate cell: ${renderedTableData[actualRowIndex][cellIndex]}`}
                         data-cell={`${actualRowIndex}-${cellIndex}`}
                       >
                         {cellSplits.map(split => (

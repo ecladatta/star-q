@@ -54,12 +54,12 @@ export function DocumentSidebar({ documents, currentDocument }: DocumentSidebarP
   }, [currentDocument?.id])
 
   return (
-    <aside className="fixed top-0 left-0 hidden h-screen w-[280px] border-r bg-background pt-12 lg:block">
-      <div className="flex h-full flex-col">
-        <div className="border-b bg-muted/30 p-4">
-          <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold">
+    <aside className="fixed top-0 left-0 hidden h-screen w-[280px] overflow-hidden border-r bg-background pt-12 lg:block">
+      <div className="flex h-full min-w-0 flex-col">
+        <div className="min-w-0 border-b bg-muted/30 p-4">
+          <h2 className="mb-3 flex min-w-0 items-center gap-2 text-lg font-semibold">
             Documents
-            <Badge variant="secondary" className="ml-auto">
+            <Badge variant="secondary" className="ml-auto shrink-0">
               {documents.length}
             </Badge>
           </h2>
@@ -74,9 +74,9 @@ export function DocumentSidebar({ documents, currentDocument }: DocumentSidebarP
             />
           </div>
         </div>
-        <div className="min-h-0 flex-1 overflow-hidden">
+        <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
           <ScrollArea className="size-full">
-            <ul className="space-y-2 p-4">
+            <ul className="min-w-0 space-y-2 p-4">
               {filteredDocuments.map((doc) => {
                 const originalIndex = documents.findIndex(d => d.id === doc.id)
                 // Use optimistic state if available, otherwise use actual current document
@@ -88,6 +88,7 @@ export function DocumentSidebar({ documents, currentDocument }: DocumentSidebarP
                 return (
                   <li
                     key={doc.id}
+                    className="min-w-0"
                     ref={doc.id === currentDocument?.id ? currentDocumentRef : null}
                   >
                     <button
@@ -95,16 +96,16 @@ export function DocumentSidebar({ documents, currentDocument }: DocumentSidebarP
                       onClick={() => handleDocumentClick(doc.id)}
                       disabled={isLoading}
                       className={cn(
-                        'block w-full rounded-lg border p-3 text-left transition-all',
+                        'block w-full min-w-0 overflow-hidden rounded-lg border p-3 text-left transition-all',
                         isSelected
                           ? 'border-blue-500 bg-blue-50 shadow-md ring-2 ring-blue-500/20'
                           : 'border-border bg-card hover:border-blue-300 hover:shadow-xs',
                         isLoading && 'opacity-70',
                       )}
                     >
-                      <div className="flex items-start justify-between gap-2">
+                      <div className="flex min-w-0 items-start justify-between gap-2">
                         <span
-                          className="flex-1 truncate font-medium whitespace-normal"
+                          className="min-w-0 flex-1 font-medium wrap-anywhere"
                           title={doc.title}
                         >
                           {originalIndex + 1}
