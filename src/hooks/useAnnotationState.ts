@@ -140,6 +140,46 @@ function setQualifierComponent(
     : { ...qualifier, value: component }
 }
 
+function toCurrentAnnotation(annotation: DocumentAnnotation): CurrentAnnotation {
+  return {
+    id: annotation.id,
+    subject: annotation.subject,
+    predicate: annotation.predicate,
+    object: annotation.object,
+    qualifiers: reindexQualifiers(
+      [...annotation.qualifiers]
+        .sort((a, b) => a.position - b.position)
+        .map(qualifier => ({
+          id: qualifier.id,
+          position: qualifier.position,
+          predicate: qualifier.predicate,
+          value: qualifier.value,
+        })),
+    ),
+  }
+}
+
+function addQualifierComponent(
+  annotation: CurrentAnnotation,
+  side: QualifierSide,
+  component: DocumentAnnotationComponent,
+): CurrentAnnotation {
+  const qualifiers = annotation.qualifiers ?? []
+  const existingIndex = qualifiers.findIndex(qualifier => !qualifier[side])
+  const qualifierToUpdate = existingIndex >= 0
+    ? qualifiers[existingIndex]
+    : { id: uuidv4(), position: qualifiers.length }
+  const updatedQualifier = setQualifierComponent(qualifierToUpdate, side, component)
+  const nextQualifiers = existingIndex >= 0
+    ? qualifiers.map(qualifier => qualifier.id === updatedQualifier.id ? updatedQualifier : qualifier)
+    : [...qualifiers, updatedQualifier]
+
+  return {
+    ...annotation,
+    qualifiers: reindexQualifiers(nextQualifiers),
+  }
+}
+
 function componentsAreEqual(comp1: DocumentAnnotationComponent, comp2: DocumentAnnotationComponent): boolean {
   return (
     comp1.elementIndex === comp2.elementIndex
@@ -585,7 +625,7 @@ export function useAnnotationState(
     popover.hidePopover()
   }, [createAnnotationComponent, popover, selection])
 
-  const handleQualifierMentionAssociation = useCallback((side: QualifierSide) => {
+  const handleQualifierMentionAssociation = useCallback((side: QualifierSide, targetAnnotation?: DocumentAnnotation) => {
     const mention = popover.popoverState.mentionData
     if (!mention) {
       return
@@ -597,24 +637,8 @@ export function useAnnotationState(
     const component = createComponentFromMention(role, mention)
 
     setCurrentAnnotation((prev) => {
-      if (!prev) {
-        return prev
-      }
-
-      const qualifiers = prev.qualifiers ?? []
-      const existingIndex = qualifiers.findIndex(qualifier => !qualifier[side])
-      const qualifierToUpdate = existingIndex >= 0
-        ? qualifiers[existingIndex]
-        : { id: uuidv4(), position: qualifiers.length }
-      const updatedQualifier = setQualifierComponent(qualifierToUpdate, side, component)
-      const nextQualifiers = existingIndex >= 0
-        ? qualifiers.map(qualifier => qualifier.id === updatedQualifier.id ? updatedQualifier : qualifier)
-        : [...qualifiers, updatedQualifier]
-
-      return {
-        ...prev,
-        qualifiers: reindexQualifiers(nextQualifiers),
-      }
+      const baseAnnotation = prev ?? (targetAnnotation ? toCurrentAnnotation(targetAnnotation) : null)
+      return baseAnnotation ? addQualifierComponent(baseAnnotation, side, component) : prev
     })
 
     popover.hidePopover()
