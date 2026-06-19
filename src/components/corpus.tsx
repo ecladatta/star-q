@@ -458,7 +458,7 @@ export function Corpuses({ corpuses }: CorpusesProps) {
 
       {/* New Corpus Dialog */}
       <Dialog open={showNewCorpusDialog} onOpenChange={setShowNewCorpusDialog}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Create New Corpus</DialogTitle>
             <DialogDescription>
@@ -547,7 +547,7 @@ export function Corpuses({ corpuses }: CorpusesProps) {
 
       {/* Import Status Dialog - Only for new corpus creation */}
       <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Import Documents</DialogTitle>
             <DialogDescription>

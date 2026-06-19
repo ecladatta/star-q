@@ -256,8 +256,8 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
       )}
 
       <main className={cn(
-        'ml-0 min-w-0 flex-1 lg:ml-[280px]',
-        documentAnnotations.length > 0 && 'md:mr-[280px]',
+        'ml-0 min-w-0 flex-1 lg:ml-70',
+        documentAnnotations.length > 0 && 'md:mr-70',
         currentAnnotation && 'pb-80 sm:pb-48',
       )}
       >
@@ -280,7 +280,7 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
                           <InfoIcon className="size-4" />
                         </Button>
                       </DialogTrigger>
-                      <DialogContent className="max-w-md">
+                      <DialogContent className="sm:max-w-md">
                         <DialogHeader>
                           <DialogTitle>Keyboard Shortcuts</DialogTitle>
                           <DialogDescription>
@@ -354,18 +354,14 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
                           >
                             {copiedDocument
                               ? (
-                                  <>
-                                    <Check className="size-4" />
-                                  </>
+                                  <Check className="size-4" />
                                 )
                               : (
-                                  <>
-                                    <Copy className="size-4" />
-                                  </>
+                                  <Copy className="size-4" />
                                 )}
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
+                        <DropdownMenuContent align="end" className="w-48">
                           <DropdownMenuItem onClick={copyTextOnly}>
                             Copy Text Only
                           </DropdownMenuItem>

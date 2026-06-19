@@ -238,7 +238,7 @@ export function CorpusActions({ corpus, showOpenAction = true, triggerButton }: 
 
       {/* Import Dialog */}
       <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Import Documents</DialogTitle>
             <DialogDescription>
@@ -289,7 +289,7 @@ export function CorpusActions({ corpus, showOpenAction = true, triggerButton }: 
 
       {/* Delete Dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
           </DialogHeader>
@@ -321,7 +321,7 @@ export function CorpusActions({ corpus, showOpenAction = true, triggerButton }: 
 
       {/* Duplicate Dialog */}
       <Dialog open={showDuplicateDialog} onOpenChange={setShowDuplicateDialog}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Duplicate Corpus</DialogTitle>
             <DialogDescription>
@@ -390,7 +390,7 @@ export function CorpusActions({ corpus, showOpenAction = true, triggerButton }: 
 
       {/* Rename Dialog */}
       <Dialog open={showRenameDialog} onOpenChange={setShowRenameDialog}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Rename Corpus</DialogTitle>
             <DialogDescription>

@@ -1,12 +1,11 @@
 import type { LucideIcon } from 'lucide-react'
 import type { AnnotationMention, DocumentAnnotation, EntityType } from '@/types/types'
 
-import { PopoverClose } from '@radix-ui/react-popover'
 import { BoxIcon, CopyIcon, EditIcon, LinkIcon, Loader2Icon, Trash2Icon, UserIcon } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { getAnnotationComponentDisplayText, getAnnotationComponentTitle } from '@/lib/annotation-roles'
 import { cn } from '@/lib/utils'

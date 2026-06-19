@@ -187,46 +187,46 @@ export function EntitySelector({ type, value, onValueChange, text, corpusId }: {
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <div className="flex w-full gap-1">
+      <div className="flex w-full min-w-0 items-center gap-1">
+        <PopoverTrigger asChild>
           <Button
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className="flex w-full items-center truncate text-left"
+            className="min-w-0 flex-1 shrink justify-between truncate text-left"
           >
             <div className="flex-1 truncate">
               {value ? value.label : <span className="text-muted-foreground">Search entity...</span>}
             </div>
             <ChevronsUpDownIcon className="ml-2 size-4 shrink-0 opacity-50" />
           </Button>
-          {value?.custom && (
-            <Select
-              value={value.datatype || undefined}
-              onValueChange={(datatype: EntityDatatype) => {
-                onValueChange({ ...value, datatype })
-              }}
-            >
-              <SelectTrigger className="w-auto px-2 [&>svg]:hidden">
-                <SelectValue placeholder={<FilterIcon className="size-5" />}>
-                  {value.datatype && TYPES_ICONS[value.datatype]}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {Object.keys(TYPES_ICONS).toSorted((a, b) => a.localeCompare(b)).map(datatype => (
-                  <SelectItem key={datatype} value={datatype}>
-                    <div className="flex items-center gap-2">
-                      {TYPES_ICONS[datatype as EntityDatatype]}
-                      {' '}
-                      {datatype.charAt(0).toUpperCase() + datatype.slice(1)}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-        </div>
-      </PopoverTrigger>
+        </PopoverTrigger>
+        {value?.custom && (
+          <Select
+            value={value.datatype || undefined}
+            onValueChange={(datatype: EntityDatatype) => {
+              onValueChange({ ...value, datatype })
+            }}
+          >
+            <SelectTrigger aria-label="Entity datatype" className="size-8 shrink-0 justify-center p-0 [&>svg]:hidden">
+              <SelectValue placeholder={<FilterIcon className="size-5" />}>
+                {value.datatype && TYPES_ICONS[value.datatype]}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {Object.keys(TYPES_ICONS).toSorted((a, b) => a.localeCompare(b)).map(datatype => (
+                <SelectItem key={datatype} value={datatype}>
+                  <div className="flex items-center gap-2">
+                    {TYPES_ICONS[datatype as EntityDatatype]}
+                    {' '}
+                    {datatype.charAt(0).toUpperCase() + datatype.slice(1)}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      </div>
       <PopoverContent className="w-80 p-0">
         <Command shouldFilter={false}>
           <CommandInput
@@ -266,13 +266,13 @@ export function EntitySelector({ type, value, onValueChange, text, corpusId }: {
                     onValueChange(value)
                     setOpen(false)
                   }}
-                  className="flex rounded-none border-b"
+                  className="items-start rounded-none border-b py-2"
                 >
                   <CheckIcon className="size-4" />
-                  <div className="flex flex-1 flex-col gap-0.5">
-                    <div className="flex items-center gap-2">
+                  <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <div className="min-w-0 leading-5">
                       <span>{value.label}</span>
-                      <span className="truncate text-xs text-muted-foreground" title={value.value}>
+                      <span className="ml-2 text-xs text-muted-foreground" title={value.value}>
                         (
                         {value.value}
                         )
@@ -293,7 +293,7 @@ export function EntitySelector({ type, value, onValueChange, text, corpusId }: {
                           href={`https://www.wikidata.org/wiki/${value.value?.startsWith('P') ? 'Property:' : ''}${value.value}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="ml-auto text-xs text-blue-500 underline"
+                          className="ml-auto shrink-0 self-center text-xs text-blue-500 underline"
                           onClick={e => e.stopPropagation()}
                         >
                           View
@@ -314,7 +314,7 @@ export function EntitySelector({ type, value, onValueChange, text, corpusId }: {
                       onValueChange(entity)
                       setOpen(false)
                     }}
-                    className="flex"
+                    className="items-start py-2"
                   >
                     <CheckIcon
                       className={cn(
@@ -322,10 +322,10 @@ export function EntitySelector({ type, value, onValueChange, text, corpusId }: {
                         isSelectedEntity(value, entity) ? '' : 'hidden',
                       )}
                     />
-                    <div className="flex flex-1 flex-col gap-0.5">
-                      <div className="flex items-center gap-2">
+                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                      <div className="min-w-0 leading-5">
                         <span>{entity.label}</span>
-                        <span className="text-xs text-muted-foreground">
+                        <span className="ml-2 text-xs text-muted-foreground">
                           (
                           {entity.value}
                           )
@@ -354,7 +354,7 @@ export function EntitySelector({ type, value, onValueChange, text, corpusId }: {
                       onValueChange(entity)
                       setOpen(false)
                     }}
-                    className="flex"
+                    className="items-start py-2"
                   >
                     <CheckIcon
                       className={cn(
@@ -362,10 +362,10 @@ export function EntitySelector({ type, value, onValueChange, text, corpusId }: {
                         isSelectedEntity(value, entity) ? '' : 'hidden',
                       )}
                     />
-                    <div className="flex flex-1 flex-col gap-0.5">
-                      <div className="flex items-center gap-2">
+                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                      <div className="min-w-0 leading-5">
                         <span>{entity.label}</span>
-                        <span className="text-xs text-muted-foreground">
+                        <span className="ml-2 text-xs text-muted-foreground">
                           (
                           {entity.value}
                           )
@@ -381,7 +381,7 @@ export function EntitySelector({ type, value, onValueChange, text, corpusId }: {
                       href={`https://www.wikidata.org/wiki/${entity.value.startsWith('P') ? 'Property:' : ''}${entity.value}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="ml-auto text-xs text-blue-500 underline"
+                      className="ml-auto shrink-0 self-center text-xs text-blue-500 underline"
                       onClick={e => e.stopPropagation()}
                     >
                       View

@@ -682,7 +682,7 @@ export default function DocumentsTable({
         open={!!documentToDelete}
         onOpenChange={() => setDocumentToDelete(null)}
       >
-        <DialogContent>
+        <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
           </DialogHeader>
@@ -724,7 +724,7 @@ export default function DocumentsTable({
         open={showBulkDeleteDialog}
         onOpenChange={() => setShowBulkDeleteDialog(false)}
       >
-        <DialogContent>
+        <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
           </DialogHeader>

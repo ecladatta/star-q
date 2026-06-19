@@ -451,7 +451,7 @@ export function AnnotationsSidebar({
                       <ChevronDownIcon className="ml-2 size-4 shrink-0 opacity-50" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-[200px]">
+                  <DropdownMenuContent align="end" className="w-50">
                     <DropdownMenuItem onClick={() => setSortOption('creation')}>
                       Creation order
                     </DropdownMenuItem>
@@ -793,7 +793,7 @@ export function AnnotationsSidebar({
 
       {/* Confirmation Dialog */}
       <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Delete Annotations</DialogTitle>
             <DialogDescription>
