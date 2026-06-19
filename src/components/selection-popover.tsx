@@ -62,7 +62,7 @@ export function SelectionPopover({
             }}
           />
         </PopoverTrigger>
-        <PopoverContent className="w-auto">
+        <PopoverContent className="w-auto" side="top" sideOffset={10}>
           <div className="flex flex-col gap-2">
             <div className="flex gap-2">
               {popoverState.annotation && (

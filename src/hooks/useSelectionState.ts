@@ -32,7 +32,6 @@ export type TableSelection = {
   cellIndex: number
 }
 
-const POPOVER_OFFSET_Y = -80
 const SELECTION_TIMEOUT = 100
 
 function getClosestElementWithDataStart(element: Element | null): Element | null {
@@ -173,8 +172,8 @@ function useTextSelectionHandler(
       // Show popover at selection
       const rect = getRectFromRange(range)
       popover.showPopover({
-        top: rect.top + window.scrollY + POPOVER_OFFSET_Y,
-        left: rect.left + window.scrollX,
+        top: rect.top + window.scrollY,
+        left: rect.left + window.scrollX + rect.width / 2,
         annotation: null,
         componentId: null,
         annotations: [],
@@ -224,8 +223,8 @@ function useTableSelectionHandler(
     // Show popover at selection
     const rect = getRectFromRange(range)
     popover.showPopover({
-      top: rect.top + window.scrollY + POPOVER_OFFSET_Y,
-      left: rect.left + window.scrollX,
+      top: rect.top + window.scrollY,
+      left: rect.left + window.scrollX + rect.width / 2,
       annotation: null,
       componentId: null,
       annotations: [],
@@ -263,7 +262,7 @@ function useTableSelectionHandler(
       if (cellElement) {
         const rect = cellElement.getBoundingClientRect()
         popover.showPopover({
-          top: rect.top + window.scrollY + POPOVER_OFFSET_Y,
+          top: rect.top + window.scrollY,
           left: rect.left + window.scrollX + rect.width / 2,
           annotation: null,
           componentId: null,
