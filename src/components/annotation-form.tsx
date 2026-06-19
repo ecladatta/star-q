@@ -175,6 +175,9 @@ export function AnnotationForm({
 
     return (
       <div className="min-w-0">
+        <div className="mb-1 text-xs font-medium text-muted-foreground">
+          {sideLabel}
+        </div>
         <div className="mb-1 flex min-w-0 items-center gap-1">
           <div
             role={component ? 'button' : undefined}
@@ -677,65 +680,87 @@ export function AnnotationForm({
                     No qualifiers
                   </div>
                 )}
-                {qualifiers.map((qualifier, index) => (
-                  <div
-                    key={qualifier.id}
-                    className={cn(
-                      'rounded-md border transition-colors',
-                      activeQualifierId === qualifier.id && 'border-blue-400 bg-blue-50/40',
-                      activeQualifierId !== qualifier.id
-                      && isQualifierIncomplete(qualifier)
-                      && 'border-red-200 bg-red-50/40',
-                    )}
-                  >
-                    <div className="flex items-center gap-2 p-2">
-                      <button
-                        type="button"
-                        className="flex min-w-0 flex-1 items-center gap-2 text-left"
-                        onClick={() => setExpandedQualifierId(activeQualifierId === qualifier.id ? null : qualifier.id)}
-                        aria-expanded={activeQualifierId === qualifier.id}
-                      >
-                        {activeQualifierId === qualifier.id
-                          ? <ChevronDownIcon className="size-4 shrink-0 text-muted-foreground" />
-                          : <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground" />}
-                        <span className="shrink-0 text-xs font-medium text-muted-foreground">
-                          Q
-                          {index + 1}
-                        </span>
-                        <div className="flex min-w-0 flex-1 items-center gap-1">
-                          {renderQualifierPreviewChip('qualifier-predicate', 'Predicate text', qualifier.predicate)}
-                          <span className="shrink-0 text-xs text-muted-foreground">
-                            &rarr;
-                          </span>
-                          {renderQualifierPreviewChip('qualifier-value', 'Value text', qualifier.value)}
-                        </div>
-                      </button>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="size-7 text-destructive hover:text-destructive"
-                            onClick={() => removeQualifier(qualifier.id)}
-                            disabled={annotationFormLoading || isDeletingAnnotation}
-                          >
-                            <Trash2Icon />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          Remove qualifier
-                        </TooltipContent>
-                      </Tooltip>
-                    </div>
-                    {activeQualifierId === qualifier.id && (
-                      <div className="grid min-w-0 grid-cols-1 gap-2 border-t p-2 sm:grid-cols-2">
-                        {renderQualifierSide(qualifier.id, 'predicate', qualifier.predicate)}
-                        {renderQualifierSide(qualifier.id, 'value', qualifier.value)}
+                {qualifiers.map((qualifier, index) => {
+                  const isExpanded = activeQualifierId === qualifier.id
+
+                  return (
+                    <div
+                      key={qualifier.id}
+                      className={cn(
+                        'rounded-md border transition-colors',
+                        isExpanded && 'border-blue-400 bg-blue-50/40',
+                        !isExpanded
+                        && isQualifierIncomplete(qualifier)
+                        && 'border-red-200 bg-red-50/40',
+                      )}
+                    >
+                      <div className={cn('flex gap-2 p-2', isExpanded ? 'items-start' : 'items-center')}>
+                        {isExpanded
+                          ? (
+                              <button
+                                type="button"
+                                className="mt-5 flex h-7 shrink-0 items-center gap-1 text-xs font-medium text-muted-foreground"
+                                onClick={() => setExpandedQualifierId(null)}
+                                aria-expanded
+                              >
+                                <ChevronDownIcon className="size-4 shrink-0" />
+                                <span>
+                                  Q
+                                  {index + 1}
+                                </span>
+                              </button>
+                            )
+                          : (
+                              <button
+                                type="button"
+                                className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                                onClick={() => setExpandedQualifierId(qualifier.id)}
+                                aria-expanded={false}
+                              >
+                                <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground" />
+                                <span className="shrink-0 text-xs font-medium text-muted-foreground">
+                                  Q
+                                  {index + 1}
+                                </span>
+                                <div className="flex min-w-0 flex-1 items-center gap-1">
+                                  {renderQualifierPreviewChip('qualifier-predicate', 'Predicate text', qualifier.predicate)}
+                                  <span className="shrink-0 text-xs text-muted-foreground">
+                                    &rarr;
+                                  </span>
+                                  {renderQualifierPreviewChip('qualifier-value', 'Value text', qualifier.value)}
+                                </div>
+                              </button>
+                            )}
+                        {isExpanded && (
+                          <div className="grid min-w-0 flex-1 grid-cols-1 gap-2 sm:grid-cols-2">
+                            {renderQualifierSide(qualifier.id, 'predicate', qualifier.predicate)}
+                            {renderQualifierSide(qualifier.id, 'value', qualifier.value)}
+                          </div>
+                        )}
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className={cn(
+                                'size-7 shrink-0 text-destructive hover:text-destructive',
+                                isExpanded && 'mt-5',
+                              )}
+                              onClick={() => removeQualifier(qualifier.id)}
+                              disabled={annotationFormLoading || isDeletingAnnotation}
+                            >
+                              <Trash2Icon />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            Remove qualifier
+                          </TooltipContent>
+                        </Tooltip>
                       </div>
-                    )}
-                  </div>
-                ))}
+                    </div>
+                  )
+                })}
               </div>
             </div>
           )}
