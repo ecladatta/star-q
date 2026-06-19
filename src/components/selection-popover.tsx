@@ -28,7 +28,7 @@ type SelectionPopoverProps = {
   onDelete: (annotationId: string) => void
   isDeletingAnnotation: boolean
   onMentionAssociation: (type: EntityType) => void
-  onQualifierMentionAssociation: (side: QualifierSide) => void
+  onQualifierSelectionAssociation: (side: QualifierSide) => void
   hasCurrentAnnotation: boolean
   onEditAnnotation: (annotation: DocumentAnnotation) => void
 }
@@ -39,7 +39,7 @@ export function SelectionPopover({
   onDelete,
   isDeletingAnnotation,
   onMentionAssociation,
-  onQualifierMentionAssociation,
+  onQualifierSelectionAssociation,
   hasCurrentAnnotation,
   onEditAnnotation,
 }: SelectionPopoverProps) {
@@ -203,7 +203,7 @@ export function SelectionPopover({
                         size="sm"
                         className="h-8 justify-center gap-1.5 px-2 text-xs font-medium text-slate-800 hover:opacity-90"
                         style={{ backgroundColor: action.color }}
-                        onClick={() => onQualifierMentionAssociation(action.side)}
+                        onClick={() => onQualifierSelectionAssociation(action.side)}
                       >
                         <TextSelectIcon className="size-3.5" />
                         <span>{action.label}</span>

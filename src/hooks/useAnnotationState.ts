@@ -625,6 +625,27 @@ export function useAnnotationState(
     popover.hidePopover()
   }, [createAnnotationComponent, popover, selection])
 
+  const assignSelectionToNextQualifier = useCallback((side: QualifierSide) => {
+    const role: AnnotationComponentRole = side === 'predicate'
+      ? 'qualifier-predicate'
+      : 'qualifier-value'
+    const newComponent = createAnnotationComponent(role)
+    if (!newComponent) {
+      return
+    }
+
+    setCurrentAnnotation((prev) => {
+      if (!prev) {
+        return prev
+      }
+
+      return addQualifierComponent(prev, side, newComponent)
+    })
+
+    selection.clearSelection()
+    popover.hidePopover()
+  }, [createAnnotationComponent, popover, selection])
+
   const handleQualifierMentionAssociation = useCallback((side: QualifierSide, targetAnnotation?: DocumentAnnotation) => {
     const mention = popover.popoverState.mentionData
     if (!mention) {
@@ -774,6 +795,7 @@ export function useAnnotationState(
     addToCurrentAnnotation,
     removeQualifier,
     assignSelectionToQualifier,
+    assignSelectionToNextQualifier,
     handleQualifierMentionAssociation,
     updateQualifierEntity,
     handleCloneAnnotation,

@@ -55,6 +55,7 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
     handleCloneAnnotation,
     removeQualifier,
     assignSelectionToQualifier,
+    assignSelectionToNextQualifier,
     handleQualifierMentionAssociation,
     updateQualifierEntity,
     selection,
@@ -412,7 +413,7 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
               onDelete={deleteAnnotationById}
               isDeletingAnnotation={isDeletingAnnotation}
               onMentionAssociation={handleSelectionMentionAssociation}
-              onQualifierMentionAssociation={handleQualifierMentionAssociation}
+              onQualifierSelectionAssociation={assignSelectionToNextQualifier}
               hasCurrentAnnotation={Boolean(currentAnnotation)}
               onEditAnnotation={handleEditAnnotation}
             />
