@@ -25,6 +25,15 @@ import { SelectionPopover } from './selection-popover'
 
 type QualifierSide = 'predicate' | 'value'
 
+function getPopoverAnchorFromRect(rect: DOMRect | DOMRectReadOnly) {
+  return {
+    top: rect.top + window.scrollY,
+    left: rect.left + window.scrollX,
+    anchorWidth: Math.max(rect.width, 1),
+    anchorHeight: Math.max(rect.height, 1),
+  }
+}
+
 type DocumentViewerProps = {
   corpus: Corpus
   documents: DocumentMetadata[]
@@ -94,7 +103,7 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
     return map
   }, [documentElements])
 
-  const handleSplitClick = ({ componentId }: Offset) => {
+  const handleSplitClick = ({ componentId }: Offset, anchorRect?: DOMRect) => {
     if (!componentId)
       return
 
@@ -111,15 +120,11 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
     if (matchingAnnotations.length === 0)
       return
 
-    const domSelection = window.getSelection()
-    if (!domSelection)
+    if (!anchorRect)
       return
 
-    const rect = domSelection.getRangeAt(0).getClientRects()[0]
-
     popover.showPopover({
-      top: rect.top + window.scrollY - 80,
-      left: rect.left + window.scrollX,
+      ...getPopoverAnchorFromRect(anchorRect),
       annotation: null,
       componentId,
       annotations: matchingAnnotations,
@@ -410,6 +415,8 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
               visible={true}
               top={popover.popoverState.top}
               left={popover.popoverState.left}
+              anchorWidth={popover.popoverState.anchorWidth}
+              anchorHeight={popover.popoverState.anchorHeight}
               annotations={popover.popoverState.annotations ?? []}
               onClose={popover.hidePopover}
               onEdit={handleEditAnnotation}

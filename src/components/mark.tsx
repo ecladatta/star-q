@@ -9,7 +9,7 @@ export type MarkProps = {
   color?: string
   isCurrentAnnotation?: boolean
   className?: string
-  onClick: ({ start, end }: { start: number, end: number }) => void
+  onClick: (anchorRect?: DOMRect) => void
 }
 
 function Mark(props: MarkProps) {
@@ -17,7 +17,7 @@ function Mark(props: MarkProps) {
     if (e.key === 'Enter' || e.key === ' ') {
       e.stopPropagation()
       e.preventDefault()
-      props.onClick({ start: props.start, end: props.end })
+      props.onClick(e.currentTarget.getBoundingClientRect())
     }
   }
 
@@ -28,7 +28,7 @@ function Mark(props: MarkProps) {
     if (!hasSelection) {
       e.stopPropagation()
       e.preventDefault()
-      props.onClick({ start: props.start, end: props.end })
+      props.onClick(e.currentTarget.getBoundingClientRect())
     }
   }
 

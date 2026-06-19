@@ -20,7 +20,7 @@ export type CombinedElementProps = {
   data: { title: string, level?: number }
   handleTextSelection: (index: number) => void
   handleTableSelection: (index: number, row: number, cell: number) => void
-  handleSplitClick: (split: Offset) => void
+  handleSplitClick: (split: Offset, anchorRect?: DOMRect) => void
   documentElements: DocumentElement[]
   currentAnnotation: CurrentAnnotation | null
 }
@@ -129,7 +129,7 @@ function CombinedElement({
               <Split
                 key={`text-split-${split.componentId}-${split.start}-${split.end}`}
                 {...split}
-                onClick={() => handleSplitClick(split)}
+                onClick={anchorRect => handleSplitClick(split, anchorRect)}
                 color={getComponentColor(split.componentId, element, currentAnnotation)}
                 isCurrentAnnotation={split.componentId ? isComponentFromCurrentAnnotation(split.componentId, currentAnnotation) : false}
               />
@@ -269,7 +269,7 @@ function CombinedElement({
                           <Split
                             key={`table-header-split-${split.componentId}-${split.start}-${split.end}`}
                             {...split}
-                            onClick={() => handleSplitClick(split)}
+                            onClick={anchorRect => handleSplitClick(split, anchorRect)}
                             color={getComponentColor(split.componentId, element, currentAnnotation)}
                             isCurrentAnnotation={split.componentId ? isComponentFromCurrentAnnotation(split.componentId, currentAnnotation) : false}
                           />
@@ -304,7 +304,7 @@ function CombinedElement({
                           <Split
                             key={`table-row-split-${split.componentId}-${split.start}-${split.end}`}
                             {...split}
-                            onClick={() => handleSplitClick(split)}
+                            onClick={anchorRect => handleSplitClick(split, anchorRect)}
                             color={getComponentColor(split.componentId, element, currentAnnotation)}
                             isCurrentAnnotation={split.componentId ? isComponentFromCurrentAnnotation(split.componentId, currentAnnotation) : false}
                           />

@@ -5,6 +5,8 @@ import { selectionIsEmpty } from '@/lib/utils'
 export type PopoverState = {
   top: number
   left: number
+  anchorWidth: number
+  anchorHeight: number
   annotation: DocumentAnnotation | null
   componentId: string | undefined | null
   visible: boolean
@@ -15,6 +17,8 @@ export type PopoverState = {
 const INITIAL_POPOVER_STATE: PopoverState = {
   top: 0,
   left: 0,
+  anchorWidth: 1,
+  anchorHeight: 1,
   annotation: null,
   componentId: null,
   visible: false,
@@ -52,9 +56,23 @@ function calculateAbsoluteOffset(element: Element | null, offset: number): numbe
 
 function getRectFromRange(range: Range) {
   try {
-    return range.getBoundingClientRect()
+    const rect = range.getBoundingClientRect()
+    if (rect.width > 0 || rect.height > 0)
+      return rect
+
+    const clientRect = Array.from(range.getClientRects()).find(rect => rect.width > 0 || rect.height > 0)
+    return clientRect ?? rect
   } catch {
     return new DOMRect(0, 0, 0, 0)
+  }
+}
+
+function getDocumentAnchorFromRect(rect: DOMRect | DOMRectReadOnly) {
+  return {
+    top: rect.top + window.scrollY,
+    left: rect.left + window.scrollX,
+    anchorWidth: Math.max(rect.width, 1),
+    anchorHeight: Math.max(rect.height, 1),
   }
 }
 
@@ -172,8 +190,7 @@ function useTextSelectionHandler(
       // Show popover at selection
       const rect = getRectFromRange(range)
       popover.showPopover({
-        top: rect.top + window.scrollY,
-        left: rect.left + window.scrollX + rect.width / 2,
+        ...getDocumentAnchorFromRect(rect),
         annotation: null,
         componentId: null,
         annotations: [],
@@ -223,8 +240,7 @@ function useTableSelectionHandler(
     // Show popover at selection
     const rect = getRectFromRange(range)
     popover.showPopover({
-      top: rect.top + window.scrollY,
-      left: rect.left + window.scrollX + rect.width / 2,
+      ...getDocumentAnchorFromRect(rect),
       annotation: null,
       componentId: null,
       annotations: [],
@@ -262,8 +278,7 @@ function useTableSelectionHandler(
       if (cellElement) {
         const rect = cellElement.getBoundingClientRect()
         popover.showPopover({
-          top: rect.top + window.scrollY,
-          left: rect.left + window.scrollX + rect.width / 2,
+          ...getDocumentAnchorFromRect(rect),
           annotation: null,
           componentId: null,
           annotations: [],

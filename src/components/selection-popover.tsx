@@ -5,6 +5,7 @@ import { BoxIcon, EditIcon, LinkIcon, Loader2Icon, TextSelectIcon, Trash2Icon, U
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { TYPE_TO_COLOR } from '@/lib/constants'
+import { DocumentPopoverAnchor } from './document-popover-anchor'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
 
 type QualifierSide = 'predicate' | 'value'
@@ -51,18 +52,14 @@ export function SelectionPopover({
       e.stopPropagation()
     }}
     >
-      <Popover open={popoverState.visible} onOpenChange={onClose}>
-        <PopoverTrigger asChild>
-          <div
-            style={{
-              position: 'absolute',
-              top: popoverState.top,
-              left: popoverState.left,
-              zIndex: 1000,
-            }}
-          />
-        </PopoverTrigger>
-        <PopoverContent className="w-auto" side="top" sideOffset={10}>
+      <Popover open={popoverState.visible} onOpenChange={open => !open && onClose()}>
+        <DocumentPopoverAnchor
+          top={popoverState.top}
+          left={popoverState.left}
+          width={popoverState.anchorWidth}
+          height={popoverState.anchorHeight}
+        />
+        <PopoverContent className="w-auto max-w-[calc(100vw-1rem)]" side="top" sideOffset={8} collisionPadding={12}>
           <div className="flex flex-col gap-2">
             <div className="flex gap-2">
               {popoverState.annotation && (

@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { getAnnotationComponentDisplayText, getAnnotationComponentTitle } from '@/lib/annotation-roles'
 import { cn } from '@/lib/utils'
+import { DocumentPopoverAnchor } from './document-popover-anchor'
 import { QualifierSummary } from './qualifier-summary'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
 
@@ -67,6 +68,8 @@ type AnnotationListPopoverProps = {
   visible: boolean
   top: number
   left: number
+  anchorWidth?: number
+  anchorHeight?: number
   annotations: DocumentAnnotation[]
   onClose: () => void
   onEdit: (annotation: DocumentAnnotation) => void
@@ -81,6 +84,8 @@ export function AnnotationListPopover({
   visible,
   top,
   left,
+  anchorWidth = 1,
+  anchorHeight = 1,
   annotations,
   onClose,
   onEdit,
@@ -166,20 +171,14 @@ export function AnnotationListPopover({
           e.stopPropagation()
         }}
       >
-        <Popover open={visible} onOpenChange={onClose}>
-          <PopoverTrigger asChild>
-            <div
-              style={{
-                position: 'absolute',
-                top,
-                left,
-                zIndex: 1000,
-              }}
-            />
-          </PopoverTrigger>
+        <Popover open={visible} onOpenChange={open => !open && onClose()}>
+          <DocumentPopoverAnchor top={top} left={left} width={anchorWidth} height={anchorHeight} />
           <PopoverContent
-            className="w-96"
+            className="w-96 max-w-[calc(100vw-1rem)]"
+            side="top"
             align="start"
+            sideOffset={8}
+            collisionPadding={12}
             onWheel={e => e.stopPropagation()}
             onTouchMove={e => e.stopPropagation()}
           >
