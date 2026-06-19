@@ -175,9 +175,6 @@ export function AnnotationForm({
 
     return (
       <div className="min-w-0">
-        <div className="mb-1 text-xs font-medium text-muted-foreground">
-          {sideLabel}
-        </div>
         <div className="mb-1 flex min-w-0 items-center gap-1">
           <div
             role={component ? 'button' : undefined}
@@ -694,12 +691,12 @@ export function AnnotationForm({
                         && 'border-red-200 bg-red-50/40',
                       )}
                     >
-                      <div className={cn('flex gap-2 p-2', isExpanded ? 'items-start' : 'items-center')}>
+                      <div className="flex items-start gap-2 p-2">
                         {isExpanded
                           ? (
                               <button
                                 type="button"
-                                className="mt-5 flex h-7 shrink-0 items-center gap-1 text-xs font-medium text-muted-foreground"
+                                className="flex h-7 shrink-0 items-center gap-1 text-xs font-medium text-muted-foreground"
                                 onClick={() => setExpandedQualifierId(null)}
                                 aria-expanded
                               >
@@ -713,7 +710,7 @@ export function AnnotationForm({
                           : (
                               <button
                                 type="button"
-                                className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                                className="flex h-7 min-w-0 flex-1 items-center gap-2 text-left"
                                 onClick={() => setExpandedQualifierId(qualifier.id)}
                                 aria-expanded={false}
                               >
@@ -743,10 +740,7 @@ export function AnnotationForm({
                               type="button"
                               variant="ghost"
                               size="icon"
-                              className={cn(
-                                'size-7 shrink-0 text-destructive hover:text-destructive',
-                                isExpanded && 'mt-5',
-                              )}
+                              className="size-7 shrink-0 text-destructive hover:text-destructive"
                               onClick={() => removeQualifier(qualifier.id)}
                               disabled={annotationFormLoading || isDeletingAnnotation}
                             >
