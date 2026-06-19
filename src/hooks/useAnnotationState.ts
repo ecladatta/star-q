@@ -585,6 +585,41 @@ export function useAnnotationState(
     popover.hidePopover()
   }, [createAnnotationComponent, popover, selection])
 
+  const handleQualifierMentionAssociation = useCallback((side: QualifierSide) => {
+    const mention = popover.popoverState.mentionData
+    if (!mention) {
+      return
+    }
+
+    const role: AnnotationComponentRole = side === 'predicate'
+      ? 'qualifier-predicate'
+      : 'qualifier-value'
+    const component = createComponentFromMention(role, mention)
+
+    setCurrentAnnotation((prev) => {
+      if (!prev) {
+        return prev
+      }
+
+      const qualifiers = prev.qualifiers ?? []
+      const existingIndex = qualifiers.findIndex(qualifier => !qualifier[side])
+      const qualifierToUpdate = existingIndex >= 0
+        ? qualifiers[existingIndex]
+        : { id: uuidv4(), position: qualifiers.length }
+      const updatedQualifier = setQualifierComponent(qualifierToUpdate, side, component)
+      const nextQualifiers = existingIndex >= 0
+        ? qualifiers.map(qualifier => qualifier.id === updatedQualifier.id ? updatedQualifier : qualifier)
+        : [...qualifiers, updatedQualifier]
+
+      return {
+        ...prev,
+        qualifiers: reindexQualifiers(nextQualifiers),
+      }
+    })
+
+    popover.hidePopover()
+  }, [popover])
+
   const updateQualifierEntity = useCallback((qualifierId: string, side: QualifierSide, newValue: Entity | null) => {
     setCurrentAnnotation((prev) => {
       if (!prev?.qualifiers) {
@@ -715,6 +750,7 @@ export function useAnnotationState(
     addToCurrentAnnotation,
     removeQualifier,
     assignSelectionToQualifier,
+    handleQualifierMentionAssociation,
     updateQualifierEntity,
     handleCloneAnnotation,
 

@@ -2,18 +2,20 @@ import type { LucideIcon } from 'lucide-react'
 import type { AnnotationMention, DocumentAnnotation, EntityType } from '@/types/types'
 
 import { PopoverClose } from '@radix-ui/react-popover'
-import { BoxIcon, CopyIcon, EditIcon, LinkIcon, Loader2Icon, Trash2Icon, UserIcon } from 'lucide-react'
+import { BoxIcon, CopyIcon, EditIcon, LinkIcon, Loader2Icon, TextSelectIcon, Trash2Icon, UserIcon } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { getAnnotationComponentDisplayText, getAnnotationComponentTitle } from '@/lib/annotation-roles'
+import { TYPE_TO_COLOR } from '@/lib/constants'
 import { cn } from '@/lib/utils'
 import { QualifierSummary } from './qualifier-summary'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
 
 const ENTITY_ORDER: EntityType[] = ['subject', 'predicate', 'object']
+type QualifierSide = 'predicate' | 'value'
 
 type EntityMeta = {
   icon: LucideIcon
@@ -74,6 +76,8 @@ type AnnotationListPopoverProps = {
   onDelete: (annotationId: string) => void
   isDeletingAnnotation: boolean
   onCreateMention: (type: EntityType) => void
+  onCreateQualifierMention: (side: QualifierSide) => void
+  canCreateQualifierMention: boolean
   mentionData: AnnotationMention | null
 }
 
@@ -88,6 +92,8 @@ export function AnnotationListPopover({
   onDelete,
   isDeletingAnnotation,
   onCreateMention,
+  onCreateQualifierMention,
+  canCreateQualifierMention,
   mentionData,
 }: AnnotationListPopoverProps) {
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -107,6 +113,13 @@ export function AnnotationListPopover({
     onCreateMention(type)
     onClose()
   }, [mentionData, onCreateMention, onClose])
+
+  const handleCreateQualifierMention = useCallback((side: QualifierSide) => {
+    if (!mentionData || !canCreateQualifierMention)
+      return
+    onCreateQualifierMention(side)
+    onClose()
+  }, [mentionData, canCreateQualifierMention, onCreateQualifierMention, onClose])
 
   useEffect(() => {
     if (!visible)
@@ -303,33 +316,77 @@ export function AnnotationListPopover({
               </div>
 
               {mentionData && (
-                <div>
-                  <h5 className="mb-2 text-xs font-semibold text-muted-foreground">Create new annotation</h5>
-                  <div className="flex gap-2">
-                    {ENTITY_ORDER.map((entityType) => {
-                      const meta = ENTITY_META[entityType]
-                      const Icon = meta.icon
+                <div className="space-y-3">
+                  <div>
+                    <h5 className="mb-2 text-xs font-semibold text-muted-foreground">Create new annotation</h5>
+                    <div className="flex gap-2">
+                      {ENTITY_ORDER.map((entityType) => {
+                        const meta = ENTITY_META[entityType]
+                        const Icon = meta.icon
 
-                      return (
-                        <Tooltip key={entityType}>
+                        return (
+                          <Tooltip key={entityType}>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className={cn('flex-1', meta.buttonClass)}
+                                onClick={() => handleCreateMention(entityType)}
+                              >
+                                <Icon className="size-4" />
+                                <span>
+                                  <u>{meta.hotkey}</u>
+                                  {meta.label.slice(1)}
+                                </span>
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>{meta.tooltip}</TooltipContent>
+                          </Tooltip>
+                        )
+                      })}
+                    </div>
+                  </div>
+                  <div className="border-t border-dashed pt-3">
+                    <h5 className="mb-2 text-xs font-semibold text-muted-foreground">Add to current qualifier</h5>
+                    <div className="grid grid-cols-2 gap-2">
+                      {([
+                        {
+                          side: 'predicate',
+                          label: 'Q predicate',
+                          color: TYPE_TO_COLOR['qualifier-predicate'],
+                        },
+                        {
+                          side: 'value',
+                          label: 'Q value',
+                          color: TYPE_TO_COLOR['qualifier-value'],
+                        },
+                      ] satisfies Array<{ side: QualifierSide, label: string, color: string }>).map(action => (
+                        <Tooltip key={action.side}>
                           <TooltipTrigger asChild>
                             <Button
+                              type="button"
                               variant="outline"
                               size="sm"
-                              className={cn('flex-1', meta.buttonClass)}
-                              onClick={() => handleCreateMention(entityType)}
+                              className={cn(
+                                'justify-start gap-1.5 px-2 text-xs text-slate-800 hover:opacity-90',
+                                !canCreateQualifierMention && 'opacity-50',
+                              )}
+                              style={canCreateQualifierMention ? { backgroundColor: action.color } : undefined}
+                              disabled={!canCreateQualifierMention}
+                              onClick={() => handleCreateQualifierMention(action.side)}
                             >
-                              <Icon className="size-4" />
-                              <span>
-                                <u>{meta.hotkey}</u>
-                                {meta.label.slice(1)}
-                              </span>
+                              <TextSelectIcon className="size-3.5" />
+                              <span className="truncate">{action.label}</span>
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent>{meta.tooltip}</TooltipContent>
+                          <TooltipContent>
+                            {canCreateQualifierMention
+                              ? `Use this mention as qualifier ${action.side}`
+                              : 'Edit or create an annotation first'}
+                          </TooltipContent>
                         </Tooltip>
-                      )
-                    })}
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}
