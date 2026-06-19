@@ -25,11 +25,7 @@ export function QualifierSummary({
 
   return (
     <div className={cn('border-t border-dashed', className)}>
-      <div className="mb-1 flex items-center gap-1 text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
-        <span>Qualifiers</span>
-        <span>{qualifiers.length}</span>
-      </div>
-      <div className="space-y-1">
+      <div>
         {visibleQualifiers.map(qualifier => (
           <div
             key={qualifier.id}

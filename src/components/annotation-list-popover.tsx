@@ -227,7 +227,7 @@ export function AnnotationListPopover({
                               })}
                               <QualifierSummary qualifiers={annotation.qualifiers} className="mt-1 pt-1.5" />
                             </div>
-                            <div className="flex shrink-0 items-center gap-1">
+                            <div className="flex shrink-0 flex-col items-center gap-1">
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <Button
