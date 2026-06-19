@@ -1,7 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react'
 import type { AnnotationComponentRole, CurrentAnnotation, CurrentAnnotationQualifier, DocumentAnnotationComponent, Entity, EntityType } from '@/types/types'
 import { PopoverClose } from '@radix-ui/react-popover'
-import { ArrowLeftRightIcon, ChevronDownIcon, ChevronRightIcon, CopyIcon, Loader2Icon, PlusIcon, SaveIcon, Trash2Icon } from 'lucide-react'
+import { ArrowLeftRightIcon, ChevronDownIcon, ChevronRightIcon, CopyIcon, Loader2Icon, PlusIcon, SaveIcon, TextSelectIcon, Trash2Icon } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { v4 as uuidv4 } from 'uuid'
@@ -172,72 +172,81 @@ export function AnnotationForm({
   ) => {
     const role: AnnotationComponentRole = side === 'predicate' ? 'qualifier-predicate' : 'qualifier-value'
     const sideLabel = side === 'predicate' ? 'Predicate' : 'Value'
+    const canAssignSelection = hasActiveSelection && !annotationFormLoading && !isDeletingAnnotation
+    const assignSelection = () => {
+      if (canAssignSelection) {
+        assignSelectionToQualifier(qualifierId, side)
+      }
+    }
 
     return (
       <div className="min-w-0">
-        <div className="mb-1 flex min-w-0 items-center gap-1">
-          <div
-            role={component ? 'button' : undefined}
-            tabIndex={component ? 0 : undefined}
-            className={cn(
-              'flex min-w-0 flex-1 items-center rounded-md px-2 py-0.5 text-sm font-semibold',
-              component && 'cursor-pointer transition-opacity hover:opacity-80',
-            )}
-            style={{ backgroundColor: TYPE_TO_COLOR[role] }}
-            onClick={() => scrollToElement(component)}
-            onKeyDown={(e) => {
-              if (component && (e.key === 'Enter' || e.key === ' ')) {
-                e.preventDefault()
-                scrollToElement(component)
-              }
-            }}
-          >
-            <Tooltip>
-              <TooltipTrigger asChild>
+        <div
+          className={cn(
+            'mb-1 flex h-7 min-w-0 overflow-hidden rounded-md border text-sm font-semibold',
+            component ? 'border-transparent' : 'border-dashed border-muted-foreground/40',
+          )}
+          style={{ backgroundColor: TYPE_TO_COLOR[role] }}
+        >
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className={cn(
+                  'flex min-w-0 flex-1 items-center px-2 text-left',
+                  (component || canAssignSelection) && 'cursor-pointer transition-opacity hover:opacity-80',
+                  !component && !canAssignSelection && 'cursor-not-allowed opacity-60',
+                )}
+                onClick={() => {
+                  if (component) {
+                    scrollToElement(component)
+                    return
+                  }
+                  assignSelection()
+                }}
+                aria-disabled={!component && !canAssignSelection}
+                aria-label={component ? `Scroll to qualifier ${side} text` : `Use current selection as qualifier ${side}`}
+              >
                 <span className="truncate">
                   {component?.annotationValue ?? `${sideLabel} text`}
                 </span>
-              </TooltipTrigger>
-              {component?.annotationValue && (
-                <TooltipContent>
-                  {component.annotationValue}
-                </TooltipContent>
-              )}
-            </Tooltip>
-          </div>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-7 shrink-0 px-2"
-                onClick={() => assignSelectionToQualifier(qualifierId, side)}
-                disabled={!hasActiveSelection || annotationFormLoading || isDeletingAnnotation}
-              >
-                Set
-              </Button>
+              </button>
             </TooltipTrigger>
             <TooltipContent>
-              {`Set qualifier ${side} from current selection`}
+              {component?.annotationValue
+                ?? (canAssignSelection ? `Use current selection as qualifier ${side}` : 'Select text or a table cell first')}
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                className={cn(
+                  'flex w-7 shrink-0 items-center justify-center border-l border-slate-900/10 transition-colors hover:bg-white/30',
+                  !canAssignSelection && 'cursor-not-allowed opacity-45 hover:bg-transparent',
+                )}
+                onClick={assignSelection}
+                aria-disabled={!canAssignSelection}
+                tabIndex={canAssignSelection ? 0 : -1}
+                aria-label={`Use current selection as qualifier ${side}`}
+              >
+                <TextSelectIcon className="size-3.5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>
+              {canAssignSelection ? `Use current selection as qualifier ${side}` : 'Select text or a table cell first'}
             </TooltipContent>
           </Tooltip>
         </div>
-        {component
-          ? (
-              <EntitySelector
-                type={role}
-                value={getEntityValue(component, role)}
-                onValueChange={newValue => updateQualifierEntity(qualifierId, side, newValue)}
-                text={component.annotationValue}
-                corpusId={corpusId}
-              />
-            )
-          : (
-              <div className="flex h-9 items-center rounded-md border border-dashed px-3 text-sm text-muted-foreground">
-                Set text from selection
-              </div>
-            )}
+        {component && (
+          <EntitySelector
+            type={role}
+            value={getEntityValue(component, role)}
+            onValueChange={newValue => updateQualifierEntity(qualifierId, side, newValue)}
+            text={component.annotationValue}
+            corpusId={corpusId}
+          />
+        )}
       </div>
     )
   }
