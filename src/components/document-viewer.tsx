@@ -4,7 +4,7 @@ import type { Corpus, Document } from '@/db/schema'
 import type { Offset } from '@/lib/utils'
 import type { DocumentAnnotation, DocumentAnnotationComponent, DocumentData } from '@/types/types'
 import { Check, Copy, InfoIcon } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
@@ -23,6 +23,8 @@ import { DocumentHeader } from './document-header'
 import { DocumentSidebar } from './document-sidebar'
 import { SelectionPopover } from './selection-popover'
 
+type QualifierSide = 'predicate' | 'value'
+
 type DocumentViewerProps = {
   corpus: Corpus
   documents: DocumentMetadata[]
@@ -33,6 +35,7 @@ type DocumentViewerProps = {
 export function DocumentViewer({ corpus, documents, document, annotations }: DocumentViewerProps) {
   const [showAnnotations, setShowAnnotations] = useState(true)
   const [copiedDocument, setCopiedDocument] = useState(false)
+  const [activeQualifierId, setActiveQualifierId] = useState<string | null>(null)
 
   const documentData = document?.raw as (DocumentData | undefined)
   const combinedElements = useDocumentElements(documentData)
@@ -66,6 +69,20 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
     selection,
     popover,
   )
+
+  const handleQualifierSelectionAssociation = useCallback((side: QualifierSide) => {
+    const activeQualifierExists = Boolean(
+      activeQualifierId
+      && currentAnnotation?.qualifiers?.some(qualifier => qualifier.id === activeQualifierId),
+    )
+
+    if (activeQualifierId && activeQualifierExists) {
+      assignSelectionToQualifier(activeQualifierId, side)
+      return
+    }
+
+    assignSelectionToNextQualifier(side)
+  }, [activeQualifierId, assignSelectionToNextQualifier, assignSelectionToQualifier, currentAnnotation?.qualifiers])
 
   const componentById = useMemo(() => {
     const map = new Map<string, DocumentAnnotationComponent>()
@@ -384,6 +401,7 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
             assignSelectionToQualifier={assignSelectionToQualifier}
             updateQualifierEntity={updateQualifierEntity}
             hasActiveSelection={selection.hasSelection()}
+            onActiveQualifierChange={setActiveQualifierId}
           />
 
           {/* Show AnnotationListPopover when clicking on existing annotations with shared segments */}
@@ -411,7 +429,7 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
               onDelete={deleteAnnotationById}
               isDeletingAnnotation={isDeletingAnnotation}
               onMentionAssociation={handleSelectionMentionAssociation}
-              onQualifierSelectionAssociation={assignSelectionToNextQualifier}
+              onQualifierSelectionAssociation={handleQualifierSelectionAssociation}
               hasCurrentAnnotation={Boolean(currentAnnotation)}
               onEditAnnotation={handleEditAnnotation}
             />

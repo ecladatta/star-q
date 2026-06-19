@@ -28,6 +28,7 @@ type AnnotationFormProps = {
   assignSelectionToQualifier: (qualifierId: string, side: 'predicate' | 'value') => void
   updateQualifierEntity: (qualifierId: string, side: 'predicate' | 'value', newValue: Entity | null) => void
   hasActiveSelection: boolean
+  onActiveQualifierChange: (qualifierId: string | null) => void
 }
 
 function isQualifierIncomplete(qualifier: CurrentAnnotationQualifier) {
@@ -47,6 +48,7 @@ export function AnnotationForm({
   assignSelectionToQualifier,
   updateQualifierEntity,
   hasActiveSelection,
+  onActiveQualifierChange,
 }: AnnotationFormProps) {
   const subjectTag = currentAnnotation?.subject
   const predicateTag = currentAnnotation?.predicate
@@ -88,6 +90,10 @@ export function AnnotationForm({
     : expandedQualifierId === null
       ? null
       : firstIncompleteQualifierId ?? qualifiers[0]?.id ?? null
+
+  useEffect(() => {
+    onActiveQualifierChange(activeQualifierId)
+  }, [activeQualifierId, onActiveQualifierChange])
 
   const handleEntityChange = (type: EntityType, newValue: Entity | null) => {
     setCurrentAnnotation((prev) => {
