@@ -55,7 +55,8 @@ export function AnnotationForm({
   const hasAnyTags = Boolean(subjectTag || predicateTag || objectTag)
   const hasAllTags = Boolean(subjectTag && predicateTag && objectTag)
   const qualifiers = useMemo(() => currentAnnotation?.qualifiers ?? [], [currentAnnotation?.qualifiers])
-  const [expandedQualifierId, setExpandedQualifierId] = useState<string | null>(null)
+  // undefined auto-opens the first useful row; null means the user collapsed all qualifier editors.
+  const [expandedQualifierId, setExpandedQualifierId] = useState<string | null | undefined>(undefined)
 
   const firstIncompleteQualifierId = useMemo(() => {
     return qualifiers.find(isQualifierIncomplete)?.id ?? null
@@ -79,9 +80,14 @@ export function AnnotationForm({
   }
 
   const saveShortcut = isMac() ? '⌘S' : 'Ctrl+S'
-  const activeQualifierId = qualifiers.some(qualifier => qualifier.id === expandedQualifierId)
+  const expandedQualifierExists = expandedQualifierId !== null
+    && expandedQualifierId !== undefined
+    && qualifiers.some(qualifier => qualifier.id === expandedQualifierId)
+  const activeQualifierId = expandedQualifierExists
     ? expandedQualifierId
-    : firstIncompleteQualifierId ?? qualifiers[0]?.id ?? null
+    : expandedQualifierId === null
+      ? null
+      : firstIncompleteQualifierId ?? qualifiers[0]?.id ?? null
 
   const handleEntityChange = (type: EntityType, newValue: Entity | null) => {
     setCurrentAnnotation((prev) => {
@@ -686,7 +692,7 @@ export function AnnotationForm({
                       <button
                         type="button"
                         className="flex min-w-0 flex-1 items-center gap-2 text-left"
-                        onClick={() => setExpandedQualifierId(qualifier.id)}
+                        onClick={() => setExpandedQualifierId(activeQualifierId === qualifier.id ? null : qualifier.id)}
                         aria-expanded={activeQualifierId === qualifier.id}
                       >
                         {activeQualifierId === qualifier.id
