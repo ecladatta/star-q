@@ -56,7 +56,6 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
     removeQualifier,
     assignSelectionToQualifier,
     assignSelectionToNextQualifier,
-    handleQualifierMentionAssociation,
     updateQualifierEntity,
     selection,
     popover,
@@ -400,7 +399,6 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
               onDelete={deleteAnnotationById}
               isDeletingAnnotation={isDeletingAnnotation}
               onCreateMention={handleSelectionMentionAssociation}
-              onCreateQualifierMention={handleQualifierMentionAssociation}
               mentionData={popover.popoverState.mentionData ?? null}
             />
           )}

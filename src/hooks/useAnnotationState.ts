@@ -140,25 +140,6 @@ function setQualifierComponent(
     : { ...qualifier, value: component }
 }
 
-function toCurrentAnnotation(annotation: DocumentAnnotation): CurrentAnnotation {
-  return {
-    id: annotation.id,
-    subject: annotation.subject,
-    predicate: annotation.predicate,
-    object: annotation.object,
-    qualifiers: reindexQualifiers(
-      [...annotation.qualifiers]
-        .sort((a, b) => a.position - b.position)
-        .map(qualifier => ({
-          id: qualifier.id,
-          position: qualifier.position,
-          predicate: qualifier.predicate,
-          value: qualifier.value,
-        })),
-    ),
-  }
-}
-
 function addQualifierComponent(
   annotation: CurrentAnnotation,
   side: QualifierSide,
@@ -646,25 +627,6 @@ export function useAnnotationState(
     popover.hidePopover()
   }, [createAnnotationComponent, popover, selection])
 
-  const handleQualifierMentionAssociation = useCallback((side: QualifierSide, targetAnnotation?: DocumentAnnotation) => {
-    const mention = popover.popoverState.mentionData
-    if (!mention) {
-      return
-    }
-
-    const role: AnnotationComponentRole = side === 'predicate'
-      ? 'qualifier-predicate'
-      : 'qualifier-value'
-    const component = createComponentFromMention(role, mention)
-
-    setCurrentAnnotation((prev) => {
-      const baseAnnotation = prev ?? (targetAnnotation ? toCurrentAnnotation(targetAnnotation) : null)
-      return baseAnnotation ? addQualifierComponent(baseAnnotation, side, component) : prev
-    })
-
-    popover.hidePopover()
-  }, [popover])
-
   const updateQualifierEntity = useCallback((qualifierId: string, side: QualifierSide, newValue: Entity | null) => {
     setCurrentAnnotation((prev) => {
       if (!prev?.qualifiers) {
@@ -796,7 +758,6 @@ export function useAnnotationState(
     removeQualifier,
     assignSelectionToQualifier,
     assignSelectionToNextQualifier,
-    handleQualifierMentionAssociation,
     updateQualifierEntity,
     handleCloneAnnotation,
 

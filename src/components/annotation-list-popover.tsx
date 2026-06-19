@@ -2,33 +2,18 @@ import type { LucideIcon } from 'lucide-react'
 import type { AnnotationMention, DocumentAnnotation, EntityType } from '@/types/types'
 
 import { PopoverClose } from '@radix-ui/react-popover'
-import { BoxIcon, CopyIcon, EditIcon, LinkIcon, Loader2Icon, TextSelectIcon, Trash2Icon, UserIcon } from 'lucide-react'
+import { BoxIcon, CopyIcon, EditIcon, LinkIcon, Loader2Icon, Trash2Icon, UserIcon } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { getAnnotationComponentDisplayText, getAnnotationComponentTitle } from '@/lib/annotation-roles'
-import { TYPE_TO_COLOR } from '@/lib/constants'
 import { cn } from '@/lib/utils'
 import { QualifierSummary } from './qualifier-summary'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
 
 const ENTITY_ORDER: EntityType[] = ['subject', 'predicate', 'object']
-type QualifierSide = 'predicate' | 'value'
-
-const QUALIFIER_ACTIONS = [
-  {
-    side: 'predicate',
-    label: 'Q predicate',
-    color: TYPE_TO_COLOR['qualifier-predicate'],
-  },
-  {
-    side: 'value',
-    label: 'Q value',
-    color: TYPE_TO_COLOR['qualifier-value'],
-  },
-] satisfies Array<{ side: QualifierSide, label: string, color: string }>
 
 type EntityMeta = {
   icon: LucideIcon
@@ -89,7 +74,6 @@ type AnnotationListPopoverProps = {
   onDelete: (annotationId: string) => void
   isDeletingAnnotation: boolean
   onCreateMention: (type: EntityType) => void
-  onCreateQualifierMention: (side: QualifierSide, annotation: DocumentAnnotation) => void
   mentionData: AnnotationMention | null
 }
 
@@ -104,7 +88,6 @@ export function AnnotationListPopover({
   onDelete,
   isDeletingAnnotation,
   onCreateMention,
-  onCreateQualifierMention,
   mentionData,
 }: AnnotationListPopoverProps) {
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -124,13 +107,6 @@ export function AnnotationListPopover({
     onCreateMention(type)
     onClose()
   }, [mentionData, onCreateMention, onClose])
-
-  const handleCreateQualifierMention = useCallback((side: QualifierSide, annotation: DocumentAnnotation) => {
-    if (!mentionData)
-      return
-    onCreateQualifierMention(side, annotation)
-    onClose()
-  }, [mentionData, onCreateQualifierMention, onClose])
 
   useEffect(() => {
     if (!visible)
@@ -250,30 +226,6 @@ export function AnnotationListPopover({
                                 )
                               })}
                               <QualifierSummary qualifiers={annotation.qualifiers} className="mt-1 pt-1.5" />
-                              {mentionData && (
-                                <div className="mt-2 grid grid-cols-2 gap-1.5 border-t border-dashed pt-2">
-                                  {QUALIFIER_ACTIONS.map(action => (
-                                    <Tooltip key={action.side}>
-                                      <TooltipTrigger asChild>
-                                        <Button
-                                          type="button"
-                                          variant="outline"
-                                          size="sm"
-                                          className="h-7 justify-center gap-1.5 px-2 text-xs font-medium text-slate-800 hover:opacity-90"
-                                          style={{ backgroundColor: action.color }}
-                                          onClick={() => handleCreateQualifierMention(action.side, annotation)}
-                                        >
-                                          <TextSelectIcon className="size-3.5" />
-                                          <span className="truncate">{action.label}</span>
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>
-                                        {`Use this mention as qualifier ${action.side} for this annotation`}
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  ))}
-                                </div>
-                              )}
                             </div>
                             <div className="flex shrink-0 items-center gap-1">
                               <Tooltip>
