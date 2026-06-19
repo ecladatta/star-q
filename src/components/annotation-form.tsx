@@ -1,8 +1,8 @@
 import type { Dispatch, SetStateAction } from 'react'
-import type { AnnotationComponentRole, CurrentAnnotation, DocumentAnnotationComponent, Entity, EntityType } from '@/types/types'
+import type { AnnotationComponentRole, CurrentAnnotation, CurrentAnnotationQualifier, DocumentAnnotationComponent, Entity, EntityType } from '@/types/types'
 import { PopoverClose } from '@radix-ui/react-popover'
-import { ArrowLeftRightIcon, CopyIcon, Loader2Icon, PlusIcon, SaveIcon, Trash2Icon } from 'lucide-react'
-import { useCallback, useEffect } from 'react'
+import { ArrowLeftRightIcon, ChevronDownIcon, ChevronRightIcon, CopyIcon, Loader2Icon, PlusIcon, SaveIcon, Trash2Icon } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { v4 as uuidv4 } from 'uuid'
 import { EntitySelector } from '@/components/entity-selector'
@@ -24,11 +24,15 @@ type AnnotationFormProps = {
   annotationFormLoading: boolean
   isDeletingAnnotation: boolean
   corpusId: string
-  addQualifier: () => void
   removeQualifier: (qualifierId: string) => void
   assignSelectionToQualifier: (qualifierId: string, side: 'predicate' | 'value') => void
   updateQualifierEntity: (qualifierId: string, side: 'predicate' | 'value', newValue: Entity | null) => void
   hasActiveSelection: boolean
+}
+
+function isQualifierIncomplete(qualifier: CurrentAnnotationQualifier) {
+  return !qualifier.predicate?.annotationValue?.trim()
+    || !qualifier.value?.annotationValue?.trim()
 }
 
 export function AnnotationForm({
@@ -39,7 +43,6 @@ export function AnnotationForm({
   annotationFormLoading,
   isDeletingAnnotation,
   corpusId,
-  addQualifier,
   removeQualifier,
   assignSelectionToQualifier,
   updateQualifierEntity,
@@ -51,7 +54,12 @@ export function AnnotationForm({
 
   const hasAnyTags = Boolean(subjectTag || predicateTag || objectTag)
   const hasAllTags = Boolean(subjectTag && predicateTag && objectTag)
-  const qualifiers = currentAnnotation?.qualifiers ?? []
+  const qualifiers = useMemo(() => currentAnnotation?.qualifiers ?? [], [currentAnnotation?.qualifiers])
+  const [expandedQualifierId, setExpandedQualifierId] = useState<string | null>(null)
+
+  const firstIncompleteQualifierId = useMemo(() => {
+    return qualifiers.find(isQualifierIncomplete)?.id ?? null
+  }, [qualifiers])
 
   // Helper function to get entity data
   const getEntityValue = (component: DocumentAnnotationComponent | undefined, role: AnnotationComponentRole): Entity | null => {
@@ -71,6 +79,9 @@ export function AnnotationForm({
   }
 
   const saveShortcut = isMac() ? '⌘S' : 'Ctrl+S'
+  const activeQualifierId = qualifiers.some(qualifier => qualifier.id === expandedQualifierId)
+    ? expandedQualifierId
+    : firstIncompleteQualifierId ?? qualifiers[0]?.id ?? null
 
   const handleEntityChange = (type: EntityType, newValue: Entity | null) => {
     setCurrentAnnotation((prev) => {
@@ -225,6 +236,63 @@ export function AnnotationForm({
     )
   }
 
+  const renderQualifierPreviewChip = (
+    role: AnnotationComponentRole,
+    label: string,
+    component: DocumentAnnotationComponent | undefined,
+  ) => {
+    const entityLabel = component?.entityLabel || component?.entityValue
+    const title = entityLabel && entityLabel !== component?.annotationValue
+      ? `${component?.annotationValue} (${entityLabel})`
+      : component?.annotationValue
+
+    return (
+      <span
+        className={cn(
+          'flex min-w-0 flex-1 items-center gap-1 rounded-sm px-1.5 py-0.5 text-xs font-medium',
+          component ? 'text-slate-800' : 'border border-dashed text-muted-foreground',
+        )}
+        style={component ? { backgroundColor: TYPE_TO_COLOR[role] } : undefined}
+        title={title}
+      >
+        <span className="truncate">
+          {component?.annotationValue || label}
+        </span>
+        {entityLabel && (
+          <span className="hidden max-w-24 shrink-0 truncate text-[10px] font-normal opacity-70 sm:inline">
+            {entityLabel}
+          </span>
+        )}
+      </span>
+    )
+  }
+
+  const handleSave = useCallback(() => {
+    if (firstIncompleteQualifierId) {
+      setExpandedQualifierId(firstIncompleteQualifierId)
+    }
+    onSave()
+  }, [firstIncompleteQualifierId, onSave])
+
+  const handleAddQualifier = useCallback(() => {
+    const qualifierId = uuidv4()
+    setExpandedQualifierId(qualifierId)
+    setCurrentAnnotation((prev) => {
+      if (!prev) {
+        return prev
+      }
+
+      const existingQualifiers = prev.qualifiers ?? []
+      return {
+        ...prev,
+        qualifiers: [
+          ...existingQualifiers,
+          { id: qualifierId, position: existingQualifiers.length },
+        ],
+      }
+    })
+  }, [setCurrentAnnotation])
+
   const handleCloneAnnotation = useCallback(() => {
     if (!currentAnnotation)
       return
@@ -269,7 +337,7 @@ export function AnnotationForm({
         e.preventDefault()
         e.stopPropagation()
         if (hasAllTags && !annotationFormLoading && !isDeletingAnnotation) {
-          onSave()
+          handleSave()
         }
       }
 
@@ -300,7 +368,7 @@ export function AnnotationForm({
     return () => {
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [hasAllTags, annotationFormLoading, isDeletingAnnotation, onSave, currentAnnotation, handleCloneAnnotation])
+  }, [hasAllTags, annotationFormLoading, isDeletingAnnotation, handleSave, currentAnnotation, handleCloneAnnotation])
 
   if (!hasAnyTags)
     return null
@@ -393,7 +461,7 @@ export function AnnotationForm({
               <TooltipTrigger asChild>
                 <Button
                   className="bg-green-600 text-green-50 hover:bg-green-700 focus-visible:ring-green-500"
-                  onClick={onSave}
+                  onClick={handleSave}
                   disabled={!hasAllTags || annotationFormLoading || isDeletingAnnotation}
                 >
                   {annotationFormLoading ? <Loader2Icon className="animate-spin" /> : <SaveIcon />}
@@ -590,7 +658,7 @@ export function AnnotationForm({
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={addQualifier}
+                  onClick={handleAddQualifier}
                   disabled={annotationFormLoading || isDeletingAnnotation}
                 >
                   <PlusIcon />
@@ -604,13 +672,38 @@ export function AnnotationForm({
                   </div>
                 )}
                 {qualifiers.map((qualifier, index) => (
-                  <div key={qualifier.id} className="rounded-md border p-2">
-                    <div className="mb-2 flex items-center justify-between gap-2">
-                      <span className="text-xs font-medium text-muted-foreground">
-                        Qualifier
-                        {' '}
-                        {index + 1}
-                      </span>
+                  <div
+                    key={qualifier.id}
+                    className={cn(
+                      'rounded-md border transition-colors',
+                      activeQualifierId === qualifier.id && 'border-blue-400 bg-blue-50/40',
+                      activeQualifierId !== qualifier.id
+                      && isQualifierIncomplete(qualifier)
+                      && 'border-red-200 bg-red-50/40',
+                    )}
+                  >
+                    <div className="flex items-center gap-2 p-2">
+                      <button
+                        type="button"
+                        className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                        onClick={() => setExpandedQualifierId(qualifier.id)}
+                        aria-expanded={activeQualifierId === qualifier.id}
+                      >
+                        {activeQualifierId === qualifier.id
+                          ? <ChevronDownIcon className="size-4 shrink-0 text-muted-foreground" />
+                          : <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground" />}
+                        <span className="shrink-0 text-xs font-medium text-muted-foreground">
+                          Q
+                          {index + 1}
+                        </span>
+                        <div className="flex min-w-0 flex-1 items-center gap-1">
+                          {renderQualifierPreviewChip('qualifier-predicate', 'Predicate text', qualifier.predicate)}
+                          <span className="shrink-0 text-xs text-muted-foreground">
+                            &rarr;
+                          </span>
+                          {renderQualifierPreviewChip('qualifier-value', 'Value text', qualifier.value)}
+                        </div>
+                      </button>
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
@@ -629,10 +722,12 @@ export function AnnotationForm({
                         </TooltipContent>
                       </Tooltip>
                     </div>
-                    <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2">
-                      {renderQualifierSide(qualifier.id, 'predicate', qualifier.predicate)}
-                      {renderQualifierSide(qualifier.id, 'value', qualifier.value)}
-                    </div>
+                    {activeQualifierId === qualifier.id && (
+                      <div className="grid min-w-0 grid-cols-1 gap-2 border-t p-2 sm:grid-cols-2">
+                        {renderQualifierSide(qualifier.id, 'predicate', qualifier.predicate)}
+                        {renderQualifierSide(qualifier.id, 'value', qualifier.value)}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

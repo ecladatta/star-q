@@ -542,19 +542,6 @@ export function useAnnotationState(
     selection.clearSelection()
   }, [createAnnotationComponent, selection])
 
-  const addQualifier = useCallback(() => {
-    setCurrentAnnotation((prev) => {
-      const qualifiers = prev?.qualifiers ?? []
-      return {
-        ...prev,
-        qualifiers: [
-          ...qualifiers,
-          { id: uuidv4(), position: qualifiers.length },
-        ],
-      }
-    })
-  }, [])
-
   const removeQualifier = useCallback((qualifierId: string) => {
     setCurrentAnnotation((prev) => {
       if (!prev?.qualifiers) {
@@ -726,7 +713,6 @@ export function useAnnotationState(
     handleMentionAssociation,
     handleSelectionMentionAssociation,
     addToCurrentAnnotation,
-    addQualifier,
     removeQualifier,
     assignSelectionToQualifier,
     updateQualifierEntity,

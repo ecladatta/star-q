@@ -53,7 +53,6 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
     deleteAnnotationById,
     handleSelectionMentionAssociation,
     handleCloneAnnotation,
-    addQualifier,
     removeQualifier,
     assignSelectionToQualifier,
     updateQualifierEntity,
@@ -380,7 +379,6 @@ export function DocumentViewer({ corpus, documents, document, annotations }: Doc
             annotationFormLoading={annotationFormLoading}
             isDeletingAnnotation={isDeletingAnnotation}
             corpusId={corpus.id}
-            addQualifier={addQualifier}
             removeQualifier={removeQualifier}
             assignSelectionToQualifier={assignSelectionToQualifier}
             updateQualifierEntity={updateQualifierEntity}
