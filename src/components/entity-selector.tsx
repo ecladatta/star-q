@@ -109,6 +109,33 @@ const TYPES_ICONS: Record<EntityDatatype, ReactNode> = {
   url: <GlobeIcon className="size-5" />,
 }
 
+function getEntityOptionKey(entity: Entity, source: 'current' | 'custom' | 'wikidata', index: number): string {
+  if (entity.custom && entity.customId) {
+    return `${source}:${entity.customId}`
+  }
+
+  return `${source}:${entity.value}:${index}`
+}
+
+function getEntityOptionValue(entity: Entity, source: 'current' | 'custom' | 'wikidata', index: number): string {
+  if (entity.custom && entity.customId) {
+    return `${source}:${entity.customId}`
+  }
+
+  return `${source}:${entity.value}:${index}`
+}
+
+function isSelectedEntity(currentValue: Entity | null, candidate: Entity): boolean {
+  if (!currentValue) {
+    return false
+  }
+  if (currentValue.custom || candidate.custom) {
+    return currentValue.custom === candidate.custom && currentValue.customId === candidate.customId
+  }
+
+  return currentValue.value === candidate.value
+}
+
 export function EntitySelector({ type, value, onValueChange, text, corpusId }: {
   type: AnnotationComponentRole
   value: Entity | null
@@ -230,11 +257,11 @@ export function EntitySelector({ type, value, onValueChange, text, corpusId }: {
             )}
 
             {/* Current value if not in search results */}
-            {value && !searchResults.some(entity => entity.value === value.value) && (
+            {value && !searchResults.some(entity => isSelectedEntity(value, entity)) && (
               <CommandGroup>
                 <CommandItem
-                  key={value.value}
-                  value={value.value}
+                  key={getEntityOptionKey(value, 'current', 0)}
+                  value={getEntityOptionValue(value, 'current', 0)}
                   onSelect={() => {
                     onValueChange(value)
                     setOpen(false)
@@ -279,10 +306,10 @@ export function EntitySelector({ type, value, onValueChange, text, corpusId }: {
             {/* Custom entities */}
             {customEntities.length > 0 && (
               <CommandGroup heading="Corpus entities">
-                {customEntities.map(entity => (
+                {customEntities.map((entity, index) => (
                   <CommandItem
-                    key={entity.value}
-                    value={entity.value}
+                    key={getEntityOptionKey(entity, 'custom', index)}
+                    value={getEntityOptionValue(entity, 'custom', index)}
                     onSelect={() => {
                       onValueChange(entity)
                       setOpen(false)
@@ -292,7 +319,7 @@ export function EntitySelector({ type, value, onValueChange, text, corpusId }: {
                     <CheckIcon
                       className={cn(
                         'size-4',
-                        value?.value === entity.value ? '' : 'hidden',
+                        isSelectedEntity(value, entity) ? '' : 'hidden',
                       )}
                     />
                     <div className="flex flex-1 flex-col gap-0.5">
@@ -319,10 +346,10 @@ export function EntitySelector({ type, value, onValueChange, text, corpusId }: {
             {/* Wikidata entities */}
             {wikidataEntities.length > 0 && (
               <CommandGroup heading="Wikidata Entities">
-                {wikidataEntities.map(entity => (
+                {wikidataEntities.map((entity, index) => (
                   <CommandItem
-                    key={entity.value}
-                    value={entity.value}
+                    key={getEntityOptionKey(entity, 'wikidata', index)}
+                    value={getEntityOptionValue(entity, 'wikidata', index)}
                     onSelect={() => {
                       onValueChange(entity)
                       setOpen(false)
@@ -332,7 +359,7 @@ export function EntitySelector({ type, value, onValueChange, text, corpusId }: {
                     <CheckIcon
                       className={cn(
                         'size-4',
-                        value?.value === entity.value ? '' : 'hidden',
+                        isSelectedEntity(value, entity) ? '' : 'hidden',
                       )}
                     />
                     <div className="flex flex-1 flex-col gap-0.5">
