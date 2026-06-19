@@ -1,16 +1,28 @@
 import type { Dispatch, SetStateAction } from 'react'
-import type { AnnotationComponentRole, CurrentAnnotation, CurrentAnnotationQualifier, DocumentAnnotationComponent, Entity, EntityType } from '@/types/types'
+import type { AnnotationComponentRole, CurrentAnnotation, DocumentAnnotationComponent, Entity, EntityType } from '@/types/types'
 import { PopoverClose } from '@radix-ui/react-popover'
-import { ArrowLeftRightIcon, ChevronDownIcon, ChevronRightIcon, CopyIcon, Loader2Icon, PlusIcon, SaveIcon, TextSelectIcon, Trash2Icon } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { AlertTriangleIcon, ArrowLeftRightIcon, ChevronDownIcon, ChevronRightIcon, CopyIcon, Loader2Icon, PlusIcon, SaveIcon, TextSelectIcon, Trash2Icon } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { v4 as uuidv4 } from 'uuid'
 import { EntitySelector } from '@/components/entity-selector'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { entityTypeForComponentRole } from '@/lib/annotation-roles'
+import { validateAnnotationQualifiers } from '@/lib/annotation-validation'
 import { TYPE_TO_COLOR } from '@/lib/constants'
 import { cn, isMac } from '@/lib/utils'
 
@@ -31,9 +43,48 @@ type AnnotationFormProps = {
   onActiveQualifierChange: (qualifierId: string | null) => void
 }
 
-function isQualifierIncomplete(qualifier: CurrentAnnotationQualifier) {
-  return !qualifier.predicate?.annotationValue?.trim()
-    || !qualifier.value?.annotationValue?.trim()
+function normalizeComponentForDirtyCheck(component: DocumentAnnotationComponent | undefined) {
+  if (!component) {
+    return null
+  }
+
+  return {
+    id: component.id,
+    entityLabel: component.entityLabel ?? null,
+    entityValue: component.entityValue ?? null,
+    entityCustom: component.entityCustom ?? null,
+    entityCustomId: component.entityCustomId ?? null,
+    entityDatatype: component.entityDatatype ?? null,
+    annotationStart: component.annotationStart,
+    annotationEnd: component.annotationEnd,
+    annotationRow: component.annotationRow,
+    annotationCell: component.annotationCell,
+    annotationValue: component.annotationValue,
+    annotationType: component.annotationType,
+    annotationTag: component.annotationTag,
+    elementIndex: component.elementIndex,
+  }
+}
+
+function serializeAnnotationForDirtyCheck(annotation: CurrentAnnotation | null) {
+  if (!annotation) {
+    return null
+  }
+
+  return JSON.stringify({
+    id: annotation.id ?? null,
+    subject: normalizeComponentForDirtyCheck(annotation.subject),
+    predicate: normalizeComponentForDirtyCheck(annotation.predicate),
+    object: normalizeComponentForDirtyCheck(annotation.object),
+    qualifiers: (annotation.qualifiers ?? [])
+      .map(qualifier => ({
+        id: qualifier.id,
+        position: qualifier.position,
+        predicate: normalizeComponentForDirtyCheck(qualifier.predicate),
+        value: normalizeComponentForDirtyCheck(qualifier.value),
+      }))
+      .sort((a, b) => a.position - b.position),
+  })
 }
 
 export function AnnotationForm({
@@ -59,9 +110,15 @@ export function AnnotationForm({
   const qualifiers = useMemo(() => currentAnnotation?.qualifiers ?? [], [currentAnnotation?.qualifiers])
   // undefined auto-opens the first useful row; null means the user collapsed all qualifier editors.
   const [expandedQualifierId, setExpandedQualifierId] = useState<string | null | undefined>(undefined)
+  const [discardDialogOpen, setDiscardDialogOpen] = useState(false)
+  const initialAnnotationIdRef = useRef<string | null>(null)
+  const initialAnnotationSnapshotRef = useRef<string | null>(null)
 
   const firstIncompleteQualifierId = useMemo(() => {
-    return qualifiers.find(isQualifierIncomplete)?.id ?? null
+    return qualifiers.find(qualifier => validateAnnotationQualifiers([qualifier]).length > 0)?.id ?? null
+  }, [qualifiers])
+  const firstQualifierValidationError = useMemo(() => {
+    return validateAnnotationQualifiers(qualifiers)[0] ?? null
   }, [qualifiers])
 
   // Helper function to get entity data
@@ -90,10 +147,43 @@ export function AnnotationForm({
     : expandedQualifierId === null
       ? null
       : firstIncompleteQualifierId ?? qualifiers[0]?.id ?? null
+  const currentAnnotationSnapshot = useMemo(
+    () => serializeAnnotationForDirtyCheck(currentAnnotation),
+    [currentAnnotation],
+  )
+  const hasUnsavedChanges = Boolean(
+    currentAnnotation
+    && (
+      !currentAnnotation.id
+      || (
+        initialAnnotationSnapshotRef.current !== null
+        && currentAnnotationSnapshot !== initialAnnotationSnapshotRef.current
+      )
+    ),
+  )
 
   useEffect(() => {
     onActiveQualifierChange(activeQualifierId)
   }, [activeQualifierId, onActiveQualifierChange])
+
+  useEffect(() => {
+    if (!currentAnnotation) {
+      initialAnnotationIdRef.current = null
+      initialAnnotationSnapshotRef.current = null
+      return
+    }
+
+    if (!currentAnnotation.id) {
+      initialAnnotationIdRef.current = null
+      initialAnnotationSnapshotRef.current = null
+      return
+    }
+
+    if (initialAnnotationIdRef.current !== currentAnnotation.id) {
+      initialAnnotationIdRef.current = currentAnnotation.id
+      initialAnnotationSnapshotRef.current = currentAnnotationSnapshot
+    }
+  }, [currentAnnotation, currentAnnotationSnapshot])
 
   const handleEntityChange = (type: EntityType, newValue: Entity | null) => {
     setCurrentAnnotation((prev) => {
@@ -291,9 +381,44 @@ export function AnnotationForm({
   const handleSave = useCallback(() => {
     if (firstIncompleteQualifierId) {
       setExpandedQualifierId(firstIncompleteQualifierId)
+      toast.error(firstQualifierValidationError ?? 'Complete or remove incomplete qualifiers before saving.')
+      return
     }
     onSave()
-  }, [firstIncompleteQualifierId, onSave])
+  }, [firstIncompleteQualifierId, firstQualifierValidationError, onSave])
+
+  const discardCurrentAnnotation = useCallback(() => {
+    setDiscardDialogOpen(false)
+    setCurrentAnnotation(null)
+  }, [setCurrentAnnotation])
+
+  const handleDiscard = useCallback(() => {
+    if (hasUnsavedChanges) {
+      setDiscardDialogOpen(true)
+      return
+    }
+
+    discardCurrentAnnotation()
+  }, [discardCurrentAnnotation, hasUnsavedChanges])
+
+  useEffect(() => {
+    if (!discardDialogOpen) {
+      return
+    }
+
+    const handleDialogEscape = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') {
+        return
+      }
+
+      e.preventDefault()
+      e.stopImmediatePropagation()
+      setDiscardDialogOpen(false)
+    }
+
+    window.addEventListener('keydown', handleDialogEscape, true)
+    return () => window.removeEventListener('keydown', handleDialogEscape, true)
+  }, [discardDialogOpen])
 
   const handleAddQualifier = useCallback(() => {
     const qualifierId = uuidv4()
@@ -494,19 +619,45 @@ export function AnnotationForm({
                 )
               </TooltipContent>
             </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  onClick={() => setCurrentAnnotation(null)}
-                >
-                  ✕
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                Discard changes
-              </TooltipContent>
-            </Tooltip>
+            <AlertDialog open={discardDialogOpen && hasUnsavedChanges} onOpenChange={setDiscardDialogOpen}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    onClick={handleDiscard}
+                    data-discard-annotation-trigger
+                  >
+                    ✕
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Discard changes
+                </TooltipContent>
+              </Tooltip>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogMedia className="bg-destructive/10 text-destructive">
+                    <AlertTriangleIcon />
+                  </AlertDialogMedia>
+                  <AlertDialogTitle>Discard unsaved changes?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    These annotation changes have not been saved. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel type="button">
+                    Keep editing
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    type="button"
+                    variant="destructive"
+                    onClick={discardCurrentAnnotation}
+                  >
+                    Discard
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </CardHeader>
         <CardContent className="max-h-[min(70vh,32rem)] overflow-y-auto">
@@ -673,7 +824,12 @@ export function AnnotationForm({
           </div>
           {currentAnnotation && (
             <div className="mt-4 border-t pt-3">
-              <div className="mb-2 flex items-center justify-between gap-2">
+              <div
+                className={cn(
+                  'flex items-center justify-between gap-2',
+                  qualifiers.length > 0 && 'mb-2',
+                )}
+              >
                 <h3 className="text-sm font-semibold">Qualifiers</h3>
                 <Button
                   type="button"
@@ -687,13 +843,9 @@ export function AnnotationForm({
                 </Button>
               </div>
               <div className="flex flex-col gap-2">
-                {qualifiers.length === 0 && (
-                  <div className="rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground">
-                    No qualifiers
-                  </div>
-                )}
                 {qualifiers.map((qualifier, index) => {
                   const isExpanded = activeQualifierId === qualifier.id
+                  const qualifierHasValidationError = validateAnnotationQualifiers([qualifier]).length > 0
 
                   return (
                     <div
@@ -702,7 +854,7 @@ export function AnnotationForm({
                         'rounded-md border transition-colors',
                         isExpanded && 'border-blue-400 bg-blue-50/40',
                         !isExpanded
-                        && isQualifierIncomplete(qualifier)
+                        && qualifierHasValidationError
                         && 'border-red-200 bg-red-50/40',
                       )}
                     >

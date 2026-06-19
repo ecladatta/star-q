@@ -22,6 +22,7 @@ import {
   updateAnnotation,
 } from '@/actions/annotation/annotationActions'
 import { entityTypeForComponentRole, getAnnotationComponents } from '@/lib/annotation-roles'
+import { validateAnnotationComponent, validateAnnotationQualifiers, validateAnnotationTriple } from '@/lib/annotation-validation'
 import { useKeyboardShortcuts } from './useKeyboardShortcuts'
 import { usePopoverState, useSelectionState } from './useSelectionState'
 
@@ -32,52 +33,6 @@ class AnnotationError extends Error {
     super(message)
     this.name = 'AnnotationError'
   }
-}
-
-function validateAnnotationComponent(component: DocumentAnnotationComponent | undefined): boolean {
-  return !!(
-    component
-    && component.annotationValue?.trim()
-    && (component.elementIndex === 0 || component.elementIndex)
-  )
-}
-
-function validateAnnotationTriple(subject?: DocumentAnnotationComponent, predicate?: DocumentAnnotationComponent, object?: DocumentAnnotationComponent): string | null {
-  if (!validateAnnotationComponent(subject)) {
-    return 'Subject is required and must have valid text'
-  }
-  if (!validateAnnotationComponent(predicate)) {
-    return 'Predicate is required and must have valid text'
-  }
-  if (!validateAnnotationComponent(object)) {
-    return 'Object is required and must have valid text'
-  }
-  return null
-}
-
-function validateAnnotationQualifiers(qualifiers?: CurrentAnnotationQualifier[]): string[] {
-  if (!qualifiers) {
-    return []
-  }
-
-  return qualifiers.flatMap((qualifier, index) => {
-    const qualifierNumber = index + 1
-    const hasPredicateComponent = Boolean(qualifier.predicate)
-    const hasValueComponent = Boolean(qualifier.value)
-    const hasPredicate = validateAnnotationComponent(qualifier.predicate)
-    const hasValue = validateAnnotationComponent(qualifier.value)
-
-    if (!hasPredicateComponent && !hasValueComponent) {
-      return [`Qualifier ${qualifierNumber} is empty; remove it or fill both fields`]
-    }
-    if (!hasPredicate) {
-      return [`Qualifier ${qualifierNumber} predicate is required`]
-    }
-    if (!hasValue) {
-      return [`Qualifier ${qualifierNumber} value is required`]
-    }
-    return []
-  })
 }
 
 function createEntityFromComponent(component: DocumentAnnotationComponent): Entity {
@@ -309,22 +264,22 @@ export function useAnnotationState(
     predicate: DocumentAnnotationComponent,
     object: DocumentAnnotationComponent,
   ) => {
-    const validationError = validateAnnotationTriple(subject, predicate, object)
-    if (validationError) {
-      throw new AnnotationError(validationError, 'VALIDATION_ERROR')
-    }
-    const qualifierValidationErrors = validateAnnotationQualifiers(currentAnnotation?.qualifiers)
-    if (qualifierValidationErrors.length > 0) {
-      throw new AnnotationError(qualifierValidationErrors[0], 'VALIDATION_ERROR')
-    }
-
-    const qualifierInputs = currentAnnotation?.qualifiers === undefined
-      ? undefined
-      : createQualifierInputs(currentAnnotation.qualifiers)
-
     setLoadingState('annotationForm', true)
 
     try {
+      const validationError = validateAnnotationTriple(subject, predicate, object)
+      if (validationError) {
+        throw new AnnotationError(validationError, 'VALIDATION_ERROR')
+      }
+      const qualifierValidationErrors = validateAnnotationQualifiers(currentAnnotation?.qualifiers)
+      if (qualifierValidationErrors.length > 0) {
+        throw new AnnotationError(qualifierValidationErrors[0], 'VALIDATION_ERROR')
+      }
+
+      const qualifierInputs = currentAnnotation?.qualifiers === undefined
+        ? undefined
+        : createQualifierInputs(currentAnnotation.qualifiers)
+
       const selectedSubject = createEntityFromComponent(subject)
       const selectedPredicate = createEntityFromComponent(predicate)
       const selectedObject = createEntityFromComponent(object)
@@ -353,7 +308,6 @@ export function useAnnotationState(
         // Check for duplicate annotations before creating new one
         if (isDuplicateAnnotation(subject, predicate, object, documentAnnotations)) {
           toast.error('An identical annotation already exists')
-          setLoadingState('annotationForm', false)
           return
         }
 
@@ -381,7 +335,6 @@ export function useAnnotationState(
         ? error.message
         : `Failed to save annotation: ${(error as Error)?.message || 'Unknown error'}`
       toast.error(message)
-      throw error
     } finally {
       setLoadingState('annotationForm', false)
     }
@@ -716,7 +669,17 @@ export function useAnnotationState(
         popover.hidePopover()
       }
     },
-    onClearAnnotation: () => setCurrentAnnotation(null),
+    onClearAnnotation: () => {
+      if (currentAnnotation) {
+        const discardButton = document.querySelector('[data-discard-annotation-trigger]') as HTMLButtonElement | null
+        if (discardButton) {
+          discardButton.click()
+          return
+        }
+      }
+
+      setCurrentAnnotation(null)
+    },
     onHidePopover: popover.hidePopover,
     onToggleAnnotations: () => setShowAnnotations(!showAnnotations),
     onCloneAnnotation: handleCloneAnnotation,
