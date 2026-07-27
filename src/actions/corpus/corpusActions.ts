@@ -266,6 +266,16 @@ export async function findOrCreateCorpusCustomEntity(corpusId: string, label: st
     .limit(1)
 
   if (existing) {
+    // Update label and datatype if they've changed
+    if (existing.label !== label || existing.datatype !== datatype) {
+      await db.update(corpusCustomEntity)
+        .set({
+          label,
+          datatype: datatype as any,
+          updatedAt: new Date(),
+        })
+        .where(eq(corpusCustomEntity.id, existing.id))
+    }
     return existing.id
   }
 
