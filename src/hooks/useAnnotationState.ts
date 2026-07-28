@@ -606,6 +606,27 @@ export function useAnnotationState(
     })
   }, [])
 
+  const clearQualifierSide = useCallback((qualifierId: string, side: QualifierSide) => {
+    setCurrentAnnotation((prev) => {
+      if (!prev?.qualifiers) {
+        return prev
+      }
+
+      return {
+        ...prev,
+        qualifiers: prev.qualifiers.map((qualifier) => {
+          if (qualifier.id !== qualifierId) {
+            return qualifier
+          }
+
+          return side === 'predicate'
+            ? { ...qualifier, predicate: undefined }
+            : { ...qualifier, value: undefined }
+        }),
+      }
+    })
+  }, [])
+
   const handleSelectionMentionAssociation = useCallback((type: EntityType) => {
     const mention = popover.popoverState.mentionData
     if (mention) {
@@ -722,6 +743,7 @@ export function useAnnotationState(
     assignSelectionToQualifier,
     assignSelectionToNextQualifier,
     updateQualifierEntity,
+    clearQualifierSide,
     handleCloneAnnotation,
 
     // Sub-hooks
