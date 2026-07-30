@@ -51,6 +51,8 @@ To install and run the Annotation Tool locally, follow these steps:
 
 ## Authentication (Optional)
 
+## GitHub Authentication
+
 To enable GitHub authentication, set the following environment variables:
 
 ```bash
@@ -63,6 +65,22 @@ To optionally restrict access to specific users when authentication is enabled, 
 
 ```bash
 ALLOWED_EMAILS=user1@example.com,user2@example.com
+```
+
+## Wikimedia Authentication
+
+To enable Wikimedia authentication, set the following environment variables:
+
+```bash
+AUTH_ENABLED=true
+WIKIMEDIA_ID=your_wikimedia_client_id
+WIKIMEDIA_SECRET=your_wikimedia_client_secret
+```
+
+To optionally restrict access to specific Wikimedia users when authentication is enabled, set:
+
+```bash
+ALLOWED_WIKIMEDIA_IDS=1234567,7654321
 ```
 
 ## API Routes
