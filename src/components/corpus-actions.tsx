@@ -2,6 +2,7 @@
 
 import type { ChangeEvent, ReactNode } from 'react'
 import type { Corpus } from '@/db/schema'
+import type { CorpusExportFormat } from '@/lib/exports/export-format'
 import {
   BarChart3Icon,
   CopyIcon,
@@ -33,10 +34,17 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  CORPUS_EXPORT_FORMAT_IDS,
+  CORPUS_EXPORT_FORMATS,
+} from '@/lib/exports/export-format'
 
 type CorpusActionsProps = {
   corpus: Corpus & { documentsCount?: number, annotationsCount?: number }
@@ -108,12 +116,10 @@ export function CorpusActions({ corpus, showOpenAction = true, triggerButton }: 
     }
   }
 
-  const handleExportClick = async () => {
-    try {
-      window.open(`/api/corpus/${corpus.id}/export`, '_blank')
-    } catch (error) {
-      console.error('Export failed:', error)
-    }
+  const handleExportClick = (format: CorpusExportFormat) => {
+    const downloadLink = document.createElement('a')
+    downloadLink.href = `/api/corpus/${corpus.id}/export?${CORPUS_EXPORT_FORMATS[format].query}`
+    downloadLink.click()
   }
 
   const handleDeleteClick = () => {
@@ -214,10 +220,22 @@ export function CorpusActions({ corpus, showOpenAction = true, triggerButton }: 
             <FileUpIcon className="mr-2 size-4" />
             Import
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleExportClick}>
-            <FileDownIcon className="mr-2 size-4" />
-            Export
-          </DropdownMenuItem>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>
+              <FileDownIcon className="mr-2 size-4" />
+              Export
+            </DropdownMenuSubTrigger>
+            <DropdownMenuSubContent>
+              {CORPUS_EXPORT_FORMAT_IDS.map(format => (
+                <DropdownMenuItem
+                  key={format}
+                  onClick={() => handleExportClick(format)}
+                >
+                  {CORPUS_EXPORT_FORMATS[format].label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
           <DropdownMenuSeparator />
           <DropdownMenuItem
             onClick={handleDeleteClick}

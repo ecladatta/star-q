@@ -1,13 +1,21 @@
 import type { CorpusCustomEntity, Document } from '@/db/schema'
 
-export type TextOrTableElement = {
+type DocumentElementBase = {
   elementIndex: number
-  type: 'text' | 'table'
   startOffset?: number
   endOffset?: number
-  value: string | string[][]
   data: any
 }
+
+export type TextOrTableElement
+  = | DocumentElementBase & {
+    type: 'text'
+    value: string
+  }
+  | DocumentElementBase & {
+    type: 'table'
+    value: string[][]
+  }
 
 export type EntityType = 'subject' | 'predicate' | 'object'
 
