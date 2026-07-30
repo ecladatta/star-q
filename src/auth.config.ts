@@ -1,5 +1,6 @@
 import type { NextAuthConfig } from 'next-auth'
 import GitHub from 'next-auth/providers/github'
+import WikimediaProvider from 'next-auth/providers/wikimedia'
 import { NextResponse } from 'next/server'
 
 function isEmailAllowed(email: string | null | undefined): boolean {
@@ -18,11 +19,21 @@ export function isAuthEnabled(): boolean {
   return process.env.AUTH_ENABLED === 'true'
 }
 
-const providers = isAuthEnabled()
-  ? [GitHub({
-      clientId: process.env.GITHUB_ID,
-      clientSecret: process.env.GITHUB_SECRET,
-    })]
+const providers: NonNullable<NextAuthConfig['providers']> = isAuthEnabled()
+  ? [
+      ...(process.env.GITHUB_ID && process.env.GITHUB_SECRET
+        ? [GitHub({
+            clientId: process.env.GITHUB_ID,
+            clientSecret: process.env.GITHUB_SECRET,
+          })]
+        : []),
+      ...(process.env.WIKIMEDIA_ID && process.env.WIKIMEDIA_SECRET
+        ? [WikimediaProvider({
+            clientId: process.env.WIKIMEDIA_ID,
+            clientSecret: process.env.WIKIMEDIA_SECRET,
+          })]
+        : []),
+    ]
   : []
 
 export default {
