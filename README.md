@@ -8,6 +8,7 @@ The Annotation Tool is a web-based application designed to facilitate the annota
 To deploy the Annotation Tool in production, follow these steps:
 
 1. Copy `.env.example` to `.env` and update the environment variables.
+   Set `BASE_URL` to the public application URL.
 
 2. Build and run the Docker containers:
     ```bash
