@@ -32,7 +32,7 @@ export function QualifierSummary({
             className="flex min-w-0 items-center gap-1 rounded-md bg-muted/60 px-1.5 py-1 text-[11px] leading-tight"
           >
             <span
-              className="min-w-0 flex-1 truncate rounded-sm px-1.5 py-0.5 font-medium text-slate-800"
+              className="w-0 min-w-0 flex-1 truncate rounded-sm px-1.5 py-0.5 font-medium text-slate-800"
               style={{ backgroundColor: TYPE_TO_COLOR['qualifier-predicate'] }}
               title={getAnnotationComponentTitle(qualifier.predicate)}
             >
@@ -42,7 +42,7 @@ export function QualifierSummary({
               &rarr;
             </span>
             <span
-              className="min-w-0 flex-1 truncate rounded-sm px-1.5 py-0.5 font-medium text-slate-800"
+              className="w-0 min-w-0 flex-1 truncate rounded-sm px-1.5 py-0.5 font-medium text-slate-800"
               style={{ backgroundColor: TYPE_TO_COLOR['qualifier-value'] }}
               title={getAnnotationComponentTitle(qualifier.value)}
             >
