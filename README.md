@@ -7,8 +7,17 @@ The Annotation Tool is a web-based application designed to facilitate the annota
 
 To deploy the Annotation Tool in production, follow these steps:
 
-1. Copy `.env.example` to `.env` and update the environment variables.
-   Set `BASE_URL` to the public application URL.
+1. Copy `.env.example` to `.env` and configure it for the deployment:
+
+    - Set `BASE_URL` to the public HTTPS URL of the application.
+    - Replace the example PostgreSQL username, password, and database name. Use a
+      unique, strong `POSTGRES_PASSWORD`.
+    - Choose whether authentication is enabled and configure the corresponding
+      secrets as described in [Authentication](#authentication-optional).
+    - Set `API_KEY` if API clients should authenticate with an API key. Generate
+      one with `openssl rand -hex 32`.
+
+   Never commit the resulting `.env` file.
 
 2. Build and run the Docker containers:
     ```bash
@@ -17,31 +26,61 @@ To deploy the Annotation Tool in production, follow these steps:
 
 ## Development
 
-To install and run the Annotation Tool locally, follow these steps:
+Clone the repository and create the local environment file:
 
-1. Clone the repository:
-    ```bash
-    git clone https://github.com/ecladatta/annotation-tool.git
-    cd annotation-tool
-    ```
+```bash
+git clone https://github.com/ecladatta/annotation-tool.git
+cd annotation-tool
+cp .env.example .env
+```
 
-2. Install dependencies:
-    ```bash
-    pnpm install
-    ```
+Authentication is disabled by default in `.env.example`. Choose one of the two
+development modes below.
 
-3. Copy `.env.example` to `.env` and update the environment variables.
+### Run all services with Docker Compose
 
-4. Start the services:
-    ```bash
-    docker compose -f compose.dev.yaml up -d --build
-    ```
+Keep `POSTGRES_HOST=postgres` in `.env`, then start the application, database,
+and migration services:
 
-5. Open your browser and navigate to `http://localhost:3000`.
+```bash
+docker compose -f compose.dev.yaml up -d --build
+```
+
+### Run the application on the host
+
+This mode requires Node.js 24 and the pnpm version declared in `package.json`.
+Set `POSTGRES_HOST=localhost` in `.env`, then run:
+
+```bash
+pnpm install --frozen-lockfile
+docker compose -f compose.dev.yaml up -d postgres
+pnpm db:migrate
+pnpm dev
+```
+
+In either mode, open `http://localhost:3000`.
 
 ## Authentication (Optional)
 
-## GitHub Authentication
+Set `AUTH_ENABLED=false` to run without user accounts or browser sessions. The
+web application and server actions are then accessible without signing in. If
+`API_KEY` is empty, the corpus API routes are also public; if `API_KEY` is set,
+those routes require the key in the `x-api-key` request header.
+
+Set `AUTH_ENABLED=true` to require a signed-in user. A production deployment
+must then provide:
+
+- A unique `AUTH_SECRET`, generated with `openssl rand -base64 32`.
+- At least one configured OAuth provider.
+- `AUTH_URL` set to the public application URL (the default `${BASE_URL}` is
+  suitable when `BASE_URL` is configured correctly).
+
+When authentication is enabled, API requests may use either an authenticated
+browser session or the configured `API_KEY`. An empty provider allowlist allows
+every user authenticated by that provider, so configure `ALLOWED_EMAILS` or
+`ALLOWED_WIKIMEDIA_IDS` when access should be restricted.
+
+### GitHub Authentication
 
 To enable GitHub authentication, set the following environment variables:
 
@@ -51,13 +90,20 @@ GITHUB_ID=your_github_client_id
 GITHUB_SECRET=your_github_client_secret
 ```
 
+Register the following authorization callback URL in the GitHub OAuth app,
+replacing the origin with the configured `BASE_URL`:
+
+```text
+https://annotation.example.org/api/auth/callback/github
+```
+
 To optionally restrict access to specific users when authentication is enabled, set:
 
 ```bash
 ALLOWED_EMAILS=user1@example.com,user2@example.com
 ```
 
-## Wikimedia Authentication
+### Wikimedia Authentication
 
 To enable Wikimedia authentication, set the following environment variables:
 
@@ -65,6 +111,13 @@ To enable Wikimedia authentication, set the following environment variables:
 AUTH_ENABLED=true
 WIKIMEDIA_ID=your_wikimedia_client_id
 WIKIMEDIA_SECRET=your_wikimedia_client_secret
+```
+
+Register the following callback URL for the Wikimedia OAuth consumer, replacing
+the origin with the configured `BASE_URL`:
+
+```text
+https://annotation.example.org/api/auth/callback/wikimedia
 ```
 
 To optionally restrict access to specific Wikimedia users when authentication is enabled, set:
