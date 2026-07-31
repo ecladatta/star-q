@@ -10,14 +10,9 @@ To deploy the Annotation Tool in production, follow these steps:
 1. Copy `.env.example` to `.env` and configure it for the deployment:
 
     - Set `BASE_URL` to the public HTTPS URL of the application.
-    - Replace the example PostgreSQL username, password, and database name. Use a
-      unique, strong `POSTGRES_PASSWORD`.
-    - Choose whether authentication is enabled and configure the corresponding
-      secrets as described in [Authentication](#authentication-optional).
-    - Set `API_KEY` if API clients should authenticate with an API key. Generate
-      one with `openssl rand -hex 32`.
-
-   Never commit the resulting `.env` file.
+    - Replace the example PostgreSQL username, password, and database name. Use a unique, strong `POSTGRES_PASSWORD`.
+    - Choose whether authentication is enabled and configure the corresponding secrets as described in [Authentication](#authentication-optional).
+    - Set `API_KEY` if API clients should authenticate with an API key. Generate one with `openssl rand -hex 32`.
 
 2. Build and run the Docker containers:
     ```bash
@@ -34,13 +29,11 @@ cd annotation-tool
 cp .env.example .env
 ```
 
-Authentication is disabled by default in `.env.example`. Choose one of the two
-development modes below.
+Authentication is disabled by default in `.env.example`. Choose one of the two development modes below.
 
 ### Run all services with Docker Compose
 
-Keep `POSTGRES_HOST=postgres` in `.env`, then start the application, database,
-and migration services:
+Start the application, database, and migration services:
 
 ```bash
 docker compose -f compose.dev.yaml up -d --build
@@ -48,7 +41,6 @@ docker compose -f compose.dev.yaml up -d --build
 
 ### Run the application on the host
 
-This mode requires Node.js 24 and the pnpm version declared in `package.json`.
 Set `POSTGRES_HOST=localhost` in `.env`, then run:
 
 ```bash
@@ -62,23 +54,18 @@ In either mode, open `http://localhost:3000`.
 
 ## Authentication (Optional)
 
-Set `AUTH_ENABLED=false` to run without user accounts or browser sessions. The
-web application and server actions are then accessible without signing in. If
-`API_KEY` is empty, the corpus API routes are also public; if `API_KEY` is set,
-those routes require the key in the `x-api-key` request header.
+Set `AUTH_ENABLED=false` to run without user accounts or browser sessions.
+The web application and server actions are then accessible without signing in.
+If `API_KEY` is empty, the corpus API routes are also public; if `API_KEY` is set, those routes require the key in the `x-api-key` request header.
 
-Set `AUTH_ENABLED=true` to require a signed-in user. A production deployment
-must then provide:
+Set `AUTH_ENABLED=true` to require a signed-in user. A production deployment must then provide:
 
 - A unique `AUTH_SECRET`, generated with `openssl rand -base64 32`.
 - At least one configured OAuth provider.
-- `AUTH_URL` set to the public application URL (the default `${BASE_URL}` is
-  suitable when `BASE_URL` is configured correctly).
+- `AUTH_URL` set to the public application URL (the default `${BASE_URL}` is suitable when `BASE_URL` is configured correctly).
 
-When authentication is enabled, API requests may use either an authenticated
-browser session or the configured `API_KEY`. An empty provider allowlist allows
-every user authenticated by that provider, so configure `ALLOWED_EMAILS` or
-`ALLOWED_WIKIMEDIA_IDS` when access should be restricted.
+When authentication is enabled, API requests may use either an authenticated browser session or the configured `API_KEY`.
+An empty provider allowlist allows every user authenticated by that provider, so configure `ALLOWED_EMAILS` or `ALLOWED_WIKIMEDIA_IDS` when access should be restricted.
 
 ### GitHub Authentication
 
@@ -90,8 +77,7 @@ GITHUB_ID=your_github_client_id
 GITHUB_SECRET=your_github_client_secret
 ```
 
-Register the following authorization callback URL in the GitHub OAuth app,
-replacing the origin with the configured `BASE_URL`:
+Register the following authorization callback URL in the GitHub OAuth app, replacing the origin with the configured `BASE_URL`:
 
 ```text
 https://annotation.example.org/api/auth/callback/github
@@ -113,8 +99,7 @@ WIKIMEDIA_ID=your_wikimedia_client_id
 WIKIMEDIA_SECRET=your_wikimedia_client_secret
 ```
 
-Register the following callback URL for the Wikimedia OAuth consumer, replacing
-the origin with the configured `BASE_URL`:
+Register the following callback URL for the Wikimedia OAuth consumer, replacing the origin with the configured `BASE_URL`:
 
 ```text
 https://annotation.example.org/api/auth/callback/wikimedia
