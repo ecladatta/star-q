@@ -62,10 +62,12 @@ export function CorpusActions({ corpus, showOpenAction = true, triggerButton }: 
   const [newDuplicateTitle, setNewDuplicateTitle] = useState('')
   const [newRenameTitle, setNewRenameTitle] = useState('')
   const [uploadError, setUploadError] = useState<string | null>(null)
+  const [uploadWarning, setUploadWarning] = useState<string | null>(null)
   const [importedCount, setImportedCount] = useState(0)
 
   const handleImportClick = () => {
     setUploadError(null)
+    setUploadWarning(null)
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
@@ -82,14 +84,18 @@ export function CorpusActions({ corpus, showOpenAction = true, triggerButton }: 
 
     try {
       setUploadError(null)
+      setUploadWarning(null)
       setShowImportDialog(true)
       setIsImporting(true)
       const formData = new FormData()
       formData.append('file', file)
-      const { count, errors } = await importDocuments(corpus.id, formData)
+      const { count, errors, warnings } = await importDocuments(corpus.id, formData)
       setImportedCount(count)
       if (errors && errors.length > 0) {
         setUploadError(errors.join('\n'))
+      }
+      if (warnings && warnings.length > 0) {
+        setUploadWarning(warnings.join('\n'))
       }
       router.refresh()
     } catch {
@@ -232,7 +238,7 @@ export function CorpusActions({ corpus, showOpenAction = true, triggerButton }: 
 
       {/* Import Dialog */}
       <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Import Documents</DialogTitle>
             <DialogDescription>
@@ -249,6 +255,12 @@ export function CorpusActions({ corpus, showOpenAction = true, triggerButton }: 
             {!isImporting && uploadError && (
               <div className="mb-2 max-h-48 overflow-y-auto rounded-sm border border-red-200 bg-red-50 p-2">
                 <p className="whitespace-pre-line text-red-500">{uploadError}</p>
+              </div>
+            )}
+            {!isImporting && uploadWarning && (
+              <div className="mb-2 max-h-48 overflow-y-auto rounded-sm border border-yellow-200 bg-yellow-50 p-2">
+                <p className="font-medium text-yellow-700">Import completed with warnings:</p>
+                <p className="whitespace-pre-line text-yellow-700">{uploadWarning}</p>
               </div>
             )}
             {!isImporting && !uploadError && (
@@ -277,7 +289,7 @@ export function CorpusActions({ corpus, showOpenAction = true, triggerButton }: 
 
       {/* Delete Dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
           </DialogHeader>
@@ -309,7 +321,7 @@ export function CorpusActions({ corpus, showOpenAction = true, triggerButton }: 
 
       {/* Duplicate Dialog */}
       <Dialog open={showDuplicateDialog} onOpenChange={setShowDuplicateDialog}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Duplicate Corpus</DialogTitle>
             <DialogDescription>
@@ -378,7 +390,7 @@ export function CorpusActions({ corpus, showOpenAction = true, triggerButton }: 
 
       {/* Rename Dialog */}
       <Dialog open={showRenameDialog} onOpenChange={setShowRenameDialog}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Rename Corpus</DialogTitle>
             <DialogDescription>

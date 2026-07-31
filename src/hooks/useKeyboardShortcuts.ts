@@ -28,6 +28,10 @@ export function useKeyboardShortcuts({
 }: KeyboardShortcutsConfig) {
   useLayoutEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) {
+        return
+      }
+
       const target = e.target as HTMLElement
 
       // Ignore events in input fields

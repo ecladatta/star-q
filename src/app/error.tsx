@@ -45,7 +45,7 @@ export default function Error({
             </div>
           )}
         </CardContent>
-        <CardFooter className="flex flex-col gap-2 sm:flex-row">
+        <CardFooter className="flex flex-col gap-2">
           <Button
             onClick={() => reset()}
             className="w-full"
@@ -55,7 +55,9 @@ export default function Error({
             Try again
           </Button>
           <Button
-            onClick={() => (window.location.href = '/')}
+            onClick={() => {
+              window.location.href = '/'
+            }}
             className="w-full"
             variant="outline"
           >

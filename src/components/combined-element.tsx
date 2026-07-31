@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { getAnnotationComponents } from '@/lib/annotation-roles'
 import { TYPE_TO_COLOR } from '@/lib/constants'
 import { cn, splitWithOffsets } from '@/lib/utils'
 import Split from './split'
@@ -19,7 +20,7 @@ export type CombinedElementProps = {
   data: { title: string, level?: number }
   handleTextSelection: (index: number) => void
   handleTableSelection: (index: number, row: number, cell: number) => void
-  handleSplitClick: (split: Offset) => void
+  handleSplitClick: (split: Offset, anchorRect?: DOMRect) => void
   documentElements: DocumentElement[]
   currentAnnotation: CurrentAnnotation | null
 }
@@ -27,9 +28,24 @@ export type CombinedElementProps = {
 function isComponentFromCurrentAnnotation(componentId: string, currentAnnotation: CurrentAnnotation | null): boolean {
   if (!currentAnnotation)
     return false
-  return componentId === currentAnnotation.subject?.id
-    || componentId === currentAnnotation.predicate?.id
-    || componentId === currentAnnotation.object?.id
+  return getAnnotationComponents(currentAnnotation).some(component => component.id === componentId)
+}
+
+function normalizeRenderedWhitespace(text: string | null | undefined) {
+  return (text ?? '').replace(/[\u00A0\u202F]/g, ' ')
+}
+
+function getComponentColor(
+  componentId: string | undefined,
+  element: DocumentElement,
+  currentAnnotation: CurrentAnnotation | null,
+): string {
+  const component = element.components.find(annotation => annotation.id === componentId)
+    ?? (currentAnnotation
+      ? getAnnotationComponents(currentAnnotation).find(annotation => annotation.id === componentId)
+      : undefined)
+
+  return component ? TYPE_TO_COLOR[component.annotationTag] : 'lightgrey'
 }
 
 function CombinedElement({
@@ -74,26 +90,23 @@ function CombinedElement({
 
   if (type === 'text') {
     const rawText = value as string
+    const renderedText = normalizeRenderedWhitespace(rawText)
 
     // Extract current annotation offsets for this element to handle overlaps
     const currentAnnotationOffsets = currentAnnotation
-      ? [
-          currentAnnotation.subject,
-          currentAnnotation.predicate,
-          currentAnnotation.object,
-        ]
+      ? getAnnotationComponents(currentAnnotation)
           .filter(component => component && component.elementIndex === elementIndex)
           .map(component => ({
-            start: component!.annotationStart,
-            end: component!.annotationEnd,
-            row: component!.annotationRow ?? undefined,
-            cell: component!.annotationCell ?? undefined,
-            componentId: component!.id,
+            start: component.annotationStart,
+            end: component.annotationEnd,
+            row: component.annotationRow ?? undefined,
+            cell: component.annotationCell ?? undefined,
+            componentId: component.id,
           }))
       : []
 
     const splits = splitWithOffsets(
-      rawText,
+      renderedText,
       'text',
       element.components.map(component => ({
         start: component.annotationStart,
@@ -106,10 +119,10 @@ function CombinedElement({
     )
 
     return (
-      <div key={elementIndex} className="mb-4" id={`element-${elementIndex}`}>
-        {createElement(data.level ? `h${data.level}` : 'div', { className: 'mb-2 font-semibold' }, data.title)}
+      <div key={elementIndex} className="mb-4 min-w-0" id={`element-${elementIndex}`}>
+        {createElement(data.level ? `h${data.level}` : 'div', { className: 'mb-2 font-semibold wrap-break-word' }, normalizeRenderedWhitespace(data.title))}
         <div
-          className="text-lg/relaxed"
+          className="min-w-0 text-lg/relaxed wrap-break-word"
           role="textbox"
           tabIndex={0}
           onMouseUp={() => handleTextSelection(elementIndex)}
@@ -121,8 +134,9 @@ function CombinedElement({
               <Split
                 key={`text-split-${split.componentId}-${split.start}-${split.end}`}
                 {...split}
-                onClick={() => handleSplitClick(split)}
-                color={TYPE_TO_COLOR[element.components.find(annotation => annotation.id === split.componentId)?.annotationTag as keyof typeof TYPE_TO_COLOR]}
+                className="wrap-break-word"
+                onClick={anchorRect => handleSplitClick(split, anchorRect)}
+                color={getComponentColor(split.componentId, element, currentAnnotation)}
                 isCurrentAnnotation={split.componentId ? isComponentFromCurrentAnnotation(split.componentId, currentAnnotation) : false}
               />
             ))}
@@ -131,8 +145,9 @@ function CombinedElement({
     )
   } else if (type === 'table') {
     const tableData = value as string[][]
+    const renderedTableData = tableData.map(row => row.map(normalizeRenderedWhitespace))
 
-    const splits = tableData.map((row, rowIndex) =>
+    const splits = renderedTableData.map((row, rowIndex) =>
       row.map((cell, cellIndex) => {
         const cellAnnotations = element.components.filter(
           annotation => annotation.annotationRow === rowIndex && annotation.annotationCell === cellIndex,
@@ -140,11 +155,7 @@ function CombinedElement({
 
         // Extract current annotation offsets for this specific cell
         const currentAnnotationOffsets = currentAnnotation
-          ? [
-              currentAnnotation.subject,
-              currentAnnotation.predicate,
-              currentAnnotation.object,
-            ]
+          ? getAnnotationComponents(currentAnnotation)
               .filter(component =>
                 component
                 && component.elementIndex === elementIndex
@@ -152,10 +163,10 @@ function CombinedElement({
                 && component.annotationCell === cellIndex,
               )
               .map(component => ({
-                start: component!.annotationStart,
-                end: component!.annotationEnd,
-                id: component!.id,
-                componentId: component!.id,
+                start: component.annotationStart,
+                end: component.annotationEnd,
+                id: component.id,
+                componentId: component.id,
               }))
           : []
 
@@ -188,37 +199,33 @@ function CombinedElement({
       }, 50)
     }
 
-    // Determine which annotation components are in this table
-    const hasSubject = currentAnnotation?.subject?.elementIndex === elementIndex
-    const hasPredicate = currentAnnotation?.predicate?.elementIndex === elementIndex
-    const hasObject = currentAnnotation?.object?.elementIndex === elementIndex
-
     // Build the border style based on which components are present
     const borderLayers: string[] = []
     let borderOffset = 0
-    const borderConfig = [
-      { present: hasSubject, color: '#FFE4B5' },
-      { present: hasPredicate, color: '#ADD8E6' },
-      { present: hasObject, color: '#90EE90' },
-    ]
-    borderConfig.forEach(({ present, color }) => {
-      if (present) {
-        if (borderOffset > 0) {
-          borderLayers.push(`0 0 0 ${borderOffset + 1}px white`)
-          borderOffset += 1
-        }
-        borderLayers.push(`0 0 0 ${borderOffset + 3}px ${color}`)
-        borderOffset += 3
+    const borderConfig = currentAnnotation
+      ? getAnnotationComponents(currentAnnotation)
+          .filter(component => component.elementIndex === elementIndex)
+          .filter((component, index, components) =>
+            components.findIndex(candidate => candidate.annotationTag === component.annotationTag) === index,
+          )
+          .map(component => ({ color: TYPE_TO_COLOR[component.annotationTag] }))
+      : []
+    borderConfig.forEach(({ color }) => {
+      if (borderOffset > 0) {
+        borderLayers.push(`0 0 0 ${borderOffset + 1}px white`)
+        borderOffset += 1
       }
+      borderLayers.push(`0 0 0 ${borderOffset + 3}px ${color}`)
+      borderOffset += 3
     })
     const boxShadowStyle = borderLayers.length > 0 ? borderLayers.join(', ') : undefined
 
     return (
-      <div key={elementIndex} className="group mb-6" id={`element-${elementIndex}`}>
-        <div className="mb-2 flex items-center justify-between">
-          {data.title && <div className="text-sm font-semibold">{data.title}</div>}
+      <div key={elementIndex} className="group mb-6 min-w-0" id={`element-${elementIndex}`}>
+        <div className="mb-2 flex min-w-0 items-center justify-between">
+          {data.title && <div className="min-w-0 text-sm font-semibold wrap-break-word">{normalizeRenderedWhitespace(data.title)}</div>}
           <div
-            className="group relative ml-auto"
+            className="group relative ml-auto shrink-0"
           >
             <Button
               variant="outline"
@@ -242,7 +249,7 @@ function CombinedElement({
           </div>
         </div>
         <ScrollArea
-          className="flex max-h-[60vh] w-full flex-col overflow-y-auto rounded-xl border transition-shadow duration-200"
+          className="flex max-h-[60vh] w-full min-w-0 flex-col overflow-y-auto rounded-xl border transition-shadow duration-200"
           style={{ boxShadow: boxShadowStyle }}
         >
           <Table>
@@ -262,17 +269,15 @@ function CombinedElement({
                         onMouseLeave={() => setHoveredCell(null)}
                         onMouseUp={() => handleCellMouseUp(0, cellIndex)}
                         aria-label={`Table header cell ${cellIndex + 1}. Click to annotate this cell.`}
-                        title={`Click to annotate header cell: ${tableData[0][cellIndex]}`}
+                        title={`Click to annotate header cell: ${renderedTableData[0][cellIndex]}`}
                         data-cell={`0-${cellIndex}`}
                       >
                         {cellSplits.map(split => (
                           <Split
                             key={`table-header-split-${split.componentId}-${split.start}-${split.end}`}
                             {...split}
-                            onClick={() => handleSplitClick(split)}
-                            color={TYPE_TO_COLOR[element.components.find(annotation =>
-                              annotation.id === split.componentId,
-                            )?.annotationTag as keyof typeof TYPE_TO_COLOR]}
+                            onClick={anchorRect => handleSplitClick(split, anchorRect)}
+                            color={getComponentColor(split.componentId, element, currentAnnotation)}
                             isCurrentAnnotation={split.componentId ? isComponentFromCurrentAnnotation(split.componentId, currentAnnotation) : false}
                           />
                         ))}
@@ -299,17 +304,15 @@ function CombinedElement({
                         onMouseLeave={() => setHoveredCell(null)}
                         onMouseUp={() => handleCellMouseUp(actualRowIndex, cellIndex)}
                         aria-label={`Table cell row ${actualRowIndex + 1}, column ${cellIndex + 1}. Click to annotate this cell.`}
-                        title={`Click to annotate cell: ${tableData[actualRowIndex][cellIndex]}`}
+                        title={`Click to annotate cell: ${renderedTableData[actualRowIndex][cellIndex]}`}
                         data-cell={`${actualRowIndex}-${cellIndex}`}
                       >
                         {cellSplits.map(split => (
                           <Split
                             key={`table-row-split-${split.componentId}-${split.start}-${split.end}`}
                             {...split}
-                            onClick={() => handleSplitClick(split)}
-                            color={TYPE_TO_COLOR[element.components.find(annotation =>
-                              annotation.id === split.componentId,
-                            )?.annotationTag as keyof typeof TYPE_TO_COLOR]}
+                            onClick={anchorRect => handleSplitClick(split, anchorRect)}
+                            color={getComponentColor(split.componentId, element, currentAnnotation)}
                             isCurrentAnnotation={split.componentId ? isComponentFromCurrentAnnotation(split.componentId, currentAnnotation) : false}
                           />
                         ))}

@@ -86,7 +86,7 @@ This export includes all documents, annotations, and custom entities associated 
 ```json
 {
   "exportMeta": {
-    "version": "1.2",
+    "version": "1.3",
     "type": "full-corpus-export"
   },
   "id": "<corpusId>",
@@ -108,8 +108,12 @@ Each exported document follows this shape:
 - `updatedAt`: last update timestamp (ISO) or `null`
 - `completedAt`: completion timestamp (ISO) or `null`
 - `order`: numeric ordering for the document within the corpus
-- `raw`: raw extracted document data or `null` (see `DocumentData` below)
-- `annotations`: list of annotation triples (subject/predicate/object)
+- `raw`: raw extracted document data (see `DocumentData` below)
+- `annotations`: list of annotation triples with optional qualifiers
+
+Each annotation can include:
+
+- `qualifiers`: ordered list of qualifier predicate/value pairs attached to the annotation. Missing `qualifiers` should be treated as an empty list when importing older exports.
 
 Example:
 
@@ -122,13 +126,21 @@ Example:
   "updatedAt": "<ISO 8601 timestamp>" | null,
   "completedAt": "<ISO 8601 timestamp>" | null,
   "order": <number>,
-  "raw": <DocumentData|null>,
+  "raw": <DocumentData>,
   "annotations": [
     {
       "id": "<annotationId>",
       "subject": { /* DocumentAnnotationComponent */ },
       "predicate": { /* DocumentAnnotationComponent */ },
-      "object": { /* DocumentAnnotationComponent */ }
+      "object": { /* DocumentAnnotationComponent */ },
+      "qualifiers": [
+        {
+          "id": "<qualifierId>",
+          "predicate": { /* DocumentAnnotationComponent */ },
+          "value": { /* DocumentAnnotationComponent */ },
+          "position": 0
+        }
+      ]
     }
   ]
 }
@@ -187,7 +199,7 @@ Annotations are stored as a triple of `subject`, `predicate`, and `object`, each
 - `annotationRow` / `annotationCell`: row/cell indices (for table annotations) or `null`
 - `annotationValue`: the extracted string value for the annotation
 - `annotationType`: `text` or `table`
-- `annotationTag`: UI tag for the annotation
+- `annotationTag`: component role; one of `subject`, `predicate`, `object`, `qualifier-predicate`, or `qualifier-value`
 - `elementIndex`: index of the text/table element this annotation belongs to
 
 Example:
@@ -206,7 +218,7 @@ Example:
   "annotationCell": null,
   "annotationValue": "Jane Doe",
   "annotationType": "text",
-  "annotationTag": "",
+  "annotationTag": "subject",
   "elementIndex": 0
 }
 ```

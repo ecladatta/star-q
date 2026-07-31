@@ -10,7 +10,7 @@ function Split(props: {
   mark?: boolean
   isCurrentAnnotation?: boolean
   className?: string
-  onClick: ({ start, end }: { start: number, end: number }) => void
+  onClick: (anchorRect?: DOMRect) => void
 }) {
   if (props.mark) {
     return <Mark {...props} />
@@ -18,14 +18,14 @@ function Split(props: {
 
   const handleClick = (e: MouseEvent) => {
     e.stopPropagation()
-    props.onClick({ start: props.start, end: props.end })
+    props.onClick(e.currentTarget.getBoundingClientRect())
   }
 
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.stopPropagation()
       e.preventDefault()
-      props.onClick({ start: props.start, end: props.end })
+      props.onClick(e.currentTarget.getBoundingClientRect())
     }
   }
 

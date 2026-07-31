@@ -40,6 +40,7 @@ import {
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { getAnnotationType } from '@/lib/utils'
+import { QualifierSummary } from './qualifier-summary'
 import { Badge } from './ui/badge'
 import { Label } from './ui/label'
 
@@ -450,7 +451,7 @@ export function AnnotationsSidebar({
                       <ChevronDownIcon className="ml-2 size-4 shrink-0 opacity-50" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-[200px]">
+                  <DropdownMenuContent align="end" className="w-50">
                     <DropdownMenuItem onClick={() => setSortOption('creation')}>
                       Creation order
                     </DropdownMenuItem>
@@ -760,6 +761,7 @@ export function AnnotationsSidebar({
                                     {ann.object.annotationValue}
                                   </span>
                                 </div>
+                                <QualifierSummary qualifiers={ann.qualifiers} className="mt-2 pt-2" />
                               </button>
 
                               {/* Selection checkbox - visible on hover or when selected */}
@@ -791,7 +793,7 @@ export function AnnotationsSidebar({
 
       {/* Confirmation Dialog */}
       <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle>Delete Annotations</DialogTitle>
             <DialogDescription>

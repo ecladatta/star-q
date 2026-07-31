@@ -1,8 +1,8 @@
 import type { InferSelectModel } from 'drizzle-orm'
 import type { AdapterAccountType } from 'next-auth/adapters'
-import type { DocumentData, EntityDatatype } from '@/types/types'
+import type { AnnotationComponentRole, DocumentData, EntityDatatype } from '@/types/types'
 import { randomUUID } from 'node:crypto'
-import { boolean, integer, jsonb, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core'
+import { boolean, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core'
 
 export const users = pgTable('user', {
   id: text('id')
@@ -132,7 +132,7 @@ export const annotationComponent = pgTable('annotation_component', {
   annotationCell: integer('annotation_cell'),
   annotationValue: text('annotation_value').notNull(),
   annotationType: text('annotation_type').$type<'text' | 'table'>().notNull(),
-  annotationTag: text('annotation_tag').notNull(),
+  annotationTag: text('annotation_tag').$type<AnnotationComponentRole>().notNull(),
   elementIndex: integer('element_index').notNull(),
 })
 export type AnnotationComponent = InferSelectModel<typeof annotationComponent>
@@ -148,3 +148,20 @@ export const annotation = pgTable('annotation', {
   updatedAt: timestamp('updated_at').defaultNow(),
 })
 export type Annotation = InferSelectModel<typeof annotation>
+
+export const annotationQualifier = pgTable(
+  'annotation_qualifier',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    annotationId: uuid('annotation_id').references(() => annotation.id, { onDelete: 'cascade' }).notNull(),
+    predicateId: uuid('predicate_id').references(() => annotationComponent.id, { onDelete: 'cascade' }).notNull(),
+    valueId: uuid('value_id').references(() => annotationComponent.id, { onDelete: 'cascade' }).notNull(),
+    position: integer('position').notNull(),
+    createdAt: timestamp('created_at').defaultNow(),
+    updatedAt: timestamp('updated_at').defaultNow(),
+  },
+  table => [
+    index('annotation_qualifier_annotation_position_idx').on(table.annotationId, table.position),
+  ],
+)
+export type AnnotationQualifier = InferSelectModel<typeof annotationQualifier>

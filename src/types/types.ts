@@ -11,6 +11,11 @@ export type TextOrTableElement = {
 
 export type EntityType = 'subject' | 'predicate' | 'object'
 
+export type AnnotationComponentRole
+  = EntityType
+    | 'qualifier-predicate'
+    | 'qualifier-value'
+
 export type EntityDatatype = 'integer' | 'decimal' | 'boolean' | 'string' | 'date' | 'time' | 'datetime' | 'year' | 'month' | 'day' | 'url'
 
 export type Entity = {
@@ -36,8 +41,41 @@ export type DocumentAnnotationComponent = {
   annotationCell: number | null
   annotationValue: string
   annotationType: 'text' | 'table'
-  annotationTag: string
+  annotationTag: AnnotationComponentRole
   elementIndex: number
+}
+
+export type DocumentAnnotationQualifierExport = {
+  id: string
+  predicate: DocumentAnnotationComponent
+  value: DocumentAnnotationComponent
+  position: number
+}
+
+export type DocumentAnnotationQualifier = {
+  id: string
+  annotationId: string
+  predicateId: string
+  valueId: string
+  position: number
+  predicate: DocumentAnnotationComponent
+  value: DocumentAnnotationComponent
+}
+
+export type CurrentAnnotationQualifier = {
+  id: string
+  predicate?: DocumentAnnotationComponent
+  value?: DocumentAnnotationComponent
+  position: number
+}
+
+export type AnnotationQualifierInput = {
+  id?: string
+  predicate: DocumentAnnotationComponent
+  predicateEntity: Entity | null
+  value: DocumentAnnotationComponent
+  valueEntity: Entity | null
+  position: number
 }
 
 export type AnnotationMention = {
@@ -61,6 +99,7 @@ export type DocumentAnnotation = {
   subject: DocumentAnnotationComponent
   predicate: DocumentAnnotationComponent
   object: DocumentAnnotationComponent
+  qualifiers: DocumentAnnotationQualifier[]
 }
 
 export type DocumentElement = {
@@ -93,6 +132,15 @@ export type CurrentAnnotation = {
   subject?: DocumentAnnotationComponent
   predicate?: DocumentAnnotationComponent
   object?: DocumentAnnotationComponent
+  qualifiers?: CurrentAnnotationQualifier[]
+}
+
+export type AnnotationExport = {
+  id?: string
+  subject?: DocumentAnnotationComponent
+  predicate?: DocumentAnnotationComponent
+  object?: DocumentAnnotationComponent
+  qualifiers?: DocumentAnnotationQualifierExport[]
 }
 
 export type DocumentExport = {
@@ -102,8 +150,8 @@ export type DocumentExport = {
   updatedAt: string | null
   completedAt: string | null
   order: number
-  raw: DocumentData | null
-  annotations: CurrentAnnotation[]
+  raw: DocumentData
+  annotations: AnnotationExport[]
 }
 
 export type ExportModel = {

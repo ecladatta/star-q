@@ -1,19 +1,93 @@
 'use server'
 import type { AnnotationComponent } from '@/db/schema'
-import type { DocumentAnnotation, Entity, EntityType } from '@/types/types'
-import { eq, getTableColumns, inArray } from 'drizzle-orm'
+import type {
+  AnnotationComponentRole,
+  AnnotationQualifierInput,
+  DocumentAnnotation,
+  DocumentAnnotationQualifier,
+  Entity,
+} from '@/types/types'
+import { and, asc, eq, getTableColumns, inArray } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { revalidatePath } from 'next/cache'
-import { findOrCreateCorpusCustomEntity } from '@/actions/corpus/corpusActions'
 import { db } from '@/db/drizzle'
-import { annotation, annotationComponent, corpusCustomEntity, document } from '@/db/schema'
+import { annotation, annotationComponent, annotationQualifier, corpusCustomEntity, document } from '@/db/schema'
+import { entityTypeForComponentRole } from '@/lib/annotation-roles'
 import { getOptionalUserId, requireAuth } from '@/lib/auth-utils'
+
+type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0]
+type DbExecutor = typeof db | Transaction
+
+type ComponentWithCustomEntity = {
+  entityCustom: boolean | null
+  entityLabel: string | null
+  entityValue: string | null
+  entityDatatype: DocumentAnnotation['subject']['entityDatatype']
+}
+
+type CustomEntityLike = {
+  label: string
+  value: string
+  datatype: DocumentAnnotation['subject']['entityDatatype']
+} | null
+
+function resolveComponentCustomEntity<T extends ComponentWithCustomEntity>(
+  component: T,
+  customEntity: CustomEntityLike,
+): T {
+  return {
+    ...component,
+    entityLabel: component.entityCustom && customEntity ? customEntity.label : component.entityLabel,
+    entityValue: component.entityCustom && customEntity ? customEntity.value : component.entityValue,
+    entityDatatype: component.entityCustom && customEntity ? customEntity.datatype : component.entityDatatype,
+  }
+}
+
+function customTypeForComponentRole(role: AnnotationComponentRole): 'entity' | 'relation' {
+  return entityTypeForComponentRole(role) === 'predicate' ? 'relation' : 'entity'
+}
+
+async function findOrCreateAnnotationCustomEntity(
+  executor: DbExecutor,
+  corpusId: string,
+  label: string,
+  value: string,
+  datatype: NonNullable<Entity['datatype']>,
+  role: AnnotationComponentRole,
+): Promise<string> {
+  const customType = customTypeForComponentRole(role)
+  const [existing] = await executor.select({ id: corpusCustomEntity.id })
+    .from(corpusCustomEntity)
+    .where(
+      and(
+        eq(corpusCustomEntity.corpusId, corpusId),
+        eq(corpusCustomEntity.value, value),
+        eq(corpusCustomEntity.customType, customType),
+      ),
+    )
+    .limit(1)
+
+  if (existing) {
+    return existing.id
+  }
+
+  const [result] = await executor.insert(corpusCustomEntity).values({
+    corpusId,
+    label,
+    value,
+    datatype,
+    customType,
+  }).returning({ id: corpusCustomEntity.id })
+
+  return result.id
+}
 
 async function upsertAnnotationComponent(
   component: AnnotationComponent,
   entity: Entity | null,
   corpusId: string,
   existingId?: string,
+  executor: DbExecutor = db,
 ) {
   let entityCustomId: string | null = null
   let entityLabel: string | null = null
@@ -21,13 +95,13 @@ async function upsertAnnotationComponent(
 
   if (entity?.custom && entity.label && entity.value && entity.datatype) {
     // For custom entities, save to corpus custom entities and only store the ID
-    const entityType = component.annotationTag as EntityType
-    entityCustomId = await findOrCreateCorpusCustomEntity(
+    entityCustomId = await findOrCreateAnnotationCustomEntity(
+      executor,
       corpusId,
       entity.label,
       entity.value,
       entity.datatype,
-      entityType,
+      component.annotationTag,
     )
     // Don't store label/value for custom entities, they'll be fetched from corpusCustomEntity
   } else if (entity && !entity.custom) {
@@ -47,12 +121,107 @@ async function upsertAnnotationComponent(
   }
 
   if (existingId) {
-    await db.update(annotationComponent).set(values).where(eq(annotationComponent.id, existingId))
+    await executor.update(annotationComponent).set(values).where(eq(annotationComponent.id, existingId))
     return existingId
   } else {
-    const [result] = await db.insert(annotationComponent).values(values).returning({ id: annotationComponent.id })
+    const [result] = await executor.insert(annotationComponent).values(values).returning({ id: annotationComponent.id })
     return result.id
   }
+}
+
+async function insertAnnotationQualifiers(
+  executor: DbExecutor,
+  annotationId: string,
+  corpusId: string,
+  qualifiers: AnnotationQualifierInput[],
+) {
+  for (const [index, qualifier] of qualifiers.entries()) {
+    const predicateId = await upsertAnnotationComponent(
+      qualifier.predicate,
+      qualifier.predicateEntity,
+      corpusId,
+      undefined,
+      executor,
+    )
+    const valueId = await upsertAnnotationComponent(
+      qualifier.value,
+      qualifier.valueEntity,
+      corpusId,
+      undefined,
+      executor,
+    )
+
+    await executor.insert(annotationQualifier).values({
+      annotationId,
+      predicateId,
+      valueId,
+      position: index,
+    })
+  }
+}
+
+async function getQualifierComponentIds(
+  executor: DbExecutor,
+  annotationIds: string[],
+): Promise<string[]> {
+  if (annotationIds.length === 0) {
+    return []
+  }
+
+  const rows = await executor.select({
+    predicateId: annotationQualifier.predicateId,
+    valueId: annotationQualifier.valueId,
+  })
+    .from(annotationQualifier)
+    .where(inArray(annotationQualifier.annotationId, annotationIds))
+
+  return rows.flatMap(row => [row.predicateId, row.valueId])
+}
+
+async function getQualifiersForAnnotations(annotationIds: string[]): Promise<Map<string, DocumentAnnotationQualifier[]>> {
+  const qualifiersByAnnotation = new Map<string, DocumentAnnotationQualifier[]>()
+
+  if (annotationIds.length === 0) {
+    return qualifiersByAnnotation
+  }
+
+  const qualifierPredicate = alias(annotationComponent, 'qualifierPredicate')
+  const qualifierValue = alias(annotationComponent, 'qualifierValue')
+  const qualifierPredicateCustomEntity = alias(corpusCustomEntity, 'qualifierPredicateCustomEntity')
+  const qualifierValueCustomEntity = alias(corpusCustomEntity, 'qualifierValueCustomEntity')
+
+  const rows = await db.select({
+    ...getTableColumns(annotationQualifier),
+    predicate: getTableColumns(qualifierPredicate),
+    value: getTableColumns(qualifierValue),
+    predicateCustomEntity: getTableColumns(qualifierPredicateCustomEntity),
+    valueCustomEntity: getTableColumns(qualifierValueCustomEntity),
+  })
+    .from(annotationQualifier)
+    .innerJoin(qualifierPredicate, eq(qualifierPredicate.id, annotationQualifier.predicateId))
+    .innerJoin(qualifierValue, eq(qualifierValue.id, annotationQualifier.valueId))
+    .leftJoin(qualifierPredicateCustomEntity, eq(qualifierPredicateCustomEntity.id, qualifierPredicate.entityCustomId))
+    .leftJoin(qualifierValueCustomEntity, eq(qualifierValueCustomEntity.id, qualifierValue.entityCustomId))
+    .where(inArray(annotationQualifier.annotationId, annotationIds))
+    .orderBy(asc(annotationQualifier.annotationId), asc(annotationQualifier.position))
+
+  for (const row of rows) {
+    const qualifier: DocumentAnnotationQualifier = {
+      id: row.id,
+      annotationId: row.annotationId,
+      predicateId: row.predicateId,
+      valueId: row.valueId,
+      position: row.position,
+      predicate: resolveComponentCustomEntity(row.predicate, row.predicateCustomEntity),
+      value: resolveComponentCustomEntity(row.value, row.valueCustomEntity),
+    }
+
+    const existing = qualifiersByAnnotation.get(row.annotationId) ?? []
+    existing.push(qualifier)
+    qualifiersByAnnotation.set(row.annotationId, existing)
+  }
+
+  return qualifiersByAnnotation
 }
 
 export async function addAnnotation(
@@ -63,6 +232,7 @@ export async function addAnnotation(
   predicateEntity: Entity | null,
   objectAnnotation: AnnotationComponent,
   objectEntity: Entity | null,
+  qualifiers: AnnotationQualifierInput[] = [],
 ) {
   await requireAuth()
 
@@ -74,25 +244,31 @@ export async function addAnnotation(
     throw new Error('Document not found')
   }
 
-  const [subjectId, predicateId, objectId] = await Promise.all([
-    upsertAnnotationComponent(subjectAnnotation, subjectEntity, doc.corpusId),
-    upsertAnnotationComponent(predicateAnnotation, predicateEntity, doc.corpusId),
-    upsertAnnotationComponent(objectAnnotation, objectEntity, doc.corpusId),
-  ])
+  const annotationId = await db.transaction(async (trx) => {
+    const [subjectId, predicateId, objectId] = await Promise.all([
+      upsertAnnotationComponent(subjectAnnotation, subjectEntity, doc.corpusId, undefined, trx),
+      upsertAnnotationComponent(predicateAnnotation, predicateEntity, doc.corpusId, undefined, trx),
+      upsertAnnotationComponent(objectAnnotation, objectEntity, doc.corpusId, undefined, trx),
+    ])
 
-  const [annotationId] = await db.insert(annotation).values({
-    documentId,
-    subjectId,
-    predicateId,
-    objectId,
-    userId,
-  }).returning({ id: annotation.id })
+    const [createdAnnotation] = await trx.insert(annotation).values({
+      documentId,
+      subjectId,
+      predicateId,
+      objectId,
+      userId,
+    }).returning({ id: annotation.id })
 
-  await db.update(document).set({ updatedAt: new Date() }).where(eq(document.id, documentId))
+    await insertAnnotationQualifiers(trx, createdAnnotation.id, doc.corpusId, qualifiers)
+
+    await trx.update(document).set({ updatedAt: new Date() }).where(eq(document.id, documentId))
+
+    return createdAnnotation.id
+  })
 
   revalidatePath(`/document/${documentId}`)
 
-  return annotationId.id
+  return annotationId
 }
 
 export async function updateAnnotation(
@@ -103,6 +279,7 @@ export async function updateAnnotation(
   predicateEntity: Entity | null,
   objectAnnotation: AnnotationComponent,
   objectEntity: Entity | null,
+  qualifiers?: AnnotationQualifierInput[],
 ) {
   await requireAuth()
 
@@ -112,13 +289,28 @@ export async function updateAnnotation(
     throw new Error('Document ID not found in annotation')
   }
 
-  await Promise.all([
-    upsertAnnotationComponent(subjectAnnotation, subjectEntity, annotationData.corpusId!, annotationData.subject.id),
-    upsertAnnotationComponent(predicateAnnotation, predicateEntity, annotationData.corpusId!, annotationData.predicate.id),
-    upsertAnnotationComponent(objectAnnotation, objectEntity, annotationData.corpusId!, annotationData.object.id),
-    db.update(annotation).set({ updatedAt: new Date() }).where(eq(annotation.id, id)),
-    db.update(document).set({ updatedAt: new Date() }).where(eq(document.id, annotationData.documentId)),
-  ])
+  await db.transaction(async (trx) => {
+    await Promise.all([
+      upsertAnnotationComponent(subjectAnnotation, subjectEntity, annotationData.corpusId!, annotationData.subject.id, trx),
+      upsertAnnotationComponent(predicateAnnotation, predicateEntity, annotationData.corpusId!, annotationData.predicate.id, trx),
+      upsertAnnotationComponent(objectAnnotation, objectEntity, annotationData.corpusId!, annotationData.object.id, trx),
+    ])
+
+    if (qualifiers !== undefined) {
+      const oldQualifierComponentIds = await getQualifierComponentIds(trx, [id])
+
+      await trx.delete(annotationQualifier).where(eq(annotationQualifier.annotationId, id))
+
+      if (oldQualifierComponentIds.length > 0) {
+        await trx.delete(annotationComponent).where(inArray(annotationComponent.id, oldQualifierComponentIds))
+      }
+
+      await insertAnnotationQualifiers(trx, id, annotationData.corpusId!, qualifiers)
+    }
+
+    await trx.update(annotation).set({ updatedAt: new Date() }).where(eq(annotation.id, id))
+    await trx.update(document).set({ updatedAt: new Date() }).where(eq(document.id, annotationData.documentId!))
+  })
 
   revalidatePath(`/document/${annotationData.documentId}`)
 }
@@ -155,45 +347,14 @@ export async function getAnnotations(documentId: string): Promise<DocumentAnnota
     .leftJoin(customEntity3, eq(customEntity3.id, component3.entityCustomId))
     .where(eq(annotation.documentId, documentId))
 
-  // Map results to use custom entity data when available
+  const qualifiersByAnnotation = await getQualifiersForAnnotations(results.map(result => result.id))
+
   return results.map(result => ({
     ...result,
-    subject: {
-      ...result.subject,
-      entityLabel: result.subject.entityCustom && result.subjectCustomEntity
-        ? result.subjectCustomEntity.label
-        : result.subject.entityLabel,
-      entityValue: result.subject.entityCustom && result.subjectCustomEntity
-        ? result.subjectCustomEntity.value
-        : result.subject.entityValue,
-      entityDatatype: result.subject.entityCustom && result.subjectCustomEntity
-        ? result.subjectCustomEntity.datatype
-        : result.subject.entityDatatype,
-    },
-    predicate: {
-      ...result.predicate,
-      entityLabel: result.predicate.entityCustom && result.predicateCustomEntity
-        ? result.predicateCustomEntity.label
-        : result.predicate.entityLabel,
-      entityValue: result.predicate.entityCustom && result.predicateCustomEntity
-        ? result.predicateCustomEntity.value
-        : result.predicate.entityValue,
-      entityDatatype: result.predicate.entityCustom && result.predicateCustomEntity
-        ? result.predicateCustomEntity.datatype
-        : result.predicate.entityDatatype,
-    },
-    object: {
-      ...result.object,
-      entityLabel: result.object.entityCustom && result.objectCustomEntity
-        ? result.objectCustomEntity.label
-        : result.object.entityLabel,
-      entityValue: result.object.entityCustom && result.objectCustomEntity
-        ? result.objectCustomEntity.value
-        : result.object.entityValue,
-      entityDatatype: result.object.entityCustom && result.objectCustomEntity
-        ? result.objectCustomEntity.datatype
-        : result.object.entityDatatype,
-    },
+    subject: resolveComponentCustomEntity(result.subject, result.subjectCustomEntity),
+    predicate: resolveComponentCustomEntity(result.predicate, result.predicateCustomEntity),
+    object: resolveComponentCustomEntity(result.object, result.objectCustomEntity),
+    qualifiers: qualifiersByAnnotation.get(result.id) ?? [],
   }))
 }
 
@@ -230,45 +391,18 @@ export async function getAnnotationById(id: string): Promise<DocumentAnnotation>
     .where(eq(annotation.id, id))
     .limit(1)
 
-  // Map result to use custom entity data when available
+  if (!result) {
+    throw new Error('Annotation not found')
+  }
+
+  const qualifiersByAnnotation = await getQualifiersForAnnotations([result.id])
+
   return {
     ...result,
-    subject: {
-      ...result.subject,
-      entityLabel: result.subject.entityCustom && result.subjectCustomEntity
-        ? result.subjectCustomEntity.label
-        : result.subject.entityLabel,
-      entityValue: result.subject.entityCustom && result.subjectCustomEntity
-        ? result.subjectCustomEntity.value
-        : result.subject.entityValue,
-      entityDatatype: result.subject.entityCustom && result.subjectCustomEntity
-        ? result.subjectCustomEntity.datatype
-        : result.subject.entityDatatype,
-    },
-    predicate: {
-      ...result.predicate,
-      entityLabel: result.predicate.entityCustom && result.predicateCustomEntity
-        ? result.predicateCustomEntity.label
-        : result.predicate.entityLabel,
-      entityValue: result.predicate.entityCustom && result.predicateCustomEntity
-        ? result.predicateCustomEntity.value
-        : result.predicate.entityValue,
-      entityDatatype: result.predicate.entityCustom && result.predicateCustomEntity
-        ? result.predicateCustomEntity.datatype
-        : result.predicate.entityDatatype,
-    },
-    object: {
-      ...result.object,
-      entityLabel: result.object.entityCustom && result.objectCustomEntity
-        ? result.objectCustomEntity.label
-        : result.object.entityLabel,
-      entityValue: result.object.entityCustom && result.objectCustomEntity
-        ? result.objectCustomEntity.value
-        : result.object.entityValue,
-      entityDatatype: result.object.entityCustom && result.objectCustomEntity
-        ? result.objectCustomEntity.datatype
-        : result.object.entityDatatype,
-    },
+    subject: resolveComponentCustomEntity(result.subject, result.subjectCustomEntity),
+    predicate: resolveComponentCustomEntity(result.predicate, result.predicateCustomEntity),
+    object: resolveComponentCustomEntity(result.object, result.objectCustomEntity),
+    qualifiers: qualifiersByAnnotation.get(result.id) ?? [],
   }
 }
 
@@ -276,17 +410,23 @@ export async function deleteAnnotation(id: string) {
   await requireAuth()
 
   const annotationData = await getAnnotationById(id)
+  const baseComponentIds = [
+    annotationData.subject.id,
+    annotationData.predicate.id,
+    annotationData.object.id,
+  ]
 
   await db.transaction(async (trx) => {
-    await trx.delete(annotation).where(eq(annotation.id, id))
-    await trx.delete(annotationComponent).where(eq(annotationComponent.id, annotationData.subject.id))
-    await trx.delete(annotationComponent).where(eq(annotationComponent.id, annotationData.predicate.id))
-    await trx.delete(annotationComponent).where(eq(annotationComponent.id, annotationData.object.id))
-  })
+    const qualifierComponentIds = await getQualifierComponentIds(trx, [id])
+    const componentIds = [...baseComponentIds, ...qualifierComponentIds]
 
-  if (annotationData.documentId) {
-    await db.update(document).set({ updatedAt: new Date() }).where(eq(document.id, annotationData.documentId))
-  }
+    await trx.delete(annotation).where(eq(annotation.id, id))
+    await trx.delete(annotationComponent).where(inArray(annotationComponent.id, componentIds))
+
+    if (annotationData.documentId) {
+      await trx.update(document).set({ updatedAt: new Date() }).where(eq(document.id, annotationData.documentId))
+    }
+  })
 
   revalidatePath(`/document/${annotationData.documentId}`)
 }
@@ -298,8 +438,20 @@ export async function deleteAnnotations(ids: string[]) {
     return
   }
 
-  // Get all annotation data first
-  const annotationsData = await Promise.all(ids.map(id => getAnnotationById(id)))
+  const uniqueAnnotationIds = [...new Set(ids)]
+  const annotationsData = await db.select({
+    documentId: annotation.documentId,
+    subjectId: annotation.subjectId,
+    predicateId: annotation.predicateId,
+    objectId: annotation.objectId,
+  })
+    .from(annotation)
+    .where(inArray(annotation.id, uniqueAnnotationIds))
+
+  if (annotationsData.length !== uniqueAnnotationIds.length) {
+    throw new Error('Annotation not found')
+  }
+
   const uniqueDocumentIds = [...new Set(
     annotationsData
       .map(data => data.documentId)
@@ -307,20 +459,29 @@ export async function deleteAnnotations(ids: string[]) {
   )]
 
   await db.transaction(async (trx) => {
+    const qualifierComponentIds = await getQualifierComponentIds(trx, uniqueAnnotationIds)
+    const componentIds = annotationsData.flatMap(annotationData => [
+      annotationData.subjectId,
+      annotationData.predicateId,
+      annotationData.objectId,
+    ])
+
     // Delete all annotations
-    await trx.delete(annotation).where(inArray(annotation.id, ids))
+    await trx.delete(annotation).where(inArray(annotation.id, uniqueAnnotationIds))
 
     // Delete all associated components
-    for (const annotationData of annotationsData) {
-      await trx.delete(annotationComponent).where(eq(annotationComponent.id, annotationData.subject.id))
-      await trx.delete(annotationComponent).where(eq(annotationComponent.id, annotationData.predicate.id))
-      await trx.delete(annotationComponent).where(eq(annotationComponent.id, annotationData.object.id))
+    if (componentIds.length > 0 || qualifierComponentIds.length > 0) {
+      await trx
+        .delete(annotationComponent)
+        .where(inArray(annotationComponent.id, [...componentIds, ...qualifierComponentIds]))
     }
 
-    await trx
-      .update(document)
-      .set({ updatedAt: new Date() })
-      .where(inArray(document.id, uniqueDocumentIds))
+    if (uniqueDocumentIds.length > 0) {
+      await trx
+        .update(document)
+        .set({ updatedAt: new Date() })
+        .where(inArray(document.id, uniqueDocumentIds))
+    }
   })
 
   // Revalidate all unique document pages

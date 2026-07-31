@@ -344,6 +344,7 @@ export function Corpuses({ corpuses }: CorpusesProps) {
   const [showNewCorpusDialog, setShowNewCorpusDialog] = useState(false)
   const [newCorpusFile, setNewCorpusFile] = useState<File | null>(null)
   const [uploadError, setUploadError] = useState<string | null>(null)
+  const [uploadWarning, setUploadWarning] = useState<string | null>(null)
   const [isImporting, setIsImporting] = useState(false)
   const [showImportDialog, setShowImportDialog] = useState(false)
   const [importedCount, setImportedCount] = useState(0)
@@ -352,16 +353,20 @@ export function Corpuses({ corpuses }: CorpusesProps) {
   const handleCreateCorpusWithFileImport = async (file: File) => {
     try {
       setUploadError(null)
+      setUploadWarning(null)
       setShowImportDialog(true)
       setIsImporting(true)
       setNewCorpusId(null)
       const formData = new FormData()
       formData.append('file', file)
-      const { count, errors, corpusId } = await createCorpusWithDocumentsImport(newCorpusName, formData)
+      const { count, errors, warnings, corpusId } = await createCorpusWithDocumentsImport(newCorpusName, formData)
       setImportedCount(count)
       setNewCorpusId(corpusId)
       if (errors && errors.length > 0) {
         setUploadError(errors.join('\n'))
+      }
+      if (warnings && warnings.length > 0) {
+        setUploadWarning(warnings.join('\n'))
       }
     } catch {
       setUploadError('Failed to upload the file. Please try again.')
@@ -453,7 +458,7 @@ export function Corpuses({ corpuses }: CorpusesProps) {
 
       {/* New Corpus Dialog */}
       <Dialog open={showNewCorpusDialog} onOpenChange={setShowNewCorpusDialog}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Create New Corpus</DialogTitle>
             <DialogDescription>
@@ -542,7 +547,7 @@ export function Corpuses({ corpuses }: CorpusesProps) {
 
       {/* Import Status Dialog - Only for new corpus creation */}
       <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Import Documents</DialogTitle>
             <DialogDescription>
@@ -559,6 +564,12 @@ export function Corpuses({ corpuses }: CorpusesProps) {
             {!isImporting && uploadError && (
               <div className="mb-2 max-h-48 overflow-y-auto rounded-sm border border-red-200 bg-red-50 p-2">
                 <p className="whitespace-pre-line text-red-500">{uploadError}</p>
+              </div>
+            )}
+            {!isImporting && uploadWarning && (
+              <div className="mb-2 max-h-48 overflow-y-auto rounded-sm border border-yellow-200 bg-yellow-50 p-2">
+                <p className="font-medium text-yellow-700">Import completed with warnings:</p>
+                <p className="whitespace-pre-line text-yellow-700">{uploadWarning}</p>
               </div>
             )}
             {!isImporting && !uploadError && (

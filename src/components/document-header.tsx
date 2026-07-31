@@ -34,8 +34,8 @@ export function DocumentHeader({ corpus, document, documentData }: DocumentHeade
 
   return (
     <>
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-xl font-bold sm:text-3xl">
+      <div className="mb-6 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="min-w-0 text-xl font-bold wrap-break-word sm:text-3xl">
           Corpus:
           {' '}
           <Link href={`/corpus/${corpus.id}`} className="underline">
@@ -47,14 +47,14 @@ export function DocumentHeader({ corpus, document, documentData }: DocumentHeade
           disabled={isPending}
           variant={isCompleted ? 'default' : 'outline'}
           size="sm"
-          className="w-full gap-2 self-start sm:w-auto sm:self-auto"
+          className="w-full shrink-0 gap-2 self-start sm:w-auto sm:self-auto"
         >
           {isCompleted ? <Check className="size-4" /> : <Circle className="size-4" />}
           {isCompleted ? 'Completed' : 'Mark as Complete'}
         </Button>
       </div>
-      <div className="mb-4">
-        <h2 className="text-2xl font-bold">
+      <div className="mb-4 min-w-0">
+        <h2 className="text-2xl font-bold wrap-break-word">
           {documentData._source.identificationMetadata.title}
         </h2>
         {documentData._source.identificationMetadata.versionDate && (
@@ -65,21 +65,21 @@ export function DocumentHeader({ corpus, document, documentData }: DocumentHeade
           </p>
         )}
         {documentData._source.identificationMetadata.wikidata && (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm wrap-break-word text-muted-foreground">
             <strong>Wikidata: </strong>
             {' '}
             <Link
               href={`https://www.wikidata.org/wiki/${documentData._source.identificationMetadata.wikidata}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="ml-1 text-blue-500 underline"
+              className="ml-1 break-all text-blue-500 underline"
             >
               {documentData._source.identificationMetadata.wikidata}
             </Link>
           </p>
         )}
         {documentData._source.identificationMetadata.url && (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm wrap-break-word text-muted-foreground">
             <strong>URL: </strong>
             {Array.isArray(documentData._source.identificationMetadata.url)
               ? (
@@ -90,7 +90,7 @@ export function DocumentHeader({ corpus, document, documentData }: DocumentHeade
                         href={url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="ml-1 text-blue-500 underline"
+                        className="ml-1 break-all text-blue-500 underline"
                       >
                         {url}
                       </Link>
@@ -102,7 +102,7 @@ export function DocumentHeader({ corpus, document, documentData }: DocumentHeade
                     href={documentData._source.identificationMetadata.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="ml-1 text-blue-500 underline"
+                    className="ml-1 break-all text-blue-500 underline"
                   >
                     {documentData._source.identificationMetadata.url}
                   </Link>

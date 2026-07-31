@@ -151,7 +151,7 @@ export function CorpusSettingsDialog({ open, onOpenChange, corpus, onCorpusRenam
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[80vh] max-w-4xl flex-col overflow-hidden">
+      <DialogContent className="flex max-h-[80vh] flex-col overflow-hidden sm:max-w-4xl">
         <DialogHeader>
           <DialogTitle>Corpus Settings</DialogTitle>
           <DialogDescription>

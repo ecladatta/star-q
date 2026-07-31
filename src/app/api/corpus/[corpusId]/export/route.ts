@@ -14,7 +14,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     const corpusData: ExportModel = {
       exportMeta: {
-        version: '1.2',
+        version: '1.3',
         type: 'full-corpus-export',
       },
       id: corpus.id,
@@ -24,6 +24,10 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       documents: await Promise.all(documents.map(async (document) => {
         const docAnnotations = await getAnnotations(document.id)
         const rawContent = await getRawDocumentData(document.id)
+        if (!rawContent) {
+          throw new Error(`Raw document data not found for document ${document.id}`)
+        }
+
         return {
           id: document.id,
           title: document.title,
@@ -37,6 +41,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
             subject: { ...annotation.subject },
             predicate: { ...annotation.predicate },
             object: { ...annotation.object },
+            qualifiers: annotation.qualifiers.map((qualifier: any) => ({
+              id: qualifier.id,
+              predicate: { ...qualifier.predicate },
+              value: { ...qualifier.value },
+              position: qualifier.position,
+            })),
           })),
         }
       })),
