@@ -32,22 +32,12 @@ To install and run the Annotation Tool locally, follow these steps:
 
 3. Copy `.env.example` to `.env` and update the environment variables.
 
-4. Start the postgres server:
+4. Start the services:
     ```bash
-    docker compose -f compose.dev.yaml up postgres
+    docker compose -f compose.dev.yaml up -d --build
     ```
 
-5. Run the migrations:
-    ```bash
-    pnpm db:migrate
-    ```
-
-6. Start the development server:
-    ```bash
-    pnpm dev
-    ```
-
-7. Open your browser and navigate to `http://localhost:3000`.
+5. Open your browser and navigate to `http://localhost:3000`.
 
 ## Authentication (Optional)
 
