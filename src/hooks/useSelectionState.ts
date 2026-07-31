@@ -1,5 +1,6 @@
 import type { AnnotationMention, DocumentAnnotation, DocumentElement } from '@/types/types'
 import { useCallback, useMemo, useRef, useState } from 'react'
+import { toast } from 'sonner'
 import { selectionIsEmpty } from '@/lib/utils'
 
 export type PopoverState = {
@@ -54,6 +55,16 @@ function calculateAbsoluteOffset(element: Element | null, offset: number): numbe
   return Number.parseInt(dataStart || '0', 10) + offset
 }
 
+function trimTrailingBlockSeparators(value: string): string {
+  return value.replace(/(?:\r\n|\r|\n)+$/, '')
+}
+
+function rangeSelectsWholeContainer(range: Range, selectionContainer: Element): boolean {
+  const selectedText = trimTrailingBlockSeparators(range.toString())
+  const containerText = trimTrailingBlockSeparators(selectionContainer.textContent ?? '')
+  return containerText.length > 0 && selectedText === containerText
+}
+
 function getRectFromRange(range: Range) {
   try {
     const rect = range.getBoundingClientRect()
@@ -89,11 +100,13 @@ function clearBrowserSelection() {
 
 export function useSelectionState() {
   const [selectedOffset, setSelectedOffset] = useState<SelectionOffset>({ start: 0, end: 0 })
+  const [selectedTextSource, setSelectedTextSource] = useState<string | null>(null)
   const [currentElementIndex, setCurrentElementIndex] = useState<number | null>(null)
   const [tableSelection, setTableSelection] = useState<TableSelection | null>(null)
 
   const clearSelection = useCallback(() => {
     setSelectedOffset({ start: 0, end: 0 })
+    setSelectedTextSource(null)
     setCurrentElementIndex(null)
     setTableSelection(null)
     clearBrowserSelection()
@@ -110,6 +123,8 @@ export function useSelectionState() {
   return {
     selectedOffset,
     setSelectedOffset,
+    selectedTextSource,
+    setSelectedTextSource,
     currentElementIndex,
     setCurrentElementIndex,
     tableSelection,
@@ -151,14 +166,26 @@ function useTextSelectionHandler(
   selection: ReturnType<typeof useSelectionState>,
   popover: ReturnType<typeof usePopoverState>,
 ) {
-  return useCallback((index: number) => {
-    selection.setCurrentElementIndex(index)
-
+  return useCallback((index: number, selectionContainer: Element, textSource?: string) => {
     const range = getSelectionRange()
     if (!range || range.collapsed)
       return
 
     try {
+      const selectionIsWithinContainer
+        = selectionContainer.contains(range.startContainer)
+          && selectionContainer.contains(range.endContainer)
+      const selectsWholeContainer = rangeSelectsWholeContainer(range, selectionContainer)
+
+      if (!selectionIsWithinContainer && !selectsWholeContainer) {
+        selection.clearSelection()
+        popover.hidePopover()
+        toast.info('Select text within a single heading or paragraph.')
+        return
+      }
+
+      selection.setCurrentElementIndex(index)
+
       // Get container elements
       const startContainer = range.startContainer.nodeType === Node.TEXT_NODE
         ? range.startContainer.parentElement
@@ -171,12 +198,16 @@ function useTextSelectionHandler(
       const startElement = getClosestElementWithDataStart(startContainer)
       const endElement = getClosestElementWithDataStart(endContainer)
 
-      if (!startElement || !endElement)
+      if (!selectsWholeContainer && (!startElement || !endElement))
         return
 
       // Calculate absolute offsets
-      const start = calculateAbsoluteOffset(startElement, range.startOffset)
-      const end = calculateAbsoluteOffset(endElement, range.endOffset)
+      const start = selectsWholeContainer
+        ? 0
+        : calculateAbsoluteOffset(startElement, range.startOffset)
+      const end = selectsWholeContainer
+        ? (textSource ?? selectionContainer.textContent ?? '').length
+        : calculateAbsoluteOffset(endElement, range.endOffset)
 
       // Ensure proper order regardless of selection direction
       const finalStart = Math.min(start, end)
@@ -186,6 +217,12 @@ function useTextSelectionHandler(
         return // Empty selection
 
       selection.setSelectedOffset({ start: finalStart, end: finalEnd })
+      selection.setSelectedTextSource(textSource ?? null)
+
+      const selectedText = textSource?.slice(finalStart, finalEnd) ?? ''
+      const leadingWhitespace = selectedText.length - selectedText.trimStart().length
+      const trailingWhitespace = selectedText.length - selectedText.trimEnd().length
+      const mentionValue = selectedText.trim()
 
       // Show popover at selection
       const rect = getRectFromRange(range)
@@ -194,7 +231,17 @@ function useTextSelectionHandler(
         annotation: null,
         componentId: null,
         annotations: [],
-        mentionData: null,
+        mentionData: textSource && mentionValue
+          ? {
+              start: finalStart + leadingWhitespace,
+              end: finalEnd - trailingWhitespace,
+              elementIndex: index,
+              row: null,
+              cell: null,
+              value: mentionValue,
+              annotationType: 'text',
+            }
+          : null,
       })
     } catch (error) {
       console.warn('Error handling text selection:', error)

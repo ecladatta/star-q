@@ -18,7 +18,7 @@ export type CombinedElementProps = {
   value: string | string[][]
   type: 'text' | 'table'
   data: { title: string, level?: number }
-  handleTextSelection: (index: number) => void
+  handleTextSelection: (index: number, selectionContainer: Element, textSource?: string) => void
   handleTableSelection: (index: number, row: number, cell: number) => void
   handleSplitClick: (split: Offset, anchorRect?: DOMRect) => void
   documentElements: DocumentElement[]
@@ -91,42 +91,83 @@ function CombinedElement({
   if (type === 'text') {
     const rawText = value as string
     const renderedText = normalizeRenderedWhitespace(rawText)
+    const rawTitle = data.title ?? ''
+    const renderedTitle = normalizeRenderedWhitespace(rawTitle)
 
-    // Extract current annotation offsets for this element to handle overlaps
-    const currentAnnotationOffsets = currentAnnotation
+    const isHeadingComponent = (component: DocumentElement['components'][number]) =>
+      component.annotationType === 'text'
+      && rawTitle.slice(component.annotationStart, component.annotationEnd) === component.annotationValue
+      && rawText.slice(component.annotationStart, component.annotationEnd) !== component.annotationValue
+
+    const currentAnnotationComponents = currentAnnotation
       ? getAnnotationComponents(currentAnnotation)
-          .filter(component => component && component.elementIndex === elementIndex)
-          .map(component => ({
-            start: component.annotationStart,
-            end: component.annotationEnd,
-            row: component.annotationRow ?? undefined,
-            cell: component.annotationCell ?? undefined,
-            componentId: component.id,
-          }))
+          .filter(component => component.elementIndex === elementIndex)
       : []
+
+    const toOffset = (component: DocumentElement['components'][number]) => ({
+      start: component.annotationStart,
+      end: component.annotationEnd,
+      row: component.annotationRow ?? undefined,
+      cell: component.annotationCell ?? undefined,
+      componentId: component.id,
+    })
+
+    const headingSplits = splitWithOffsets(
+      renderedTitle,
+      'text',
+      element.components.filter(isHeadingComponent).map(toOffset),
+      currentAnnotationComponents.filter(isHeadingComponent).map(toOffset),
+    )
 
     const splits = splitWithOffsets(
       renderedText,
       'text',
-      element.components.map(component => ({
-        start: component.annotationStart,
-        end: component.annotationEnd,
-        row: component.annotationRow ?? undefined,
-        cell: component.annotationCell ?? undefined,
-        componentId: component.id,
-      })),
-      currentAnnotationOffsets,
+      element.components.filter(component => !isHeadingComponent(component)).map(toOffset),
+      currentAnnotationComponents.filter(component => !isHeadingComponent(component)).map(toOffset),
     )
+
+    const headingProps = renderedTitle
+      ? {
+          className: 'mb-2 font-semibold wrap-break-word select-text',
+          ...{
+            'data-start': 0,
+            'data-end': renderedTitle.length,
+          },
+          onMouseUp: (event: React.MouseEvent<HTMLElement>) =>
+            handleTextSelection(elementIndex, event.currentTarget, rawTitle),
+          onKeyUp: (event: React.KeyboardEvent<HTMLElement>) =>
+            event.key === 'Enter' && handleTextSelection(elementIndex, event.currentTarget, rawTitle),
+          role: 'textbox',
+          tabIndex: 0,
+        }
+      : {
+          className: 'mb-2 font-semibold wrap-break-word',
+        }
+
+    const headingContent = renderedTitle
+      ? headingSplits
+          .filter(split => split.source === 'text')
+          .map(split => (
+            <Split
+              key={`heading-split-${split.componentId}-${split.start}-${split.end}`}
+              {...split}
+              className="wrap-break-word"
+              onClick={anchorRect => handleSplitClick(split, anchorRect)}
+              color={getComponentColor(split.componentId, element, currentAnnotation)}
+              isCurrentAnnotation={split.componentId ? isComponentFromCurrentAnnotation(split.componentId, currentAnnotation) : false}
+            />
+          ))
+      : renderedTitle
 
     return (
       <div key={elementIndex} className="mb-4 min-w-0" id={`element-${elementIndex}`}>
-        {createElement(data.level ? `h${data.level}` : 'div', { className: 'mb-2 font-semibold wrap-break-word' }, normalizeRenderedWhitespace(data.title))}
+        {createElement(data.level ? `h${data.level}` : 'div', headingProps, headingContent)}
         <div
           className="min-w-0 text-lg/relaxed wrap-break-word"
           role="textbox"
           tabIndex={0}
-          onMouseUp={() => handleTextSelection(elementIndex)}
-          onKeyUp={e => e.key === 'Enter' && handleTextSelection(elementIndex)}
+          onMouseUp={event => handleTextSelection(elementIndex, event.currentTarget)}
+          onKeyUp={event => event.key === 'Enter' && handleTextSelection(elementIndex, event.currentTarget)}
         >
           {splits
             .filter(split => split.source === 'text')

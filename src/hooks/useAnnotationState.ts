@@ -417,7 +417,7 @@ export function useAnnotationState(
       return null
     }
 
-    const { currentElementIndex, tableSelection, selectedOffset } = selection
+    const { currentElementIndex, tableSelection, selectedOffset, selectedTextSource } = selection
 
     if (currentElementIndex === null)
       return null
@@ -433,7 +433,7 @@ export function useAnnotationState(
     // Extract value based on element type
     let value = ''
     if (currentElementType === 'text') {
-      value = element.value as string || ''
+      value = selectedTextSource ?? (element.value as string) ?? ''
     } else if (currentElementType === 'table' && tableSelection) {
       const tableData = element.value as string[][]
       value = tableData?.[tableSelection.rowIndex]?.[tableSelection.cellIndex] || ''
@@ -634,6 +634,7 @@ export function useAnnotationState(
         ...prev,
         [type]: createComponentFromMention(type, mention),
       }))
+      selection.clearSelection()
       popover.hidePopover()
       return
     }
@@ -644,7 +645,7 @@ export function useAnnotationState(
       addToCurrentAnnotation(type)
     }
     popover.hidePopover()
-  }, [addToCurrentAnnotation, handleMentionAssociation, popover])
+  }, [addToCurrentAnnotation, handleMentionAssociation, popover, selection])
 
   const handleCloneAnnotation = useCallback((annotation?: DocumentAnnotation) => {
     const annotationToClone = annotation || popover.popoverState.annotation
