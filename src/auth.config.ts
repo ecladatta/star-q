@@ -1,38 +1,66 @@
 import type { NextAuthConfig } from 'next-auth'
 import GitHub from 'next-auth/providers/github'
+import WikimediaProvider from 'next-auth/providers/wikimedia'
 import { NextResponse } from 'next/server'
 
-function isEmailAllowed(email: string | null | undefined): boolean {
-  if (!email)
+function isAllowlisted(
+  value: string | null | undefined,
+  allowlist: string | undefined,
+  normalize: (entry: string) => string = entry => entry,
+): boolean {
+  if (!value)
     return false
 
-  const allowedEmails = process.env.ALLOWED_EMAILS
-  if (!allowedEmails)
+  if (!allowlist)
     return true // If no whitelist is configured, allow all
 
-  const emailList = allowedEmails.split(',').map(e => e.trim().toLowerCase())
-  return emailList.includes(email.toLowerCase())
+  const normalizedValue = normalize(value.trim())
+  return allowlist
+    .split(',')
+    .some(entry => normalize(entry.trim()) === normalizedValue)
+}
+
+function isEmailAllowed(email: string | null | undefined): boolean {
+  return isAllowlisted(
+    email,
+    process.env.ALLOWED_EMAILS,
+    entry => entry.toLowerCase(),
+  )
+}
+
+function isWikimediaIdAllowed(id: string | null | undefined): boolean {
+  return isAllowlisted(id, process.env.ALLOWED_WIKIMEDIA_IDS)
 }
 
 export function isAuthEnabled(): boolean {
   return process.env.AUTH_ENABLED === 'true'
 }
 
-const providers = isAuthEnabled()
-  ? [GitHub({
-      clientId: process.env.GITHUB_ID,
-      clientSecret: process.env.GITHUB_SECRET,
-    })]
+const providers: NonNullable<NextAuthConfig['providers']> = isAuthEnabled()
+  ? [
+      ...(process.env.GITHUB_ID && process.env.GITHUB_SECRET
+        ? [GitHub({
+            clientId: process.env.GITHUB_ID,
+            clientSecret: process.env.GITHUB_SECRET,
+          })]
+        : []),
+      ...(process.env.WIKIMEDIA_ID && process.env.WIKIMEDIA_SECRET
+        ? [WikimediaProvider({
+            clientId: process.env.WIKIMEDIA_ID,
+            clientSecret: process.env.WIKIMEDIA_SECRET,
+          })]
+        : []),
+    ]
   : []
 
 export default {
   providers,
   callbacks: {
-    async signIn({ user }) {
-      if (!isEmailAllowed(user.email)) {
-        return false // Deny access for non-whitelisted emails
-      }
-      return true
+    async signIn({ user, account }) {
+      if (account?.provider === 'wikimedia')
+        return isWikimediaIdAllowed(account.providerAccountId)
+
+      return isEmailAllowed(user.email)
     },
     authorized({ auth, request: { method, nextUrl, headers } }) {
       if (!isAuthEnabled()) {
