@@ -238,7 +238,7 @@ export function DocumentViewer({
 
     navigator.clipboard.writeText(markdown).then(() => {
       setCopiedDocument(true)
-      setTimeout(() => setCopiedDocument(false), 2000)
+      setTimeout(setCopiedDocument, 2000, false)
       toast.success('Text copied to clipboard as Markdown!')
     })
   }
@@ -285,7 +285,7 @@ export function DocumentViewer({
 
     navigator.clipboard.writeText(markdown).then(() => {
       setCopiedDocument(true)
-      setTimeout(() => setCopiedDocument(false), 2000)
+      setTimeout(setCopiedDocument, 2000, false)
       toast.success('Document copied to clipboard as Markdown!')
     })
   }

@@ -39,7 +39,7 @@ export function DocumentSidebar({ documents, currentDocument }: DocumentSidebarP
 
   useEffect(() => {
     if (currentDocument?.id && optimisticDocId === currentDocument.id) {
-      const timer = setTimeout(() => setOptimisticDocId(null), 0)
+      const timer = setTimeout(setOptimisticDocId, 0, null)
       return () => clearTimeout(timer)
     }
   }, [currentDocument?.id, optimisticDocId])

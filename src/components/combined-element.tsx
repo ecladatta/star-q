@@ -77,7 +77,7 @@ function CombinedElement({
 
     navigator.clipboard.writeText(markdown).then(() => {
       setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      setTimeout(setCopied, 2000, false)
     })
 
     toast.success('Table copied to clipboard as Markdown!')
