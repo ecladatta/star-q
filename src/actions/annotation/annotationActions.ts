@@ -56,7 +56,11 @@ async function findOrCreateAnnotationCustomEntity(
   role: AnnotationComponentRole,
 ): Promise<string> {
   const customType = customTypeForComponentRole(role)
-  const [existing] = await executor.select({ id: corpusCustomEntity.id })
+  const [existing] = await executor.select({
+    id: corpusCustomEntity.id,
+    label: corpusCustomEntity.label,
+    datatype: corpusCustomEntity.datatype,
+  })
     .from(corpusCustomEntity)
     .where(
       and(
@@ -68,6 +72,15 @@ async function findOrCreateAnnotationCustomEntity(
     .limit(1)
 
   if (existing) {
+    if (existing.label !== label || existing.datatype !== datatype) {
+      await executor.update(corpusCustomEntity)
+        .set({
+          label,
+          datatype,
+          updatedAt: new Date(),
+        })
+        .where(eq(corpusCustomEntity.id, existing.id))
+    }
     return existing.id
   }
 
