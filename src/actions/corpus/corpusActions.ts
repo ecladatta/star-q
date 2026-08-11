@@ -285,51 +285,6 @@ export async function addCorpusCustomEntity(corpusId: string, label: string, val
   return result.id
 }
 
-export async function findOrCreateCorpusCustomEntity(corpusId: string, label: string, value: string, datatype: string, entityType: 'subject' | 'predicate' | 'object') {
-  await requireAuth()
-
-  // Map entityType to customType
-  const customType: 'entity' | 'relation' = entityType === 'predicate' ? 'relation' : 'entity'
-
-  // First try to find existing entity with same value and type
-  const [existing] = await db.select()
-    .from(corpusCustomEntity)
-    .where(
-      and(
-        eq(corpusCustomEntity.corpusId, corpusId),
-        eq(corpusCustomEntity.value, value),
-        eq(corpusCustomEntity.customType, customType),
-      ),
-    )
-    .limit(1)
-
-  if (existing) {
-    // Update label and datatype if they've changed
-    if (existing.label !== label || existing.datatype !== datatype) {
-      await db.update(corpusCustomEntity)
-        .set({
-          label,
-          datatype: datatype as any,
-          updatedAt: new Date(),
-        })
-        .where(eq(corpusCustomEntity.id, existing.id))
-    }
-    return existing.id
-  }
-
-  // Create new entity if not found
-  const [result] = await db.insert(corpusCustomEntity).values({
-    corpusId,
-    label,
-    value,
-    datatype: datatype as any,
-    customType,
-  }).returning({ id: corpusCustomEntity.id })
-
-  revalidatePath(`/corpus/${corpusId}`)
-  return result.id
-}
-
 export async function updateCorpusCustomEntity(id: string, label: string, value: string, datatype: string, customType: 'entity' | 'relation') {
   await requireAuth()
 

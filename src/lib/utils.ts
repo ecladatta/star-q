@@ -1,5 +1,5 @@
 import type { ClassValue } from 'clsx'
-import type { AnnotationMention, DocumentAnnotation, DocumentAnnotationComponent, ExportModel } from '@/types/types'
+import type { DocumentAnnotation, DocumentAnnotationComponent, ExportModel } from '@/types/types'
 import { clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
 
@@ -210,20 +210,6 @@ export async function determineImportType(content: string, fileName?: string): P
   return 'unknown'
 }
 
-export class UnsupportedFileTypeError extends Error {
-  constructor(message: string) {
-    super(message)
-    this.name = 'UnsupportedFileTypeError'
-  }
-}
-
-export class InvalidJsonLinesError extends Error {
-  constructor(message: string) {
-    super(message)
-    this.name = 'InvalidJsonLinesError'
-  }
-}
-
 type AnnotationType = 'text' | 'table' | 'joint'
 
 export function getAnnotationType(annotation: DocumentAnnotation): AnnotationType {
@@ -273,22 +259,6 @@ function componentMatchesSegment(component: DocumentAnnotationComponent, segment
     && rowsMatch(component.annotationRow, segment.annotationRow)
     && cellsMatch(component.annotationCell, segment.annotationCell)
   )
-}
-
-export function annotationComponentMatchesMention(
-  component: DocumentAnnotationComponent | null | undefined,
-  mention: AnnotationMention | null | undefined,
-) {
-  if (!component || !mention)
-    return false
-
-  return componentMatchesSegment(component, {
-    annotationStart: mention.start,
-    annotationEnd: mention.end,
-    annotationRow: mention.row,
-    annotationCell: mention.cell,
-    elementIndex: mention.elementIndex,
-  })
 }
 
 export function annotationComponentsShareSegment(

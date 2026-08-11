@@ -6,8 +6,6 @@ import type {
   EntityType,
 } from '@/types/types'
 
-export const BASE_ANNOTATION_ROLES = ['subject', 'predicate', 'object'] as const satisfies readonly EntityType[]
-
 export function entityTypeForComponentRole(role: AnnotationComponentRole): EntityType {
   if (role === 'qualifier-predicate') {
     return 'predicate'
