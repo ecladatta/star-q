@@ -2,6 +2,7 @@ import type { Corpus, Document } from '@/db/schema'
 import Link from 'next/link'
 import { auth, signIn, signOut } from '@/auth'
 import { isAuthEnabled } from '@/auth.config'
+import pkg from '../../package.json'
 import { Button } from './ui/button'
 
 type HeaderProps = {
@@ -21,6 +22,10 @@ async function Header({ corpus, document }: HeaderProps) {
             <h1 className="hidden truncate text-lg font-semibold md:block">
               <Link href="/" aria-label="Home">
                 ECLADATTA Annotation Tool
+                <span className="ml-1 text-xs font-normal text-gray-400">
+                  v
+                  {pkg.version}
+                </span>
               </Link>
             </h1>
 
