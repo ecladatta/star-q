@@ -1,23 +1,11 @@
 'use server'
-import type { AnnotationComponentRole, EntityDatatype, ExportModel } from '@/types/types'
+import type { AnnotationComponentRole, ExportModel } from '@/types/types'
 import { db } from '@/db/drizzle'
 import { annotation, annotationComponent, annotationQualifier, corpusCustomEntity, document } from '@/db/schema'
+import { ENTITY_DATATYPES, normalizeDatatype } from '@/lib/datatypes'
 
 const POSTGRES_INTEGER_MIN = -2_147_483_648
 const POSTGRES_INTEGER_MAX = 2_147_483_647
-const ENTITY_DATATYPES = new Set<EntityDatatype>([
-  'integer',
-  'decimal',
-  'boolean',
-  'string',
-  'date',
-  'time',
-  'datetime',
-  'year',
-  'month',
-  'day',
-  'url',
-])
 
 function isComponentRecord(value: unknown): value is Record<string, any> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -131,7 +119,7 @@ function getInvalidCustomEntityFields(entity: Record<string, any>) {
   if (typeof entity.value !== 'string' || entity.value.length === 0) {
     invalidFields.push('value')
   }
-  if (!ENTITY_DATATYPES.has(entity.datatype)) {
+  if (!ENTITY_DATATYPES.includes(entity.datatype) && !normalizeDatatype(entity.datatype)) {
     invalidFields.push('datatype')
   }
   if (entity.customType !== 'entity' && entity.customType !== 'relation') {
@@ -199,6 +187,7 @@ export async function importFullCorpusExportDocuments(
         return {
           ...data,
           corpusId,
+          datatype: normalizeDatatype(data.datatype) ?? data.datatype,
           createdAt: normalizeDate(data.createdAt),
           updatedAt: normalizeDate(data.updatedAt),
           _oldId: oldId,

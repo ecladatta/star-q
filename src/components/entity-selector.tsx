@@ -6,16 +6,30 @@ import type {
   EntityType,
 } from '@/types/types'
 import {
+  AtSignIcon,
+  BinaryIcon,
   Calendar1Icon,
+  CalendarCheckIcon,
   CalendarClockIcon,
+  CalendarDaysIcon,
   CalendarIcon,
+  CalendarRangeIcon,
+  CaseSensitiveIcon,
   CheckIcon,
   ChevronsUpDownIcon,
+  Clock3Icon,
   ClockIcon,
+  FileCodeIcon,
   FilterIcon,
   GlobeIcon,
+  HourglassIcon,
+  LanguagesIcon,
+  TextIcon,
+  TimerIcon,
   ToggleLeftIcon,
   TypeIcon,
+  VariableIcon,
+  WholeWordIcon,
   XIcon,
 } from 'lucide-react'
 import Link from 'next/link'
@@ -36,13 +50,16 @@ import {
   CommandSeparator,
 } from '@/components/ui/command'
 import { entityTypeForComponentRole } from '@/lib/annotation-roles'
+import { ENTITY_DATATYPE_GROUPS, ENTITY_DATATYPE_LABELS } from '@/lib/datatypes'
 import { cn } from '@/lib/utils'
 import { Button } from './ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from './ui/select'
@@ -119,6 +136,27 @@ async function searchEntities(
   return results.flat()
 }
 
+function NumberIcon({ value }: { value: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      className="size-5"
+      viewBox="0 0 32 32"
+      fill="currentColor"
+    >
+      <text
+        x="16"
+        y="22"
+        fontSize={value.length > 3 ? 10 : 14}
+        fontWeight="bold"
+        textAnchor="middle"
+      >
+        {value}
+      </text>
+    </svg>
+  )
+}
+
 const TYPES_ICONS: Record<EntityDatatype, ReactNode> = {
   string: <TypeIcon className="size-5" />,
   integer: (
@@ -145,11 +183,14 @@ const TYPES_ICONS: Record<EntityDatatype, ReactNode> = {
       </text>
     </svg>
   ),
+  double: <NumberIcon value="1.5e3" />,
+  float: <NumberIcon value="0.5" />,
   boolean: <ToggleLeftIcon className="size-5" />,
   date: <CalendarIcon className="size-5" />,
   time: <ClockIcon className="size-5" />,
-  datetime: <CalendarClockIcon className="size-5" />,
-  year: (
+  dateTime: <CalendarClockIcon className="size-5" />,
+  dateTimeStamp: <CalendarCheckIcon className="size-5" />,
+  gYear: (
     <svg
       xmlns="http://www.w3.org/2000/svg"
       className="size-5"
@@ -164,8 +205,8 @@ const TYPES_ICONS: Record<EntityDatatype, ReactNode> = {
       </text>
     </svg>
   ),
-  month: <Calendar1Icon className="size-5" />,
-  day: (
+  gMonth: <Calendar1Icon className="size-5" />,
+  gDay: (
     <svg
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 276.338 276.338"
@@ -176,7 +217,32 @@ const TYPES_ICONS: Record<EntityDatatype, ReactNode> = {
       <path d="M65.339 11.049v31.913c0 6.104 4.945 11.049 11.049 11.049 6.102 0 11.049-4.945 11.049-11.049V11.049C87.438 4.945 82.491 0 76.389 0c-6.105.005-11.05 4.95-11.05 11.049zM199.137.005c-6.104 0-11.051 4.945-11.051 11.049v31.913c0 6.104 4.946 11.049 11.051 11.049s11.052-4.945 11.052-11.049V11.049C210.18 4.95 205.238.005 199.137.005zM106.19 231.87c12.463 0 21.875-3.481 28.238-10.445 6.352-6.963 9.535-15.037 9.535-24.222 0-8.737-2.719-15.626-8.163-20.666-1.477-1.354-2.814-2.437-4.009-3.239-2.188-1.475-2.352-2.529-.292-4.125 1.157-.901 2.294-1.988 3.407-3.268 3.794-4.392 5.691-9.782 5.691-16.176 0-9.026-3.171-16.23-9.532-21.597s-14.725-8.048-25.095-8.048c-5.582 0-10.296.674-14.137 2.021-3.839 1.349-7.15 3.292-9.945 5.841-3.739 3.594-6.48 7.512-8.23 11.759a52.313 52.313 0 0 0-2.39 10.584c-.315 2.623 1.769 4.761 4.406 4.761H86.03c2.64 0 4.674-2.156 5.057-4.77.465-3.174 1.505-5.853 3.116-8.032 2.366-3.192 6.065-4.793 11.093-4.793 4.383 0 7.775 1.297 10.193 3.893 2.408 2.595 3.619 5.964 3.619 10.108 0 6.395-2.366 10.637-7.089 12.732-2.053.933-5.29 1.544-9.696 1.838-2.632.168-4.774 2.324-4.774 4.957v5.717c0 2.637 2.147 4.756 4.784 4.9 4.669.248 8.254.878 10.744 1.899 5.773 2.399 8.66 7.169 8.66 14.3 0 5.396-1.559 9.521-4.669 12.396-3.11 2.87-6.763 4.303-10.944 4.303-6.823 0-11.532-2.618-14.118-7.859-.845-1.731-1.433-3.733-1.767-6.011-.383-2.614-2.462-4.771-5.106-4.771H73.726c-2.639 0-4.718 2.138-4.427 4.761.714 6.478 2.343 11.878 4.879 16.194 5.979 10.041 16.653 15.058 32.012 15.058zM165.582 154.303h15.976a4.779 4.779 0 0 1 4.778 4.779v65.312a4.783 4.783 0 0 0 4.779 4.779h12.308a4.782 4.782 0 0 0 4.778-4.779v-99.005a4.782 4.782 0 0 0-4.778-4.779h-8.266c-2.637 0-4.812.994-5.064 2.188-.135.63-.312 1.349-.541 2.151-.942 3.244-2.343 5.839-4.182 7.785-2.688 2.842-6.175 4.739-10.454 5.691-1.997.448-5.115.808-9.344 1.092-2.632.168-4.77 2.399-4.77 5.031v4.966a4.788 4.788 0 0 0 4.78 4.789z" />
     </svg>
   ),
-  url: <GlobeIcon className="size-5" />,
+  gYearMonth: <CalendarRangeIcon className="size-5" />,
+  gMonthDay: <CalendarDaysIcon className="size-5" />,
+  duration: <HourglassIcon className="size-5" />,
+  yearMonthDuration: <TimerIcon className="size-5" />,
+  dayTimeDuration: <Clock3Icon className="size-5" />,
+  byte: <NumberIcon value="8" />,
+  short: <NumberIcon value="16" />,
+  int: <NumberIcon value="32" />,
+  long: <NumberIcon value="64" />,
+  unsignedByte: <NumberIcon value="u8" />,
+  unsignedShort: <NumberIcon value="u16" />,
+  unsignedInt: <NumberIcon value="u32" />,
+  unsignedLong: <NumberIcon value="u64" />,
+  positiveInteger: <NumberIcon value=">0" />,
+  nonNegativeInteger: <NumberIcon value="≥0" />,
+  negativeInteger: <NumberIcon value="<0" />,
+  nonPositiveInteger: <NumberIcon value="≤0" />,
+  hexBinary: <BinaryIcon className="size-5" />,
+  base64Binary: <FileCodeIcon className="size-5" />,
+  anyURI: <GlobeIcon className="size-5" />,
+  language: <LanguagesIcon className="size-5" />,
+  normalizedString: <TextIcon className="size-5" />,
+  token: <WholeWordIcon className="size-5" />,
+  NMTOKEN: <CaseSensitiveIcon className="size-5" />,
+  Name: <VariableIcon className="size-5" />,
+  NCName: <AtSignIcon className="size-5" />,
 }
 
 function getEntityOptionKey(
@@ -313,17 +379,20 @@ export function EntitySelector({
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
-              {Object.keys(TYPES_ICONS)
-                .toSorted((a, b) => a.localeCompare(b))
-                .map(datatype => (
-                  <SelectItem key={datatype} value={datatype}>
-                    <div className="flex items-center gap-2">
-                      {TYPES_ICONS[datatype as EntityDatatype]}
-                      {' '}
-                      {datatype.charAt(0).toUpperCase() + datatype.slice(1)}
-                    </div>
-                  </SelectItem>
-                ))}
+              {ENTITY_DATATYPE_GROUPS.map(group => (
+                <SelectGroup key={group.label}>
+                  <SelectLabel>{group.label}</SelectLabel>
+                  {group.types.map(datatype => (
+                    <SelectItem key={datatype} value={datatype}>
+                      <div className="flex items-center gap-2">
+                        {TYPES_ICONS[datatype]}
+                        {' '}
+                        {ENTITY_DATATYPE_LABELS[datatype]}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
+              ))}
             </SelectContent>
           </Select>
         )}

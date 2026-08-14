@@ -24,7 +24,54 @@ export type AnnotationComponentRole
     | 'qualifier-predicate'
     | 'qualifier-value'
 
-export type EntityDatatype = 'integer' | 'decimal' | 'boolean' | 'string' | 'date' | 'time' | 'datetime' | 'year' | 'month' | 'day' | 'url'
+export type EntityDatatype
+  // Core
+  = | 'string'
+    | 'boolean'
+    | 'decimal'
+    | 'integer'
+    // IEEE floating-point
+    | 'double'
+    | 'float'
+    // Time and date
+    | 'date'
+    | 'time'
+    | 'dateTime'
+    | 'dateTimeStamp'
+    // Recurring and partial dates
+    | 'gYear'
+    | 'gMonth'
+    | 'gDay'
+    | 'gYearMonth'
+    | 'gMonthDay'
+    // Durations
+    | 'duration'
+    | 'yearMonthDuration'
+    | 'dayTimeDuration'
+    // Limited-range integers
+    | 'byte'
+    | 'short'
+    | 'int'
+    | 'long'
+    | 'unsignedByte'
+    | 'unsignedShort'
+    | 'unsignedInt'
+    | 'unsignedLong'
+    | 'positiveInteger'
+    | 'nonNegativeInteger'
+    | 'negativeInteger'
+    | 'nonPositiveInteger'
+    // Encoded binary data
+    | 'hexBinary'
+    | 'base64Binary'
+    // Miscellaneous
+    | 'anyURI'
+    | 'language'
+    | 'normalizedString'
+    | 'token'
+    | 'NMTOKEN'
+    | 'Name'
+    | 'NCName'
 
 export type Entity = {
   label: string

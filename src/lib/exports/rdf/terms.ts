@@ -4,6 +4,7 @@ import type {
   EntityDatatype,
 } from '@/types/types'
 import { DataFactory } from 'n3'
+import { normalizeLexicalValue } from '@/lib/datatypes'
 import { NAMESPACES } from './namespaces'
 
 export type RdfIri = NamedNode
@@ -12,17 +13,9 @@ export type RdfTerm = RdfIri | RdfLiteral
 
 const { literal: n3Literal, namedNode } = DataFactory
 
-const XSD_DATATYPES: Partial<Record<EntityDatatype, RdfIri>> = {
-  boolean: namedNode(`${NAMESPACES.xsd}boolean`),
-  date: namedNode(`${NAMESPACES.xsd}date`),
-  datetime: namedNode(`${NAMESPACES.xsd}dateTime`),
-  day: namedNode(`${NAMESPACES.xsd}gDay`),
-  decimal: namedNode(`${NAMESPACES.xsd}decimal`),
-  integer: namedNode(`${NAMESPACES.xsd}integer`),
-  month: namedNode(`${NAMESPACES.xsd}gMonth`),
-  time: namedNode(`${NAMESPACES.xsd}time`),
-  url: namedNode(`${NAMESPACES.xsd}anyURI`),
-  year: namedNode(`${NAMESPACES.xsd}gYear`),
+// Every EntityDatatype value is the XSD local name, so the IRI is direct.
+function xsdDatatypeIri(datatype: EntityDatatype): RdfIri {
+  return namedNode(`${NAMESPACES.xsd}${datatype}`)
 }
 
 export function iri(value: string): RdfIri {
@@ -37,10 +30,10 @@ export function literal(
     return n3Literal(value)
   }
 
-  const xsdDatatype = XSD_DATATYPES[datatype]
-  return xsdDatatype
-    ? n3Literal(normalizeLexicalValue(value, datatype), xsdDatatype)
-    : n3Literal(value)
+  return n3Literal(
+    normalizeLexicalValue(value, datatype),
+    xsdDatatypeIri(datatype),
+  )
 }
 
 export function corpusIri(corpusId: string): RdfIri {
@@ -197,25 +190,4 @@ function absoluteIri(value: string): RdfIri | null {
 
 export function iriOrLiteral(value: string): RdfTerm {
   return absoluteIri(value) ?? literal(value)
-}
-
-function normalizeLexicalValue(value: string, datatype: EntityDatatype): string {
-  const trimmed = value.trim()
-
-  if (datatype === 'boolean') {
-    const lowerValue = trimmed.toLowerCase()
-    if (['true', 'false', '1', '0'].includes(lowerValue)) {
-      return lowerValue
-    }
-  }
-
-  if (datatype === 'month' && /^\d{1,2}$/.test(trimmed)) {
-    return `--${trimmed.padStart(2, '0')}`
-  }
-
-  if (datatype === 'day' && /^\d{1,2}$/.test(trimmed)) {
-    return `---${trimmed.padStart(2, '0')}`
-  }
-
-  return trimmed
 }

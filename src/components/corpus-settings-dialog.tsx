@@ -9,13 +9,12 @@ import { addCorpusCustomEntity, deleteCorpusCustomEntity, getCorpusCustomEntitie
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { ENTITY_DATATYPE_GROUPS, ENTITY_DATATYPE_LABELS } from '@/lib/datatypes'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu'
 import { Label } from './ui/label'
-
-const ENTITY_DATATYPES: EntityDatatype[] = ['string', 'integer', 'decimal', 'boolean', 'date', 'time', 'datetime', 'year', 'month', 'day', 'url']
 
 type CorpusSettingsDialogProps = {
   open: boolean
@@ -210,10 +209,15 @@ export function CorpusSettingsDialog({ open, onOpenChange, corpus, onCorpusRenam
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {ENTITY_DATATYPES.map(type => (
-                      <SelectItem key={type} value={type}>
-                        {type.charAt(0).toUpperCase() + type.slice(1)}
-                      </SelectItem>
+                    {ENTITY_DATATYPE_GROUPS.map(group => (
+                      <SelectGroup key={group.label}>
+                        <SelectLabel>{group.label}</SelectLabel>
+                        {group.types.map(type => (
+                          <SelectItem key={type} value={type}>
+                            {ENTITY_DATATYPE_LABELS[type]}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
                     ))}
                   </SelectContent>
                 </Select>
@@ -353,16 +357,21 @@ export function CorpusSettingsDialog({ open, onOpenChange, corpus, onCorpusRenam
                                                 <SelectValue />
                                               </SelectTrigger>
                                               <SelectContent>
-                                                {ENTITY_DATATYPES.map(type => (
-                                                  <SelectItem key={type} value={type}>
-                                                    {type.charAt(0).toUpperCase() + type.slice(1)}
-                                                  </SelectItem>
+                                                {ENTITY_DATATYPE_GROUPS.map(group => (
+                                                  <SelectGroup key={group.label}>
+                                                    <SelectLabel>{group.label}</SelectLabel>
+                                                    {group.types.map(type => (
+                                                      <SelectItem key={type} value={type}>
+                                                        {ENTITY_DATATYPE_LABELS[type]}
+                                                      </SelectItem>
+                                                    ))}
+                                                  </SelectGroup>
                                                 ))}
                                               </SelectContent>
                                             </Select>
                                           )
                                         : (
-                                            entity.datatype.charAt(0).toUpperCase() + entity.datatype.slice(1)
+                                            ENTITY_DATATYPE_LABELS[entity.datatype]
                                           )}
                                     </TableCell>
                                     <TableCell>
