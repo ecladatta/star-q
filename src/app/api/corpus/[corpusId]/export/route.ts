@@ -15,7 +15,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     if (!format) {
       return Response.json(
         {
-          error: 'Unsupported export format or RDF mode. Use json, or use rdf with mode=truthy|full.',
+          error: 'Unsupported export format or RDF mode. Use json, quickstatements, or use rdf with mode=truthy|full.',
         },
         { status: 400 },
       )
@@ -25,11 +25,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const serializedExport = serializeCorpusExport(corpusData, format)
     const filename = getCorpusExportFilename(corpusData, serializedExport.extension)
 
-    return new Response(serializedExport.body, {
-      headers: {
-        'Content-Type': serializedExport.contentType,
-        'Content-Disposition': `attachment; filename="${filename}"`,
-      },
-    })
+    const headers: HeadersInit = {
+      'Content-Type': serializedExport.contentType,
+      'Content-Disposition': `attachment; filename="${filename}"`,
+    }
+    if (serializedExport.skippedCount && serializedExport.skippedCount > 0) {
+      headers['X-QuickStatements-Skipped'] = String(serializedExport.skippedCount)
+    }
+
+    return new Response(serializedExport.body, { headers })
   })
 }

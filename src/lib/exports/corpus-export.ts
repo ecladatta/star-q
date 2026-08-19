@@ -75,6 +75,10 @@ export function resolveCorpusExportFormat(request: Request): CorpusExportFormat 
     return requestedMode ? null : 'json'
   }
 
+  if (requestedFormat === 'quickstatements' || requestedFormat === 'qs') {
+    return requestedMode ? null : 'quickstatements'
+  }
+
   if (requestedFormat === 'rdf' || requestedFormat === 'ttl' || requestedFormat === 'turtle') {
     if (!requestedMode || requestedMode === 'full') {
       return 'rdf-full'

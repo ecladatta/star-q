@@ -119,11 +119,11 @@ The following API routes are available:
 - `GET /api/corpus/[corpusId]` - Get metadata for a corpus.
 - `GET /api/corpus/[corpusId]/analytics` - Get analytics for a corpus.
 - `GET /api/corpus/[corpusId]/entities` - Get custom entities for a corpus.
-- `GET /api/corpus/[corpusId]/export` - Export a corpus. Defaults to JSON; use `?format=rdf&mode=truthy` or `?format=rdf&mode=full` for RDF 1.2 Turtle.
+- `GET /api/corpus/[corpusId]/export` - Export a corpus. Defaults to JSON; use `?format=rdf&mode=truthy` or `?format=rdf&mode=full` for RDF 1.2 Turtle, or `?format=quickstatements` for QuickStatements 3.0 commands.
 
 ## Corpus export format
 
-When exporting a corpus via the "Export" button in the UI or the `GET /api/corpus/[corpusId]/export` API route, the corpus data can be returned as JSON or RDF 1.2 Turtle.
+When exporting a corpus via the "Export" button in the UI or the `GET /api/corpus/[corpusId]/export` API route, the corpus data can be returned as JSON, RDF 1.2 Turtle, or QuickStatements 3.0 commands.
 This export includes all documents, annotations, and custom entities associated with the corpus, along with metadata about the export itself.
 
 RDF exports have two modes:
@@ -353,3 +353,23 @@ _:5db97077-d88a-4d1a-bcf1-dc4b127543fc
     annotation:6893f26b-dbca-441d-9ac9-f4f94c336854,
     annotation:6b0af701-09e8-4b35-a30c-85052a56e1ce .
 ```
+
+## QuickStatements 3.0 export format
+
+QuickStatements exports serialize annotated statements as [QuickStatements 3.0](https://meta.wikimedia.org/wiki/QuickStatements_3.0/Documentation/User_guide) V1 command sequences: one statement per line, with parts separated by TAB characters. The file is meant to be opened in a text editor and pasted into the QuickStatements 3.0 interface (select the "V1" syntax).
+
+Each line has the form `QID\tPID\tvalue\tPID\tvalue ...`, where the trailing `PID\tvalue` pairs are qualifiers:
+
+```text
+Q68550	P184	Q7099
+Q68550	P69	"University of Vienna"
+Q68550	P571	+1365-00-00T00:00:00Z/9	P585	+2019-01-01T00:00:00Z/11
+```
+
+Only annotations that fully resolve to Wikidata are exported:
+
+- Annotations whose subject, predicate, or object references a custom corpus entity or a value with no Wikidata `Q`/`P` ID are skipped.
+- Qualifiers that cannot be resolved are omitted from an otherwise valid line.
+- Identical resulting commands are de-duplicated.
+
+Skipped annotations are reported through the API and web UI during export.
