@@ -52,6 +52,12 @@ pnpm dev
 
 In either mode, open `http://localhost:3000`.
 
+### Run tests
+
+```bash
+pnpm test
+```
+
 ## Authentication (Optional)
 
 Set `AUTH_ENABLED=false` to run without user accounts or browser sessions.
