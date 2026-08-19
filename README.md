@@ -58,6 +58,27 @@ In either mode, open `http://localhost:3000`.
 pnpm test
 ```
 
+### Releases
+
+Releases require the `GITHUB_TOKEN` environment variable (a fine-grained personal access token with `contents: write` permission). Create one [here](https://github.com/settings/personal-access-tokens/new), then export it before releasing:
+
+```bash
+export GITHUB_TOKEN=ghp_xxx
+```
+
+Preview the release notes without publishing:
+```bash
+pnpm release:dry
+```
+
+Create a release (bumps the version, updates `CHANGELOG.md`, creates tag `vX.Y.Z`, releases on GitHub):
+```bash
+pnpm release:patch   # 0.2.0 → 0.2.1
+pnpm release:minor   # 0.2.0 → 0.3.0
+pnpm release:major   # 0.2.0 → 1.0.0
+pnpm release         # auto-detect the bump from conventional commits
+```
+
 ## Authentication (Optional)
 
 Set `AUTH_ENABLED=false` to run without user accounts or browser sessions.

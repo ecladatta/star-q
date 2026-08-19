@@ -1,5 +1,8 @@
 {
   "$schema": "https://unpkg.com/release-it/schema/release-it.json",
+  "hooks": {
+    "before:init": "test -n \"$GITHUB_TOKEN\" || { echo 'Error: GITHUB_TOKEN is required for automated GitHub releases' >&2; exit 1; }"
+  },
   "git": {
     "requireCleanWorkingDir": true,
     "commitMessage": "chore(release): ${version}",
