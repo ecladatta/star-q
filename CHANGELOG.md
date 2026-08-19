@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.2.0](https://github.com/ecladatta/star-q/compare/v0.1.0...v0.1.0) (2026-08-19)
+## [0.2.0](https://github.com/ecladatta/star-q/compare/v0.1.0...v0.2.0) (2026-08-19)
 
 ### Features
 
