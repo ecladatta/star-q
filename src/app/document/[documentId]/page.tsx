@@ -39,10 +39,11 @@ export default async function DocumentPage({ params }: { params: Promise<{ docum
       document={document}
       annotations={annotations}
       warningsSlot={(
-        <Suspense key={documentId} fallback={<WikidataWarningsSkeleton />}>
+        <Suspense key={documentId} fallback={<WikidataWarningsSkeleton compact />}>
           <WikidataWarningsSection
             warningsPromise={getDocumentWarnings(documentId)}
             groupByDocument={false}
+            compact
           />
         </Suspense>
       )}
