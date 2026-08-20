@@ -315,6 +315,7 @@ export function EntitySelector({
   constraintSide,
   constraintPropertyLabel,
   constraintEntityChecks,
+  filteringEnabled = false,
 }: {
   type: AnnotationComponentRole
   value: Entity | null
@@ -325,6 +326,7 @@ export function EntitySelector({
   constraintSide?: ConstraintSide | null
   constraintPropertyLabel?: string | null
   constraintEntityChecks?: Array<ConstraintEntityCheck & { label: string }> | null
+  filteringEnabled?: boolean
 }) {
   const entityType = entityTypeForComponentRole(type)
   const [open, setOpen] = useState(false)
@@ -450,12 +452,12 @@ export function EntitySelector({
   }, [activeClassification])
 
   const visibleResults = useMemo(() => {
-    if (!activeClassification || showAllResults) {
+    if (!filteringEnabled || !activeClassification || showAllResults) {
       return searchResults
     }
     const allowed = new Set([...activeClassification.members, ...activeClassification.unverifiable])
     return searchResults.filter(result => result.custom || allowed.has(result.value))
-  }, [searchResults, activeClassification, showAllResults])
+  }, [searchResults, activeClassification, showAllResults, filteringEnabled])
 
   const sortedResults = useMemo(() => {
     if (!activeClassification) {
@@ -480,7 +482,12 @@ export function EntitySelector({
     (constraintEntityChecks && constraintEntityChecks.length > 0)
     || (constraints && constraintSide),
   )
-  const filteringActive = Boolean(hasConstraintFilter && activeClassification && filteredOutCount > 0)
+  const filteringActive = Boolean(
+    filteringEnabled
+    && hasConstraintFilter
+    && activeClassification
+    && filteredOutCount > 0,
+  )
   const constraintNoun = entityType === 'predicate' ? 'predicates' : 'entities'
 
   return (
@@ -785,9 +792,8 @@ export function EntitySelector({
             )}
 
             {/* Constraint filtering escape hatch */}
-            {activeClassification && filteredOutCount > 0 && (
+            {filteringEnabled && activeClassification && filteredOutCount > 0 && (
               <>
-                <CommandSeparator />
                 <CommandGroup>
                   {showAllResults
                     ? (
@@ -804,11 +810,11 @@ export function EntitySelector({
                           onSelect={() => setShowAllResults(true)}
                         >
                           <span>
-                            Show all
+                            Show
                             {' '}
                             {filteredOutCount}
                             {' '}
-                            results (may not match constraints)
+                            more  (may not match constraints)
                           </span>
                         </CommandItem>
                       )}
