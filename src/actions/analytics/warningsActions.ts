@@ -1,0 +1,164 @@
+'use server'
+import type { SQL } from 'drizzle-orm'
+import type { AnnotationCheck, ConstraintCheck, CorpusWarnings, WarningAnnotationRow } from '@/lib/wikidata-constraints'
+import { and, eq, sql } from 'drizzle-orm'
+import { alias } from 'drizzle-orm/pg-core'
+import { db } from '@/db/drizzle'
+import { annotation, annotationComponent, corpus, document } from '@/db/schema'
+import { requireAuth } from '@/lib/auth-utils'
+import { isConstraintWarningsEnabled } from '@/lib/corpus-settings'
+import { buildConstraintChecks, collectPairs, evaluateConstraintChecks, WIKIDATA_PROPERTY_PATTERN } from '@/lib/wikidata-constraints'
+import { fetchEntityLabels, fetchItemsWithTypeData, fetchMembership, fetchPropertyConstraints } from '@/lib/wikidata-sparql'
+
+type WarningsComputation = {
+  violations: ConstraintCheck[]
+  unverifiable: ConstraintCheck[]
+  checkedProperties: number
+  unavailable: boolean
+}
+
+function emptyWarnings(checkedAnnotations: number): CorpusWarnings {
+  return {
+    violations: [],
+    unverifiable: [],
+    checkedProperties: 0,
+    checkedAnnotations,
+    unavailable: false,
+  }
+}
+
+async function computeWarningsForRows(rows: WarningAnnotationRow[]): Promise<WarningsComputation> {
+  const predicates = Array.from(new Set(
+    rows
+      .map(row => row.predicateValue)
+      .filter((value): value is string => value != null && WIKIDATA_PROPERTY_PATTERN.test(value)),
+  ))
+
+  if (predicates.length === 0) {
+    return { violations: [], unverifiable: [], checkedProperties: 0, unavailable: false }
+  }
+
+  try {
+    const { constraints: constraintsByProperty, unavailable: fetchUnavailable } = await fetchPropertyConstraints(predicates)
+    const checks = buildConstraintChecks(rows, constraintsByProperty)
+    const pairs = collectPairs(checks.map(check => ({ item: check.itemValue, side: check.side, classes: check.expectedClasses })))
+    const items = Array.from(new Set(checks.map(check => check.itemValue)))
+
+    const [memberPairs, itemsWithTypeData] = await Promise.all([
+      fetchMembership(pairs),
+      fetchItemsWithTypeData(items),
+    ])
+
+    const evaluated = evaluateConstraintChecks(checks, memberPairs, itemsWithTypeData)
+
+    const classIds = Array.from(new Set(
+      checks.flatMap(check => check.expectedClasses.map(constraint => constraint.class)),
+    ))
+    const classLabels = await fetchEntityLabels(classIds)
+
+    const resolveClasses = (check: AnnotationCheck): ConstraintCheck => ({
+      ...check,
+      expectedClasses: check.expectedClasses.map(constraint => ({
+        ...constraint,
+        label: classLabels.get(constraint.class) ?? constraint.class,
+      })),
+    })
+
+    return {
+      violations: evaluated.violations.map(resolveClasses),
+      unverifiable: evaluated.unverifiable.map(resolveClasses),
+      checkedProperties: predicates.length,
+      unavailable: fetchUnavailable,
+    }
+  } catch {
+    return {
+      violations: [],
+      unverifiable: [],
+      checkedProperties: predicates.length,
+      unavailable: true,
+    }
+  }
+}
+
+async function getWarningRows(condition: SQL): Promise<WarningAnnotationRow[]> {
+  const predicate = alias(annotationComponent, 'predicate')
+  const subject = alias(annotationComponent, 'subject')
+  const object = alias(annotationComponent, 'object')
+
+  return db.select({
+    annotationId: annotation.id,
+    documentId: annotation.documentId,
+    documentTitle: document.title,
+    predicateLabel: predicate.entityLabel,
+    predicateValue: predicate.entityValue,
+    subjectLabel: subject.entityLabel,
+    subjectValue: subject.entityValue,
+    objectLabel: object.entityLabel,
+    objectValue: object.entityValue,
+  })
+    .from(annotation)
+    .innerJoin(predicate, eq(predicate.id, annotation.predicateId))
+    .innerJoin(subject, eq(subject.id, annotation.subjectId))
+    .innerJoin(object, eq(object.id, annotation.objectId))
+    .innerJoin(document, eq(document.id, annotation.documentId))
+    .where(and(
+      condition,
+      sql`${predicate.entityValue} ~ '^P[0-9]+$'`,
+    ))
+}
+
+export async function getCorpusWarnings(corpusId: string): Promise<CorpusWarnings> {
+  await requireAuth()
+
+  const [corpusData] = await db.select().from(corpus).where(eq(corpus.id, corpusId))
+  if (!corpusData) {
+    throw new Error('Corpus not found')
+  }
+
+  if (!isConstraintWarningsEnabled(corpusData.settings)) {
+    return emptyWarnings(0)
+  }
+
+  const rows = await getWarningRows(eq(document.corpusId, corpusId))
+  const { violations, unverifiable, checkedProperties, unavailable } = await computeWarningsForRows(rows)
+
+  return {
+    violations,
+    unverifiable,
+    checkedProperties,
+    checkedAnnotations: rows.length,
+    unavailable,
+  }
+}
+
+export async function getDocumentWarnings(documentId: string): Promise<CorpusWarnings> {
+  await requireAuth()
+
+  const [documentData] = await db
+    .select({ id: document.id, corpusId: document.corpusId })
+    .from(document)
+    .where(eq(document.id, documentId))
+  if (!documentData) {
+    throw new Error('Document not found')
+  }
+
+  const [corpusData] = await db
+    .select({ settings: corpus.settings })
+    .from(corpus)
+    .where(eq(corpus.id, documentData.corpusId))
+
+  if (!isConstraintWarningsEnabled(corpusData?.settings)) {
+    return emptyWarnings(0)
+  }
+
+  const rows = await getWarningRows(eq(annotation.documentId, documentId))
+  const { violations, unverifiable, checkedProperties, unavailable } = await computeWarningsForRows(rows)
+
+  return {
+    violations,
+    unverifiable,
+    checkedProperties,
+    checkedAnnotations: rows.length,
+    unavailable,
+  }
+}

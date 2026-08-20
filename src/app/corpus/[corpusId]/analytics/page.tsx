@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Suspense } from 'react'
 import { getCorpusAnalytics } from '@/actions/analytics/analyticsActions'
+import { getCorpusWarnings } from '@/actions/analytics/warningsActions'
 import { getCorpus } from '@/actions/corpus/corpusActions'
 import { AnalyticsContent } from '@/components/analytics-content'
 import { AnalyticsSkeleton } from '@/components/analytics-skeleton'
@@ -12,6 +13,7 @@ export default async function AnalyticsPage({ params }: { params: Promise<{ corp
   const corpus = await getCorpus(corpusId)
 
   const analyticsPromise = getCorpusAnalytics(corpusId)
+  const warningsPromise = getCorpusWarnings(corpusId)
 
   if (!corpus) {
     return (
@@ -52,7 +54,7 @@ export default async function AnalyticsPage({ params }: { params: Promise<{ corp
       </div>
 
       <Suspense fallback={<AnalyticsSkeleton />}>
-        <AnalyticsContent analyticsPromise={analyticsPromise} />
+        <AnalyticsContent analyticsPromise={analyticsPromise} warningsPromise={warningsPromise} />
       </Suspense>
     </div>
   )

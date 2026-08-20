@@ -1,4 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react'
+import type { PropertyConstraints } from '@/lib/wikidata-constraints'
 import type {
   AnnotationComponentRole,
   CurrentAnnotation,
@@ -56,6 +57,8 @@ import { entityTypeForComponentRole } from '@/lib/annotation-roles'
 import { validateAnnotationQualifiers } from '@/lib/annotation-validation'
 import { TYPE_TO_COLOR } from '@/lib/constants'
 import { cn, isMac } from '@/lib/utils'
+import { WIKIDATA_ITEM_PATTERN, WIKIDATA_PROPERTY_PATTERN } from '@/lib/wikidata-constraints'
+import { fetchPropertyConstraints } from '@/lib/wikidata-sparql'
 
 type QualifierSide = 'predicate' | 'value'
 
@@ -67,6 +70,7 @@ type AnnotationFormProps = {
   annotationFormLoading: boolean
   isDeletingAnnotation: boolean
   corpusId: string
+  wikidataPredicateFiltering?: boolean
   removeQualifier: (qualifierId: string) => void
   assignSelectionToQualifier: (
     qualifierId: string,
@@ -141,6 +145,7 @@ export function AnnotationForm({
   annotationFormLoading,
   isDeletingAnnotation,
   corpusId,
+  wikidataPredicateFiltering = false,
   removeQualifier,
   assignSelectionToQualifier,
   updateQualifierEntity,
@@ -151,6 +156,70 @@ export function AnnotationForm({
   const subjectTag = currentAnnotation?.subject
   const predicateTag = currentAnnotation?.predicate
   const objectTag = currentAnnotation?.object
+
+  const predicateEntityValue = currentAnnotation?.predicate?.entityValue
+  const predicateEntityLabel = currentAnnotation?.predicate?.entityLabel
+  const [predicateConstraints, setPredicateConstraints] = useState<PropertyConstraints | null>(null)
+
+  useEffect(() => {
+    if (!wikidataPredicateFiltering) {
+      setPredicateConstraints(null)
+      return
+    }
+    if (!predicateEntityValue || !WIKIDATA_PROPERTY_PATTERN.test(predicateEntityValue)) {
+      setPredicateConstraints(null)
+      return
+    }
+
+    let cancelled = false
+    fetchPropertyConstraints([predicateEntityValue])
+      .then(({ constraints }) => {
+        if (!cancelled) {
+          setPredicateConstraints(constraints.get(predicateEntityValue) ?? null)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setPredicateConstraints(null)
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [predicateEntityValue, wikidataPredicateFiltering])
+
+  const subjectConstraintSide = predicateConstraints && predicateConstraints.domain.length > 0
+    ? 'domain' as const
+    : null
+  const objectConstraintSide = predicateConstraints && predicateConstraints.range.length > 0
+    ? 'range' as const
+    : null
+
+  const subjectEntity = currentAnnotation?.subject
+  const objectEntity = currentAnnotation?.object
+
+  const predicateEntityChecks = useMemo(() => {
+    if (!wikidataPredicateFiltering) {
+      return null
+    }
+    const checks: Array<{ entityId: string, side: 'domain' | 'range', label: string }> = []
+    if (subjectEntity?.entityValue && WIKIDATA_ITEM_PATTERN.test(subjectEntity.entityValue)) {
+      checks.push({
+        entityId: subjectEntity.entityValue,
+        side: 'domain',
+        label: subjectEntity.entityLabel ?? subjectEntity.entityValue,
+      })
+    }
+    if (objectEntity?.entityValue && WIKIDATA_ITEM_PATTERN.test(objectEntity.entityValue)) {
+      checks.push({
+        entityId: objectEntity.entityValue,
+        side: 'range',
+        label: objectEntity.entityLabel ?? objectEntity.entityValue,
+      })
+    }
+    return checks.length > 0 ? checks : null
+  }, [subjectEntity, objectEntity, wikidataPredicateFiltering])
 
   const hasAnyTags = Boolean(subjectTag || predicateTag || objectTag)
   const hasAllTags = Boolean(subjectTag && predicateTag && objectTag)
@@ -845,6 +914,9 @@ export function AnnotationForm({
                   handleEntityChange('subject', newValue)}
                 text={currentAnnotation?.subject?.annotationValue ?? ''}
                 corpusId={corpusId}
+                constraints={subjectConstraintSide ? predicateConstraints : null}
+                constraintSide={subjectConstraintSide}
+                constraintPropertyLabel={predicateEntityLabel}
               />
             </div>
             <div>
@@ -898,6 +970,7 @@ export function AnnotationForm({
                       handleEntityChange('predicate', newValue)}
                     text={currentAnnotation?.predicate?.annotationValue ?? ''}
                     corpusId={corpusId}
+                    constraintEntityChecks={predicateEntityChecks}
                   />
                 </div>
                 <Tooltip>
@@ -958,6 +1031,9 @@ export function AnnotationForm({
                   handleEntityChange('object', newValue)}
                 text={currentAnnotation?.object?.annotationValue ?? ''}
                 corpusId={corpusId}
+                constraints={objectConstraintSide ? predicateConstraints : null}
+                constraintSide={objectConstraintSide}
+                constraintPropertyLabel={predicateEntityLabel}
               />
             </div>
           </div>

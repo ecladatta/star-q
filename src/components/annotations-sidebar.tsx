@@ -88,6 +88,9 @@ export function AnnotationsSidebar({
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
+  const annotationParam = searchParams.get('annotation')
+  const handledAnnotationParamRef = useRef<string | null>(null)
+
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
 
   // Initialize state from URL params
@@ -343,6 +346,45 @@ export function AnnotationsSidebar({
     onBatchDelete()
   }
 
+  // Clicking toggles the annotation and records the result in the ?annotation= URL param so the
+  // link is shareable. The handled ref lets the deep-link effect below skip params we wrote here.
+  const handleAnnotationClick = (annotation: DocumentAnnotation) => {
+    const next = annotation.id === currentAnnotation?.id ? null : annotation.id
+    handledAnnotationParamRef.current = next
+    onAnnotationClick(annotation)
+    const params = new URLSearchParams(searchParams.toString())
+    if (next) {
+      params.set('annotation', next)
+    } else {
+      params.delete('annotation')
+    }
+    router.replace(`${pathname}${params.toString() ? `?${params.toString()}` : ''}`, { scroll: false })
+  }
+
+  // Latest-ref pattern so the deep-link effect reads fresh annotations/callback without re-running
+  // on unrelated renders (onAnnotationClick is recreated by the parent on every render).
+  const latestAnnotationsRef = useRef(annotations)
+  latestAnnotationsRef.current = annotations
+  const latestOnAnnotationClickRef = useRef(onAnnotationClick)
+  latestOnAnnotationClickRef.current = onAnnotationClick
+
+  // Select the annotation referenced by the ?annotation= URL param (deep links from analytics).
+  // Depends only on the param so a still-stale deep-link param can't override an annotation the
+  // user just clicked.
+  useEffect(() => {
+    if (!annotationParam || annotationParam === handledAnnotationParamRef.current) {
+      return
+    }
+
+    const target = latestAnnotationsRef.current.find(annotation => annotation.id === annotationParam)
+    if (!target) {
+      return
+    }
+
+    handledAnnotationParamRef.current = annotationParam
+    latestOnAnnotationClickRef.current(target)
+  }, [annotationParam])
+
   // Auto-scroll to current annotation
   useEffect(() => {
     if (!currentAnnotation?.id)
@@ -352,12 +394,15 @@ export function AnnotationsSidebar({
     const scrollArea = scrollAreaRef.current
 
     if (annotationElement && scrollArea) {
-      // Find the scroll container (the actual scrollable element inside ScrollArea)
-      const scrollContainer = scrollArea.querySelector(
-        '[data-radix-scroll-area-viewport]',
-      )
+      // Defer so the scroll runs after any URL navigation has settled
+      const frame = requestAnimationFrame(() => {
+        // Find the scroll container (the actual scrollable element inside ScrollArea)
+        const scrollContainer = scrollArea.querySelector(
+          '[data-radix-scroll-area-viewport]',
+        )
+        if (!scrollContainer)
+          return
 
-      if (scrollContainer) {
         const containerRect = scrollContainer.getBoundingClientRect()
         const elementRect = annotationElement.getBoundingClientRect()
 
@@ -382,9 +427,11 @@ export function AnnotationsSidebar({
             behavior: 'smooth',
           })
         }
-      }
+      })
+
+      return () => cancelAnimationFrame(frame)
     }
-  }, [currentAnnotation?.id, filteredAndSortedAnnotations])
+  }, [currentAnnotation?.id, annotationParam, filteredAndSortedAnnotations])
 
   if (annotations.length === 0) {
     return null
@@ -707,7 +754,7 @@ export function AnnotationsSidebar({
                                     ? 'border-blue-500 bg-blue-50 shadow-md ring-2 ring-blue-500/20'
                                     : 'border-border bg-card hover:border-blue-300 hover:shadow-xs'
                                 }`}
-                                onClick={() => onAnnotationClick(ann)}
+                                onClick={() => handleAnnotationClick(ann)}
                               >
                                 <div className="mb-2 flex items-center gap-2">
                                   {annotationType === 'joint' && (

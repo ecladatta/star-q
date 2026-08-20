@@ -1,0 +1,780 @@
+{
+  "exportMeta": {
+    "version": "1.3",
+    "type": "full-corpus-export"
+  },
+  "id": "ab54c9ed-08fc-4d89-b02c-d0ae2a96c6ee",
+  "title": "Wikidata Constraints Demo",
+  "createdAt": "2026-08-20T11:25:35.390Z",
+  "updatedAt": "2026-08-20T11:25:35.390Z",
+  "documents": [
+    {
+      "id": "22774d92-a075-46f3-bb21-8afc76dedb3c",
+      "title": "1 - Valid annotation (P69 educated at)",
+      "createdAt": "2026-08-20T11:25:14.314Z",
+      "updatedAt": "2026-08-20T11:25:35.396Z",
+      "completedAt": null,
+      "order": 1,
+      "raw": {
+        "_source": {
+          "extractionMetadata": {
+            "texts": [
+              {
+                "index": 0,
+                "value": "Albert Einstein studied at ETH Zurich.",
+                "endOffset": 38,
+                "startOffset": 0
+              }
+            ],
+            "tables": [],
+            "technology": "ManualDemo"
+          },
+          "identificationMetadata": {
+            "id": "1000",
+            "hash": "11474334bd304d2b89b6475f6bc1f9ff",
+            "title": "1 - Valid annotation (P69 educated at)",
+            "versionDate": "2026-08-20T00:00:00Z"
+          }
+        }
+      },
+      "annotations": [
+        {
+          "id": "6247ddb7-3a02-495b-91d0-33fb55d1f025",
+          "subject": {
+            "id": "f195a864-2dd5-4af7-92b9-886a91e023b2",
+            "entityLabel": "Albert Einstein",
+            "entityValue": "Q937",
+            "entityCustom": false,
+            "entityCustomId": null,
+            "entityDatatype": null,
+            "annotationStart": 0,
+            "annotationEnd": 15,
+            "annotationRow": null,
+            "annotationCell": null,
+            "annotationValue": "Albert Einstein",
+            "annotationType": "text",
+            "annotationTag": "subject",
+            "elementIndex": 0
+          },
+          "predicate": {
+            "id": "2ceeb98b-4ac4-49b7-b127-5eae937ea2a4",
+            "entityLabel": "educated at",
+            "entityValue": "P69",
+            "entityCustom": false,
+            "entityCustomId": null,
+            "entityDatatype": null,
+            "annotationStart": 16,
+            "annotationEnd": 26,
+            "annotationRow": null,
+            "annotationCell": null,
+            "annotationValue": "studied at",
+            "annotationType": "text",
+            "annotationTag": "predicate",
+            "elementIndex": 0
+          },
+          "object": {
+            "id": "aeaf0d97-371b-4420-9acd-cec45054a01c",
+            "entityLabel": "ETH Zurich",
+            "entityValue": "Q11942",
+            "entityCustom": false,
+            "entityCustomId": null,
+            "entityDatatype": null,
+            "annotationStart": 27,
+            "annotationEnd": 37,
+            "annotationRow": null,
+            "annotationCell": null,
+            "annotationValue": "ETH Zurich",
+            "annotationType": "text",
+            "annotationTag": "object",
+            "elementIndex": 0
+          },
+          "qualifiers": []
+        }
+      ]
+    },
+    {
+      "id": "fcf4fcae-9158-4652-aaf0-810e82f04c65",
+      "title": "2 - Domain violation (P69 educated at)",
+      "createdAt": "2026-08-20T11:25:14.314Z",
+      "updatedAt": "2026-08-20T11:25:35.405Z",
+      "completedAt": null,
+      "order": 2,
+      "raw": {
+        "_source": {
+          "extractionMetadata": {
+            "texts": [
+              {
+                "index": 0,
+                "value": "Earth studied at ETH Zurich.",
+                "endOffset": 28,
+                "startOffset": 0
+              }
+            ],
+            "tables": [],
+            "technology": "ManualDemo"
+          },
+          "identificationMetadata": {
+            "id": "1001",
+            "hash": "d060dfda5bea4c5bafbd97f66c0c12fe",
+            "title": "2 - Domain violation (P69 educated at)",
+            "versionDate": "2026-08-20T00:00:00Z"
+          }
+        }
+      },
+      "annotations": [
+        {
+          "id": "624f3c06-6fbf-4eda-943d-b3b396524ba8",
+          "subject": {
+            "id": "a1c94c97-0371-493d-8e62-b5863b9f2f62",
+            "entityLabel": "Earth",
+            "entityValue": "Q2",
+            "entityCustom": false,
+            "entityCustomId": null,
+            "entityDatatype": null,
+            "annotationStart": 0,
+            "annotationEnd": 5,
+            "annotationRow": null,
+            "annotationCell": null,
+            "annotationValue": "Earth",
+            "annotationType": "text",
+            "annotationTag": "subject",
+            "elementIndex": 0
+          },
+          "predicate": {
+            "id": "2dda2797-5a74-4015-addd-ddc5f58997ee",
+            "entityLabel": "educated at",
+            "entityValue": "P69",
+            "entityCustom": false,
+            "entityCustomId": null,
+            "entityDatatype": null,
+            "annotationStart": 6,
+            "annotationEnd": 16,
+            "annotationRow": null,
+            "annotationCell": null,
+            "annotationValue": "studied at",
+            "annotationType": "text",
+            "annotationTag": "predicate",
+            "elementIndex": 0
+          },
+          "object": {
+            "id": "553b0665-2303-428c-ba31-b4abf69736d7",
+            "entityLabel": "ETH Zurich",
+            "entityValue": "Q11942",
+            "entityCustom": false,
+            "entityCustomId": null,
+            "entityDatatype": null,
+            "annotationStart": 17,
+            "annotationEnd": 27,
+            "annotationRow": null,
+            "annotationCell": null,
+            "annotationValue": "ETH Zurich",
+            "annotationType": "text",
+            "annotationTag": "object",
+            "elementIndex": 0
+          },
+          "qualifiers": []
+        }
+      ]
+    },
+    {
+      "id": "3428f5af-5e72-4247-b8c0-8159a0264952",
+      "title": "3 - Range violation (P69 educated at)",
+      "createdAt": "2026-08-20T11:25:14.314Z",
+      "updatedAt": "2026-08-20T11:25:35.408Z",
+      "completedAt": null,
+      "order": 3,
+      "raw": {
+        "_source": {
+          "extractionMetadata": {
+            "texts": [
+              {
+                "index": 0,
+                "value": "Albert Einstein studied at Earth.",
+                "endOffset": 33,
+                "startOffset": 0
+              }
+            ],
+            "tables": [],
+            "technology": "ManualDemo"
+          },
+          "identificationMetadata": {
+            "id": "1002",
+            "hash": "36f561561b004b11a062a0b0c674691d",
+            "title": "3 - Range violation (P69 educated at)",
+            "versionDate": "2026-08-20T00:00:00Z"
+          }
+        }
+      },
+      "annotations": [
+        {
+          "id": "58b3ca4c-432d-4c5a-bb3e-b3dccc96ad88",
+          "subject": {
+            "id": "af1fe6cb-ea47-4a4e-842f-f45da1abdeef",
+            "entityLabel": "Albert Einstein",
+            "entityValue": "Q937",
+            "entityCustom": false,
+            "entityCustomId": null,
+            "entityDatatype": null,
+            "annotationStart": 0,
+            "annotationEnd": 15,
+            "annotationRow": null,
+            "annotationCell": null,
+            "annotationValue": "Albert Einstein",
+            "annotationType": "text",
+            "annotationTag": "subject",
+            "elementIndex": 0
+          },
+          "predicate": {
+            "id": "4f5fb063-dc60-4484-9c80-7385af5e39fb",
+            "entityLabel": "educated at",
+            "entityValue": "P69",
+            "entityCustom": false,
+            "entityCustomId": null,
+            "entityDatatype": null,
+            "annotationStart": 16,
+            "annotationEnd": 26,
+            "annotationRow": null,
+            "annotationCell": null,
+            "annotationValue": "studied at",
+            "annotationType": "text",
+            "annotationTag": "predicate",
+            "elementIndex": 0
+          },
+          "object": {
+            "id": "d948071f-ef6b-477d-9df6-162cf24679de",
+            "entityLabel": "Earth",
+            "entityValue": "Q2",
+            "entityCustom": false,
+            "entityCustomId": null,
+            "entityDatatype": null,
+            "annotationStart": 27,
+            "annotationEnd": 32,
+            "annotationRow": null,
+            "annotationCell": null,
+            "annotationValue": "Earth",
+            "annotationType": "text",
+            "annotationTag": "object",
+            "elementIndex": 0
+          },
+          "qualifiers": []
+        }
+      ]
+    },
+    {
+      "id": "a2b13cbe-5cbc-41a0-b543-d3675fd2de37",
+      "title": "4 - Valid annotation (P106 occupation)",
+      "createdAt": "2026-08-20T11:25:14.314Z",
+      "updatedAt": "2026-08-20T11:25:35.410Z",
+      "completedAt": null,
+      "order": 4,
+      "raw": {
+        "_source": {
+          "extractionMetadata": {
+            "texts": [
+              {
+                "index": 0,
+                "value": "Albert Einstein was a physicist.",
+                "endOffset": 32,
+                "startOffset": 0
+              }
+            ],
+            "tables": [],
+            "technology": "ManualDemo"
+          },
+          "identificationMetadata": {
+            "id": "1003",
+            "hash": "b35aee8b59fa42e2bd69efe42bae41ff",
+            "title": "4 - Valid annotation (P106 occupation)",
+            "versionDate": "2026-08-20T00:00:00Z"
+          }
+        }
+      },
+      "annotations": [
+        {
+          "id": "ba5d4ebb-ef4e-4080-bbcb-27914b4aec2e",
+          "subject": {
+            "id": "e7ffa0c9-07be-4a64-afa8-11612690f818",
+            "entityLabel": "Albert Einstein",
+            "entityValue": "Q937",
+            "entityCustom": false,
+            "entityCustomId": null,
+            "entityDatatype": null,
+            "annotationStart": 0,
+            "annotationEnd": 15,
+            "annotationRow": null,
+            "annotationCell": null,
+            "annotationValue": "Albert Einstein",
+            "annotationType": "text",
+            "annotationTag": "subject",
+            "elementIndex": 0
+          },
+          "predicate": {
+            "id": "16cd1afe-e770-4bf6-b35b-1656bc94a278",
+            "entityLabel": "occupation",
+            "entityValue": "P106",
+            "entityCustom": false,
+            "entityCustomId": null,
+            "entityDatatype": null,
+            "annotationStart": 16,
+            "annotationEnd": 21,
+            "annotationRow": null,
+            "annotationCell": null,
+            "annotationValue": "was a",
+            "annotationType": "text",
+            "annotationTag": "predicate",
+            "elementIndex": 0
+          },
+          "object": {
+            "id": "be8097ca-14b3-4947-938b-3deb028e35df",
+            "entityLabel": "physicist",
+            "entityValue": "Q169470",
+            "entityCustom": false,
+            "entityCustomId": null,
+            "entityDatatype": null,
+            "annotationStart": 22,
+            "annotationEnd": 31,
+            "annotationRow": null,
+            "annotationCell": null,
+            "annotationValue": "physicist",
+            "annotationType": "text",
+            "annotationTag": "object",
+            "elementIndex": 0
+          },
+          "qualifiers": []
+        }
+      ]
+    },
+    {
+      "id": "335c77a1-c24d-4d4e-9ea4-2900efbc5b33",
+      "title": "5 - Domain and range violations (P19 place of birth)",
+      "createdAt": "2026-08-20T11:25:14.314Z",
+      "updatedAt": "2026-08-20T11:25:35.413Z",
+      "completedAt": null,
+      "order": 5,
+      "raw": {
+        "_source": {
+          "extractionMetadata": {
+            "texts": [
+              {
+                "index": 0,
+                "value": "Earth was born in a physicist.",
+                "endOffset": 30,
+                "startOffset": 0
+              }
+            ],
+            "tables": [],
+            "technology": "ManualDemo"
+          },
+          "identificationMetadata": {
+            "id": "1004",
+            "hash": "4cdf27bbc98642b48332244649c376b2",
+            "title": "5 - Domain and range violations (P19 place of birth)",
+            "versionDate": "2026-08-20T00:00:00Z"
+          }
+        }
+      },
+      "annotations": [
+        {
+          "id": "09f55c44-1287-4df8-8c1f-64419f832c54",
+          "subject": {
+            "id": "e956981d-9da8-4707-81fd-fba9425a994d",
+            "entityLabel": "Earth",
+            "entityValue": "Q2",
+            "entityCustom": false,
+            "entityCustomId": null,
+            "entityDatatype": null,
+            "annotationStart": 0,
+            "annotationEnd": 5,
+            "annotationRow": null,
+            "annotationCell": null,
+            "annotationValue": "Earth",
+            "annotationType": "text",
+            "annotationTag": "subject",
+            "elementIndex": 0
+          },
+          "predicate": {
+            "id": "200aeda8-48b7-4a2b-ae69-07d3a19cdf89",
+            "entityLabel": "place of birth",
+            "entityValue": "P19",
+            "entityCustom": false,
+            "entityCustomId": null,
+            "entityDatatype": null,
+            "annotationStart": 6,
+            "annotationEnd": 17,
+            "annotationRow": null,
+            "annotationCell": null,
+            "annotationValue": "was born in",
+            "annotationType": "text",
+            "annotationTag": "predicate",
+            "elementIndex": 0
+          },
+          "object": {
+            "id": "a9cd0d57-fab0-4db2-8286-83472def7888",
+            "entityLabel": "physicist",
+            "entityValue": "Q169470",
+            "entityCustom": false,
+            "entityCustomId": null,
+            "entityDatatype": null,
+            "annotationStart": 20,
+            "annotationEnd": 29,
+            "annotationRow": null,
+            "annotationCell": null,
+            "annotationValue": "physicist",
+            "annotationType": "text",
+            "annotationTag": "object",
+            "elementIndex": 0
+          },
+          "qualifiers": []
+        }
+      ]
+    },
+    {
+      "id": "c509d2a7-ebc6-4070-a895-7be20ac09c50",
+      "title": "6 - Literal object skips range check (P569 date of birth)",
+      "createdAt": "2026-08-20T11:25:14.315Z",
+      "updatedAt": "2026-08-20T11:25:35.415Z",
+      "completedAt": null,
+      "order": 6,
+      "raw": {
+        "_source": {
+          "extractionMetadata": {
+            "texts": [
+              {
+                "index": 0,
+                "value": "Albert Einstein was born on 1879-03-14.",
+                "endOffset": 39,
+                "startOffset": 0
+              }
+            ],
+            "tables": [],
+            "technology": "ManualDemo"
+          },
+          "identificationMetadata": {
+            "id": "1005",
+            "hash": "e59328faa4ba46cba2ce3a02b35be6fd",
+            "title": "6 - Literal object skips range check (P569 date of birth)",
+            "versionDate": "2026-08-20T00:00:00Z"
+          }
+        }
+      },
+      "annotations": [
+        {
+          "id": "6c00a323-de3a-4a61-a1c7-e32202c1d60c",
+          "subject": {
+            "id": "834c0e3a-b844-4f60-b63c-9b20160bf582",
+            "entityLabel": "Albert Einstein",
+            "entityValue": "Q937",
+            "entityCustom": false,
+            "entityCustomId": null,
+            "entityDatatype": null,
+            "annotationStart": 0,
+            "annotationEnd": 15,
+            "annotationRow": null,
+            "annotationCell": null,
+            "annotationValue": "Albert Einstein",
+            "annotationType": "text",
+            "annotationTag": "subject",
+            "elementIndex": 0
+          },
+          "predicate": {
+            "id": "07433445-3e99-4f8c-8143-eb352c99fc8f",
+            "entityLabel": "date of birth",
+            "entityValue": "P569",
+            "entityCustom": false,
+            "entityCustomId": null,
+            "entityDatatype": null,
+            "annotationStart": 16,
+            "annotationEnd": 27,
+            "annotationRow": null,
+            "annotationCell": null,
+            "annotationValue": "was born on",
+            "annotationType": "text",
+            "annotationTag": "predicate",
+            "elementIndex": 0
+          },
+          "object": {
+            "id": "a3f0d778-8a3b-4d8b-8a27-87e982741ead",
+            "entityLabel": null,
+            "entityValue": "1879-03-14",
+            "entityCustom": false,
+            "entityCustomId": null,
+            "entityDatatype": null,
+            "annotationStart": 28,
+            "annotationEnd": 38,
+            "annotationRow": null,
+            "annotationCell": null,
+            "annotationValue": "1879-03-14",
+            "annotationType": "text",
+            "annotationTag": "object",
+            "elementIndex": 0
+          },
+          "qualifiers": []
+        }
+      ]
+    },
+    {
+      "id": "965733c6-c11b-47c5-9f01-8a2778c1613b",
+      "title": "7 - Property with no applicable constraints (P18 image)",
+      "createdAt": "2026-08-20T11:25:14.315Z",
+      "updatedAt": "2026-08-20T11:25:35.416Z",
+      "completedAt": null,
+      "order": 7,
+      "raw": {
+        "_source": {
+          "extractionMetadata": {
+            "texts": [
+              {
+                "index": 0,
+                "value": "An image of Albert Einstein shows Earth.",
+                "endOffset": 40,
+                "startOffset": 0
+              }
+            ],
+            "tables": [],
+            "technology": "ManualDemo"
+          },
+          "identificationMetadata": {
+            "id": "1006",
+            "hash": "a225932988c045279d0586456904cad9",
+            "title": "7 - Property with no applicable constraints (P18 image)",
+            "versionDate": "2026-08-20T00:00:00Z"
+          }
+        }
+      },
+      "annotations": [
+        {
+          "id": "d83946b5-02c6-40f0-b375-068917feb147",
+          "subject": {
+            "id": "79184b37-22ed-4df5-8d23-1a3c60ac863f",
+            "entityLabel": "Albert Einstein",
+            "entityValue": "Q937",
+            "entityCustom": false,
+            "entityCustomId": null,
+            "entityDatatype": null,
+            "annotationStart": 12,
+            "annotationEnd": 27,
+            "annotationRow": null,
+            "annotationCell": null,
+            "annotationValue": "Albert Einstein",
+            "annotationType": "text",
+            "annotationTag": "subject",
+            "elementIndex": 0
+          },
+          "predicate": {
+            "id": "d1bf2548-b1c5-4bbc-81de-94b8f580942e",
+            "entityLabel": "image",
+            "entityValue": "P18",
+            "entityCustom": false,
+            "entityCustomId": null,
+            "entityDatatype": null,
+            "annotationStart": 28,
+            "annotationEnd": 33,
+            "annotationRow": null,
+            "annotationCell": null,
+            "annotationValue": "shows",
+            "annotationType": "text",
+            "annotationTag": "predicate",
+            "elementIndex": 0
+          },
+          "object": {
+            "id": "01098d6a-5be9-4832-9973-682dfa103411",
+            "entityLabel": "Earth",
+            "entityValue": "Q2",
+            "entityCustom": false,
+            "entityCustomId": null,
+            "entityDatatype": null,
+            "annotationStart": 34,
+            "annotationEnd": 39,
+            "annotationRow": null,
+            "annotationCell": null,
+            "annotationValue": "Earth",
+            "annotationType": "text",
+            "annotationTag": "object",
+            "elementIndex": 0
+          },
+          "qualifiers": []
+        }
+      ]
+    },
+    {
+      "id": "cb659f6c-dcfe-4415-8880-74a831753f38",
+      "title": "8 - Unverifiable entity (no instance-of data)",
+      "createdAt": "2026-08-20T11:25:14.315Z",
+      "updatedAt": "2026-08-20T11:25:35.418Z",
+      "completedAt": null,
+      "order": 8,
+      "raw": {
+        "_source": {
+          "extractionMetadata": {
+            "texts": [
+              {
+                "index": 0,
+                "value": "Rollout studied at ETH Zurich.",
+                "endOffset": 30,
+                "startOffset": 0
+              }
+            ],
+            "tables": [],
+            "technology": "ManualDemo"
+          },
+          "identificationMetadata": {
+            "id": "1007",
+            "hash": "cbbbed77857d4ced8d3eee67547b42df",
+            "title": "8 - Unverifiable entity (no instance-of data)",
+            "versionDate": "2026-08-20T00:00:00Z"
+          }
+        }
+      },
+      "annotations": [
+        {
+          "id": "949a753a-3d6e-40b2-b7e3-2f85affe9306",
+          "subject": {
+            "id": "ac7cf68f-2f4a-49e9-a57d-8c8365ce9c14",
+            "entityLabel": "Rollout",
+            "entityValue": "Q201693",
+            "entityCustom": false,
+            "entityCustomId": null,
+            "entityDatatype": null,
+            "annotationStart": 0,
+            "annotationEnd": 7,
+            "annotationRow": null,
+            "annotationCell": null,
+            "annotationValue": "Rollout",
+            "annotationType": "text",
+            "annotationTag": "subject",
+            "elementIndex": 0
+          },
+          "predicate": {
+            "id": "9ab19ce3-6889-4a31-b47f-f0ddd6d233d3",
+            "entityLabel": "educated at",
+            "entityValue": "P69",
+            "entityCustom": false,
+            "entityCustomId": null,
+            "entityDatatype": null,
+            "annotationStart": 8,
+            "annotationEnd": 18,
+            "annotationRow": null,
+            "annotationCell": null,
+            "annotationValue": "studied at",
+            "annotationType": "text",
+            "annotationTag": "predicate",
+            "elementIndex": 0
+          },
+          "object": {
+            "id": "3d2e5e06-cf52-481a-9260-0ef8acbec9af",
+            "entityLabel": "ETH Zurich",
+            "entityValue": "Q11942",
+            "entityCustom": false,
+            "entityCustomId": null,
+            "entityDatatype": null,
+            "annotationStart": 19,
+            "annotationEnd": 29,
+            "annotationRow": null,
+            "annotationCell": null,
+            "annotationValue": "ETH Zurich",
+            "annotationType": "text",
+            "annotationTag": "object",
+            "elementIndex": 0
+          },
+          "qualifiers": []
+        }
+      ]
+    },
+    {
+      "id": "0a9318fa-15a9-4986-8a5e-d53487fbaa1d",
+      "title": "9 - Non-Wikidata predicate is ignored",
+      "createdAt": "2026-08-20T11:25:14.315Z",
+      "updatedAt": "2026-08-20T11:45:34.860Z",
+      "completedAt": null,
+      "order": 9,
+      "raw": {
+        "_source": {
+          "extractionMetadata": {
+            "texts": [
+              {
+                "index": 0,
+                "value": "Albert Einstein collaborated with Emmy Noether.",
+                "endOffset": 47,
+                "startOffset": 0
+              }
+            ],
+            "tables": [],
+            "technology": "ManualDemo"
+          },
+          "identificationMetadata": {
+            "id": "1008",
+            "hash": "5033e3dbfa954c2a88e29f8841ae45eb",
+            "title": "9 - Non-Wikidata predicate is ignored",
+            "versionDate": "2026-08-20T00:00:00Z"
+          }
+        }
+      },
+      "annotations": [
+        {
+          "id": "58bc2ee4-1db1-413e-8961-d5a1017acd3a",
+          "subject": {
+            "id": "f706dc86-12e5-4452-9b8c-67273dddc264",
+            "entityLabel": "Albert Einstein",
+            "entityValue": "Q937",
+            "entityCustom": false,
+            "entityCustomId": null,
+            "entityDatatype": null,
+            "annotationStart": 0,
+            "annotationEnd": 15,
+            "annotationRow": null,
+            "annotationCell": null,
+            "annotationValue": "Albert Einstein",
+            "annotationType": "text",
+            "annotationTag": "subject",
+            "elementIndex": 0
+          },
+          "predicate": {
+            "id": "ed721149-6eff-4d96-ab70-c6be1051f718",
+            "entityLabel": "collaborated with",
+            "entityValue": "collaborated with",
+            "entityCustom": true,
+            "entityCustomId": "763a5fae-6c2b-49e5-9b79-e491b2c8e71b",
+            "entityDatatype": "string",
+            "annotationStart": 16,
+            "annotationEnd": 33,
+            "annotationRow": null,
+            "annotationCell": null,
+            "annotationValue": "collaborated with",
+            "annotationType": "text",
+            "annotationTag": "predicate",
+            "elementIndex": 0
+          },
+          "object": {
+            "id": "ac0ae0a2-532c-4cf1-9731-a2825b3ba0f3",
+            "entityLabel": "Emmy Noether",
+            "entityValue": "Q7099",
+            "entityCustom": false,
+            "entityCustomId": null,
+            "entityDatatype": null,
+            "annotationStart": 34,
+            "annotationEnd": 46,
+            "annotationRow": null,
+            "annotationCell": null,
+            "annotationValue": "Emmy Noether",
+            "annotationType": "text",
+            "annotationTag": "object",
+            "elementIndex": 0
+          },
+          "qualifiers": []
+        }
+      ]
+    }
+  ],
+  "customEntities": [
+    {
+      "id": "763a5fae-6c2b-49e5-9b79-e491b2c8e71b",
+      "corpusId": "ab54c9ed-08fc-4d89-b02c-d0ae2a96c6ee",
+      "label": "collaborated with",
+      "value": "collaborated with",
+      "datatype": "string",
+      "customType": "relation",
+      "createdAt": "2026-08-20T11:45:30.012Z",
+      "updatedAt": "2026-08-20T11:45:30.012Z"
+    }
+  ]
+}
