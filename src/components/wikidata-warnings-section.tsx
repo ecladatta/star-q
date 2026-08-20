@@ -3,11 +3,13 @@ import { AlertTriangleIcon, CheckCircle2Icon, ChevronRightIcon, Loader2Icon } fr
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { cn } from '@/lib/utils'
 import { WikidataWarningRow } from './wikidata-warning-row'
 
 type WikidataWarningsSectionProps = {
   warningsPromise: Promise<CorpusWarnings>
   groupByDocument?: boolean
+  compact?: boolean
 }
 
 type DocumentWarnings = {
@@ -46,11 +48,11 @@ function WarningsRows({ violations, unverifiable }: { violations: ConstraintChec
   return (
     <>
       {violations.map(check => (
-        <WikidataWarningRow key={`${check.annotationId}-${check.side}`} check={check} />
+        <WikidataWarningRow key={`${check.annotationId}-${check.side}-${check.qualifierId ?? ''}`} check={check} />
       ))}
       {unverifiable.map(check => (
         <WikidataWarningRow
-          key={`${check.annotationId}-${check.side}`}
+          key={`${check.annotationId}-${check.side}-${check.qualifierId ?? ''}`}
           check={check}
           muted
         />
@@ -59,7 +61,7 @@ function WarningsRows({ violations, unverifiable }: { violations: ConstraintChec
   )
 }
 
-function WikidataWarningsContent({ warnings, groupByDocument }: { warnings: CorpusWarnings, groupByDocument: boolean }) {
+function WikidataWarningsContent({ warnings, groupByDocument, compact }: { warnings: CorpusWarnings, groupByDocument: boolean, compact: boolean }) {
   const totalCount = warnings.violations.length + warnings.unverifiable.length
 
   if (totalCount === 0 && !warnings.unavailable) {
@@ -70,20 +72,22 @@ function WikidataWarningsContent({ warnings, groupByDocument }: { warnings: Corp
 
   return (
     <Collapsible defaultOpen={false}>
-      <Card className="mb-8">
+      <Card className={compact ? 'mb-6' : 'mb-8'}>
         <CollapsibleTrigger asChild>
-          <CardHeader className="group cursor-pointer select-none">
-            <CardTitle className="flex items-center gap-2">
+          <CardHeader className={cn('group cursor-pointer select-none', compact && 'py-3')}>
+            <CardTitle className={cn('flex items-center gap-2', compact && 'text-sm font-semibold')}>
               {warnings.unavailable || totalCount > 0
-                ? <AlertTriangleIcon className="size-5 text-amber-500" />
-                : <CheckCircle2Icon className="size-5 text-green-600" />}
+                ? <AlertTriangleIcon className={compact ? 'size-4 text-amber-500' : 'size-5 text-amber-500'} />
+                : <CheckCircle2Icon className={compact ? 'size-4 text-green-600' : 'size-5 text-green-600'} />}
               Warnings
               {totalCount > 0 && <Badge variant="secondary">{totalCount}</Badge>}
               <ChevronRightIcon className="ml-auto size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
             </CardTitle>
-            <CardDescription>
-              Domain and range coherence checks against Wikidata property constraints
-            </CardDescription>
+            {!compact && (
+              <CardDescription>
+                Domain and range coherence checks against Wikidata property constraints
+              </CardDescription>
+            )}
           </CardHeader>
         </CollapsibleTrigger>
         <CollapsibleContent>
@@ -111,18 +115,7 @@ function WikidataWarningsContent({ warnings, groupByDocument }: { warnings: Corp
                     </p>
                   )
                 : (
-                    <div className="space-y-4">
-                      {warnings.unverifiable.length > 0 && (
-                        <p className="text-xs text-muted-foreground">
-                          {warnings.unverifiable.length}
-                          {' '}
-                          annotation
-                          {warnings.unverifiable.length > 1 ? 's' : ''}
-                          {' '}
-                          could not be verified because the entity has no instance-of or
-                          subclass-of data.
-                        </p>
-                      )}
+                    <div className={compact ? 'space-y-3' : 'space-y-4'}>
                       {groupByDocument
                         ? (
                             documents.map(doc => (
@@ -154,12 +147,25 @@ function WikidataWarningsContent({ warnings, groupByDocument }: { warnings: Corp
   )
 }
 
-export async function WikidataWarningsSection({ warningsPromise, groupByDocument = true }: WikidataWarningsSectionProps) {
+export async function WikidataWarningsSection({ warningsPromise, groupByDocument = true, compact = false }: WikidataWarningsSectionProps) {
   const warnings = await warningsPromise
-  return <WikidataWarningsContent warnings={warnings} groupByDocument={groupByDocument} />
+  return <WikidataWarningsContent warnings={warnings} groupByDocument={groupByDocument} compact={compact} />
 }
 
-export function WikidataWarningsSkeleton() {
+export function WikidataWarningsSkeleton({ compact = false }: { compact?: boolean }) {
+  if (compact) {
+    return (
+      <Card className="mb-6">
+        <CardHeader className="py-3">
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <Loader2Icon className="size-4 animate-spin" />
+            Checking for Wikidata constraint problems...
+          </CardTitle>
+        </CardHeader>
+      </Card>
+    )
+  }
+
   return (
     <Card className="mb-8">
       <CardHeader>
