@@ -2,9 +2,12 @@ import type { ConstraintCheck } from '@/lib/wikidata-constraints'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import { CONSTRAINT_RELATION_LABELS } from '@/lib/wikidata-constraints'
+import { CONSTRAINT_RELATION_LABELS, WIKIDATA_ITEM_PATTERN, WIKIDATA_PROPERTY_PATTERN } from '@/lib/wikidata-constraints'
 
 function WikidataLink({ id, label }: { id: string, label: string }) {
+  if (!WIKIDATA_ITEM_PATTERN.test(id) && !WIKIDATA_PROPERTY_PATTERN.test(id)) {
+    return <span>{label}</span>
+  }
   const isProperty = id.startsWith('P')
   return (
     <Link
