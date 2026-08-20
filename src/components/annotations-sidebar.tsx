@@ -89,7 +89,6 @@ export function AnnotationsSidebar({
   const searchParams = useSearchParams()
 
   const annotationParam = searchParams.get('annotation')
-  const handledAnnotationParamRef = useRef<string | null>(null)
 
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
 
@@ -347,10 +346,10 @@ export function AnnotationsSidebar({
   }
 
   // Clicking toggles the annotation and records the result in the ?annotation= URL param so the
-  // link is shareable. The handled ref lets the deep-link effect below skip params we wrote here.
+  // link is shareable. The deep-link effect below never re-applies a param that already matches
+  // the current selection, so it won't fight this.
   const handleAnnotationClick = (annotation: DocumentAnnotation) => {
     const next = annotation.id === currentAnnotation?.id ? null : annotation.id
-    handledAnnotationParamRef.current = next
     onAnnotationClick(annotation)
     const params = new URLSearchParams(searchParams.toString())
     if (next) {
@@ -361,18 +360,21 @@ export function AnnotationsSidebar({
     router.replace(`${pathname}${params.toString() ? `?${params.toString()}` : ''}`, { scroll: false })
   }
 
-  // Latest-ref pattern so the deep-link effect reads fresh annotations/callback without re-running
-  // on unrelated renders (onAnnotationClick is recreated by the parent on every render).
+  // Latest-ref pattern so the deep-link effect reads fresh annotations/callback/selection without
+  // re-running on unrelated renders (onAnnotationClick is recreated by the parent on every render).
   const latestAnnotationsRef = useRef(annotations)
   latestAnnotationsRef.current = annotations
   const latestOnAnnotationClickRef = useRef(onAnnotationClick)
   latestOnAnnotationClickRef.current = onAnnotationClick
+  const latestCurrentAnnotationIdRef = useRef(currentAnnotation?.id ?? null)
+  latestCurrentAnnotationIdRef.current = currentAnnotation?.id ?? null
 
   // Select the annotation referenced by the ?annotation= URL param (deep links from analytics).
   // Depends only on the param so a still-stale deep-link param can't override an annotation the
-  // user just clicked.
+  // user just clicked. The selection guard also stops the URL-sync effect below from re-toggling
+  // an annotation that is already selected (which would close the editor).
   useEffect(() => {
-    if (!annotationParam || annotationParam === handledAnnotationParamRef.current) {
+    if (!annotationParam || annotationParam === latestCurrentAnnotationIdRef.current) {
       return
     }
 
@@ -381,9 +383,35 @@ export function AnnotationsSidebar({
       return
     }
 
-    handledAnnotationParamRef.current = annotationParam
     latestOnAnnotationClickRef.current(target)
   }, [annotationParam])
+
+  // Reflect selection changes made outside this component (editing via mention, closing the
+  // editor) in the ?annotation= URL param. Sidebar clicks already write the URL directly, so this
+  // only acts when the param differs from the selection. Backing off while the param is changing
+  // lets an incoming deep link apply before we rewrite the URL (the null sentinel also backs off on
+  // first run so a fresh deep link isn't clobbered).
+  const lastAnnotationParamRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (annotationParam !== lastAnnotationParamRef.current) {
+      lastAnnotationParamRef.current = annotationParam
+      return
+    }
+
+    const currentId = currentAnnotation?.id ?? null
+    if (annotationParam === currentId) {
+      return
+    }
+
+    const params = new URLSearchParams(searchParams.toString())
+    if (currentId) {
+      params.set('annotation', currentId)
+    } else {
+      params.delete('annotation')
+    }
+    router.replace(`${pathname}${params.toString() ? `?${params.toString()}` : ''}`, { scroll: false })
+  }, [annotationParam, currentAnnotation?.id, pathname, router, searchParams])
 
   // Auto-scroll to current annotation
   useEffect(() => {
