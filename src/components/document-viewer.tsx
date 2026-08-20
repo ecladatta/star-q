@@ -36,7 +36,7 @@ import { useAnnotationState } from '@/hooks/useAnnotationState'
 import { useDocumentElements } from '@/hooks/useDocumentElements'
 import { useSelectionHandlers } from '@/hooks/useSelectionState'
 import { getAnnotationComponents } from '@/lib/annotation-roles'
-import { isPredicateFilteringEnabled } from '@/lib/corpus-settings'
+import { isConstraintWarningsEnabled, isPredicateFilteringEnabled } from '@/lib/corpus-settings'
 import { annotationComponentsShareSegment, cn, isMac } from '@/lib/utils'
 import { AnnotationForm } from './annotation-form'
 import { AnnotationListPopover } from './annotation-list-popover'
@@ -479,6 +479,7 @@ export function DocumentViewer({
             isDeletingAnnotation={isDeletingAnnotation}
             corpusId={corpus.id}
             wikidataPredicateFiltering={isPredicateFilteringEnabled(corpus.settings)}
+            wikidataConstraintWarnings={isConstraintWarningsEnabled(corpus.settings)}
             removeQualifier={removeQualifier}
             assignSelectionToQualifier={assignSelectionToQualifier}
             updateQualifierEntity={updateQualifierEntity}
