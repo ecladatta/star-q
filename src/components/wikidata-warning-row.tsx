@@ -23,12 +23,14 @@ export function WikidataWarningRow({ check, muted }: { check: ConstraintCheck, m
     ?? CONSTRAINT_RELATION_LABELS['instance-or-subclass']
   const subjectText = check.subjectLabel ?? check.subjectValue
   const objectText = check.objectLabel ?? check.objectValue
+  const isQualifier = check.kind === 'qualifier'
+  const qualifierPredicateText = check.qualifierPredicateLabel ?? check.qualifierPredicateValue
 
   return (
     <div className={cn('rounded-md border p-3', muted && 'bg-muted/30')}>
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <Badge variant={muted ? 'secondary' : 'destructive'}>
-          {check.side === 'domain' ? 'Domain' : 'Range'}
+          {isQualifier ? 'Qualifier' : (check.side === 'domain' ? 'Domain' : 'Range')}
         </Badge>
         <span className="text-sm">
           <span className="font-medium">
@@ -42,6 +44,20 @@ export function WikidataWarningRow({ check, muted }: { check: ConstraintCheck, m
           <span className="font-medium">
             {objectText ? <WikidataLink id={check.objectValue ?? ''} label={objectText} /> : '—'}
           </span>
+          {isQualifier && check.qualifierPredicateValue && (
+            <>
+              <span className="text-muted-foreground"> · qualifier: </span>
+              <span className="font-medium">
+                <WikidataLink id={check.qualifierPredicateValue} label={qualifierPredicateText ?? ''} />
+              </span>
+              <span className="text-muted-foreground"> → </span>
+              <span className="font-medium">
+                {check.qualifierValueValue
+                  ? <WikidataLink id={check.qualifierValueValue} label={check.qualifierValueLabel ?? check.qualifierValueValue} />
+                  : '—'}
+              </span>
+            </>
+          )}
         </span>
         <Link
           href={`/document/${check.documentId}?annotation=${check.annotationId}`}
