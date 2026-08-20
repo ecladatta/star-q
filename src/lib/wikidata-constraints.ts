@@ -90,10 +90,28 @@ export type WarningAnnotationRow = {
   objectValue: string | null
 }
 
+export type WarningQualifierRow = {
+  annotationId: string
+  documentId: string
+  documentTitle: string
+  qualifierId: string
+  predicateLabel: string | null
+  predicateValue: string | null
+  subjectLabel: string | null
+  subjectValue: string | null
+  objectLabel: string | null
+  objectValue: string | null
+  qualifierPredicateLabel: string | null
+  qualifierPredicateValue: string | null
+  qualifierValueLabel: string | null
+  qualifierValueValue: string | null
+}
+
 export type AnnotationCheck = {
   annotationId: string
   documentId: string
   documentTitle: string
+  kind: 'statement' | 'qualifier'
   side: ConstraintSide
   predicateLabel: string
   predicateValue: string
@@ -104,6 +122,11 @@ export type AnnotationCheck = {
   itemValue: string
   itemLabel: string
   expectedClasses: ClassConstraint[]
+  qualifierId?: string
+  qualifierPredicateLabel?: string
+  qualifierPredicateValue?: string
+  qualifierValueLabel?: string
+  qualifierValueValue?: string
 }
 
 export type ConstraintCheck = Omit<AnnotationCheck, 'expectedClasses'> & {
@@ -143,6 +166,7 @@ export function buildConstraintChecks(
           annotationId: row.annotationId,
           documentId: row.documentId,
           documentTitle: row.documentTitle,
+          kind: 'statement',
           side,
           predicateLabel,
           predicateValue: row.predicateValue,
@@ -156,6 +180,51 @@ export function buildConstraintChecks(
         })
       }
     }
+  }
+
+  return checks
+}
+
+export function buildQualifierRangeChecks(
+  rows: WarningQualifierRow[],
+  constraintsByProperty: Map<string, PropertyConstraints>,
+): AnnotationCheck[] {
+  const checks: AnnotationCheck[] = []
+
+  for (const row of rows) {
+    if (!row.qualifierPredicateValue || !WIKIDATA_PROPERTY_PATTERN.test(row.qualifierPredicateValue)) {
+      continue
+    }
+    const constraints = constraintsByProperty.get(row.qualifierPredicateValue)
+    if (!constraints || constraints.range.length === 0) {
+      continue
+    }
+    const qualifierValue = row.qualifierValueValue
+    if (!qualifierValue || !WIKIDATA_ITEM_PATTERN.test(qualifierValue)) {
+      continue
+    }
+
+    checks.push({
+      annotationId: row.annotationId,
+      documentId: row.documentId,
+      documentTitle: row.documentTitle,
+      kind: 'qualifier',
+      side: 'range',
+      predicateLabel: row.predicateLabel ?? row.predicateValue ?? row.qualifierPredicateValue,
+      predicateValue: row.predicateValue ?? row.qualifierPredicateValue,
+      subjectLabel: row.subjectLabel,
+      subjectValue: row.subjectValue,
+      objectLabel: row.objectLabel,
+      objectValue: row.objectValue,
+      itemValue: qualifierValue,
+      itemLabel: row.qualifierValueLabel ?? qualifierValue,
+      expectedClasses: constraints.range,
+      qualifierId: row.qualifierId,
+      qualifierPredicateLabel: row.qualifierPredicateLabel ?? row.qualifierPredicateValue,
+      qualifierPredicateValue: row.qualifierPredicateValue,
+      qualifierValueLabel: row.qualifierValueLabel ?? qualifierValue,
+      qualifierValueValue: qualifierValue,
+    })
   }
 
   return checks

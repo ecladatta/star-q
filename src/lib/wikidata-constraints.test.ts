@@ -5,12 +5,14 @@ import type {
   MembershipSubject,
   PropertyConstraints,
   WarningAnnotationRow,
+  WarningQualifierRow,
   WikidataClaim,
   WikidataClaims,
 } from './wikidata-constraints'
 import { expect, it } from 'vitest'
 import {
   buildConstraintChecks,
+  buildQualifierRangeChecks,
   classifyCandidates,
   collectPairs,
   evaluateConstraintChecks,
@@ -66,6 +68,7 @@ function check(overrides: Partial<AnnotationCheck> = {}): AnnotationCheck {
     annotationId: 'a1',
     documentId: 'd1',
     documentTitle: 'Doc 1',
+    kind: 'statement',
     side: 'domain',
     predicateLabel: 'educated at',
     predicateValue: 'P69',
@@ -359,4 +362,72 @@ it('classifies predicate candidates across entity domain checks', () => {
   const result = classifyCandidates(memberships, memberPairs, itemsWithTypeData)
 
   expect(result).toEqual({ members: ['P1', 'P2'], unverifiable: [], filteredOut: [{ id: 'P3', sides: ['domain'] }] })
+})
+
+function qualifierRow(overrides: Partial<WarningQualifierRow> = {}): WarningQualifierRow {
+  return {
+    annotationId: 'a1',
+    documentId: 'd1',
+    documentTitle: 'Doc 1',
+    qualifierId: 'q1',
+    predicateLabel: 'educated at',
+    predicateValue: 'P69',
+    subjectLabel: 'Sigmund Freud',
+    subjectValue: 'Q68550',
+    objectLabel: 'University of Vienna',
+    objectValue: 'Q7099',
+    qualifierPredicateLabel: 'start time',
+    qualifierPredicateValue: 'P580',
+    qualifierValueLabel: '1900',
+    qualifierValueValue: 'Q1',
+    ...overrides,
+  }
+}
+
+it('builds a range check for a qualifier with a Q-valued qualifier value', () => {
+  const checks = buildQualifierRangeChecks(
+    [qualifierRow()],
+    new Map([['P580', { domain: [], range: [{ class: 'Q5', relation: 'instance-or-subclass' }] }]]),
+  )
+
+  expect(checks).toHaveLength(1)
+  expect(checks[0]).toMatchObject({
+    kind: 'qualifier',
+    side: 'range',
+    itemValue: 'Q1',
+    itemLabel: '1900',
+    expectedClasses: [{ class: 'Q5', relation: 'instance-or-subclass' }],
+    predicateValue: 'P69',
+    subjectValue: 'Q68550',
+    objectValue: 'Q7099',
+    qualifierId: 'q1',
+    qualifierPredicateValue: 'P580',
+    qualifierValueValue: 'Q1',
+  })
+})
+
+it('skips qualifiers whose predicate is not a Wikidata property', () => {
+  const checks = buildQualifierRangeChecks([qualifierRow({ qualifierPredicateValue: 'not-a-prop' })], new Map())
+  expect(checks).toEqual([])
+})
+
+it('skips qualifiers whose value is not a Wikidata item', () => {
+  const checks = buildQualifierRangeChecks(
+    [qualifierRow({ qualifierValueValue: 'literal' })],
+    new Map([['P580', { domain: [], range: [{ class: 'Q5', relation: 'instance' }] }]]),
+  )
+  expect(checks).toEqual([])
+})
+
+it('skips qualifiers whose predicate has no range constraint', () => {
+  const checks = buildQualifierRangeChecks(
+    [qualifierRow()],
+    new Map([['P580', { domain: [{ class: 'Q5', relation: 'instance' }], range: [] }]]),
+  )
+  expect(checks).toEqual([])
+})
+
+it('skips qualifiers whose predicate has no constraints at all', () => {
+  const checks = buildQualifierRangeChecks([qualifierRow()], new Map())
+  expect(checks).toEqual([])
 })
