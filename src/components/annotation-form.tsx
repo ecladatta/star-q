@@ -71,6 +71,7 @@ type AnnotationFormProps = {
   isDeletingAnnotation: boolean
   corpusId: string
   wikidataPredicateFiltering?: boolean
+  wikidataConstraintWarnings?: boolean
   removeQualifier: (qualifierId: string) => void
   assignSelectionToQualifier: (
     qualifierId: string,
@@ -146,6 +147,7 @@ export function AnnotationForm({
   isDeletingAnnotation,
   corpusId,
   wikidataPredicateFiltering = false,
+  wikidataConstraintWarnings = false,
   removeQualifier,
   assignSelectionToQualifier,
   updateQualifierEntity,
@@ -160,9 +162,12 @@ export function AnnotationForm({
   const predicateEntityValue = currentAnnotation?.predicate?.entityValue
   const predicateEntityLabel = currentAnnotation?.predicate?.entityLabel
   const [predicateConstraints, setPredicateConstraints] = useState<PropertyConstraints | null>(null)
+  const [qualifierPredicateConstraints, setQualifierPredicateConstraints] = useState<Map<string, PropertyConstraints> | null>(null)
+
+  const constraintsActive = wikidataPredicateFiltering || wikidataConstraintWarnings
 
   useEffect(() => {
-    if (!wikidataPredicateFiltering) {
+    if (!constraintsActive) {
       setPredicateConstraints(null)
       return
     }
@@ -187,7 +192,7 @@ export function AnnotationForm({
     return () => {
       cancelled = true
     }
-  }, [predicateEntityValue, wikidataPredicateFiltering])
+  }, [predicateEntityValue, constraintsActive])
 
   const subjectConstraintSide = predicateConstraints && predicateConstraints.domain.length > 0
     ? 'domain' as const
@@ -200,7 +205,7 @@ export function AnnotationForm({
   const objectEntity = currentAnnotation?.object
 
   const predicateEntityChecks = useMemo(() => {
-    if (!wikidataPredicateFiltering) {
+    if (!constraintsActive) {
       return null
     }
     const checks: Array<{ entityId: string, side: 'domain' | 'range', label: string }> = []
@@ -219,7 +224,7 @@ export function AnnotationForm({
       })
     }
     return checks.length > 0 ? checks : null
-  }, [subjectEntity, objectEntity, wikidataPredicateFiltering])
+  }, [subjectEntity, objectEntity, constraintsActive])
 
   const hasAnyTags = Boolean(subjectTag || predicateTag || objectTag)
   const hasAllTags = Boolean(subjectTag && predicateTag && objectTag)
@@ -227,6 +232,38 @@ export function AnnotationForm({
     () => currentAnnotation?.qualifiers ?? [],
     [currentAnnotation?.qualifiers],
   )
+  useEffect(() => {
+    if (!wikidataPredicateFiltering) {
+      setQualifierPredicateConstraints(null)
+      return
+    }
+    const qualifierPredicates = Array.from(new Set(
+      qualifiers
+        .map(qualifier => qualifier.predicate?.entityValue)
+        .filter((value): value is string => value != null && WIKIDATA_PROPERTY_PATTERN.test(value)),
+    ))
+    if (qualifierPredicates.length === 0) {
+      setQualifierPredicateConstraints(new Map())
+      return
+    }
+
+    let cancelled = false
+    fetchPropertyConstraints(qualifierPredicates)
+      .then(({ constraints }) => {
+        if (!cancelled) {
+          setQualifierPredicateConstraints(constraints)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setQualifierPredicateConstraints(new Map())
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [qualifiers, wikidataPredicateFiltering])
   // undefined auto-opens the first useful row; null means the user collapsed all qualifier editors.
   const [expandedQualifierId, setExpandedQualifierId] = useState<string | null | undefined
   >(undefined)
@@ -405,6 +442,14 @@ export function AnnotationForm({
     const role: AnnotationComponentRole
       = side === 'predicate' ? 'qualifier-predicate' : 'qualifier-value'
     const sideLabel = side === 'predicate' ? 'Predicate' : 'Value'
+    const qualifier = qualifiers.find(item => item.id === qualifierId)
+    const qualifierPredicateValue = qualifier?.predicate?.entityValue
+    const qualifierConstraints = qualifierPredicateValue
+      ? (qualifierPredicateConstraints?.get(qualifierPredicateValue) ?? null)
+      : null
+    const qualifierValueConstraintSide = side === 'value' && qualifierConstraints && qualifierConstraints.range.length > 0
+      ? 'range' as const
+      : null
     const canAssignSelection
       = hasActiveSelection && !annotationFormLoading && !isDeletingAnnotation
     const assignSelection = () => {
@@ -481,6 +526,10 @@ export function AnnotationForm({
               updateQualifierEntity(qualifierId, side, newValue)}
             text={component.annotationValue}
             corpusId={corpusId}
+            constraints={qualifierValueConstraintSide ? qualifierConstraints : null}
+            constraintSide={qualifierValueConstraintSide}
+            constraintPropertyLabel={qualifierConstraints ? (qualifier?.predicate?.entityLabel ?? qualifierPredicateValue) : undefined}
+            filteringEnabled={wikidataPredicateFiltering}
           />
         )}
       </div>
@@ -917,6 +966,7 @@ export function AnnotationForm({
                 constraints={subjectConstraintSide ? predicateConstraints : null}
                 constraintSide={subjectConstraintSide}
                 constraintPropertyLabel={predicateEntityLabel}
+                filteringEnabled={wikidataPredicateFiltering}
               />
             </div>
             <div>
@@ -971,6 +1021,7 @@ export function AnnotationForm({
                     text={currentAnnotation?.predicate?.annotationValue ?? ''}
                     corpusId={corpusId}
                     constraintEntityChecks={predicateEntityChecks}
+                    filteringEnabled={wikidataPredicateFiltering}
                   />
                 </div>
                 <Tooltip>
@@ -1034,6 +1085,7 @@ export function AnnotationForm({
                 constraints={objectConstraintSide ? predicateConstraints : null}
                 constraintSide={objectConstraintSide}
                 constraintPropertyLabel={predicateEntityLabel}
+                filteringEnabled={wikidataPredicateFiltering}
               />
             </div>
           </div>
