@@ -1,13 +1,13 @@
 'use server'
 import type { SQL } from 'drizzle-orm'
-import type { AnnotationCheck, ConstraintCheck, CorpusWarnings, WarningAnnotationRow } from '@/lib/wikidata-constraints'
+import type { AnnotationCheck, ConstraintCheck, CorpusWarnings, WarningAnnotationRow, WarningQualifierRow } from '@/lib/wikidata-constraints'
 import { and, eq, sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { db } from '@/db/drizzle'
-import { annotation, annotationComponent, corpus, document } from '@/db/schema'
+import { annotation, annotationComponent, annotationQualifier, corpus, document } from '@/db/schema'
 import { requireAuth } from '@/lib/auth-utils'
 import { isConstraintWarningsEnabled } from '@/lib/corpus-settings'
-import { buildConstraintChecks, collectPairs, evaluateConstraintChecks, WIKIDATA_PROPERTY_PATTERN } from '@/lib/wikidata-constraints'
+import { buildConstraintChecks, buildQualifierRangeChecks, collectPairs, evaluateConstraintChecks, WIKIDATA_PROPERTY_PATTERN } from '@/lib/wikidata-constraints'
 import { fetchEntityLabels, fetchItemsWithTypeData, fetchMembership, fetchPropertyConstraints } from '@/lib/wikidata-sparql'
 
 type WarningsComputation = {
@@ -27,12 +27,18 @@ function emptyWarnings(checkedAnnotations: number): CorpusWarnings {
   }
 }
 
-async function computeWarningsForRows(rows: WarningAnnotationRow[]): Promise<WarningsComputation> {
-  const predicates = Array.from(new Set(
-    rows
+async function computeWarningsForRows(
+  rows: WarningAnnotationRow[],
+  qualifierRows: WarningQualifierRow[],
+): Promise<WarningsComputation> {
+  const predicates = Array.from(new Set([
+    ...rows
       .map(row => row.predicateValue)
       .filter((value): value is string => value != null && WIKIDATA_PROPERTY_PATTERN.test(value)),
-  ))
+    ...qualifierRows
+      .map(row => row.qualifierPredicateValue)
+      .filter((value): value is string => value != null && WIKIDATA_PROPERTY_PATTERN.test(value)),
+  ]))
 
   if (predicates.length === 0) {
     return { violations: [], unverifiable: [], checkedProperties: 0, unavailable: false }
@@ -40,7 +46,10 @@ async function computeWarningsForRows(rows: WarningAnnotationRow[]): Promise<War
 
   try {
     const { constraints: constraintsByProperty, unavailable: fetchUnavailable } = await fetchPropertyConstraints(predicates)
-    const checks = buildConstraintChecks(rows, constraintsByProperty)
+    const checks = [
+      ...buildConstraintChecks(rows, constraintsByProperty),
+      ...buildQualifierRangeChecks(qualifierRows, constraintsByProperty),
+    ]
     const pairs = collectPairs(checks.map(check => ({ item: check.itemValue, side: check.side, classes: check.expectedClasses })))
     const items = Array.from(new Set(checks.map(check => check.itemValue)))
 
@@ -107,6 +116,43 @@ async function getWarningRows(condition: SQL): Promise<WarningAnnotationRow[]> {
     ))
 }
 
+async function getQualifierWarningRows(condition: SQL): Promise<WarningQualifierRow[]> {
+  const predicate = alias(annotationComponent, 'predicate')
+  const subject = alias(annotationComponent, 'subject')
+  const object = alias(annotationComponent, 'object')
+  const qualifierPredicate = alias(annotationComponent, 'qualifier_predicate')
+  const qualifierValue = alias(annotationComponent, 'qualifier_value')
+
+  return db.select({
+    annotationId: annotation.id,
+    documentId: annotation.documentId,
+    documentTitle: document.title,
+    qualifierId: annotationQualifier.id,
+    predicateLabel: predicate.entityLabel,
+    predicateValue: predicate.entityValue,
+    subjectLabel: subject.entityLabel,
+    subjectValue: subject.entityValue,
+    objectLabel: object.entityLabel,
+    objectValue: object.entityValue,
+    qualifierPredicateLabel: qualifierPredicate.entityLabel,
+    qualifierPredicateValue: qualifierPredicate.entityValue,
+    qualifierValueLabel: qualifierValue.entityLabel,
+    qualifierValueValue: qualifierValue.entityValue,
+  })
+    .from(annotation)
+    .innerJoin(annotationQualifier, eq(annotationQualifier.annotationId, annotation.id))
+    .innerJoin(predicate, eq(predicate.id, annotation.predicateId))
+    .innerJoin(subject, eq(subject.id, annotation.subjectId))
+    .innerJoin(object, eq(object.id, annotation.objectId))
+    .innerJoin(qualifierPredicate, eq(qualifierPredicate.id, annotationQualifier.predicateId))
+    .innerJoin(qualifierValue, eq(qualifierValue.id, annotationQualifier.valueId))
+    .innerJoin(document, eq(document.id, annotation.documentId))
+    .where(and(
+      condition,
+      sql`${qualifierPredicate.entityValue} ~ '^P[0-9]+$'`,
+    ))
+}
+
 export async function getCorpusWarnings(corpusId: string): Promise<CorpusWarnings> {
   await requireAuth()
 
@@ -120,7 +166,8 @@ export async function getCorpusWarnings(corpusId: string): Promise<CorpusWarning
   }
 
   const rows = await getWarningRows(eq(document.corpusId, corpusId))
-  const { violations, unverifiable, checkedProperties, unavailable } = await computeWarningsForRows(rows)
+  const qualifierRows = await getQualifierWarningRows(eq(document.corpusId, corpusId))
+  const { violations, unverifiable, checkedProperties, unavailable } = await computeWarningsForRows(rows, qualifierRows)
 
   return {
     violations,
@@ -152,7 +199,8 @@ export async function getDocumentWarnings(documentId: string): Promise<CorpusWar
   }
 
   const rows = await getWarningRows(eq(annotation.documentId, documentId))
-  const { violations, unverifiable, checkedProperties, unavailable } = await computeWarningsForRows(rows)
+  const qualifierRows = await getQualifierWarningRows(eq(annotation.documentId, documentId))
+  const { violations, unverifiable, checkedProperties, unavailable } = await computeWarningsForRows(rows, qualifierRows)
 
   return {
     violations,
