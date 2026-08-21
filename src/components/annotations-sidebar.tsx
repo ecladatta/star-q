@@ -343,12 +343,6 @@ export function AnnotationsSidebar({
     onBatchDelete()
   }
 
-  // Clicking selects the annotation and lets the parent record the selection in the ?annotation=
-  // URL param, so the link is shareable. Selection handling lives in the parent (document-viewer).
-  const handleAnnotationClick = (annotation: DocumentAnnotation) => {
-    onAnnotationClick(annotation)
-  }
-
   // Auto-scroll to current annotation
   useEffect(() => {
     if (!currentAnnotation?.id)
@@ -718,7 +712,7 @@ export function AnnotationsSidebar({
                                     ? 'border-blue-500 bg-blue-50 shadow-md ring-2 ring-blue-500/20'
                                     : 'border-border bg-card hover:border-blue-300 hover:shadow-xs'
                                 }`}
-                                onClick={() => handleAnnotationClick(ann)}
+                                onClick={() => onAnnotationClick(ann)}
                               >
                                 <div className="mb-2 flex items-center gap-2">
                                   {annotationType === 'joint' && (
