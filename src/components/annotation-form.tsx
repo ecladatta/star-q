@@ -166,21 +166,22 @@ export function AnnotationForm({
 
   const constraintsActive = wikidataPredicateFiltering || wikidataConstraintWarnings
 
+  const predicateConstraintsEligible = Boolean(
+    constraintsActive
+    && predicateEntityValue
+    && WIKIDATA_PROPERTY_PATTERN.test(predicateEntityValue),
+  )
+
   useEffect(() => {
-    if (!constraintsActive) {
-      setPredicateConstraints(null)
-      return
-    }
-    if (!predicateEntityValue || !WIKIDATA_PROPERTY_PATTERN.test(predicateEntityValue)) {
-      setPredicateConstraints(null)
+    if (!predicateConstraintsEligible) {
       return
     }
 
     let cancelled = false
-    fetchPropertyConstraints([predicateEntityValue])
+    fetchPropertyConstraints([predicateEntityValue!])
       .then(({ constraints }) => {
         if (!cancelled) {
-          setPredicateConstraints(constraints.get(predicateEntityValue) ?? null)
+          setPredicateConstraints(constraints.get(predicateEntityValue!) ?? null)
         }
       })
       .catch(() => {
@@ -192,12 +193,13 @@ export function AnnotationForm({
     return () => {
       cancelled = true
     }
-  }, [predicateEntityValue, constraintsActive])
+  }, [predicateEntityValue, constraintsActive, predicateConstraintsEligible])
 
-  const subjectConstraintSide = predicateConstraints && predicateConstraints.domain.length > 0
+  const effectivePredicateConstraints = predicateConstraintsEligible ? predicateConstraints : null
+  const subjectConstraintSide = effectivePredicateConstraints && effectivePredicateConstraints.domain.length > 0
     ? 'domain' as const
     : null
-  const objectConstraintSide = predicateConstraints && predicateConstraints.range.length > 0
+  const objectConstraintSide = effectivePredicateConstraints && effectivePredicateConstraints.range.length > 0
     ? 'range' as const
     : null
 
@@ -232,18 +234,15 @@ export function AnnotationForm({
     () => currentAnnotation?.qualifiers ?? [],
     [currentAnnotation?.qualifiers],
   )
+  const qualifierPredicates = useMemo(() => Array.from(new Set(
+    qualifiers
+      .map(qualifier => qualifier.predicate?.entityValue)
+      .filter((value): value is string => value != null && WIKIDATA_PROPERTY_PATTERN.test(value)),
+  )), [qualifiers])
+  const qualifierPredicatesEligible = Boolean(wikidataPredicateFiltering && qualifierPredicates.length > 0)
+
   useEffect(() => {
-    if (!wikidataPredicateFiltering) {
-      setQualifierPredicateConstraints(null)
-      return
-    }
-    const qualifierPredicates = Array.from(new Set(
-      qualifiers
-        .map(qualifier => qualifier.predicate?.entityValue)
-        .filter((value): value is string => value != null && WIKIDATA_PROPERTY_PATTERN.test(value)),
-    ))
-    if (qualifierPredicates.length === 0) {
-      setQualifierPredicateConstraints(new Map())
+    if (!qualifierPredicatesEligible) {
       return
     }
 
@@ -263,7 +262,11 @@ export function AnnotationForm({
     return () => {
       cancelled = true
     }
-  }, [qualifiers, wikidataPredicateFiltering])
+  }, [qualifierPredicates, wikidataPredicateFiltering, qualifierPredicatesEligible])
+
+  const effectiveQualifierPredicateConstraints = qualifierPredicatesEligible
+    ? (qualifierPredicateConstraints ?? new Map())
+    : null
   // undefined auto-opens the first useful row; null means the user collapsed all qualifier editors.
   const [expandedQualifierId, setExpandedQualifierId] = useState<string | null | undefined
   >(undefined)
@@ -445,7 +448,7 @@ export function AnnotationForm({
     const qualifier = qualifiers.find(item => item.id === qualifierId)
     const qualifierPredicateValue = qualifier?.predicate?.entityValue
     const qualifierConstraints = qualifierPredicateValue
-      ? (qualifierPredicateConstraints?.get(qualifierPredicateValue) ?? null)
+      ? (effectiveQualifierPredicateConstraints?.get(qualifierPredicateValue) ?? null)
       : null
     const qualifierValueConstraintSide = side === 'value' && qualifierConstraints && qualifierConstraints.range.length > 0
       ? 'range' as const
@@ -963,7 +966,7 @@ export function AnnotationForm({
                   handleEntityChange('subject', newValue)}
                 text={currentAnnotation?.subject?.annotationValue ?? ''}
                 corpusId={corpusId}
-                constraints={subjectConstraintSide ? predicateConstraints : null}
+                constraints={subjectConstraintSide ? effectivePredicateConstraints : null}
                 constraintSide={subjectConstraintSide}
                 constraintPropertyLabel={predicateEntityLabel}
                 filteringEnabled={wikidataPredicateFiltering}
@@ -1082,7 +1085,7 @@ export function AnnotationForm({
                   handleEntityChange('object', newValue)}
                 text={currentAnnotation?.object?.annotationValue ?? ''}
                 corpusId={corpusId}
-                constraints={objectConstraintSide ? predicateConstraints : null}
+                constraints={objectConstraintSide ? effectivePredicateConstraints : null}
                 constraintSide={objectConstraintSide}
                 constraintPropertyLabel={predicateEntityLabel}
                 filteringEnabled={wikidataPredicateFiltering}

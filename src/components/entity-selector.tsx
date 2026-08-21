@@ -374,14 +374,21 @@ export function EntitySelector({
       : []),
   ])), [searchResults, value, candidatePattern])
 
+  const hasEntityChecks = Boolean(constraintEntityChecks && constraintEntityChecks.length > 0)
+  const hasPropertyConstraints = Boolean(constraints && constraintSide)
+  const classificationEligible = hasEntityChecks || hasPropertyConstraints
+
   const activeClassification = useMemo(() => {
+    if (!classificationEligible) {
+      return null
+    }
     if (!classification) {
       return null
     }
     const sameCandidateSet = classifiedCandidates.length === currentCandidates.length
       && classifiedCandidates.every((id, index) => id === currentCandidates[index])
     return sameCandidateSet ? classification : null
-  }, [classification, classifiedCandidates, currentCandidates])
+  }, [classification, classifiedCandidates, currentCandidates, classificationEligible])
 
   useEffect(() => {
     if (text && !value?.value) {
@@ -406,19 +413,7 @@ export function EntitySelector({
 
   // Classify candidates against Wikidata domain/range constraints
   useEffect(() => {
-    const hasEntityChecks = Boolean(constraintEntityChecks && constraintEntityChecks.length > 0)
-    const hasPropertyConstraints = Boolean(constraints && constraintSide)
-    if (!hasEntityChecks && !hasPropertyConstraints) {
-      setClassification(null)
-      setClassifiedCandidates([])
-      setShowAllResults(false)
-      return
-    }
-
-    if (currentCandidates.length === 0) {
-      setClassification(null)
-      setClassifiedCandidates([])
-      setShowAllResults(false)
+    if (!classificationEligible || currentCandidates.length === 0) {
       return
     }
 
@@ -445,7 +440,7 @@ export function EntitySelector({
     return () => {
       cancelled = true
     }
-  }, [currentCandidates, constraints, constraintSide, constraintEntityChecks])
+  }, [currentCandidates, constraints, constraintSide, constraintEntityChecks, classificationEligible, hasEntityChecks])
 
   const handleSearch = (term: string) => {
     if (searchTimerRef.current) {
