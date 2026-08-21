@@ -33,6 +33,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useAnnotationState } from '@/hooks/useAnnotationState'
+import { useAnnotationUrlSync } from '@/hooks/useAnnotationUrlSync'
 import { useDocumentElements } from '@/hooks/useDocumentElements'
 import { useSelectionHandlers } from '@/hooks/useSelectionState'
 import { getAnnotationComponents } from '@/lib/annotation-roles'
@@ -188,12 +189,7 @@ export function DocumentViewer({
     })
   }
 
-  const handleAnnotationClick = (annotation: DocumentAnnotation) => {
-    if (annotation.id === currentAnnotation?.id) {
-      setCurrentAnnotation(null)
-      return
-    }
-    setCurrentAnnotation(annotation)
+  const scrollToAnnotation = (annotation: DocumentAnnotation) => {
     const element = window.document.getElementById(
       `element-${annotation.subject.elementIndex}`,
     )
@@ -201,6 +197,20 @@ export function DocumentViewer({
       element.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }
   }
+
+  const { openAnnotation, toggleAnnotation } = useAnnotationUrlSync({
+    annotations: documentAnnotations,
+    currentAnnotationId: currentAnnotation?.id ?? null,
+    onOpen: (annotation, scroll = true) => {
+      setCurrentAnnotation(annotation)
+      if (scroll) {
+        scrollToAnnotation(annotation)
+      }
+    },
+    onClose: () => setCurrentAnnotation(null),
+  })
+
+  const handleAnnotationClick = toggleAnnotation
 
   const handleSaveAnnotation = async () => {
     if (!document || !currentAnnotation)
@@ -212,7 +222,7 @@ export function DocumentViewer({
   }
 
   const handleEditAnnotation = (annotation: DocumentAnnotation) => {
-    setCurrentAnnotation(annotation)
+    openAnnotation(annotation, false)
     popover.hidePopover()
   }
 

@@ -88,8 +88,6 @@ export function AnnotationsSidebar({
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
-  const annotationParam = searchParams.get('annotation')
-
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
 
   // Initialize state from URL params
@@ -345,73 +343,11 @@ export function AnnotationsSidebar({
     onBatchDelete()
   }
 
-  // Clicking toggles the annotation and records the result in the ?annotation= URL param so the
-  // link is shareable. The deep-link effect below never re-applies a param that already matches
-  // the current selection, so it won't fight this.
+  // Clicking selects the annotation and lets the parent record the selection in the ?annotation=
+  // URL param, so the link is shareable. Selection handling lives in the parent (document-viewer).
   const handleAnnotationClick = (annotation: DocumentAnnotation) => {
-    const next = annotation.id === currentAnnotation?.id ? null : annotation.id
     onAnnotationClick(annotation)
-    const params = new URLSearchParams(searchParams.toString())
-    if (next) {
-      params.set('annotation', next)
-    } else {
-      params.delete('annotation')
-    }
-    router.replace(`${pathname}${params.toString() ? `?${params.toString()}` : ''}`, { scroll: false })
   }
-
-  // Latest-ref pattern so the deep-link effect reads fresh annotations/callback/selection without
-  // re-running on unrelated renders (onAnnotationClick is recreated by the parent on every render).
-  const latestAnnotationsRef = useRef(annotations)
-  latestAnnotationsRef.current = annotations
-  const latestOnAnnotationClickRef = useRef(onAnnotationClick)
-  latestOnAnnotationClickRef.current = onAnnotationClick
-  const latestCurrentAnnotationIdRef = useRef(currentAnnotation?.id ?? null)
-  latestCurrentAnnotationIdRef.current = currentAnnotation?.id ?? null
-
-  // Select the annotation referenced by the ?annotation= URL param (deep links from analytics).
-  // Depends only on the param so a still-stale deep-link param can't override an annotation the
-  // user just clicked. The selection guard also stops the URL-sync effect below from re-toggling
-  // an annotation that is already selected (which would close the editor).
-  useEffect(() => {
-    if (!annotationParam || annotationParam === latestCurrentAnnotationIdRef.current) {
-      return
-    }
-
-    const target = latestAnnotationsRef.current.find(annotation => annotation.id === annotationParam)
-    if (!target) {
-      return
-    }
-
-    latestOnAnnotationClickRef.current(target)
-  }, [annotationParam])
-
-  // Reflect selection changes made outside this component (editing via mention, closing the
-  // editor) in the ?annotation= URL param. Sidebar clicks already write the URL directly, so this
-  // only acts when the param differs from the selection. Backing off while the param is changing
-  // lets an incoming deep link apply before we rewrite the URL (the null sentinel also backs off on
-  // first run so a fresh deep link isn't clobbered).
-  const lastAnnotationParamRef = useRef<string | null>(null)
-
-  useEffect(() => {
-    if (annotationParam !== lastAnnotationParamRef.current) {
-      lastAnnotationParamRef.current = annotationParam
-      return
-    }
-
-    const currentId = currentAnnotation?.id ?? null
-    if (annotationParam === currentId) {
-      return
-    }
-
-    const params = new URLSearchParams(searchParams.toString())
-    if (currentId) {
-      params.set('annotation', currentId)
-    } else {
-      params.delete('annotation')
-    }
-    router.replace(`${pathname}${params.toString() ? `?${params.toString()}` : ''}`, { scroll: false })
-  }, [annotationParam, currentAnnotation?.id, pathname, router, searchParams])
 
   // Auto-scroll to current annotation
   useEffect(() => {
@@ -459,7 +395,7 @@ export function AnnotationsSidebar({
 
       return () => cancelAnimationFrame(frame)
     }
-  }, [currentAnnotation?.id, annotationParam, filteredAndSortedAnnotations])
+  }, [currentAnnotation?.id, filteredAndSortedAnnotations])
 
   if (annotations.length === 0) {
     return null
