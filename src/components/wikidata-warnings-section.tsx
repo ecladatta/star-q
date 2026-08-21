@@ -79,7 +79,7 @@ function WikidataWarningsContent({ warnings, groupByDocument, compact }: { warni
               {warnings.unavailable || totalCount > 0
                 ? <AlertTriangleIcon className={compact ? 'size-4 text-amber-500' : 'size-5 text-amber-500'} />
                 : <CheckCircle2Icon className={compact ? 'size-4 text-green-600' : 'size-5 text-green-600'} />}
-              Warnings
+              Wikidata Constraints Warnings
               {totalCount > 0 && <Badge variant="secondary">{totalCount}</Badge>}
               <ChevronRightIcon className="ml-auto size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
             </CardTitle>
@@ -171,7 +171,7 @@ export function WikidataWarningsSkeleton({ compact = false }: { compact?: boolea
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <AlertTriangleIcon className="size-5 text-amber-500" />
-          Warnings
+          Wikidata Constraints Warnings
         </CardTitle>
         <CardDescription>
           Domain and range coherence checks against Wikidata property constraints
