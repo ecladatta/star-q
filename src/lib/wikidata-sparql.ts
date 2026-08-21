@@ -12,6 +12,7 @@ import WBK from 'wikibase-sdk'
 import {
   classifyCandidates,
   collectPairs,
+  membershipKey,
   parsePropertyConstraints,
   WIKIDATA_ITEM_PATTERN,
   WIKIDATA_PROPERTY_PATTERN,
@@ -145,7 +146,7 @@ export async function fetchMembership(pairs: MembershipTriple[]): Promise<Set<st
 
   const byRelation = new Map<ConstraintRelation, Array<[string, string]>>()
   for (const [item, cls, relation] of pairs) {
-    const key = `${item}|${cls}|${relation}`
+    const key = membershipKey(item, cls, relation)
     const cached = membershipCache.get(key)
     if (cached === true) {
       members.add(key)
@@ -180,13 +181,13 @@ export async function fetchMembership(pairs: MembershipTriple[]): Promise<Set<st
       const item = entityIdFromValue(binding.item.value)
       const cls = entityIdFromValue(binding.class.value)
       if (item && cls) {
-        const key = `${item}|${cls}|${relation}`
+        const key = membershipKey(item, cls, relation)
         members.add(key)
         membershipCache.set(key, true)
       }
     }
     for (const [item, cls] of chunk) {
-      const key = `${item}|${cls}|${relation}`
+      const key = membershipKey(item, cls, relation)
       membershipCache.set(key, members.has(key))
     }
   }

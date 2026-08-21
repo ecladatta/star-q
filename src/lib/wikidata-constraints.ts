@@ -232,6 +232,10 @@ export function buildQualifierRangeChecks(
 
 export type MembershipTriple = [item: string, classId: string, relation: ConstraintRelation]
 
+export function membershipKey(item: string, classId: string, relation: ConstraintRelation): string {
+  return JSON.stringify([item, classId, relation])
+}
+
 export type ConstraintCheckResult = {
   violations: AnnotationCheck[]
   unverifiable: AnnotationCheck[]
@@ -247,7 +251,7 @@ export function evaluateConstraintChecks(
 
   for (const check of checks) {
     const isMember = check.expectedClasses.some(({ class: cls, relation }) =>
-      memberPairs.has(`${check.itemValue}|${cls}|${relation}`))
+      memberPairs.has(membershipKey(check.itemValue, cls, relation)))
     if (isMember) {
       continue
     }
@@ -292,10 +296,10 @@ export function collectPairs(subjects: MembershipSubject[]): MembershipTriple[] 
   const pairs = new Set<string>()
   for (const { item, classes } of subjects) {
     for (const { class: cls, relation } of classes) {
-      pairs.add(`${item}|${cls}|${relation}`)
+      pairs.add(membershipKey(item, cls, relation))
     }
   }
-  return Array.from(pairs, pair => pair.split('|') as MembershipTriple)
+  return Array.from(pairs, pair => JSON.parse(pair) as MembershipTriple)
 }
 
 export function classifyCandidates(
@@ -315,7 +319,7 @@ export function classifyCandidates(
         continue
       }
       const isMember = classes.some(({ class: cls, relation }) =>
-        memberPairs.has(`${item}|${cls}|${relation}`))
+        memberPairs.has(membershipKey(item, cls, relation)))
       if (isMember) {
         continue
       }

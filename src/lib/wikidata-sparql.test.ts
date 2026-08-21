@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { membershipKey } from './wikidata-constraints'
 import {
   classifyPredicateCandidatesViaWikidata,
   fetchEntityLabels,
@@ -36,14 +37,14 @@ describe('wikidata sparql caching', () => {
       ['Q1', 'Q5', 'instance-or-subclass'],
       ['Q2', 'Q5', 'instance-or-subclass'],
     ])
-    expect(first).toEqual(new Set(['Q1|Q5|instance-or-subclass']))
+    expect(first).toEqual(new Set([membershipKey('Q1', 'Q5', 'instance-or-subclass')]))
     expect(fetchMock).toHaveBeenCalledTimes(1)
 
     const second = await fetchMembership([
       ['Q1', 'Q5', 'instance-or-subclass'],
       ['Q2', 'Q5', 'instance-or-subclass'],
     ])
-    expect(second).toEqual(new Set(['Q1|Q5|instance-or-subclass']))
+    expect(second).toEqual(new Set([membershipKey('Q1', 'Q5', 'instance-or-subclass')]))
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
@@ -67,7 +68,10 @@ describe('wikidata sparql caching', () => {
       ['Q2', 'Q9', 'subclass'],
     ])
 
-    expect(result).toEqual(new Set(['Q1|Q5|instance', 'Q2|Q9|subclass']))
+    expect(result).toEqual(new Set([
+      membershipKey('Q1', 'Q5', 'instance'),
+      membershipKey('Q2', 'Q9', 'subclass'),
+    ]))
     expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 

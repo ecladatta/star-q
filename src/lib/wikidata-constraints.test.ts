@@ -16,6 +16,7 @@ import {
   classifyCandidates,
   collectPairs,
   evaluateConstraintChecks,
+  membershipKey,
   parsePropertyConstraints,
 } from './wikidata-constraints'
 
@@ -209,7 +210,7 @@ it('classifies members, violations, and unverifiable checks', () => {
     check({ annotationId: 'unverifiable', itemValue: 'Q3' }),
   ]
 
-  const memberPairs = new Set(['Q1|Q5|instance-or-subclass'])
+  const memberPairs = new Set([membershipKey('Q1', 'Q5', 'instance-or-subclass')])
   const itemsWithTypeData = new Set(['Q1', 'Q2'])
 
   const result = evaluateConstraintChecks(checks, memberPairs, itemsWithTypeData)
@@ -227,7 +228,7 @@ it('does not satisfy an instance constraint with subclass-only membership', () =
 
   const result = evaluateConstraintChecks(
     checks,
-    new Set(['Q1|Q5|subclass']),
+    new Set([membershipKey('Q1', 'Q5', 'subclass')]),
     new Set(['Q1']),
   )
 
@@ -244,7 +245,7 @@ it('satisfies an instance-or-subclass constraint with matching membership', () =
 
   const result = evaluateConstraintChecks(
     checks,
-    new Set(['Q1|Q5|instance-or-subclass']),
+    new Set([membershipKey('Q1', 'Q5', 'instance-or-subclass')]),
     new Set(['Q1']),
   )
 
@@ -278,7 +279,7 @@ it('classifies entity candidates into members, unverifiable, and filtered out', 
     candidate,
     subjects: [{ item: candidate, side: 'domain', classes: constraints().domain }],
   }))
-  const memberPairs = new Set(['Q1|Q5|instance-or-subclass'])
+  const memberPairs = new Set([membershipKey('Q1', 'Q5', 'instance-or-subclass')])
   const itemsWithTypeData = new Set(['Q1', 'Q2'])
 
   const result = classifyCandidates(memberships, memberPairs, itemsWithTypeData)
@@ -320,7 +321,7 @@ it('requires every subject to pass (intersection semantics)', () => {
       { item: 'Q2', side: 'range', classes: [{ class: 'Q9', relation: 'instance' }] },
     ],
   }]
-  const memberPairs = new Set(['Q1|Q5|instance'])
+  const memberPairs = new Set([membershipKey('Q1', 'Q5', 'instance')])
   const itemsWithTypeData = new Set(['Q1', 'Q2'])
 
   const result = classifyCandidates(memberships, memberPairs, itemsWithTypeData)
@@ -333,7 +334,7 @@ it('filters out a candidate whose subject has a type but no matching membership'
     candidate: 'P3',
     subjects: [{ item: 'Q1', side: 'domain', classes: [{ class: 'Q9', relation: 'instance' }] }],
   }]
-  const memberPairs = new Set(['Q1|Q5|instance-or-subclass'])
+  const memberPairs = new Set([membershipKey('Q1', 'Q5', 'instance-or-subclass')])
   const itemsWithTypeData = new Set(['Q1'])
 
   const result = classifyCandidates(memberships, memberPairs, itemsWithTypeData)
@@ -356,7 +357,7 @@ it('classifies predicate candidates across entity domain checks', () => {
       classes: constraintsByProperty.get(candidate)?.[check.side] ?? [],
     })),
   }))
-  const memberPairs = new Set(['Q1|Q5|instance-or-subclass'])
+  const memberPairs = new Set([membershipKey('Q1', 'Q5', 'instance-or-subclass')])
   const itemsWithTypeData = new Set(['Q1'])
 
   const result = classifyCandidates(memberships, memberPairs, itemsWithTypeData)
