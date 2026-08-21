@@ -7,7 +7,7 @@ import { revalidatePath } from 'next/cache'
 import { db } from '@/db/drizzle'
 import { annotation, annotationComponent, annotationQualifier, corpus, corpusCustomEntity, document } from '@/db/schema'
 import { requireAuth } from '@/lib/auth-utils'
-import { mergeCorpusSettings } from '@/lib/corpus-settings'
+import { mergeCorpusSettings, sanitizeCorpusSettingsPatch } from '@/lib/corpus-settings'
 
 export type DocumentMetadata = Omit<Document, 'raw'> & { annotationsCount: number }
 
@@ -278,7 +278,7 @@ export async function updateCorpusSettings(corpusId: string, patch: Partial<Corp
     throw new Error('Corpus not found')
   }
 
-  const settings = mergeCorpusSettings(existing.settings, patch)
+  const settings = mergeCorpusSettings(existing.settings, sanitizeCorpusSettingsPatch(patch))
   await db
     .update(corpus)
     .set({ settings, updatedAt: new Date() })
