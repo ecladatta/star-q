@@ -38,11 +38,28 @@ export function useAnnotationUrlSync({
     router.replace(`${pathname}${params.toString() ? `?${params.toString()}` : ''}`, { scroll: false })
   }, [pathname, router, searchParams])
 
-  const appliedParamRef = useRef<string | null>(null)
+  // The annotation id we most recently WROTE to the URL (null = we wrote a clear).
+  const authoredRef = useRef<string | null>(null)
 
   useEffect(() => {
-    const { annotations: anns, currentAnnotationId: currentId, onOpen: open } = latestRef.current
-    if (!annotationParam || annotationParam === currentId) {
+    const { annotations: anns, currentAnnotationId: currentId, onOpen: open, onClose: close } = latestRef.current
+
+    // Settle our own in-flight writes: the param now matches what we wrote.
+    if (authoredRef.current !== null && annotationParam === authoredRef.current) {
+      authoredRef.current = null
+    }
+
+    if (annotationParam === currentId) {
+      return
+    }
+
+    // Our own write is still in flight; don't react to the param during the transient.
+    if (authoredRef.current !== null) {
+      return
+    }
+
+    if (!annotationParam) {
+      close()
       return
     }
 
@@ -51,13 +68,19 @@ export function useAnnotationUrlSync({
       return
     }
 
-    appliedParamRef.current = annotationParam
+    // Mark the URL as authoritative so effect 2 doesn't write back.
+    authoredRef.current = annotationParam
     open(target, true)
   }, [annotationParam])
 
   useEffect(() => {
-    if (appliedParamRef.current !== null) {
-      appliedParamRef.current = null
+    // Our own write is in flight; don't double-write.
+    if (authoredRef.current !== null) {
+      return
+    }
+
+    // URL says closed; never resurrect a cleared param.
+    if (!annotationParam) {
       return
     }
 
@@ -69,11 +92,13 @@ export function useAnnotationUrlSync({
   }, [currentAnnotationId, annotationParam, writeUrl])
 
   const openAnnotation = useCallback((annotation: DocumentAnnotation, scroll = true) => {
+    authoredRef.current = annotation.id
     onOpen(annotation, scroll)
     writeUrl(annotation.id)
   }, [onOpen, writeUrl])
 
   const closeAnnotation = useCallback(() => {
+    authoredRef.current = null
     onClose()
     writeUrl(null)
   }, [onClose, writeUrl])
