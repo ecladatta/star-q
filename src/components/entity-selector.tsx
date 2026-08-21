@@ -40,7 +40,7 @@ import {
   XIcon,
 } from 'lucide-react'
 import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import WBK from 'wikibase-sdk'
 import {
@@ -79,6 +79,8 @@ const wdk = WBK({
   instance: 'https://www.wikidata.org',
   sparqlEndpoint: 'https://query.wikidata.org/sparql',
 })
+
+const SEARCH_DEBOUNCE_MS = 200
 
 async function searchEntities(
   type: EntityType,
@@ -339,8 +341,29 @@ export function EntitySelector({
   const [classifiedCandidates, setClassifiedCandidates] = useState<string[]>([])
   const [showAllResults, setShowAllResults] = useState(false)
 
+  const searchSeqRef = useRef(0)
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   const candidatePattern = entityType === 'predicate' ? WIKIDATA_PROPERTY_PATTERN : WIKIDATA_ITEM_PATTERN
   const searchLimit = constraintEntityChecks?.length ? 20 : 5
+
+  const runSearch = useCallback(async (term: string, seq: number) => {
+    try {
+      const results = await searchEntities(entityType, term, corpusId, searchLimit)
+      if (seq === searchSeqRef.current) {
+        setSearchResults(results)
+      }
+    } catch (error) {
+      console.error('Search error:', error)
+      if (seq === searchSeqRef.current) {
+        setSearchResults([])
+      }
+    } finally {
+      if (seq === searchSeqRef.current) {
+        setIsSearching(false)
+      }
+    }
+  }, [entityType, corpusId, searchLimit])
 
   const currentCandidates = useMemo(() => Array.from(new Set([
     ...searchResults
@@ -362,13 +385,20 @@ export function EntitySelector({
 
   useEffect(() => {
     if (text && !value?.value) {
+      if (searchTimerRef.current) {
+        clearTimeout(searchTimerRef.current)
+      }
+      const seq = ++searchSeqRef.current
       setIsSearching(true)
-      searchEntities(entityType, text, corpusId, searchLimit).then((results) => {
-        setSearchResults(results)
-        setIsSearching(false)
-      })
+      runSearch(text, seq)
     }
-  }, [text, entityType, value, corpusId, searchLimit])
+  }, [text, entityType, value, corpusId, searchLimit, runSearch])
+
+  useEffect(() => () => {
+    if (searchTimerRef.current) {
+      clearTimeout(searchTimerRef.current)
+    }
+  }, [])
 
   useEffect(() => {
     setSearchTerm('')
@@ -417,22 +447,21 @@ export function EntitySelector({
     }
   }, [currentCandidates, constraints, constraintSide, constraintEntityChecks])
 
-  const handleSearch = async (term: string) => {
+  const handleSearch = (term: string) => {
+    if (searchTimerRef.current) {
+      clearTimeout(searchTimerRef.current)
+    }
     if (!term.trim()) {
+      searchSeqRef.current += 1
       setSearchResults([])
+      setIsSearching(false)
       return
     }
-
+    const seq = ++searchSeqRef.current
     setIsSearching(true)
-    try {
-      const results = await searchEntities(entityType, term, corpusId, searchLimit)
-      setSearchResults(results)
-    } catch (error) {
-      console.error('Search error:', error)
-      setSearchResults([])
-    } finally {
-      setIsSearching(false)
-    }
+    searchTimerRef.current = setTimeout(() => {
+      runSearch(term, seq)
+    }, SEARCH_DEBOUNCE_MS)
   }
 
   // Separate custom and Wikidata entities, honoring constraint filtering when active
