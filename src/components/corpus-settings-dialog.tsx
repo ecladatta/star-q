@@ -28,6 +28,8 @@ type CorpusSettingsDialogProps = {
 export function CorpusSettingsDialog({ open, onOpenChange, corpus, onCorpusRenamed }: CorpusSettingsDialogProps) {
   const [corpusTitle, setCorpusTitle] = useState(corpus.title)
   const [settings, setSettings] = useState<CorpusSettings>(corpus.settings ?? {})
+  const [previousCorpus, setPreviousCorpus] = useState(corpus)
+  const [wasOpen, setWasOpen] = useState(false)
   const [isSavingSettings, setIsSavingSettings] = useState(false)
   const [customEntities, setCustomEntities] = useState<CorpusCustomEntity[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -54,13 +56,18 @@ export function CorpusSettingsDialog({ open, onOpenChange, corpus, onCorpusRenam
     }
   }, [corpus.id])
 
+  if (corpus !== previousCorpus || (open && !wasOpen)) {
+    setPreviousCorpus(corpus)
+    setWasOpen(open)
+    setCorpusTitle(corpus.title)
+    setSettings(corpus.settings ?? {})
+  }
+
   useEffect(() => {
     if (open) {
       loadCustomEntities()
-      setCorpusTitle(corpus.title)
-      setSettings(corpus.settings ?? {})
     }
-  }, [open, corpus.title, corpus.settings, loadCustomEntities])
+  }, [open, loadCustomEntities])
 
   const handleSaveCorpusTitle = async () => {
     if (!corpusTitle || !corpusTitle.trim() || corpusTitle === corpus.title) {
