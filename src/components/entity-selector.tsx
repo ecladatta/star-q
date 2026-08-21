@@ -60,7 +60,7 @@ import { entityTypeForComponentRole } from '@/lib/annotation-roles'
 import { ENTITY_DATATYPE_GROUPS, ENTITY_DATATYPE_LABELS } from '@/lib/datatypes'
 import { cn } from '@/lib/utils'
 import { WIKIDATA_ITEM_PATTERN, WIKIDATA_PROPERTY_PATTERN } from '@/lib/wikidata-constraints'
-import { classifyEntityCandidatesViaWikidata, classifyPredicateCandidatesViaWikidata } from '@/lib/wikidata-sparql'
+import { classifyEntityCandidatesViaWikidata, classifyPredicateCandidatesViaWikidata, withRequestTimeout } from '@/lib/wikidata-sparql'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
@@ -99,8 +99,10 @@ async function searchEntities(
         type: type === 'predicate' ? 'property' : 'item',
       })
 
-      const response = await fetch(url)
-      const data = await response.json()
+      const data = await withRequestTimeout(async (signal) => {
+        const response = await fetch(url, { signal })
+        return response.json()
+      })
       return data.search.map((result: any) => ({
         label: result.label,
         value: result.id,

@@ -26,6 +26,17 @@ const wdk = WBK({
 })
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000
+const FETCH_TIMEOUT_MS = 10_000
+
+export async function withRequestTimeout<T>(run: (signal: AbortSignal) => Promise<T>): Promise<T> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
+  try {
+    return await run(controller.signal)
+  } finally {
+    clearTimeout(timer)
+  }
+}
 
 function createTtlCache<T>(ttlMs: number) {
   const store = new Map<string, { value: T, expiresAt: number }>()
@@ -68,9 +79,10 @@ type WbGetEntitiesResponse = {
 }
 
 function fetchJson(url: string): Promise<WbGetEntitiesResponse | null> {
-  return fetch(url, { headers: { 'User-Agent': USER_AGENT } })
-    .then(res => res.json())
-    .catch(() => null)
+  return withRequestTimeout(signal =>
+    fetch(url, { headers: { 'User-Agent': USER_AGENT }, signal })
+      .then(res => res.json()),
+  ).catch(() => null)
 }
 
 function entityIdFromValue(value: string): string | null {
@@ -79,20 +91,23 @@ function entityIdFromValue(value: string): string | null {
 }
 
 async function runSparql(query: string): Promise<Array<Record<string, { value: string }>>> {
-  const response = await fetch(SPARQL_ENDPOINT, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Accept': 'application/sparql-results+json',
-      'User-Agent': USER_AGENT,
-    },
-    body: new URLSearchParams({ query }).toString(),
+  return withRequestTimeout(async (signal) => {
+    const response = await fetch(SPARQL_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/sparql-results+json',
+        'User-Agent': USER_AGENT,
+      },
+      body: new URLSearchParams({ query }).toString(),
+      signal,
+    })
+    if (!response.ok) {
+      throw new Error(`Wikidata SPARQL request failed: ${response.status}`)
+    }
+    const data = await response.json()
+    return data.results?.bindings ?? []
   })
-  if (!response.ok) {
-    throw new Error(`Wikidata SPARQL request failed: ${response.status}`)
-  }
-  const data = await response.json()
-  return data.results?.bindings ?? []
 }
 
 const SPARQL_CHUNK_SIZE = 200

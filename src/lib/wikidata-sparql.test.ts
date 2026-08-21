@@ -171,6 +171,20 @@ describe('fetchPropertyConstraints', () => {
   })
 })
 
+describe('request timeouts', () => {
+  it('passes an AbortSignal to every fetch so requests can be aborted', async () => {
+    fetchMock.mockResolvedValue({ ok: true, json: async () => sparqlResponse([]) })
+
+    await fetchMembership([['Q998877', 'Q998876', 'subclass']])
+    await fetchEntityLabels(['P123456'])
+
+    expect(fetchMock).toHaveBeenCalled()
+    for (const [, init] of fetchMock.mock.calls) {
+      expect(init?.signal).toBeInstanceOf(AbortSignal)
+    }
+  })
+})
+
 describe('bounded sparql concurrency', () => {
   it('parallelizes chunk queries without exceeding the concurrency limit', async () => {
     let inFlight = 0
