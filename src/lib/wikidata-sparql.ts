@@ -268,7 +268,7 @@ export async function fetchPropertyConstraints(propertyIds: string[]): Promise<P
 
   if (uncached.length > 0) {
     const urls = wdk.getManyEntities({ ids: uncached as unknown as WbEntityIds, props: 'claims', format: 'json' })
-    const responses = await Promise.all(urls.map(url => fetchJson(url)))
+    const responses = await mapWithConcurrency(urls, SPARQL_CONCURRENCY, url => fetchJson(url))
     for (const data of responses) {
       if (!data?.entities) {
         unavailable = true
@@ -310,7 +310,7 @@ export async function fetchEntityLabels(ids: string[]): Promise<Map<string, stri
   }
 
   const urls = wdk.getManyEntities({ ids: missing as unknown as WbEntityIds, languages: 'en', props: 'labels', format: 'json' })
-  const responses = await Promise.all(urls.map(url => fetchJson(url)))
+  const responses = await mapWithConcurrency(urls, SPARQL_CONCURRENCY, url => fetchJson(url))
   for (const data of responses) {
     if (!data?.entities) {
       continue
