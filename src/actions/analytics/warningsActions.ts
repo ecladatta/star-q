@@ -1,6 +1,6 @@
 'use server'
 import type { SQL } from 'drizzle-orm'
-import type { AnnotationCheck, ConstraintCheck, CorpusWarnings, WarningAnnotationRow, WarningQualifierRow } from '@/lib/wikidata-constraints'
+import type { AnnotationCheck, ConstraintCheck, CorpusWarnings, PropertyConstraints, WarningAnnotationRow, WarningQualifierRow } from '@/lib/wikidata-constraints'
 import { and, eq, sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { db } from '@/db/drizzle'
@@ -27,6 +27,15 @@ function emptyWarnings(checkedAnnotations: number): CorpusWarnings {
   }
 }
 
+function unavailableWarnings(checkedProperties: number): WarningsComputation {
+  return {
+    violations: [],
+    unverifiable: [],
+    checkedProperties,
+    unavailable: true,
+  }
+}
+
 async function computeWarningsForRows(
   rows: WarningAnnotationRow[],
   qualifierRows: WarningQualifierRow[],
@@ -44,48 +53,54 @@ async function computeWarningsForRows(
     return { violations: [], unverifiable: [], checkedProperties: 0, unavailable: false }
   }
 
+  let fetchUnavailable: boolean
+  let constraintsByProperty: Map<string, PropertyConstraints>
   try {
-    const { constraints: constraintsByProperty, unavailable: fetchUnavailable } = await fetchPropertyConstraints(predicates)
-    const checks = [
-      ...buildConstraintChecks(rows, constraintsByProperty),
-      ...buildQualifierRangeChecks(qualifierRows, constraintsByProperty),
-    ]
-    const pairs = collectPairs(checks.map(check => ({ item: check.itemValue, side: check.side, classes: check.expectedClasses })))
-    const items = Array.from(new Set(checks.map(check => check.itemValue)))
+    const result = await fetchPropertyConstraints(predicates)
+    fetchUnavailable = result.unavailable
+    constraintsByProperty = result.constraints
+  } catch {
+    return unavailableWarnings(predicates.length)
+  }
 
-    const [memberPairs, itemsWithTypeData] = await Promise.all([
+  const checks = [
+    ...buildConstraintChecks(rows, constraintsByProperty),
+    ...buildQualifierRangeChecks(qualifierRows, constraintsByProperty),
+  ]
+  const pairs = collectPairs(checks.map(check => ({ item: check.itemValue, side: check.side, classes: check.expectedClasses })))
+  const items = Array.from(new Set(checks.map(check => check.itemValue)))
+
+  let memberPairs: Set<string>
+  let itemsWithTypeData: Set<string>
+  try {
+    [memberPairs, itemsWithTypeData] = await Promise.all([
       fetchMembership(pairs),
       fetchItemsWithTypeData(items),
     ])
-
-    const evaluated = evaluateConstraintChecks(checks, memberPairs, itemsWithTypeData)
-
-    const classIds = Array.from(new Set(
-      checks.flatMap(check => check.expectedClasses.map(constraint => constraint.class)),
-    ))
-    const classLabels = await fetchEntityLabels(classIds)
-
-    const resolveClasses = (check: AnnotationCheck): ConstraintCheck => ({
-      ...check,
-      expectedClasses: check.expectedClasses.map(constraint => ({
-        ...constraint,
-        label: classLabels.get(constraint.class) ?? constraint.class,
-      })),
-    })
-
-    return {
-      violations: evaluated.violations.map(resolveClasses),
-      unverifiable: evaluated.unverifiable.map(resolveClasses),
-      checkedProperties: predicates.length,
-      unavailable: fetchUnavailable,
-    }
   } catch {
-    return {
-      violations: [],
-      unverifiable: [],
-      checkedProperties: predicates.length,
-      unavailable: true,
-    }
+    return unavailableWarnings(predicates.length)
+  }
+
+  const evaluated = evaluateConstraintChecks(checks, memberPairs, itemsWithTypeData)
+
+  const classIds = Array.from(new Set(
+    checks.flatMap(check => check.expectedClasses.map(constraint => constraint.class)),
+  ))
+  const classLabels = await fetchEntityLabels(classIds)
+
+  const resolveClasses = (check: AnnotationCheck): ConstraintCheck => ({
+    ...check,
+    expectedClasses: check.expectedClasses.map(constraint => ({
+      ...constraint,
+      label: classLabels.get(constraint.class) ?? constraint.class,
+    })),
+  })
+
+  return {
+    violations: evaluated.violations.map(resolveClasses),
+    unverifiable: evaluated.unverifiable.map(resolveClasses),
+    checkedProperties: predicates.length,
+    unavailable: fetchUnavailable,
   }
 }
 
