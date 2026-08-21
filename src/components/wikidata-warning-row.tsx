@@ -22,8 +22,6 @@ function WikidataLink({ id, label }: { id: string, label: string }) {
 }
 
 export function WikidataWarningRow({ check, muted }: { check: ConstraintCheck, muted?: boolean }) {
-  const relationLabel = CONSTRAINT_RELATION_LABELS[check.expectedClasses[0]?.relation]
-    ?? CONSTRAINT_RELATION_LABELS['instance-or-subclass']
   const subjectText = check.subjectLabel ?? check.subjectValue
   const objectText = check.objectLabel ?? check.objectValue
   const isQualifier = check.kind === 'qualifier'
@@ -82,11 +80,11 @@ export function WikidataWarningRow({ check, muted }: { check: ConstraintCheck, m
                 {' '}
                 is not
                 {' '}
-                {relationLabel}
-                {' '}
                 {check.expectedClasses.map((constraint, index) => (
                   <span key={constraint.class}>
-                    {index > 0 && ', '}
+                    {index > 0 && (index === check.expectedClasses.length - 1 ? ' or ' : ', ')}
+                    {CONSTRAINT_RELATION_LABELS[constraint.relation]}
+                    {' '}
                     <WikidataLink id={constraint.class} label={constraint.label} />
                   </span>
                 ))}
