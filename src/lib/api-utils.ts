@@ -1,6 +1,6 @@
 import { headers } from 'next/headers'
 import { isAuthEnabled } from '@/auth.config'
-import { UnauthorizedError } from './auth-utils'
+import { NotFoundError, UnauthorizedError } from './auth-utils'
 
 export async function withApiHandler(handler: () => Promise<Response>): Promise<Response> {
   // When AUTH_ENABLED=false but API_KEY is configured, enforce it on API routes
@@ -19,6 +19,9 @@ export async function withApiHandler(handler: () => Promise<Response>): Promise<
   } catch (error) {
     if (error instanceof UnauthorizedError) {
       return Response.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    if (error instanceof NotFoundError) {
+      return Response.json({ error: 'Not Found' }, { status: 404 })
     }
     throw error
   }

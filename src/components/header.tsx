@@ -1,6 +1,6 @@
 import type { Corpus, Document } from '@/db/schema'
 import Link from 'next/link'
-import { auth, signIn, signOut } from '@/auth'
+import { auth, signOut } from '@/auth'
 import { isAuthEnabled } from '@/auth.config'
 import pkg from '../../package.json'
 import { Button } from './ui/button'
@@ -82,14 +82,9 @@ async function Header({ corpus, document }: HeaderProps) {
                     </>
                   )
                 : (
-                    <form
-                      action={async () => {
-                        'use server'
-                        await signIn()
-                      }}
-                    >
-                      <Button variant="outline" type="submit">Sign in</Button>
-                    </form>
+                    <Link href="/sign-in">
+                      <Button variant="outline">Sign in</Button>
+                    </Link>
                   )}
             </div>
           )}

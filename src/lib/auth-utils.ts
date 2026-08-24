@@ -9,6 +9,13 @@ export class UnauthorizedError extends Error {
   }
 }
 
+export class NotFoundError extends Error {
+  constructor(message = 'Not Found') {
+    super(message)
+    this.name = 'NotFoundError'
+  }
+}
+
 export async function isApiKeyAuthenticated(): Promise<boolean> {
   const apiKey = process.env.API_KEY
   if (!apiKey) {

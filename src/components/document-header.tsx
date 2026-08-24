@@ -12,9 +12,10 @@ type DocumentHeaderProps = {
   corpus: Corpus
   document: Document
   documentData: DocumentData
+  readOnly?: boolean
 }
 
-export function DocumentHeader({ corpus, document, documentData }: DocumentHeaderProps) {
+export function DocumentHeader({ corpus, document, documentData, readOnly = false }: DocumentHeaderProps) {
   const [isCompleted, setIsCompleted] = useState(!!document.completedAt)
   const [isPending, startTransition] = useTransition()
 
@@ -42,16 +43,18 @@ export function DocumentHeader({ corpus, document, documentData }: DocumentHeade
             {corpus.title}
           </Link>
         </h1>
-        <Button
-          onClick={toggleCompletion}
-          disabled={isPending}
-          variant={isCompleted ? 'default' : 'outline'}
-          size="sm"
-          className="w-full shrink-0 gap-2 self-start sm:w-auto sm:self-auto"
-        >
-          {isCompleted ? <Check className="size-4" /> : <Circle className="size-4" />}
-          {isCompleted ? 'Completed' : 'Mark as Complete'}
-        </Button>
+        {!readOnly && (
+          <Button
+            onClick={toggleCompletion}
+            disabled={isPending}
+            variant={isCompleted ? 'default' : 'outline'}
+            size="sm"
+            className="w-full shrink-0 gap-2 self-start sm:w-auto sm:self-auto"
+          >
+            {isCompleted ? <Check className="size-4" /> : <Circle className="size-4" />}
+            {isCompleted ? 'Completed' : 'Mark as Complete'}
+          </Button>
+        )}
       </div>
       <div className="mb-4 min-w-0">
         <h2 className="text-2xl font-bold wrap-break-word">

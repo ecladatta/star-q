@@ -5,7 +5,7 @@ import { and, eq, sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { db } from '@/db/drizzle'
 import { annotation, annotationComponent, annotationQualifier, corpus, document } from '@/db/schema'
-import { requireAuth } from '@/lib/auth-utils'
+import { requireViewCorpus, requireViewDocument } from '@/lib/corpus-access'
 import { isConstraintWarningsEnabled } from '@/lib/corpus-settings'
 import { buildConstraintChecks, buildQualifierRangeChecks, collectPairs, evaluateConstraintChecks, WIKIDATA_PROPERTY_PATTERN } from '@/lib/wikidata-constraints'
 import { fetchEntityLabels, fetchItemsWithTypeData, fetchMembership, fetchPropertyConstraints } from '@/lib/wikidata-sparql'
@@ -169,7 +169,7 @@ async function getQualifierWarningRows(condition: SQL): Promise<WarningQualifier
 }
 
 export async function getCorpusWarnings(corpusId: string): Promise<CorpusWarnings> {
-  await requireAuth()
+  await requireViewCorpus(corpusId)
 
   const [corpusData] = await db.select().from(corpus).where(eq(corpus.id, corpusId))
   if (!corpusData) {
@@ -194,7 +194,7 @@ export async function getCorpusWarnings(corpusId: string): Promise<CorpusWarning
 }
 
 export async function getDocumentWarnings(documentId: string): Promise<CorpusWarnings> {
-  await requireAuth()
+  await requireViewDocument(documentId)
 
   const [documentData] = await db
     .select({ id: document.id, corpusId: document.corpusId })

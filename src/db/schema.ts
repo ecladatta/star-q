@@ -88,9 +88,13 @@ export const authenticators = pgTable(
   ],
 )
 
+export const corpusVisibilityValues = ['private', 'public'] as const
+export type CorpusVisibility = (typeof corpusVisibilityValues)[number]
+
 export const corpus = pgTable('corpus', {
   id: uuid('id').primaryKey().$defaultFn(() => randomUUID()),
   title: text('title'),
+  visibility: text('visibility').$type<CorpusVisibility>().notNull().default('private'),
   settings: jsonb('settings').$type<CorpusSettings>().notNull().default({}),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),

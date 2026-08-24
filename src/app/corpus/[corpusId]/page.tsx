@@ -8,9 +8,11 @@ import { CompletionScore, CompletionScoreSkeleton } from '@/components/completio
 import { CorpusActions } from '@/components/corpus-actions'
 import DocumentsTable from '@/components/documents-table'
 import { Button } from '@/components/ui/button'
+import { canEdit } from '@/lib/corpus-access'
 
 export default async function CorpusPage({ params }: { params: Promise<{ corpusId: string }> }) {
   const corpusId = (await params).corpusId
+  const edit = await canEdit()
   const documentsList = await getDocumentsMetadata(corpusId)
   const corpus = await getCorpus(corpusId)
   const totalAnnotations = await getCorpusAnnotationsCount(corpusId)
@@ -59,6 +61,7 @@ export default async function CorpusPage({ params }: { params: Promise<{ corpusI
           </Link>
           <CorpusActions
             corpus={corpus}
+            canEdit={edit}
             showOpenAction={false}
             triggerButton={(
               <Button variant="outline" size="sm" className="w-full sm:w-auto">
@@ -69,7 +72,7 @@ export default async function CorpusPage({ params }: { params: Promise<{ corpusI
           />
         </div>
       </div>
-      <DocumentsTable documents={documentsList} />
+      <DocumentsTable documents={documentsList} canEdit={edit} />
     </div>
   )
 }

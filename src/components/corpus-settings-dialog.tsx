@@ -1,12 +1,12 @@
 'use client'
 
-import type { Corpus, CorpusCustomEntity } from '@/db/schema'
+import type { Corpus, CorpusCustomEntity, CorpusVisibility } from '@/db/schema'
 import type { CorpusSettings } from '@/lib/corpus-settings'
 import type { EntityDatatype } from '@/types/types'
 import { EditIcon, FilterIcon, Loader2Icon, PlusIcon, SearchIcon, Trash2Icon } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { addCorpusCustomEntity, deleteCorpusCustomEntity, getCorpusCustomEntities, renameCorpus, updateCorpusCustomEntity, updateCorpusSettings } from '@/actions/corpus/corpusActions'
+import { addCorpusCustomEntity, deleteCorpusCustomEntity, getCorpusCustomEntities, renameCorpus, updateCorpusCustomEntity, updateCorpusSettings, updateCorpusVisibility } from '@/actions/corpus/corpusActions'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -27,6 +27,7 @@ type CorpusSettingsDialogProps = {
 
 export function CorpusSettingsDialog({ open, onOpenChange, corpus, onCorpusRenamed }: CorpusSettingsDialogProps) {
   const [corpusTitle, setCorpusTitle] = useState(corpus.title)
+  const [visibility, setVisibility] = useState<CorpusVisibility>(corpus.visibility ?? 'private')
   const [settings, setSettings] = useState<CorpusSettings>(corpus.settings ?? {})
   const [previousCorpus, setPreviousCorpus] = useState(corpus)
   const [wasOpen, setWasOpen] = useState(false)
@@ -61,6 +62,7 @@ export function CorpusSettingsDialog({ open, onOpenChange, corpus, onCorpusRenam
     setWasOpen(open)
     setCorpusTitle(corpus.title)
     setSettings(corpus.settings ?? {})
+    setVisibility(corpus.visibility ?? 'private')
   }
 
   useEffect(() => {
@@ -97,6 +99,21 @@ export function CorpusSettingsDialog({ open, onOpenChange, corpus, onCorpusRenam
     } catch {
       setSettings(prev => ({ ...prev, [key]: previous }))
       toast.error('Failed to update corpus settings')
+    } finally {
+      setIsSavingSettings(false)
+    }
+  }
+
+  const handleVisibilityChange = async (value: CorpusVisibility) => {
+    const previous = visibility
+    setVisibility(value)
+    try {
+      setIsSavingSettings(true)
+      await updateCorpusVisibility(corpus.id, value)
+      toast.success(value === 'public' ? 'Corpus is now public' : 'Corpus is now private')
+    } catch {
+      setVisibility(previous)
+      toast.error('Failed to update corpus visibility')
     } finally {
       setIsSavingSettings(false)
     }
@@ -210,6 +227,33 @@ export function CorpusSettingsDialog({ open, onOpenChange, corpus, onCorpusRenam
                   {isSaving ? <Loader2Icon className="size-4 animate-spin" /> : <EditIcon className="size-4" />}
                   Save
                 </Button>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h3 className="text-lg font-medium">Visibility</h3>
+              <div className="flex items-start justify-between gap-4 rounded-md border p-4">
+                <div className="space-y-1">
+                  <Label htmlFor="corpus-visibility">
+                    Who can view this corpus?
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Public corpora are readable by anyone without signing in. Only signed-in users can edit.
+                  </p>
+                </div>
+                <Select
+                  value={visibility}
+                  onValueChange={handleVisibilityChange}
+                  disabled={isSavingSettings}
+                >
+                  <SelectTrigger id="corpus-visibility" className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="private">Private</SelectItem>
+                    <SelectItem value="public">Public</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 

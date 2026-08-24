@@ -45,6 +45,7 @@ import { AnnotationsSidebar } from './annotations-sidebar'
 import CombinedElement from './combined-element'
 import { DocumentHeader } from './document-header'
 import { DocumentSidebar } from './document-sidebar'
+import { ReadOnlyAnnotationDetail } from './readonly-annotation-detail'
 import { SelectionPopover } from './selection-popover'
 
 type QualifierSide = 'predicate' | 'value'
@@ -64,6 +65,7 @@ type DocumentViewerProps = {
   document?: Document
   annotations?: DocumentAnnotation[]
   warningsSlot?: ReactNode
+  readOnly?: boolean
 }
 
 export function DocumentViewer({
@@ -72,6 +74,7 @@ export function DocumentViewer({
   document,
   annotations,
   warningsSlot,
+  readOnly = false,
 }: DocumentViewerProps) {
   const [showAnnotations, setShowAnnotations] = useState(true)
   const [copiedDocument, setCopiedDocument] = useState(false)
@@ -152,6 +155,24 @@ export function DocumentViewer({
     return map
   }, [documentElements])
 
+  const scrollToAnnotation = (annotation: DocumentAnnotation) => {
+    const element = window.document.getElementById(
+      `element-${annotation.subject.elementIndex}`,
+    )
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }
+
+  const scrollToAnnotationComponent = (component: DocumentAnnotationComponent) => {
+    const element = window.document.getElementById(
+      `element-${component.elementIndex}`,
+    )
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }
+
   const handleSplitClick = ({ componentId }: Offset, anchorRect?: DOMRect) => {
     if (!componentId)
       return
@@ -187,15 +208,6 @@ export function DocumentViewer({
         annotationType: clickedComponent.annotationType,
       },
     })
-  }
-
-  const scrollToAnnotation = (annotation: DocumentAnnotation) => {
-    const element = window.document.getElementById(
-      `element-${annotation.subject.elementIndex}`,
-    )
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    }
   }
 
   const { openAnnotation, toggleAnnotation } = useAnnotationUrlSync({
@@ -326,6 +338,7 @@ export function DocumentViewer({
                 corpus={corpus}
                 document={document}
                 documentData={documentData}
+                readOnly={readOnly}
               />
 
               {warningsSlot}
@@ -473,6 +486,7 @@ export function DocumentViewer({
                       handleTextSelection={handleTextSelection}
                       documentElements={documentElements}
                       currentAnnotation={currentAnnotation}
+                      readOnly={readOnly}
                     />
                   ))}
                 </CardContent>
@@ -480,23 +494,33 @@ export function DocumentViewer({
             </>
           )}
 
-          <AnnotationForm
-            currentAnnotation={currentAnnotation}
-            setCurrentAnnotation={setCurrentAnnotation}
-            onSave={handleSaveAnnotation}
-            onDelete={deleteAnnotationById}
-            annotationFormLoading={annotationFormLoading}
-            isDeletingAnnotation={isDeletingAnnotation}
-            corpusId={corpus.id}
-            wikidataPredicateFiltering={isPredicateFilteringEnabled(corpus.settings)}
-            wikidataConstraintWarnings={isConstraintWarningsEnabled(corpus.settings)}
-            removeQualifier={removeQualifier}
-            assignSelectionToQualifier={assignSelectionToQualifier}
-            updateQualifierEntity={updateQualifierEntity}
-            clearQualifierSide={clearQualifierSide}
-            hasActiveSelection={selection.hasSelection()}
-            onActiveQualifierChange={setActiveQualifierId}
-          />
+          {!readOnly && (
+            <AnnotationForm
+              currentAnnotation={currentAnnotation}
+              setCurrentAnnotation={setCurrentAnnotation}
+              onSave={handleSaveAnnotation}
+              onDelete={deleteAnnotationById}
+              annotationFormLoading={annotationFormLoading}
+              isDeletingAnnotation={isDeletingAnnotation}
+              corpusId={corpus.id}
+              wikidataPredicateFiltering={isPredicateFilteringEnabled(corpus.settings)}
+              wikidataConstraintWarnings={isConstraintWarningsEnabled(corpus.settings)}
+              removeQualifier={removeQualifier}
+              assignSelectionToQualifier={assignSelectionToQualifier}
+              updateQualifierEntity={updateQualifierEntity}
+              clearQualifierSide={clearQualifierSide}
+              hasActiveSelection={selection.hasSelection()}
+              onActiveQualifierChange={setActiveQualifierId}
+            />
+          )}
+
+          {readOnly && currentAnnotation?.id && (
+            <ReadOnlyAnnotationDetail
+              annotation={currentAnnotation as DocumentAnnotation}
+              onClose={() => setCurrentAnnotation(null)}
+              onLocate={scrollToAnnotationComponent}
+            />
+          )}
 
           {/* Show AnnotationListPopover when clicking on existing annotations with shared segments */}
           {popover.popoverState.visible
@@ -512,14 +536,17 @@ export function DocumentViewer({
               onEdit={handleEditAnnotation}
               onClone={handleCloneAnnotation}
               onDelete={deleteAnnotationById}
+              onView={annotation => setCurrentAnnotation(annotation)}
               isDeletingAnnotation={isDeletingAnnotation}
               onCreateMention={handleSelectionMentionAssociation}
               mentionData={popover.popoverState.mentionData ?? null}
+              readOnly={readOnly}
             />
           )}
 
           {/* Show SelectionPopover when making a new text selection */}
-          {popover.popoverState.visible
+          {!readOnly
+            && popover.popoverState.visible
             && (popover.popoverState.annotations?.length ?? 0) === 0 && (
             <SelectionPopover
               popoverState={popover.popoverState}
@@ -547,6 +574,7 @@ export function DocumentViewer({
         onAnnotationSelect={handleAnnotationSelect}
         onBatchDelete={handleBatchDelete}
         isBatchDeleting={isBatchDeleting}
+        readOnly={readOnly}
       />
     </div>
   )

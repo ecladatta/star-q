@@ -6,9 +6,11 @@ import { getCorpus } from '@/actions/corpus/corpusActions'
 import { getDocument, getDocumentsMetadata } from '@/actions/document/documentActions'
 import { DocumentViewer } from '@/components/document-viewer'
 import { WikidataWarningsSection, WikidataWarningsSkeleton } from '@/components/wikidata-warnings-section'
+import { canEdit } from '@/lib/corpus-access'
 
 export default async function DocumentPage({ params }: { params: Promise<{ documentId: string }> }) {
   const { documentId } = await params
+  const edit = await canEdit()
   const document = await getDocument(documentId)
 
   if (!document) {
@@ -38,6 +40,7 @@ export default async function DocumentPage({ params }: { params: Promise<{ docum
       documents={documentsList}
       document={document}
       annotations={annotations}
+      readOnly={!edit}
       warningsSlot={(
         <Suspense key={documentId} fallback={<WikidataWarningsSkeleton compact />}>
           <WikidataWarningsSection

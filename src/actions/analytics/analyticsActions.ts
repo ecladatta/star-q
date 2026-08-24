@@ -2,7 +2,7 @@
 import { and, count, countDistinct, desc, eq, isNotNull, sql } from 'drizzle-orm'
 import { db } from '@/db/drizzle'
 import { annotation, annotationComponent, corpus, corpusCustomEntity, document } from '@/db/schema'
-import { requireAuth } from '@/lib/auth-utils'
+import { requireViewCorpus } from '@/lib/corpus-access'
 
 export type CorpusAnalytics = {
   totalDocuments: number
@@ -77,7 +77,7 @@ export type CorpusAnalytics = {
 }
 
 export async function getCorpusAnalytics(corpusId: string): Promise<CorpusAnalytics> {
-  await requireAuth()
+  await requireViewCorpus(corpusId)
 
   // Verify corpus exists
   const [corpusData] = await db.select().from(corpus).where(eq(corpus.id, corpusId))

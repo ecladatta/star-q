@@ -1,5 +1,6 @@
 import type { NextRequest } from 'next/server'
 import { withApiHandler } from '@/lib/api-utils'
+import { requireViewCorpus } from '@/lib/corpus-access'
 import {
   buildCorpusExportModel,
   getCorpusExportFilename,
@@ -10,6 +11,8 @@ import { serializeCorpusExport } from '@/lib/exports/serialize-corpus-export'
 export async function GET(request: NextRequest, { params }: { params: Promise<{ corpusId: string }> }) {
   const { corpusId } = await params
   return withApiHandler(async () => {
+    await requireViewCorpus(corpusId)
+
     const format = resolveCorpusExportFormat(request)
 
     if (!format) {

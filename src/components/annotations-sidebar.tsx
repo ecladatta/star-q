@@ -71,6 +71,7 @@ type AnnotationsSidebarProps = {
   onAnnotationSelect: (annotationId: string, selected: boolean) => void
   onBatchDelete: () => void
   isBatchDeleting: boolean
+  readOnly?: boolean
 }
 
 export function AnnotationsSidebar({
@@ -83,6 +84,7 @@ export function AnnotationsSidebar({
   onAnnotationSelect,
   onBatchDelete,
   isBatchDeleting,
+  readOnly = false,
 }: AnnotationsSidebarProps) {
   const router = useRouter()
   const pathname = usePathname()
@@ -628,25 +630,27 @@ export function AnnotationsSidebar({
               </div>
 
               {/* Selection controls */}
-              <div className="flex items-center gap-2 rounded-lg bg-background p-2 shadow-xs">
-                <Checkbox
-                  id="select-all"
-                  checked={allSelected}
-                  onCheckedChange={handleSelectAll}
-                  {...(someSelected && !allSelected
-                    ? { 'data-state': 'indeterminate' }
-                    : {})}
-                />
-                <Label
-                  htmlFor="select-all"
-                  className="cursor-pointer text-sm font-medium"
-                >
-                  Select all
-                </Label>
-              </div>
+              {!readOnly && (
+                <div className="flex items-center gap-2 rounded-lg bg-background p-2 shadow-xs">
+                  <Checkbox
+                    id="select-all"
+                    checked={allSelected}
+                    onCheckedChange={handleSelectAll}
+                    {...(someSelected && !allSelected
+                      ? { 'data-state': 'indeterminate' }
+                      : {})}
+                  />
+                  <Label
+                    htmlFor="select-all"
+                    className="cursor-pointer text-sm font-medium"
+                  >
+                    Select all
+                  </Label>
+                </div>
+              )}
 
               {/* Delete button */}
-              {someSelected && (
+              {!readOnly && someSelected && (
                 <Button
                   variant="destructive"
                   size="sm"
@@ -770,21 +774,23 @@ export function AnnotationsSidebar({
                               </button>
 
                               {/* Selection checkbox - visible on hover or when selected */}
-                              <div
-                                className={`absolute top-2 right-2 transition-opacity ${
-                                  isChecked || someSelected
-                                    ? 'opacity-100'
-                                    : 'opacity-0 group-hover:opacity-100'
-                                }`}
-                              >
-                                <Checkbox
-                                  checked={isChecked}
-                                  onCheckedChange={checked =>
-                                    onAnnotationSelect(ann.id, checked === true)}
-                                  onClick={e => e.stopPropagation()}
-                                  className="bg-background shadow-xs"
-                                />
-                              </div>
+                              {!readOnly && (
+                                <div
+                                  className={`absolute top-2 right-2 transition-opacity ${
+                                    isChecked || someSelected
+                                      ? 'opacity-100'
+                                      : 'opacity-0 group-hover:opacity-100'
+                                  }`}
+                                >
+                                  <Checkbox
+                                    checked={isChecked}
+                                    onCheckedChange={checked =>
+                                      onAnnotationSelect(ann.id, checked === true)}
+                                    onClick={e => e.stopPropagation()}
+                                    className="bg-background shadow-xs"
+                                  />
+                                </div>
+                              )}
                             </div>
                           </li>
                         )

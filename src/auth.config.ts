@@ -36,7 +36,7 @@ export function isAuthEnabled(): boolean {
   return process.env.AUTH_ENABLED === 'true'
 }
 
-const providers: NonNullable<NextAuthConfig['providers']> = isAuthEnabled()
+export const providers: NonNullable<NextAuthConfig['providers']> = isAuthEnabled()
   ? [
       ...(process.env.GITHUB_ID && process.env.GITHUB_SECRET
         ? [GitHub({
@@ -55,6 +55,9 @@ const providers: NonNullable<NextAuthConfig['providers']> = isAuthEnabled()
 
 export default {
   providers,
+  pages: {
+    signIn: '/sign-in',
+  },
   callbacks: {
     async signIn({ user, account }) {
       if (account?.provider === 'wikimedia')
@@ -87,7 +90,9 @@ export default {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
       }
 
-      return isLoggedIn
+      // Allow anonymous reads at the edge. Per-corpus visibility is enforced
+      // in the data-access layer, where the database is reachable.
+      return true
     },
   },
   session: { strategy: 'jwt' },

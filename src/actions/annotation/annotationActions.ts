@@ -14,6 +14,7 @@ import { db } from '@/db/drizzle'
 import { annotation, annotationComponent, annotationQualifier, corpusCustomEntity, document } from '@/db/schema'
 import { entityTypeForComponentRole } from '@/lib/annotation-roles'
 import { getOptionalUserId, requireAuth } from '@/lib/auth-utils'
+import { requireViewDocument } from '@/lib/corpus-access'
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0]
 type DbExecutor = typeof db | Transaction
@@ -329,7 +330,7 @@ export async function updateAnnotation(
 }
 
 export async function getAnnotations(documentId: string): Promise<DocumentAnnotation[]> {
-  await requireAuth()
+  await requireViewDocument(documentId)
 
   const component1 = alias(annotationComponent, 'component1')
   const component2 = alias(annotationComponent, 'component2')

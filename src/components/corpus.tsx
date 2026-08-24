@@ -30,7 +30,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { addCorpus } from '@/actions/corpus/corpusActions'
 import { createCorpusWithDocumentsImport } from '@/actions/imports/importActions'
 import { CorpusActions } from '@/components/corpus-actions'
@@ -51,6 +51,7 @@ import { cn } from '@/lib/utils'
 
 export type CorpusesProps = {
   corpuses: (Corpus & { documentsCount: number, annotationsCount: number })[]
+  canEdit?: boolean
 }
 
 type CorpusWithCounts = Corpus & { documentsCount: number, annotationsCount: number }
@@ -294,49 +295,51 @@ function DataTableColumnHeader<TData, TValue>({
   )
 }
 
-const columns: ColumnDef<CorpusWithCounts, any>[] = [
-  {
-    accessorKey: 'title',
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Corpus Name" />
-    ),
-    cell: ({ row }) => (
-      <Link href={`/corpus/${row.original.id}`} className="block hover:underline">
-        {row.original.title}
-      </Link>
-    ),
-    filterFn: 'includesString',
-  },
-  {
-    accessorKey: 'documentsCount',
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Documents" />
-    ),
-    cell: ({ row }) => (
-      <div>{row.original.documentsCount}</div>
-    ),
-  },
-  {
-    accessorKey: 'annotationsCount',
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Annotations" />
-    ),
-    cell: ({ row }) => (
-      <div>{row.original.annotationsCount}</div>
-    ),
-  },
-  {
-    accessorKey: 'actions',
-    header: ({ column }) => (
-      <DataTableColumnHeader column={column} title="Actions" />
-    ),
-    cell: ({ row }) => (
-      <CorpusActions corpus={row.original} showOpenAction />
-    ),
-  },
-]
+function buildColumns(canEdit: boolean): ColumnDef<CorpusWithCounts, any>[] {
+  return [
+    {
+      accessorKey: 'title',
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Corpus Name" />
+      ),
+      cell: ({ row }) => (
+        <Link href={`/corpus/${row.original.id}`} className="block hover:underline">
+          {row.original.title}
+        </Link>
+      ),
+      filterFn: 'includesString',
+    },
+    {
+      accessorKey: 'documentsCount',
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Documents" />
+      ),
+      cell: ({ row }) => (
+        <div>{row.original.documentsCount}</div>
+      ),
+    },
+    {
+      accessorKey: 'annotationsCount',
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Annotations" />
+      ),
+      cell: ({ row }) => (
+        <div>{row.original.annotationsCount}</div>
+      ),
+    },
+    {
+      accessorKey: 'actions',
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Actions" />
+      ),
+      cell: ({ row }) => (
+        <CorpusActions corpus={row.original} showOpenAction canEdit={canEdit} />
+      ),
+    },
+  ]
+}
 
-export function Corpuses({ corpuses }: CorpusesProps) {
+export function Corpuses({ corpuses, canEdit = true }: CorpusesProps) {
   const newCorpusFileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const [newCorpusName, setNewCorpusName] = useState('')
@@ -418,6 +421,8 @@ export function Corpuses({ corpuses }: CorpusesProps) {
     }
   }
 
+  const tableColumns = useMemo(() => buildColumns(canEdit), [canEdit])
+
   return (
     <main className="ml-0 min-w-0">
       <div className="container mx-auto flex size-full min-h-screen max-w-6xl flex-col px-4 py-12 sm:px-6 lg:px-8">
@@ -429,10 +434,12 @@ export function Corpuses({ corpuses }: CorpusesProps) {
                 Create and manage your document collections
               </p>
             </div>
-            <Button onClick={() => setShowNewCorpusDialog(true)}>
-              <PlusCircleIcon className="mr-2 size-4" />
-              New Corpus
-            </Button>
+            {canEdit && (
+              <Button onClick={() => setShowNewCorpusDialog(true)}>
+                <PlusCircleIcon className="mr-2 size-4" />
+                New Corpus
+              </Button>
+            )}
           </div>
         </div>
 
@@ -440,7 +447,7 @@ export function Corpuses({ corpuses }: CorpusesProps) {
         {corpuses.length > 0
           ? (
               <DataTable
-                columns={columns}
+                columns={tableColumns}
                 data={corpuses}
               />
             )
@@ -450,7 +457,9 @@ export function Corpuses({ corpuses }: CorpusesProps) {
                   No corpuses available.
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Create your first corpus to get started.
+                  {canEdit
+                    ? 'Create your first corpus to get started.'
+                    : 'There are no public corpora to view yet.'}
                 </p>
               </div>
             )}

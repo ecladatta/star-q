@@ -1,7 +1,7 @@
 import type { LucideIcon } from 'lucide-react'
 import type { AnnotationMention, DocumentAnnotation, EntityType } from '@/types/types'
 
-import { BoxIcon, CopyIcon, EditIcon, LinkIcon, Loader2Icon, Trash2Icon, UserIcon } from 'lucide-react'
+import { BoxIcon, CopyIcon, EditIcon, EyeIcon, LinkIcon, Loader2Icon, Trash2Icon, UserIcon } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -74,9 +74,11 @@ type AnnotationListPopoverProps = {
   onEdit: (annotation: DocumentAnnotation) => void
   onClone: (annotation: DocumentAnnotation) => void
   onDelete: (annotationId: string) => void
+  onView: (annotation: DocumentAnnotation) => void
   isDeletingAnnotation: boolean
   onCreateMention: (type: EntityType) => void
   mentionData: AnnotationMention | null
+  readOnly?: boolean
 }
 
 export function AnnotationListPopover({
@@ -90,9 +92,11 @@ export function AnnotationListPopover({
   onEdit,
   onClone,
   onDelete,
+  onView,
   isDeletingAnnotation,
   onCreateMention,
   mentionData,
+  readOnly = false,
 }: AnnotationListPopoverProps) {
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
@@ -126,7 +130,7 @@ export function AnnotationListPopover({
       const key = e.key.toLowerCase()
       let handled = false
 
-      if (mentionData) {
+      if (mentionData && !readOnly) {
         const mentionActions: Record<string, EntityType> = { s: 'subject', p: 'predicate', o: 'object' }
         if (mentionActions[key]) {
           e.preventDefault()
@@ -135,7 +139,7 @@ export function AnnotationListPopover({
         }
       }
 
-      if (annotations.length > 0) {
+      if (annotations.length > 0 && !readOnly) {
         if (key === 'e') {
           e.preventDefault()
           onEdit(annotations[0])
@@ -158,7 +162,7 @@ export function AnnotationListPopover({
 
     window.addEventListener('keydown', handleKeyDown, { capture: true })
     return () => window.removeEventListener('keydown', handleKeyDown, { capture: true })
-  }, [visible, annotations, onEdit, onClone, onClose, handleCreateMention, mentionData])
+  }, [visible, annotations, onEdit, onClone, onClose, handleCreateMention, mentionData, readOnly])
 
   if (!visible || annotations.length === 0)
     return null
@@ -225,76 +229,100 @@ export function AnnotationListPopover({
                               })}
                               <QualifierSummary qualifiers={annotation.qualifiers} className="mt-1 pt-1.5" />
                             </div>
-                            <div className="grid shrink-0 grid-cols-[1.75rem_1.75rem] grid-rows-[1.75rem_1.75rem] gap-1 self-start">
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="col-start-1 row-start-1 size-7 p-0"
-                                    aria-label="Edit annotation"
-                                    onClick={() => onEdit(annotation)}
-                                  >
-                                    <EditIcon className="size-3.5" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Edit (E)</TooltipContent>
-                              </Tooltip>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="col-start-1 row-start-2 size-7 p-0"
-                                    aria-label="Clone annotation"
-                                    onClick={() => onClone(annotation)}
-                                  >
-                                    <CopyIcon className="size-3.5" />
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>Clone (C)</TooltipContent>
-                              </Tooltip>
-                              <Popover>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <PopoverTrigger asChild>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="col-start-2 row-start-1 size-7 p-0 text-red-500 hover:text-red-600"
-                                        aria-label="Delete annotation"
-                                        disabled={isDeletingAnnotation || deletingId === annotation.id}
-                                      >
-                                        {deletingId === annotation.id
-                                          ? <Loader2Icon className="size-3.5 animate-spin" />
-                                          : <Trash2Icon className="size-3.5" />}
-                                      </Button>
-                                    </PopoverTrigger>
-                                  </TooltipTrigger>
-                                  <TooltipContent>Delete</TooltipContent>
-                                </Tooltip>
-                                <PopoverContent side="top" className="w-64">
-                                  <div className="space-y-3">
-                                    <p className="text-sm">Are you sure you want to delete this annotation?</p>
-                                    <div className="flex justify-end gap-2">
-                                      <PopoverClose asChild>
-                                        <Button variant="ghost" size="sm">Cancel</Button>
-                                      </PopoverClose>
-                                      <PopoverClose asChild>
+                            {readOnly
+                              ? (
+                                  <div className="grid shrink-0 grid-cols-1 self-start">
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
                                         <Button
-                                          variant="destructive"
+                                          variant="ghost"
                                           size="sm"
-                                          onClick={() => handleDelete(annotation.id)}
-                                          disabled={isDeletingAnnotation || deletingId === annotation.id}
+                                          className="size-7 p-0"
+                                          aria-label="View annotation"
+                                          onClick={() => {
+                                            onView(annotation)
+                                            onClose()
+                                          }}
                                         >
-                                          {deletingId === annotation.id ? <Loader2Icon className="animate-spin" /> : 'Delete'}
+                                          <EyeIcon className="size-3.5" />
                                         </Button>
-                                      </PopoverClose>
-                                    </div>
+                                      </TooltipTrigger>
+                                      <TooltipContent>View details</TooltipContent>
+                                    </Tooltip>
                                   </div>
-                                </PopoverContent>
-                              </Popover>
-                            </div>
+                                )
+                              : (
+                                  <div className="grid shrink-0 grid-cols-[1.75rem_1.75rem] grid-rows-[1.75rem_1.75rem] gap-1 self-start">
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="col-start-1 row-start-1 size-7 p-0"
+                                          aria-label="Edit annotation"
+                                          onClick={() => onEdit(annotation)}
+                                        >
+                                          <EditIcon className="size-3.5" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Edit (E)</TooltipContent>
+                                    </Tooltip>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="col-start-1 row-start-2 size-7 p-0"
+                                          aria-label="Clone annotation"
+                                          onClick={() => onClone(annotation)}
+                                        >
+                                          <CopyIcon className="size-3.5" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Clone (C)</TooltipContent>
+                                    </Tooltip>
+                                    <Popover>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <PopoverTrigger asChild>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="col-start-2 row-start-1 size-7 p-0 text-red-500 hover:text-red-600"
+                                              aria-label="Delete annotation"
+                                              disabled={isDeletingAnnotation || deletingId === annotation.id}
+                                            >
+                                              {deletingId === annotation.id
+                                                ? <Loader2Icon className="size-3.5 animate-spin" />
+                                                : <Trash2Icon className="size-3.5" />}
+                                            </Button>
+                                          </PopoverTrigger>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Delete</TooltipContent>
+                                      </Tooltip>
+                                      <PopoverContent side="top" className="w-64">
+                                        <div className="space-y-3">
+                                          <p className="text-sm">Are you sure you want to delete this annotation?</p>
+                                          <div className="flex justify-end gap-2">
+                                            <PopoverClose asChild>
+                                              <Button variant="ghost" size="sm">Cancel</Button>
+                                            </PopoverClose>
+                                            <PopoverClose asChild>
+                                              <Button
+                                                variant="destructive"
+                                                size="sm"
+                                                onClick={() => handleDelete(annotation.id)}
+                                                disabled={isDeletingAnnotation || deletingId === annotation.id}
+                                              >
+                                                {deletingId === annotation.id ? <Loader2Icon className="animate-spin" /> : 'Delete'}
+                                              </Button>
+                                            </PopoverClose>
+                                          </div>
+                                        </div>
+                                      </PopoverContent>
+                                    </Popover>
+                                  </div>
+                                )}
                           </div>
                         </CardContent>
                       </Card>
@@ -303,7 +331,7 @@ export function AnnotationListPopover({
                 </ScrollArea>
               </div>
 
-              {mentionData && (
+              {mentionData && !readOnly && (
                 <div className="space-y-3">
                   <div>
                     <h5 className="mb-2 text-xs font-semibold text-muted-foreground">Create new annotation</h5>

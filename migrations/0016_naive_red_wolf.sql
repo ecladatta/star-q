@@ -1,0 +1,1 @@
+ALTER TABLE "corpus" ADD COLUMN "visibility" text DEFAULT 'private' NOT NULL;

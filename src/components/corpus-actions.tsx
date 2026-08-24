@@ -50,10 +50,11 @@ import {
 type CorpusActionsProps = {
   corpus: Corpus & { documentsCount?: number, annotationsCount?: number }
   showOpenAction?: boolean
+  canEdit?: boolean
   triggerButton?: ReactNode
 }
 
-export function CorpusActions({ corpus, showOpenAction = true, triggerButton }: CorpusActionsProps) {
+export function CorpusActions({ corpus, showOpenAction = true, canEdit = true, triggerButton }: CorpusActionsProps) {
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -227,22 +228,26 @@ export function CorpusActions({ corpus, showOpenAction = true, triggerButton }: 
               Analytics
             </a>
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setShowSettingsDialog(true)}>
-            <SettingsIcon className="mr-2 size-4" />
-            Settings
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleRenameClick}>
-            <EditIcon className="mr-2 size-4" />
-            Rename
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleDuplicateClick}>
-            <CopyIcon className="mr-2 size-4" />
-            Duplicate
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleImportClick}>
-            <FileUpIcon className="mr-2 size-4" />
-            Import
-          </DropdownMenuItem>
+          {canEdit && (
+            <>
+              <DropdownMenuItem onClick={() => setShowSettingsDialog(true)}>
+                <SettingsIcon className="mr-2 size-4" />
+                Settings
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleRenameClick}>
+                <EditIcon className="mr-2 size-4" />
+                Rename
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleDuplicateClick}>
+                <CopyIcon className="mr-2 size-4" />
+                Duplicate
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleImportClick}>
+                <FileUpIcon className="mr-2 size-4" />
+                Import
+              </DropdownMenuItem>
+            </>
+          )}
           <DropdownMenuSub>
             <DropdownMenuSubTrigger>
               <FileDownIcon className="mr-2 size-4" />
@@ -259,21 +264,25 @@ export function CorpusActions({ corpus, showOpenAction = true, triggerButton }: 
               ))}
             </DropdownMenuSubContent>
           </DropdownMenuSub>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            onClick={handleDeleteClick}
-            disabled={isDeleting}
-            className="text-red-600 focus:text-red-600"
-          >
-            {isDeleting
-              ? (
-                  <Loader2Icon className="mr-2 size-4 animate-spin" />
-                )
-              : (
-                  <Trash2Icon className="mr-2 size-4" />
-                )}
-            Delete
-          </DropdownMenuItem>
+          {canEdit && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={handleDeleteClick}
+                disabled={isDeleting}
+                className="text-red-600 focus:text-red-600"
+              >
+                {isDeleting
+                  ? (
+                      <Loader2Icon className="mr-2 size-4 animate-spin" />
+                    )
+                  : (
+                      <Trash2Icon className="mr-2 size-4" />
+                    )}
+                Delete
+              </DropdownMenuItem>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 

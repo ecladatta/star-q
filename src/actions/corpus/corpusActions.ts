@@ -1,18 +1,19 @@
 'use server'
 import type { Column, SQL, SQLWrapper } from 'drizzle-orm'
-import type { Corpus, CorpusCustomEntity, Document } from '@/db/schema'
+import type { Corpus, CorpusCustomEntity, CorpusVisibility, Document } from '@/db/schema'
 import type { CorpusSettings } from '@/lib/corpus-settings'
 import { and, count, countDistinct, desc, eq, getTableColumns, inArray, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { db } from '@/db/drizzle'
 import { annotation, annotationComponent, annotationQualifier, corpus, corpusCustomEntity, document } from '@/db/schema'
 import { requireAuth } from '@/lib/auth-utils'
+import { isAnonymousViewer, requireViewCorpus } from '@/lib/corpus-access'
 import { mergeCorpusSettings, sanitizeCorpusSettingsPatch } from '@/lib/corpus-settings'
 
 export type DocumentMetadata = Omit<Document, 'raw'> & { annotationsCount: number }
 
 export async function getCorpuses() {
-  await requireAuth()
+  const anonymous = await isAnonymousViewer()
 
   return db.select({
     ...getTableColumns(corpus),
@@ -22,6 +23,7 @@ export async function getCorpuses() {
     .from(corpus)
     .leftJoin(document, eq(document.corpusId, corpus.id))
     .leftJoin(annotation, eq(annotation.documentId, document.id))
+    .where(anonymous ? eq(corpus.visibility, 'public') : undefined)
     .groupBy(corpus.id)
     .orderBy(desc(corpus.createdAt))
 }
@@ -42,14 +44,14 @@ export async function deleteCorpus(id: string) {
 }
 
 export async function getCorpus(id: string): Promise<Corpus> {
-  await requireAuth()
+  await requireViewCorpus(id)
 
   const [data] = await db.select().from(corpus).where(eq(corpus.id, id))
   return data
 }
 
 export async function getCorpusAnnotationsCount(corpusId: string): Promise<number> {
-  await requireAuth()
+  await requireViewCorpus(corpusId)
 
   const [result] = await db
     .select({ count: count(annotation.id) })
@@ -286,8 +288,27 @@ export async function updateCorpusSettings(corpusId: string, patch: Partial<Corp
   revalidatePath(`/corpus/${corpusId}`)
 }
 
-export async function getCorpusCustomEntities(corpusId: string): Promise<CorpusCustomEntity[]> {
+export async function updateCorpusVisibility(corpusId: string, visibility: CorpusVisibility) {
   await requireAuth()
+
+  const [existing] = await db
+    .select({ id: corpus.id })
+    .from(corpus)
+    .where(eq(corpus.id, corpusId))
+  if (!existing) {
+    throw new Error('Corpus not found')
+  }
+
+  await db
+    .update(corpus)
+    .set({ visibility, updatedAt: new Date() })
+    .where(eq(corpus.id, corpusId))
+  revalidatePath(`/corpus/${corpusId}`)
+  revalidatePath('/')
+}
+
+export async function getCorpusCustomEntities(corpusId: string): Promise<CorpusCustomEntity[]> {
+  await requireViewCorpus(corpusId)
 
   return db.select().from(corpusCustomEntity).where(eq(corpusCustomEntity.corpusId, corpusId))
 }
@@ -337,7 +358,7 @@ function levenshtein(
 }
 
 export async function searchCorpusCustomEntities(corpusId: string, searchTerm: string, entityType: 'subject' | 'predicate' | 'object') {
-  await requireAuth()
+  await requireViewCorpus(corpusId)
 
   // Map entityType to customType
   const customType: 'entity' | 'relation' = entityType === 'predicate' ? 'relation' : 'entity'

@@ -8,9 +8,10 @@ import { revalidatePath } from 'next/cache'
 import { db } from '@/db/drizzle'
 import { annotation, corpus, document } from '@/db/schema'
 import { requireAuth } from '@/lib/auth-utils'
+import { requireViewCorpus, requireViewDocument } from '@/lib/corpus-access'
 
 export async function getDocumentsMetadata(corpusId: string): Promise<DocumentMetadata[]> {
-  await requireAuth()
+  await requireViewCorpus(corpusId)
 
   const { raw, ...documentColumns } = getTableColumns(document)
   return db.select({
@@ -25,14 +26,14 @@ export async function getDocumentsMetadata(corpusId: string): Promise<DocumentMe
 }
 
 export async function getDocument(id: string): Promise<Document> {
-  await requireAuth()
+  await requireViewDocument(id)
 
   const [data] = await db.select().from(document).where(eq(document.id, id))
   return data
 }
 
 export async function getRawDocumentData(id: string): Promise<DocumentData | null> {
-  await requireAuth()
+  await requireViewDocument(id)
 
   const [data] = await db.select({ raw: document.raw }).from(document).where(eq(document.id, id))
   return data?.raw || null

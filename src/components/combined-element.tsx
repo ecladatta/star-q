@@ -23,6 +23,7 @@ export type CombinedElementProps = {
   handleSplitClick: (split: Offset, anchorRect?: DOMRect) => void
   documentElements: DocumentElement[]
   currentAnnotation: CurrentAnnotation | null
+  readOnly?: boolean
 }
 
 function isComponentFromCurrentAnnotation(componentId: string, currentAnnotation: CurrentAnnotation | null): boolean {
@@ -58,6 +59,7 @@ function CombinedElement({
   handleSplitClick,
   documentElements,
   currentAnnotation,
+  readOnly = false,
 }: CombinedElementProps) {
   const [hoveredCell, setHoveredCell] = useState<{ row: number, cell: number } | null>(null)
   const [copied, setCopied] = useState(false)
@@ -133,12 +135,14 @@ function CombinedElement({
             'data-start': 0,
             'data-end': renderedTitle.length,
           },
-          onMouseUp: (event: React.MouseEvent<HTMLElement>) =>
-            handleTextSelection(elementIndex, event.currentTarget, rawTitle),
-          onKeyUp: (event: React.KeyboardEvent<HTMLElement>) =>
-            event.key === 'Enter' && handleTextSelection(elementIndex, event.currentTarget, rawTitle),
-          role: 'textbox',
-          tabIndex: 0,
+          ...(!readOnly && {
+            onMouseUp: (event: React.MouseEvent<HTMLElement>) =>
+              handleTextSelection(elementIndex, event.currentTarget, rawTitle),
+            onKeyUp: (event: React.KeyboardEvent<HTMLElement>) =>
+              event.key === 'Enter' && handleTextSelection(elementIndex, event.currentTarget, rawTitle),
+            role: 'textbox',
+            tabIndex: 0,
+          }),
         }
       : {
           className: 'mb-2 font-semibold wrap-break-word',
@@ -164,10 +168,12 @@ function CombinedElement({
         {createElement(data.level ? `h${data.level}` : 'div', headingProps, headingContent)}
         <div
           className="min-w-0 text-lg/relaxed wrap-break-word"
-          role="textbox"
-          tabIndex={0}
-          onMouseUp={event => handleTextSelection(elementIndex, event.currentTarget)}
-          onKeyUp={event => event.key === 'Enter' && handleTextSelection(elementIndex, event.currentTarget)}
+          {...(!readOnly && {
+            role: 'textbox',
+            tabIndex: 0,
+            onMouseUp: (event: React.MouseEvent<HTMLElement>) => handleTextSelection(elementIndex, event.currentTarget),
+            onKeyUp: (event: React.KeyboardEvent<HTMLElement>) => event.key === 'Enter' && handleTextSelection(elementIndex, event.currentTarget),
+          })}
         >
           {splits
             .filter(split => split.source === 'text')
@@ -308,7 +314,7 @@ function CombinedElement({
                         className={cn('relative p-3 font-medium transition-all duration-200 select-text', isHovered ? 'bg-blue-50! shadow-[inset_0_0_0_1px_rgb(147_197_253)]' : 'hover:bg-blue-50! hover:shadow-[inset_0_0_0_1px_rgb(147_197_253)]')}
                         onMouseEnter={() => setHoveredCell({ row: 0, cell: cellIndex })}
                         onMouseLeave={() => setHoveredCell(null)}
-                        onMouseUp={() => handleCellMouseUp(0, cellIndex)}
+                        {...(!readOnly && { onMouseUp: () => handleCellMouseUp(0, cellIndex) })}
                         aria-label={`Table header cell ${cellIndex + 1}. Click to annotate this cell.`}
                         title={`Click to annotate header cell: ${renderedTableData[0][cellIndex]}`}
                         data-cell={`0-${cellIndex}`}
@@ -343,7 +349,7 @@ function CombinedElement({
                         className={cn('relative p-3 transition-all duration-200 select-text', isHovered ? 'bg-blue-50! shadow-[inset_0_0_0_1px_rgb(147_197_253)]' : 'hover:bg-blue-50! hover:shadow-[inset_0_0_0_1px_rgb(147_197_253)]')}
                         onMouseEnter={() => setHoveredCell({ row: actualRowIndex, cell: cellIndex })}
                         onMouseLeave={() => setHoveredCell(null)}
-                        onMouseUp={() => handleCellMouseUp(actualRowIndex, cellIndex)}
+                        {...(!readOnly && { onMouseUp: () => handleCellMouseUp(actualRowIndex, cellIndex) })}
                         aria-label={`Table cell row ${actualRowIndex + 1}, column ${cellIndex + 1}. Click to annotate this cell.`}
                         title={`Click to annotate cell: ${renderedTableData[actualRowIndex][cellIndex]}`}
                         data-cell={`${actualRowIndex}-${cellIndex}`}

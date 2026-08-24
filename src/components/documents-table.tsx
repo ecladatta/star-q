@@ -86,6 +86,7 @@ type DataTableProps = {
   setDocumentToDelete: (doc: DocumentMetadata) => void
   handleMarkCompleted: (doc: DocumentMetadata) => void
   loadingIds: string[]
+  canEdit: boolean
   isBulkMarking: boolean
   isBulkDeleting: boolean
   onSelectionChange: (docs: DocumentMetadata[]) => void
@@ -102,6 +103,7 @@ type DocumentTableMeta = {
   handleMarkCompleted: (doc: DocumentMetadata) => void
   setDocumentToDelete: (doc: DocumentMetadata) => void
   loadingIds: string[]
+  canEdit: boolean
 }
 
 function DataTable({
@@ -111,6 +113,7 @@ function DataTable({
   setDocumentToDelete,
   handleMarkCompleted,
   loadingIds,
+  canEdit,
   isBulkMarking,
   isBulkDeleting,
   onSelectionChange,
@@ -140,12 +143,13 @@ function DataTable({
       rowSelection,
     },
     onRowSelectionChange: setRowSelection,
-    enableRowSelection: true,
+    enableRowSelection: canEdit,
     meta: {
       filteredDocuments,
       handleMarkCompleted,
       setDocumentToDelete,
       loadingIds,
+      canEdit,
     } satisfies DocumentTableMeta,
   })
 
@@ -388,20 +392,32 @@ async function downloadRawDocumentData(id: string, title: string) {
 const columns: ColumnDef<DocumentMetadata, any>[] = [
   {
     id: 'select',
-    header: ({ table }) => (
-      <Checkbox
-        checked={table.getIsAllRowsSelected()}
-        aria-checked={table.getIsSomeRowsSelected() ? 'mixed' : undefined}
-        onCheckedChange={checked => table.toggleAllRowsSelected(!!checked)}
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        disabled={!row.getCanSelect()}
-        onCheckedChange={checked => row.toggleSelected(!!checked)}
-      />
-    ),
+    header: ({ table }) => {
+      const meta = table.options.meta as DocumentTableMeta
+      if (!meta.canEdit) {
+        return null
+      }
+      return (
+        <Checkbox
+          checked={table.getIsAllRowsSelected()}
+          aria-checked={table.getIsSomeRowsSelected() ? 'mixed' : undefined}
+          onCheckedChange={checked => table.toggleAllRowsSelected(!!checked)}
+        />
+      )
+    },
+    cell: ({ row, table }) => {
+      const meta = table.options.meta as DocumentTableMeta
+      if (!meta.canEdit) {
+        return null
+      }
+      return (
+        <Checkbox
+          checked={row.getIsSelected()}
+          disabled={!row.getCanSelect()}
+          onCheckedChange={checked => row.toggleSelected(!!checked)}
+        />
+      )
+    },
   },
   {
     accessorKey: 'title',
@@ -431,22 +447,25 @@ const columns: ColumnDef<DocumentMetadata, any>[] = [
     ),
     cell: ({ row, table }) => {
       const completed = !!row.original.completedAt
-      const isLoading = (table.options.meta as DocumentTableMeta)?.loadingIds?.includes(row.original.id) ?? false
-      const toggle = () =>
-        (table.options.meta as DocumentTableMeta)
-          .handleMarkCompleted(row.original)
+      const meta = table.options.meta as DocumentTableMeta
+      const isLoading = meta?.loadingIds?.includes(row.original.id) ?? false
+      const toggle = () => meta?.handleMarkCompleted(row.original)
       return (
         <div className="flex items-center gap-2">
-          {isLoading
-            ? <Loader2Icon className="size-4 animate-spin" />
-            : (
-                <Checkbox
-                  checked={completed}
-                  onCheckedChange={toggle}
-                  className="shrink-0 rounded-full"
-                  disabled={isLoading}
-                />
-              )}
+          {meta?.canEdit && (
+            <>
+              {isLoading
+                ? <Loader2Icon className="size-4 animate-spin" />
+                : (
+                    <Checkbox
+                      checked={completed}
+                      onCheckedChange={toggle}
+                      className="shrink-0 rounded-full"
+                      disabled={isLoading}
+                    />
+                  )}
+            </>
+          )}
           <span suppressHydrationWarning className="text-sm">
             {row.original.completedAt
               ? row.original.completedAt.toLocaleString()
@@ -478,58 +497,60 @@ const columns: ColumnDef<DocumentMetadata, any>[] = [
     header: ({ column }) => (
       <DataTableColumnHeader column={column} title="Actions" />
     ),
-    cell: ({ row, table }) => (
-      <div className="flex items-center gap-2">
-        <Link href={`/document/${row.original.id}`}>
-          <Button variant="outline" size="sm">
-            <FilePenIcon className="size-4" />
-            Open
-          </Button>
-        </Link>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="size-8 p-0">
-              <MoreVerticalIcon className="size-4" />
+    cell: ({ row, table }) => {
+      const meta = table.options.meta as DocumentTableMeta
+      return (
+        <div className="flex items-center gap-2">
+          <Link href={`/document/${row.original.id}`}>
+            <Button variant="outline" size="sm">
+              <FilePenIcon className="size-4" />
+              Open
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            <DropdownMenuItem
-              onClick={() =>
-                (table.options.meta as DocumentTableMeta)?.handleMarkCompleted(row.original)}
-            >
-              {row.original.completedAt
-                ? (
-                    <>
-                      <Loader2Icon className="mr-2 size-4" />
-                      Mark as not completed
-                    </>
-                  )
-                : (
-                    <>
-                      <CheckCircleIcon className="mr-2 size-4" />
-                      Mark as completed
-                    </>
-                  )}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() =>
-                downloadRawDocumentData(row.original.id, row.original.title)}
-            >
-              <DownloadIcon className="mr-2 size-4" />
-              Download Raw Data
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() =>
-                (table.options.meta as DocumentTableMeta)?.setDocumentToDelete(row.original)}
-              className="font-bold text-red-600"
-            >
-              <Trash2Icon className="mr-2 size-4" />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    ),
+          </Link>
+          {meta.canEdit && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="size-8 p-0">
+                  <MoreVerticalIcon className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem
+                  onClick={() => meta.handleMarkCompleted(row.original)}
+                >
+                  {row.original.completedAt
+                    ? (
+                        <>
+                          <Loader2Icon className="mr-2 size-4" />
+                          Mark as not completed
+                        </>
+                      )
+                    : (
+                        <>
+                          <CheckCircleIcon className="mr-2 size-4" />
+                          Mark as completed
+                        </>
+                      )}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => downloadRawDocumentData(row.original.id, row.original.title)}
+                >
+                  <DownloadIcon className="mr-2 size-4" />
+                  Download Raw Data
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => meta.setDocumentToDelete(row.original)}
+                  className="font-bold text-red-600"
+                >
+                  <Trash2Icon className="mr-2 size-4" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
+      )
+    },
   },
 ]
 
@@ -582,8 +603,10 @@ function DataTableColumnHeader<TData, TValue>({
 
 export default function DocumentsTable({
   documents,
+  canEdit,
 }: {
   documents: DocumentMetadata[]
+  canEdit?: boolean
 }) {
   const [documentToDelete, setDocumentToDelete]
     = useState<DocumentMetadata | null>(null)
@@ -672,6 +695,7 @@ export default function DocumentsTable({
         setDocumentToDelete={setDocumentToDelete}
         handleMarkCompleted={handleMarkCompleted}
         loadingIds={loadingIds}
+        canEdit={canEdit ?? true}
         isBulkMarking={isBulkMarking}
         isBulkDeleting={isBulkDeleting}
         onSelectionChange={setSelectedDocuments}
