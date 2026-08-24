@@ -1,5 +1,6 @@
 import type { InferSelectModel } from 'drizzle-orm'
 import type { AdapterAccountType } from 'next-auth/adapters'
+import type { CorpusSettings } from '@/lib/corpus-settings'
 import type { AnnotationComponentRole, DocumentData, EntityDatatype } from '@/types/types'
 import { randomUUID } from 'node:crypto'
 import { boolean, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core'
@@ -90,6 +91,7 @@ export const authenticators = pgTable(
 export const corpus = pgTable('corpus', {
   id: uuid('id').primaryKey().$defaultFn(() => randomUUID()),
   title: text('title'),
+  settings: jsonb('settings').$type<CorpusSettings>().notNull().default({}),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 })

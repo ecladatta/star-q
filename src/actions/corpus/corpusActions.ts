@@ -1,11 +1,13 @@
 'use server'
 import type { Column, SQL, SQLWrapper } from 'drizzle-orm'
 import type { Corpus, CorpusCustomEntity, Document } from '@/db/schema'
+import type { CorpusSettings } from '@/lib/corpus-settings'
 import { and, count, countDistinct, desc, eq, getTableColumns, inArray, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { db } from '@/db/drizzle'
 import { annotation, annotationComponent, annotationQualifier, corpus, corpusCustomEntity, document } from '@/db/schema'
 import { requireAuth } from '@/lib/auth-utils'
+import { mergeCorpusSettings, sanitizeCorpusSettingsPatch } from '@/lib/corpus-settings'
 
 export type DocumentMetadata = Omit<Document, 'raw'> & { annotationsCount: number }
 
@@ -68,7 +70,7 @@ export async function duplicateCorpus(id: string, newTitle?: string) {
     }
 
     const title = newTitle || `${originalCorpus.title} (copy)`
-    const [newCorpus] = await trx.insert(corpus).values({ title }).returning()
+    const [newCorpus] = await trx.insert(corpus).values({ title, settings: originalCorpus.settings }).returning()
 
     // Copy custom entities first and create mapping
     const customEntities = await trx.select().from(corpusCustomEntity).where(eq(corpusCustomEntity.corpusId, id))
@@ -263,6 +265,25 @@ export async function renameCorpus(id: string, newTitle: string) {
 
   await db.update(corpus).set({ title: newTitle }).where(eq(corpus.id, id))
   revalidatePath('/')
+}
+
+export async function updateCorpusSettings(corpusId: string, patch: Partial<CorpusSettings>) {
+  await requireAuth()
+
+  const [existing] = await db
+    .select({ settings: corpus.settings })
+    .from(corpus)
+    .where(eq(corpus.id, corpusId))
+  if (!existing) {
+    throw new Error('Corpus not found')
+  }
+
+  const settings = mergeCorpusSettings(existing.settings, sanitizeCorpusSettingsPatch(patch))
+  await db
+    .update(corpus)
+    .set({ settings, updatedAt: new Date() })
+    .where(eq(corpus.id, corpusId))
+  revalidatePath(`/corpus/${corpusId}`)
 }
 
 export async function getCorpusCustomEntities(corpusId: string): Promise<CorpusCustomEntity[]> {

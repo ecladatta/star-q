@@ -1,12 +1,14 @@
 'use client'
 
 import type { Corpus, CorpusCustomEntity } from '@/db/schema'
+import type { CorpusSettings } from '@/lib/corpus-settings'
 import type { EntityDatatype } from '@/types/types'
 import { EditIcon, FilterIcon, Loader2Icon, PlusIcon, SearchIcon, Trash2Icon } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { addCorpusCustomEntity, deleteCorpusCustomEntity, getCorpusCustomEntities, renameCorpus, updateCorpusCustomEntity } from '@/actions/corpus/corpusActions'
+import { addCorpusCustomEntity, deleteCorpusCustomEntity, getCorpusCustomEntities, renameCorpus, updateCorpusCustomEntity, updateCorpusSettings } from '@/actions/corpus/corpusActions'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -25,6 +27,10 @@ type CorpusSettingsDialogProps = {
 
 export function CorpusSettingsDialog({ open, onOpenChange, corpus, onCorpusRenamed }: CorpusSettingsDialogProps) {
   const [corpusTitle, setCorpusTitle] = useState(corpus.title)
+  const [settings, setSettings] = useState<CorpusSettings>(corpus.settings ?? {})
+  const [previousCorpus, setPreviousCorpus] = useState(corpus)
+  const [wasOpen, setWasOpen] = useState(false)
+  const [isSavingSettings, setIsSavingSettings] = useState(false)
   const [customEntities, setCustomEntities] = useState<CorpusCustomEntity[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -50,12 +56,18 @@ export function CorpusSettingsDialog({ open, onOpenChange, corpus, onCorpusRenam
     }
   }, [corpus.id])
 
+  if (corpus !== previousCorpus || (open && !wasOpen)) {
+    setPreviousCorpus(corpus)
+    setWasOpen(open)
+    setCorpusTitle(corpus.title)
+    setSettings(corpus.settings ?? {})
+  }
+
   useEffect(() => {
     if (open) {
       loadCustomEntities()
-      setCorpusTitle(corpus.title)
     }
-  }, [open, corpus.title, loadCustomEntities])
+  }, [open, loadCustomEntities])
 
   const handleSaveCorpusTitle = async () => {
     if (!corpusTitle || !corpusTitle.trim() || corpusTitle === corpus.title) {
@@ -72,6 +84,21 @@ export function CorpusSettingsDialog({ open, onOpenChange, corpus, onCorpusRenam
       setCorpusTitle(corpus.title)
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  const handleToggleSetting = async (key: keyof CorpusSettings, checked: boolean) => {
+    const previous = settings[key]
+    setSettings(prev => ({ ...prev, [key]: checked }))
+    try {
+      setIsSavingSettings(true)
+      await updateCorpusSettings(corpus.id, { [key]: checked })
+      toast.success(checked ? 'Wikidata setting enabled' : 'Wikidata setting disabled')
+    } catch {
+      setSettings(prev => ({ ...prev, [key]: previous }))
+      toast.error('Failed to update corpus settings')
+    } finally {
+      setIsSavingSettings(false)
     }
   }
 
@@ -183,6 +210,42 @@ export function CorpusSettingsDialog({ open, onOpenChange, corpus, onCorpusRenam
                   {isSaving ? <Loader2Icon className="size-4 animate-spin" /> : <EditIcon className="size-4" />}
                   Save
                 </Button>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <h3 className="text-lg font-medium">Wikidata</h3>
+              <div className="flex items-start justify-between gap-4 rounded-md border p-4">
+                <div className="space-y-1">
+                  <Label htmlFor="wikidata-constraint-warnings">
+                    Check annotations against Wikidata constraints
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Show constraint warnings on the analytics and document pages.
+                  </p>
+                </div>
+                <Checkbox
+                  id="wikidata-constraint-warnings"
+                  checked={Boolean(settings.wikidataConstraintWarnings)}
+                  disabled={isSavingSettings}
+                  onCheckedChange={checked => handleToggleSetting('wikidataConstraintWarnings', Boolean(checked))}
+                />
+              </div>
+              <div className="flex items-start justify-between gap-4 rounded-md border p-4">
+                <div className="space-y-1">
+                  <Label htmlFor="wikidata-predicate-filtering">
+                    Filter entity and predicate suggestions by Wikidata constraints
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Restrict annotation suggestions to Wikidata-compatible items.
+                  </p>
+                </div>
+                <Checkbox
+                  id="wikidata-predicate-filtering"
+                  checked={Boolean(settings.wikidataPredicateFiltering)}
+                  disabled={isSavingSettings}
+                  onCheckedChange={checked => handleToggleSetting('wikidataPredicateFiltering', Boolean(checked))}
+                />
               </div>
             </div>
           </TabsContent>

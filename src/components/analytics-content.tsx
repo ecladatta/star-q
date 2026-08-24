@@ -1,16 +1,20 @@
 import type { CorpusAnalytics } from '@/actions/analytics/analyticsActions'
-import { AlertTriangleIcon, BarChart3Icon, FileTextIcon, TableIcon } from 'lucide-react'
+import type { CorpusWarnings } from '@/lib/wikidata-constraints'
+import { AlertTriangleIcon, BarChart3Icon, ChevronRightIcon, FileTextIcon, TableIcon } from 'lucide-react'
 import Link from 'next/link'
+import { Suspense } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { WikidataWarningsSection, WikidataWarningsSkeleton } from './wikidata-warnings-section'
 
 type AnalyticsContentProps = {
   analyticsPromise: Promise<CorpusAnalytics>
+  warningsPromise: Promise<CorpusWarnings>
 }
 
-export async function AnalyticsContent({ analyticsPromise }: AnalyticsContentProps) {
+export async function AnalyticsContent({ analyticsPromise, warningsPromise }: AnalyticsContentProps) {
   const analytics = await analyticsPromise
 
   return (
@@ -129,13 +133,13 @@ export async function AnalyticsContent({ analyticsPromise }: AnalyticsContentPro
             {/* Text Only Documents */}
             {analytics.documentsByAnnotationType.textOnly.length > 0 && (
               <Collapsible>
-                <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg border p-3 hover:bg-muted">
+                <CollapsibleTrigger className="group flex w-full items-center justify-between rounded-lg border p-3 hover:bg-muted">
                   <div className="flex items-center space-x-2">
                     <FileTextIcon className="size-4 text-blue-500" />
                     <span className="font-medium">Documents with Text-Only Annotations</span>
                     <Badge variant="secondary">{analytics.documentsByAnnotationType.textOnly.length}</Badge>
                   </div>
-                  <span className="text-sm text-muted-foreground">Click to expand</span>
+                  <ChevronRightIcon className="size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
                 </CollapsibleTrigger>
                 <CollapsibleContent className="mt-2 space-y-2">
                   {analytics.documentsByAnnotationType.textOnly.map(doc => (
@@ -159,13 +163,13 @@ export async function AnalyticsContent({ analyticsPromise }: AnalyticsContentPro
             {/* Table Only Documents */}
             {analytics.documentsByAnnotationType.tableOnly.length > 0 && (
               <Collapsible>
-                <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg border p-3 hover:bg-muted">
+                <CollapsibleTrigger className="group flex w-full items-center justify-between rounded-lg border p-3 hover:bg-muted">
                   <div className="flex items-center space-x-2">
                     <TableIcon className="size-4 text-green-500" />
                     <span className="font-medium">Documents with Table-Only Annotations</span>
                     <Badge variant="secondary">{analytics.documentsByAnnotationType.tableOnly.length}</Badge>
                   </div>
-                  <span className="text-sm text-muted-foreground">Click to expand</span>
+                  <ChevronRightIcon className="size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
                 </CollapsibleTrigger>
                 <CollapsibleContent className="mt-2 space-y-2">
                   {analytics.documentsByAnnotationType.tableOnly.map(doc => (
@@ -189,13 +193,13 @@ export async function AnalyticsContent({ analyticsPromise }: AnalyticsContentPro
             {/* Joint Documents */}
             {analytics.documentsByAnnotationType.joint.length > 0 && (
               <Collapsible>
-                <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg border p-3 hover:bg-muted">
+                <CollapsibleTrigger className="group flex w-full items-center justify-between rounded-lg border p-3 hover:bg-muted">
                   <div className="flex items-center space-x-2">
                     <BarChart3Icon className="size-4 text-purple-500" />
                     <span className="font-medium">Documents with Joint Annotations</span>
                     <Badge variant="secondary">{analytics.documentsByAnnotationType.joint.length}</Badge>
                   </div>
-                  <span className="text-sm text-muted-foreground">Click to expand</span>
+                  <ChevronRightIcon className="size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
                 </CollapsibleTrigger>
                 <CollapsibleContent className="mt-2 space-y-2">
                   {analytics.documentsByAnnotationType.joint.map(doc => (
@@ -233,11 +237,12 @@ export async function AnalyticsContent({ analyticsPromise }: AnalyticsContentPro
           </CardHeader>
           <CardContent>
             <Collapsible defaultOpen={analytics.documentsWithUnassignedPredicates.length <= 5}>
-              <CollapsibleTrigger className="mb-4 flex w-full items-center justify-between rounded-lg border p-3 hover:opacity-90" style={{ backgroundColor: '#ADD8E6' }}>
+              <CollapsibleTrigger className="group mb-4 flex w-full items-center justify-between rounded-lg border p-3 hover:opacity-90" style={{ backgroundColor: '#ADD8E6' }}>
                 <div className="flex items-center space-x-2">
                   <span className="font-medium">View Documents</span>
                   <Badge variant="secondary">{analytics.documentsWithUnassignedPredicates.length}</Badge>
                 </div>
+                <ChevronRightIcon className="size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
               </CollapsibleTrigger>
               <CollapsibleContent className="mt-2 space-y-2">
                 {analytics.documentsWithUnassignedPredicates.map(doc => (
@@ -274,11 +279,12 @@ export async function AnalyticsContent({ analyticsPromise }: AnalyticsContentPro
           </CardHeader>
           <CardContent>
             <Collapsible defaultOpen={analytics.documentsWithUnassignedSubjects.length <= 5}>
-              <CollapsibleTrigger className="mb-4 flex w-full items-center justify-between rounded-lg border p-3 hover:opacity-90" style={{ backgroundColor: '#FFE4B5' }}>
+              <CollapsibleTrigger className="group mb-4 flex w-full items-center justify-between rounded-lg border p-3 hover:opacity-90" style={{ backgroundColor: '#FFE4B5' }}>
                 <div className="flex items-center space-x-2">
                   <span className="font-medium">View Documents</span>
                   <Badge variant="secondary">{analytics.documentsWithUnassignedSubjects.length}</Badge>
                 </div>
+                <ChevronRightIcon className="size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
               </CollapsibleTrigger>
               <CollapsibleContent className="mt-2 space-y-2">
                 {analytics.documentsWithUnassignedSubjects.map(doc => (
@@ -315,11 +321,12 @@ export async function AnalyticsContent({ analyticsPromise }: AnalyticsContentPro
           </CardHeader>
           <CardContent>
             <Collapsible defaultOpen={analytics.documentsWithUnassignedObjects.length <= 5}>
-              <CollapsibleTrigger className="mb-4 flex w-full items-center justify-between rounded-lg border p-3 hover:opacity-90" style={{ backgroundColor: '#90EE90' }}>
+              <CollapsibleTrigger className="group mb-4 flex w-full items-center justify-between rounded-lg border p-3 hover:opacity-90" style={{ backgroundColor: '#90EE90' }}>
                 <div className="flex items-center space-x-2">
                   <span className="font-medium">View Documents</span>
                   <Badge variant="secondary">{analytics.documentsWithUnassignedObjects.length}</Badge>
                 </div>
+                <ChevronRightIcon className="size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
               </CollapsibleTrigger>
               <CollapsibleContent className="mt-2 space-y-2">
                 {analytics.documentsWithUnassignedObjects.map(doc => (
@@ -342,6 +349,11 @@ export async function AnalyticsContent({ analyticsPromise }: AnalyticsContentPro
         </Card>
       )}
 
+      {/* Warnings */}
+      <Suspense fallback={<WikidataWarningsSkeleton />}>
+        <WikidataWarningsSection warningsPromise={warningsPromise} />
+      </Suspense>
+
       {/* Property Statistics */}
       <Card className="mb-8">
         <CardHeader>
@@ -354,11 +366,12 @@ export async function AnalyticsContent({ analyticsPromise }: AnalyticsContentPro
           {analytics.propertyStats.length > 0
             ? (
                 <Collapsible defaultOpen={analytics.propertyStats.length <= 10}>
-                  <CollapsibleTrigger className="mb-4 flex w-full items-center justify-between rounded-lg border bg-muted/50 p-3 hover:bg-muted">
+                  <CollapsibleTrigger className="group mb-4 flex w-full items-center justify-between rounded-lg border bg-muted/50 p-3 hover:bg-muted">
                     <div className="flex items-center space-x-2">
                       <span className="font-medium">View All Properties</span>
                       <Badge variant="secondary">{analytics.propertyStats.length}</Badge>
                     </div>
+                    <ChevronRightIcon className="size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <div className="rounded-md border">
@@ -423,11 +436,12 @@ export async function AnalyticsContent({ analyticsPromise }: AnalyticsContentPro
           {analytics.entityStats.length > 0
             ? (
                 <Collapsible defaultOpen={analytics.entityStats.length <= 10}>
-                  <CollapsibleTrigger className="mb-4 flex w-full items-center justify-between rounded-lg border bg-muted/50 p-3 hover:bg-muted">
+                  <CollapsibleTrigger className="group mb-4 flex w-full items-center justify-between rounded-lg border bg-muted/50 p-3 hover:bg-muted">
                     <div className="flex items-center space-x-2">
                       <span className="font-medium">View All Entities</span>
                       <Badge variant="secondary">{analytics.entityStats.length}</Badge>
                     </div>
+                    <ChevronRightIcon className="size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <div className="rounded-md border">

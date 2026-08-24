@@ -1,4 +1,5 @@
 'use client'
+import type { ReactNode } from 'react'
 import type { DocumentMetadata } from '@/actions/corpus/corpusActions'
 import type { Corpus, Document } from '@/db/schema'
 import type { Offset } from '@/lib/utils'
@@ -32,9 +33,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useAnnotationState } from '@/hooks/useAnnotationState'
+import { useAnnotationUrlSync } from '@/hooks/useAnnotationUrlSync'
 import { useDocumentElements } from '@/hooks/useDocumentElements'
 import { useSelectionHandlers } from '@/hooks/useSelectionState'
 import { getAnnotationComponents } from '@/lib/annotation-roles'
+import { isConstraintWarningsEnabled, isPredicateFilteringEnabled } from '@/lib/corpus-settings'
 import { annotationComponentsShareSegment, cn, isMac } from '@/lib/utils'
 import { AnnotationForm } from './annotation-form'
 import { AnnotationListPopover } from './annotation-list-popover'
@@ -60,6 +63,7 @@ type DocumentViewerProps = {
   documents: DocumentMetadata[]
   document?: Document
   annotations?: DocumentAnnotation[]
+  warningsSlot?: ReactNode
 }
 
 export function DocumentViewer({
@@ -67,6 +71,7 @@ export function DocumentViewer({
   documents,
   document,
   annotations,
+  warningsSlot,
 }: DocumentViewerProps) {
   const [showAnnotations, setShowAnnotations] = useState(true)
   const [copiedDocument, setCopiedDocument] = useState(false)
@@ -184,12 +189,7 @@ export function DocumentViewer({
     })
   }
 
-  const handleAnnotationClick = (annotation: DocumentAnnotation) => {
-    if (annotation.id === currentAnnotation?.id) {
-      setCurrentAnnotation(null)
-      return
-    }
-    setCurrentAnnotation(annotation)
+  const scrollToAnnotation = (annotation: DocumentAnnotation) => {
     const element = window.document.getElementById(
       `element-${annotation.subject.elementIndex}`,
     )
@@ -197,6 +197,20 @@ export function DocumentViewer({
       element.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }
   }
+
+  const { openAnnotation, toggleAnnotation } = useAnnotationUrlSync({
+    annotations: documentAnnotations,
+    currentAnnotationId: currentAnnotation?.id ?? null,
+    onOpen: (annotation, scroll = true) => {
+      setCurrentAnnotation(annotation)
+      if (scroll) {
+        scrollToAnnotation(annotation)
+      }
+    },
+    onClose: () => setCurrentAnnotation(null),
+  })
+
+  const handleAnnotationClick = toggleAnnotation
 
   const handleSaveAnnotation = async () => {
     if (!document || !currentAnnotation)
@@ -208,7 +222,7 @@ export function DocumentViewer({
   }
 
   const handleEditAnnotation = (annotation: DocumentAnnotation) => {
-    setCurrentAnnotation(annotation)
+    openAnnotation(annotation, false)
     popover.hidePopover()
   }
 
@@ -313,6 +327,8 @@ export function DocumentViewer({
                 document={document}
                 documentData={documentData}
               />
+
+              {warningsSlot}
 
               <Card className="mb-6 min-w-0 overflow-hidden">
                 <CardHeader className="min-w-0">
@@ -472,6 +488,8 @@ export function DocumentViewer({
             annotationFormLoading={annotationFormLoading}
             isDeletingAnnotation={isDeletingAnnotation}
             corpusId={corpus.id}
+            wikidataPredicateFiltering={isPredicateFilteringEnabled(corpus.settings)}
+            wikidataConstraintWarnings={isConstraintWarningsEnabled(corpus.settings)}
             removeQualifier={removeQualifier}
             assignSelectionToQualifier={assignSelectionToQualifier}
             updateQualifierEntity={updateQualifierEntity}

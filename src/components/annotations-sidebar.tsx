@@ -352,12 +352,15 @@ export function AnnotationsSidebar({
     const scrollArea = scrollAreaRef.current
 
     if (annotationElement && scrollArea) {
-      // Find the scroll container (the actual scrollable element inside ScrollArea)
-      const scrollContainer = scrollArea.querySelector(
-        '[data-radix-scroll-area-viewport]',
-      )
+      // Defer so the scroll runs after any URL navigation has settled
+      const frame = requestAnimationFrame(() => {
+        // Find the scroll container (the actual scrollable element inside ScrollArea)
+        const scrollContainer = scrollArea.querySelector(
+          '[data-radix-scroll-area-viewport]',
+        )
+        if (!scrollContainer)
+          return
 
-      if (scrollContainer) {
         const containerRect = scrollContainer.getBoundingClientRect()
         const elementRect = annotationElement.getBoundingClientRect()
 
@@ -382,7 +385,9 @@ export function AnnotationsSidebar({
             behavior: 'smooth',
           })
         }
-      }
+      })
+
+      return () => cancelAnimationFrame(frame)
     }
   }, [currentAnnotation?.id, filteredAndSortedAnnotations])
 

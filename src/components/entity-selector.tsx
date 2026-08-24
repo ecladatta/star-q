@@ -1,5 +1,11 @@
 import type { ReactNode } from 'react'
 import type {
+  ConstraintEntityCheck,
+  ConstraintSide,
+  EntityCandidateClassification,
+  PropertyConstraints,
+} from '@/lib/wikidata-constraints'
+import type {
   AnnotationComponentRole,
   Entity,
   EntityDatatype,
@@ -27,13 +33,14 @@ import {
   TextIcon,
   TimerIcon,
   ToggleLeftIcon,
+  TriangleAlertIcon,
   TypeIcon,
   VariableIcon,
   WholeWordIcon,
   XIcon,
 } from 'lucide-react'
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import WBK from 'wikibase-sdk'
 import {
@@ -52,6 +59,9 @@ import {
 import { entityTypeForComponentRole } from '@/lib/annotation-roles'
 import { ENTITY_DATATYPE_GROUPS, ENTITY_DATATYPE_LABELS } from '@/lib/datatypes'
 import { cn } from '@/lib/utils'
+import { WIKIDATA_ITEM_PATTERN, WIKIDATA_PROPERTY_PATTERN } from '@/lib/wikidata-constraints'
+import { classifyEntityCandidatesViaWikidata, classifyPredicateCandidatesViaWikidata, withRequestTimeout } from '@/lib/wikidata-sparql'
+import { Badge } from './ui/badge'
 import { Button } from './ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
 import {
@@ -63,16 +73,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from './ui/select'
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 
 const wdk = WBK({
   instance: 'https://www.wikidata.org',
   sparqlEndpoint: 'https://query.wikidata.org/sparql',
 })
 
+const SEARCH_DEBOUNCE_MS = 200
+
 async function searchEntities(
   type: EntityType,
   searchTerm: string,
   corpusId?: string,
+  limit = 5,
 ): Promise<Entity[]> {
   // Search both Wikidata and custom entities in parallel
   const promises: Promise<Entity[]>[] = []
@@ -83,12 +97,14 @@ async function searchEntities(
       const url = wdk.searchEntities({
         search: searchTerm,
         language: 'en',
-        limit: 5,
+        limit,
         type: type === 'predicate' ? 'property' : 'item',
       })
 
-      const response = await fetch(url)
-      const data = await response.json()
+      const data = await withRequestTimeout(async (signal) => {
+        const response = await fetch(url, { signal })
+        return response.json()
+      })
       return data.search.map((result: any) => ({
         label: result.label,
         value: result.id,
@@ -286,60 +302,219 @@ function isSelectedEntity(
   return currentValue.value === candidate.value
 }
 
+function formatFilteredSides(sides: ConstraintSide[]): string {
+  if (sides.length === 1) {
+    return sides[0]
+  }
+  return 'domain or range'
+}
+
 export function EntitySelector({
   type,
   value,
   onValueChange,
   text,
   corpusId,
+  constraints,
+  constraintSide,
+  constraintPropertyLabel,
+  constraintEntityChecks,
+  filteringEnabled = false,
 }: {
   type: AnnotationComponentRole
   value: Entity | null
   onValueChange: (arg0: Entity | null) => any
   text?: string
   corpusId?: string
+  constraints?: PropertyConstraints | null
+  constraintSide?: ConstraintSide | null
+  constraintPropertyLabel?: string | null
+  constraintEntityChecks?: Array<ConstraintEntityCheck & { label: string }> | null
+  filteringEnabled?: boolean
 }) {
   const entityType = entityTypeForComponentRole(type)
   const [open, setOpen] = useState(false)
   const [searchResults, setSearchResults] = useState<Entity[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [isSearching, setIsSearching] = useState(false)
+  const [classification, setClassification] = useState<EntityCandidateClassification | null>(null)
+  const [classifiedCandidates, setClassifiedCandidates] = useState<string[]>([])
+  const [showAllResults, setShowAllResults] = useState(false)
+
+  const searchSeqRef = useRef(0)
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const candidatePattern = entityType === 'predicate' ? WIKIDATA_PROPERTY_PATTERN : WIKIDATA_ITEM_PATTERN
+  const searchLimit = constraintEntityChecks?.length ? 20 : 5
+
+  const runSearch = useCallback(async (term: string, seq: number) => {
+    try {
+      const results = await searchEntities(entityType, term, corpusId, searchLimit)
+      if (seq === searchSeqRef.current) {
+        setSearchResults(results)
+      }
+    } catch (error) {
+      console.error('Search error:', error)
+      if (seq === searchSeqRef.current) {
+        setSearchResults([])
+      }
+    } finally {
+      if (seq === searchSeqRef.current) {
+        setIsSearching(false)
+      }
+    }
+  }, [entityType, corpusId, searchLimit])
+
+  const currentCandidates = useMemo(() => Array.from(new Set([
+    ...searchResults
+      .filter(result => !result.custom && candidatePattern.test(result.value))
+      .map(result => result.value),
+    ...(value && !value.custom && value.value && candidatePattern.test(value.value)
+      ? [value.value]
+      : []),
+  ])), [searchResults, value, candidatePattern])
+
+  const hasEntityChecks = Boolean(constraintEntityChecks && constraintEntityChecks.length > 0)
+  const hasPropertyConstraints = Boolean(constraints && constraintSide)
+  const classificationEligible = hasEntityChecks || hasPropertyConstraints
+
+  const activeClassification = useMemo(() => {
+    if (!classificationEligible) {
+      return null
+    }
+    if (!classification) {
+      return null
+    }
+    const sameCandidateSet = classifiedCandidates.length === currentCandidates.length
+      && classifiedCandidates.every((id, index) => id === currentCandidates[index])
+    return sameCandidateSet ? classification : null
+  }, [classification, classifiedCandidates, currentCandidates, classificationEligible])
 
   useEffect(() => {
     if (text && !value?.value) {
+      if (searchTimerRef.current) {
+        clearTimeout(searchTimerRef.current)
+      }
+      const seq = ++searchSeqRef.current
       setIsSearching(true)
-      searchEntities(entityType, text, corpusId).then((results) => {
-        setSearchResults(results)
-        setIsSearching(false)
-      })
+      runSearch(text, seq)
     }
-  }, [text, entityType, value, corpusId])
+  }, [text, entityType, value, corpusId, searchLimit, runSearch])
+
+  useEffect(() => () => {
+    if (searchTimerRef.current) {
+      clearTimeout(searchTimerRef.current)
+    }
+  }, [])
 
   useEffect(() => {
     setSearchTerm('')
   }, [text])
 
-  const handleSearch = async (term: string) => {
-    if (!term.trim()) {
-      setSearchResults([])
+  // Classify candidates against Wikidata domain/range constraints
+  useEffect(() => {
+    if (!classificationEligible || currentCandidates.length === 0) {
       return
     }
 
-    setIsSearching(true)
-    try {
-      const results = await searchEntities(entityType, term, corpusId)
-      setSearchResults(results)
-    } catch (error) {
-      console.error('Search error:', error)
-      setSearchResults([])
-    } finally {
-      setIsSearching(false)
+    let cancelled = false
+    const promise = hasEntityChecks
+      ? classifyPredicateCandidatesViaWikidata(currentCandidates, constraintEntityChecks!)
+      : classifyEntityCandidatesViaWikidata(currentCandidates, constraints!, constraintSide!)
+    promise
+      .then((result) => {
+        if (!cancelled) {
+          setClassification(result)
+          setClassifiedCandidates(currentCandidates)
+          setShowAllResults(false)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setClassification(null)
+          setClassifiedCandidates([])
+          setShowAllResults(false)
+        }
+      })
+
+    return () => {
+      cancelled = true
     }
+  }, [currentCandidates, constraints, constraintSide, constraintEntityChecks, classificationEligible, hasEntityChecks])
+
+  const handleSearch = (term: string) => {
+    if (searchTimerRef.current) {
+      clearTimeout(searchTimerRef.current)
+    }
+    if (!term.trim()) {
+      searchSeqRef.current += 1
+      setSearchResults([])
+      setIsSearching(false)
+      return
+    }
+    const seq = ++searchSeqRef.current
+    setIsSearching(true)
+    searchTimerRef.current = setTimeout(() => {
+      runSearch(term, seq)
+    }, SEARCH_DEBOUNCE_MS)
   }
 
-  // Separate custom and Wikidata entities
-  const customEntities = searchResults.filter(entity => entity.custom)
-  const wikidataEntities = searchResults.filter(entity => !entity.custom)
+  // Separate custom and Wikidata entities, honoring constraint filtering when active
+  const resultStatus = useMemo(() => {
+    if (!activeClassification) {
+      return new Map<string, 'member' | 'unverifiable' | ConstraintSide[]>()
+    }
+    const statusMap = new Map<string, 'member' | 'unverifiable' | ConstraintSide[]>()
+    for (const id of activeClassification.members) {
+      statusMap.set(id, 'member')
+    }
+    for (const id of activeClassification.unverifiable) {
+      statusMap.set(id, 'unverifiable')
+    }
+    for (const { id, sides } of activeClassification.filteredOut) {
+      statusMap.set(id, sides)
+    }
+    return statusMap
+  }, [activeClassification])
+
+  const visibleResults = useMemo(() => {
+    if (!filteringEnabled || !activeClassification || showAllResults) {
+      return searchResults
+    }
+    const allowed = new Set([...activeClassification.members, ...activeClassification.unverifiable])
+    return searchResults.filter(result => result.custom || allowed.has(result.value))
+  }, [searchResults, activeClassification, showAllResults, filteringEnabled])
+
+  const sortedResults = useMemo(() => {
+    if (!activeClassification) {
+      return visibleResults
+    }
+    const order = new Map<string, number>()
+    activeClassification.members.forEach((id, index) => order.set(id, index))
+    activeClassification.unverifiable.forEach((id, index) => order.set(id, activeClassification.members.length + index))
+    const rank = (result: Entity) => {
+      if (result.custom) {
+        return Number.MAX_SAFE_INTEGER
+      }
+      return order.get(result.value) ?? Number.MAX_SAFE_INTEGER - 1
+    }
+    return [...visibleResults].sort((a, b) => rank(a) - rank(b))
+  }, [visibleResults, activeClassification])
+
+  const customEntities = sortedResults.filter(entity => entity.custom)
+  const wikidataEntities = sortedResults.filter(entity => !entity.custom)
+  const filteredOutCount = activeClassification?.filteredOut.length ?? 0
+  const hasConstraintFilter = Boolean(
+    (constraintEntityChecks && constraintEntityChecks.length > 0)
+    || (constraints && constraintSide),
+  )
+  const filteringActive = Boolean(
+    filteringEnabled
+    && hasConstraintFilter
+    && activeClassification
+    && filteredOutCount > 0,
+  )
+  const constraintNoun = entityType === 'predicate' ? 'predicates' : 'entities'
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -351,14 +526,30 @@ export function EntitySelector({
             aria-expanded={open}
             className="min-w-0 flex-1 shrink justify-between truncate text-left"
           >
-            <div className="flex-1 truncate">
-              {value
-                ? (
-                    value.label
-                  )
-                : (
-                    <span className="text-muted-foreground">Search entity...</span>
-                  )}
+            <div className="flex min-w-0 flex-1 items-center gap-1">
+              {value && Array.isArray(resultStatus.get(value.value)) && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex shrink-0">
+                      <TriangleAlertIcon className="size-4 text-amber-500" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Doesn&apos;t match
+                    {' '}
+                    {formatFilteredSides(resultStatus.get(value.value) as ConstraintSide[])}
+                  </TooltipContent>
+                </Tooltip>
+              )}
+              <div className="flex-1 truncate">
+                {value
+                  ? (
+                      value.label
+                    )
+                  : (
+                      <span className="text-muted-foreground">Search entity...</span>
+                    )}
+              </div>
             </div>
             <ChevronsUpDownIcon className="ml-2 size-4 shrink-0 opacity-50" />
           </Button>
@@ -408,7 +599,36 @@ export function EntitySelector({
             }}
           />
           <CommandList className={isSearching ? 'opacity-50' : ''}>
-            <CommandEmpty>No entities found.</CommandEmpty>
+            <CommandEmpty>
+              {filteringActive && !showAllResults
+                ? (constraintEntityChecks?.length
+                    ? `No ${constraintNoun} match the selected entities' constraints. Use "Show all results" to see everything.`
+                    : 'No entities match the property constraints. Use "Show all results" to see everything.')
+                : 'No entities found.'}
+            </CommandEmpty>
+            {filteringActive && !showAllResults && (
+              <div className="border-b px-3 py-2 text-[11px] text-muted-foreground">
+                <>
+                  Filtered to match
+                  {' '}
+                  the
+                  {' '}
+                  {constraintSide === 'domain' ? 'domain' : 'range'}
+                  {' '}
+                  of
+                  {' '}
+                  {constraintPropertyLabel
+                    ? (
+                        <span className="font-semibold">
+                          {constraintPropertyLabel}
+                        </span>
+                      )
+                    : (
+                        <span>the selected property</span>
+                      )}
+                </>
+              </div>
+            )}
             {value && (
               <>
                 <CommandGroup>
@@ -458,6 +678,19 @@ export function EntitySelector({
                       <span className="line-clamp-2 text-xs text-muted-foreground">
                         {value.description}
                       </span>
+                    )}
+                    {resultStatus.get(value.value) === 'unverifiable' && (
+                      <Badge variant="secondary">
+                        type unknown
+                      </Badge>
+                    )}
+                    {Array.isArray(resultStatus.get(value.value)) && (
+                      <Badge variant="warning">
+                        <TriangleAlertIcon />
+                        doesn&apos;t match
+                        {' '}
+                        {formatFilteredSides(resultStatus.get(value.value) as ConstraintSide[])}
+                      </Badge>
                     )}
                   </div>
                   {value.custom
@@ -556,6 +789,19 @@ export function EntitySelector({
                           {entity.description}
                         </span>
                       )}
+                      {resultStatus.get(entity.value) === 'unverifiable' && (
+                        <Badge variant="secondary">
+                          type unknown
+                        </Badge>
+                      )}
+                      {Array.isArray(resultStatus.get(entity.value)) && (
+                        <Badge variant="warning">
+                          <TriangleAlertIcon />
+                          doesn&apos;t match
+                          {' '}
+                          {formatFilteredSides(resultStatus.get(entity.value) as ConstraintSide[])}
+                        </Badge>
+                      )}
                     </div>
                     <Link
                       href={`https://www.wikidata.org/wiki/${entity.value.startsWith('P') ? 'Property:' : ''}${entity.value}`}
@@ -569,6 +815,37 @@ export function EntitySelector({
                   </CommandItem>
                 ))}
               </CommandGroup>
+            )}
+
+            {/* Constraint filtering escape hatch */}
+            {filteringEnabled && activeClassification && filteredOutCount > 0 && (
+              <>
+                <CommandGroup>
+                  {showAllResults
+                    ? (
+                        <CommandItem
+                          value="hide-filtered-results"
+                          onSelect={() => setShowAllResults(false)}
+                        >
+                          <span>Hide incompatible results</span>
+                        </CommandItem>
+                      )
+                    : (
+                        <CommandItem
+                          value="show-all-results"
+                          onSelect={() => setShowAllResults(true)}
+                        >
+                          <span>
+                            Show
+                            {' '}
+                            {filteredOutCount}
+                            {' '}
+                            more  (may not match constraints)
+                          </span>
+                        </CommandItem>
+                      )}
+                </CommandGroup>
+              </>
             )}
 
             {/* Create new custom entity option */}
