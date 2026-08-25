@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.3.0](https://github.com/ecladatta/star-q/compare/v0.2.0...v0.3.0) (2026-08-25)
+
+### Features
+
+* add corpus visibility and read-only annotation inspection ([c3d9b11](https://github.com/ecladatta/star-q/commit/c3d9b115bf3139bbb8ba9ca3b1c05dad3ce44b50))
+* add Wikidata constraint warnings, predicate filtering, and qualifier range checks ([#10](https://github.com/ecladatta/star-q/issues/10)) ([ecd44c4](https://github.com/ecladatta/star-q/commit/ecd44c4baca21e19acb8b4ed51a5ff384a8c3b33))
+
+### Bug Fixes
+
+* **changelog:** correct v0.2.0 compare link ([fc3995f](https://github.com/ecladatta/star-q/commit/fc3995f2965fa6dd5570d3728510dc3ba1b32b41))
+
 ## [0.2.0](https://github.com/ecladatta/star-q/compare/v0.1.0...v0.2.0) (2026-08-19)
 
 ### Features
