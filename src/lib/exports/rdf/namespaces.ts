@@ -1,11 +1,15 @@
+import { RDF_NAMESPACE_BASE } from '@/lib/config'
+
+const base = RDF_NAMESPACE_BASE
+
 export const NAMESPACES = {
-  annotation: 'https://ecladatta.eurecom.fr/annotation/',
-  at: 'https://ecladatta.eurecom.fr/ontology#',
-  corpus: 'https://ecladatta.eurecom.fr/corpus/',
+  annotation: `${base}/annotation/`,
+  at: `${base}/ontology#`,
+  corpus: `${base}/corpus/`,
   csvw: 'http://www.w3.org/ns/csvw#',
   dcat: 'http://www.w3.org/ns/dcat#',
   dcterms: 'http://purl.org/dc/terms/',
-  document: 'https://ecladatta.eurecom.fr/document/',
+  document: `${base}/document/`,
   foaf: 'http://xmlns.com/foaf/0.1/',
   nif: 'http://persistence.uni-leipzig.org/nlp2rdf/ontologies/nif-core#',
   oa: 'http://www.w3.org/ns/oa#',
@@ -13,7 +17,7 @@ export const NAMESPACES = {
   prov: 'http://www.w3.org/ns/prov#',
   rdf: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
   rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
-  statement: 'https://ecladatta.eurecom.fr/statement/',
+  statement: `${base}/statement/`,
   wd: 'http://www.wikidata.org/entity/',
   wdt: 'http://www.wikidata.org/prop/direct/',
   xsd: 'http://www.w3.org/2001/XMLSchema#',

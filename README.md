@@ -348,7 +348,7 @@ Statements without qualifiers are emitted as ordinary triples.
 
 ### Full mode
 
-Full mode uses stable resources under `https://ecladatta.eurecom.fr/`:
+Full mode uses stable resources under a configurable base URI (`RDF_NAMESPACE_BASE`, defaulting to `https://ecladatta.eurecom.fr/`):
 
 - `corpus:` resources are [`dcat:Dataset`](https://www.w3.org/TR/vocab-dcat-3/#Class:Dataset) instances containing [`foaf:Document`](https://xmlns.com/foaf/spec/#term_Document) resources.
 - Text elements and mentions use [NIF](https://persistence.uni-leipzig.org/nlp2rdf/ontologies/nif-core/nif-core.html) contexts and [RFC 5147 character ranges](https://datatracker.ietf.org/doc/html/rfc5147#section-2.2.2).
