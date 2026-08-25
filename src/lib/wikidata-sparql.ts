@@ -9,6 +9,7 @@ import type {
   WikidataClaims,
 } from './wikidata-constraints'
 import WBK from 'wikibase-sdk'
+import pkg from '../../package.json'
 import {
   classifyCandidates,
   collectPairs,
@@ -19,7 +20,7 @@ import {
 } from './wikidata-constraints'
 
 const SPARQL_ENDPOINT = 'https://query.wikidata.org/sparql'
-const USER_AGENT = 'annotation-tool/0.2.0 (https://github.com/ecladatta/annotation-tool)'
+const USER_AGENT = `star-q/${pkg.version} (https://github.com/ecladatta/star-q)`
 
 const wdk = WBK({
   instance: 'https://www.wikidata.org',

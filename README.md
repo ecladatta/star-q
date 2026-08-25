@@ -1,11 +1,11 @@
-# Annotation Tool
+# STAR-Q
 
 ## Overview
-The Annotation Tool is a web-based application designed to facilitate the annotation of texts and tables.
+STAR-Q is a web-based application designed to facilitate the annotation of texts and tables.
 
 ## Deployment in Production
 
-To deploy the Annotation Tool in production, follow these steps:
+To deploy STAR-Q in production, follow these steps:
 
 1. Copy `.env.example` to `.env` and configure it for the deployment:
 
@@ -24,8 +24,8 @@ To deploy the Annotation Tool in production, follow these steps:
 Clone the repository and create the local environment file:
 
 ```bash
-git clone https://github.com/ecladatta/annotation-tool.git
-cd annotation-tool
+git clone https://github.com/ecladatta/star-q.git
+cd star-q
 cp .env.example .env
 ```
 

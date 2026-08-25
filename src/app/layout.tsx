@@ -4,6 +4,7 @@ import localFont from 'next/font/local'
 import { Toaster } from 'sonner'
 import Header from '@/components/header'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { APP_NAME } from '@/lib/config'
 import './globals.css'
 
 const geistSans = localFont({
@@ -18,8 +19,8 @@ const geistMono = localFont({
 })
 
 export const metadata: Metadata = {
-  title: 'ECLADATTA Annotation Tool',
-  description: 'An annotation tool for ECLADATTA',
+  title: APP_NAME,
+  description: 'A web-based tool for annotating texts and tables',
 }
 
 export default function RootLayout({

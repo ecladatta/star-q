@@ -1,4 +1,4 @@
-name: annotation-tool
+name: star-q
 
 volumes:
   postgres-data:

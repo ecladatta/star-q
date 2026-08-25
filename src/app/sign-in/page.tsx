@@ -59,7 +59,7 @@ export default async function SignInPage() {
     <main className="mx-auto flex min-h-[60vh] w-full max-w-md flex-col items-center justify-center gap-6 px-4">
       <h1 className="text-2xl font-semibold">Sign in</h1>
       <p className="text-sm text-gray-500">
-        Choose how you want to sign in to the annotation tool.
+        Choose how you want to sign in to STAR-Q.
       </p>
       <div className="flex w-full flex-col gap-3">
         {providers.map(provider => (
