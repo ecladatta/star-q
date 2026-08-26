@@ -23,6 +23,11 @@ export async function importLabelStudioDocuments(
     return { ids: importedDocumentsIds, errors }
   }
 
+  if (!Array.isArray(parsedJson) || parsedJson.length === 0) {
+    errors.push('Not a Label Studio export. Expected a non-empty JSON array of tasks.')
+    return { ids: importedDocumentsIds, errors }
+  }
+
   for (const [index, item] of parsedJson.entries()) {
     try {
       // Convert Label Studio format to Corpus Walker format

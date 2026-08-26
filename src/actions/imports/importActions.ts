@@ -1,4 +1,5 @@
 'use server'
+import type { CorpusImportFormat } from '@/lib/imports/import-format'
 import { eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { db } from '@/db/drizzle'
@@ -6,9 +7,12 @@ import { corpus } from '@/db/schema'
 import { requireAuth } from '@/lib/auth-utils'
 import { importCorpuswalkerDocuments } from '@/lib/imports/corpuswalkerImport'
 import { importFullCorpusExportDocuments } from '@/lib/imports/fullCorpusImport'
+import {
+  CORPUS_IMPORT_FORMATS,
+  isCorpusImportFormat,
+} from '@/lib/imports/import-format'
 import { importIritDocuments } from '@/lib/imports/iritImport'
 import { importLabelStudioDocuments } from '@/lib/imports/labelstudioImport'
-import { determineImportType } from '@/lib/utils'
 
 type ImportDocumentsResult = {
   count: number
@@ -33,11 +37,25 @@ async function removeCorpus(id: string) {
   revalidatePath('/')
 }
 
+function fileExtension(fileName: string): string {
+  const lastSegment = fileName.split('/').pop() ?? ''
+  const dotIndex = lastSegment.lastIndexOf('.')
+  return dotIndex >= 0 ? lastSegment.slice(dotIndex).toLowerCase() : ''
+}
+
 /**
- * Main import function that determines the file type and routes to the appropriate importer
+ * Main import function that routes the file to the importer for the selected format
  */
-export async function importDocuments(corpusId: string, formData: FormData): Promise<ImportDocumentsResult> {
+export async function importDocuments(
+  corpusId: string,
+  format: CorpusImportFormat,
+  formData: FormData,
+): Promise<ImportDocumentsResult> {
   await requireAuth()
+
+  if (!isCorpusImportFormat(format)) {
+    return importError('Unknown import format.')
+  }
 
   const file = formData.get('file') as File
 
@@ -45,38 +63,44 @@ export async function importDocuments(corpusId: string, formData: FormData): Pro
     return importError('No file was provided for import.')
   }
 
-  // Determine import type based on file content and name
-  const content = await file.text()
-  const importType = await determineImportType(content, file.name)
-
-  if (importType === 'unknown') {
-    return importError('Could not determine file format. Please upload a JSON, JSONL, or ZIP file.')
+  const warnings: string[] = []
+  const extension = fileExtension(file.name)
+  if (extension && !CORPUS_IMPORT_FORMATS[format].extensions.includes(extension)) {
+    warnings.push(
+      `File extension "${extension}" does not match the selected format "${CORPUS_IMPORT_FORMATS[format].label}".`,
+    )
   }
 
   let result: { ids: string[], errors: string[], warnings?: string[] } = { ids: [], errors: [] }
 
-  switch (importType) {
+  switch (format) {
     case 'irit-zip': {
       const zipBuffer = await file.arrayBuffer()
       result = await importIritDocuments(corpusId, zipBuffer)
       break
     }
     case 'corpuswalker': {
+      const content = await file.text()
       result = await importCorpuswalkerDocuments(corpusId, content)
       break
     }
     case 'labelstudio': {
+      const content = await file.text()
       result = await importLabelStudioDocuments(corpusId, content)
       break
     }
     case 'full-corpus-export': {
-      const parsed = JSON.parse(content)
+      const content = await file.text()
+      let parsed: unknown
+      try {
+        parsed = JSON.parse(content)
+      } catch {
+        result = { ids: [], errors: ['Failed to parse the JSON file.'], warnings: [] }
+        break
+      }
       result = await importFullCorpusExportDocuments(corpusId, parsed)
       break
     }
-    default:
-      // Should not reach here due to earlier error throw
-      break
   }
 
   revalidatePath('/')
@@ -84,12 +108,13 @@ export async function importDocuments(corpusId: string, formData: FormData): Pro
   return {
     count: result.ids.length,
     errors: result.errors,
-    warnings: result.warnings ?? [],
+    warnings: [...warnings, ...(result.warnings ?? [])],
   }
 }
 
 export async function createCorpusWithDocumentsImport(
   title: string,
+  format: CorpusImportFormat,
   formData: FormData,
 ): Promise<CreateCorpusWithDocumentsImportResult> {
   await requireAuth()
@@ -97,7 +122,7 @@ export async function createCorpusWithDocumentsImport(
   const [newCorpus] = await db.insert(corpus).values({ title }).returning({ id: corpus.id })
 
   try {
-    const result = await importDocuments(newCorpus.id, formData)
+    const result = await importDocuments(newCorpus.id, format, formData)
 
     if (result.errors.length > 0) {
       await removeCorpus(newCorpus.id)

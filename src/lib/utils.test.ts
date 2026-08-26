@@ -5,8 +5,6 @@ import type {
 import { describe, expect, it } from 'vitest'
 import {
   annotationComponentsShareSegment,
-  determineImportType,
-  determineJsonType,
   getAnnotationType,
   splitWithOffsets,
 } from './utils'
@@ -47,52 +45,6 @@ function annotation(overrides: Partial<DocumentAnnotation> = {}): DocumentAnnota
     ...overrides,
   }
 }
-
-describe('determineJsonType', () => {
-  it('detects a classic JSON document', async () => {
-    expect(await determineJsonType('{"a": 1}')).toBe('json')
-    expect(await determineJsonType('[1, 2]')).toBe('json')
-  })
-
-  it('detects JSON Lines', async () => {
-    expect(await determineJsonType('{"a": 1}\n{"b": 2}\n')).toBe('jsonlines')
-  })
-
-  it('returns unknown for non-JSON content', async () => {
-    expect(await determineJsonType('not json at all')).toBe('unknown')
-  })
-})
-
-describe('determineImportType', () => {
-  it('detects IRIT zips by filename', async () => {
-    expect(await determineImportType('', 'export.zip')).toBe('unknown')
-    expect(await determineImportType('', 'irit-export.zip')).toBe('irit-zip')
-    expect(await determineImportType('', 'ISWC_DATA.zip')).toBe('irit-zip')
-  })
-
-  it('detects corpuswalker JSON Lines by the _index field', async () => {
-    const content = '{"_index": "foo", "_source": {}}\n'
-    expect(await determineImportType(content, 'docs.jsonl')).toBe('corpuswalker')
-  })
-
-  it('detects a full corpus export by its export metadata', async () => {
-    const content = JSON.stringify({
-      exportMeta: { version: '1.3', type: 'full-corpus-export' },
-      documents: [],
-    })
-    expect(await determineImportType(content, 'corpus.json')).toBe('full-corpus-export')
-  })
-
-  it('detects a Label Studio export', async () => {
-    const content = JSON.stringify([{ data: { text: 'hi' }, annotations: [] }])
-    expect(await determineImportType(content, 'ls.json')).toBe('labelstudio')
-  })
-
-  it('returns unknown for unrecognized input', async () => {
-    expect(await determineImportType('plain text', 'file.txt')).toBe('unknown')
-    expect(await determineImportType('[{"data": {}}]', 'file.json')).toBe('unknown')
-  })
-})
 
 describe('splitWithOffsets', () => {
   it('returns the whole text as a single unmarked segment when there are no offsets', () => {
