@@ -1,11 +1,6 @@
 import type { DocumentData } from '@/types/types'
 import { htmlToText } from 'html-to-text'
-
-export function documentTitleFromFileName(fileName: string): string {
-  const base = fileName.split('/').pop() ?? fileName
-  const withoutExtension = base.replace(/\.[^.]+$/, '')
-  return withoutExtension.replace(/[_-]+/g, ' ').trim()
-}
+import { documentTitleFromFileName } from './documentTitle'
 
 export function isHtmlFileName(fileName: string): boolean {
   return /\.html?$/i.test(fileName)

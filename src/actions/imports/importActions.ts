@@ -9,6 +9,7 @@ import { corpus } from '@/db/schema'
 import { MAX_IMPORT_FILE_SIZE_BYTES } from '@/lib/constants'
 import { requireEditCorpus } from '@/lib/corpus-access'
 import { importCorpuswalkerDocuments } from '@/lib/imports/corpuswalkerImport'
+import { importCsvDocument, importTextDocument } from '@/lib/imports/documentsImport'
 import { importFullCorpusExportDocuments } from '@/lib/imports/fullCorpusImport'
 import {
   CORPUS_IMPORT_FORMATS,
@@ -16,7 +17,6 @@ import {
 } from '@/lib/imports/import-format'
 import { importIritDocuments } from '@/lib/imports/iritImport'
 import { importLabelStudioDocuments } from '@/lib/imports/labelstudioImport'
-import { importTextDocument } from '@/lib/imports/textDocumentImport'
 
 type ImportDocumentsResult = {
   count: number
@@ -112,6 +112,11 @@ export async function importDocuments(
     case 'text': {
       const content = await file.text()
       result = await importTextDocument(corpusId, file.name, content)
+      break
+    }
+    case 'csv': {
+      const content = await file.text()
+      result = await importCsvDocument(corpusId, file.name, content)
       break
     }
   }

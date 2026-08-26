@@ -2,7 +2,6 @@ import type { DocumentData, DocumentExtractionMetadata } from '@/types/types'
 import { describe, expect, it } from 'vitest'
 import {
   buildTextDocumentData,
-  documentTitleFromFileName,
   isHtmlFileName,
   stripHtml,
 } from './textDocumentData'
@@ -64,20 +63,6 @@ describe('stripHtml', () => {
   it('does not wrap long lines', () => {
     const longSentence = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. '.repeat(4).trim()
     expect(stripHtml(`<p>${longSentence}</p>`)).toBe(longSentence)
-  })
-})
-
-describe('documentTitleFromFileName', () => {
-  it('strips the extension', () => {
-    expect(documentTitleFromFileName('index.html')).toBe('index')
-  })
-
-  it('replaces separators with spaces', () => {
-    expect(documentTitleFromFileName('a_long-name.txt')).toBe('a long name')
-  })
-
-  it('ignores the directory part', () => {
-    expect(documentTitleFromFileName('dir/report.txt')).toBe('report')
   })
 })
 
