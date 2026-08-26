@@ -83,8 +83,16 @@ type WbGetEntitiesResponse = {
 function fetchJson(url: string): Promise<WbGetEntitiesResponse | null> {
   return withRequestTimeout(signal =>
     fetch(url, { headers: { 'User-Agent': USER_AGENT }, signal })
-      .then(res => res.json()),
-  ).catch(() => null)
+      .then(async (res) => {
+        if (!res.ok) {
+          throw new Error(`Wikidata API request failed: ${res.status}`)
+        }
+        return res.json()
+      }),
+  ).catch((error: unknown) => {
+    console.error(`Wikidata API fetch failed: ${url}`, error)
+    return null
+  })
 }
 
 function entityIdFromValue(value: string): string | null {
@@ -271,8 +279,10 @@ export async function fetchPropertyConstraints(propertyIds: string[]): Promise<P
   if (uncached.length > 0) {
     const urls = wdk.getManyEntities({ ids: uncached as unknown as WbEntityIds, props: 'claims', format: 'json' })
     const responses = await mapWithConcurrency(urls, SPARQL_CONCURRENCY, url => fetchJson(url))
-    for (const data of responses) {
+    for (let index = 0; index < responses.length; index++) {
+      const data = responses[index]
       if (!data?.entities) {
+        console.error(`Wikidata constraint fetch returned no entity data: ${urls[index]}`)
         unavailable = true
         continue
       }

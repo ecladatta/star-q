@@ -59,7 +59,8 @@ async function computeWarningsForRows(
     const result = await fetchPropertyConstraints(predicates)
     fetchUnavailable = result.unavailable
     constraintsByProperty = result.constraints
-  } catch {
+  } catch (error) {
+    console.error('Wikidata constraint check failed while fetching property constraints:', error)
     return unavailableWarnings(predicates.length)
   }
 
@@ -77,7 +78,8 @@ async function computeWarningsForRows(
       fetchMembership(pairs),
       fetchItemsWithTypeData(items),
     ])
-  } catch {
+  } catch (error) {
+    console.error('Wikidata constraint check failed while checking membership or type data:', error)
     return unavailableWarnings(predicates.length)
   }
 
