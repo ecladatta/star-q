@@ -6,7 +6,8 @@ import { db } from '@/db/drizzle'
 import { corpus } from '@/db/schema'
 import { requireAuth } from '@/lib/auth-utils'
 import { importCorpuswalkerDocuments } from '@/lib/imports/corpuswalkerImport'
-import { importCsvDocument, importTextDocument } from '@/lib/imports/documentsImport'
+import { fileExtension } from '@/lib/imports/documentFileClassifier'
+import { importCsvDocument, importDocumentsZip, importTextDocument } from '@/lib/imports/documentsImport'
 import { importFullCorpusExportDocuments } from '@/lib/imports/fullCorpusImport'
 import {
   CORPUS_IMPORT_FORMATS,
@@ -36,12 +37,6 @@ function importError(message: string): ImportDocumentsResult {
 async function removeCorpus(id: string) {
   await db.delete(corpus).where(eq(corpus.id, id))
   revalidatePath('/')
-}
-
-function fileExtension(fileName: string): string {
-  const lastSegment = fileName.split('/').pop() ?? ''
-  const dotIndex = lastSegment.lastIndexOf('.')
-  return dotIndex >= 0 ? lastSegment.slice(dotIndex).toLowerCase() : ''
 }
 
 /**
@@ -110,6 +105,11 @@ export async function importDocuments(
     case 'csv': {
       const content = await file.text()
       result = await importCsvDocument(corpusId, file.name, content)
+      break
+    }
+    case 'documents-zip': {
+      const zipBuffer = await file.arrayBuffer()
+      result = await importDocumentsZip(corpusId, zipBuffer)
       break
     }
   }
