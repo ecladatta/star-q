@@ -5,6 +5,7 @@ export type CorpusImportFormat
     | 'irit-zip'
     | 'text'
     | 'csv'
+    | 'documents-zip'
 
 export type CorpusImportFormatConfig = {
   label: string
@@ -35,6 +36,10 @@ export const CORPUS_IMPORT_FORMATS: Record<CorpusImportFormat, CorpusImportForma
   'csv': {
     label: 'CSV / TSV',
     extensions: ['.csv', '.tsv'],
+  },
+  'documents-zip': {
+    label: 'Documents archive',
+    extensions: ['.zip'],
   },
 }
 
