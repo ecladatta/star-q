@@ -4,6 +4,7 @@ export type CorpusImportFormat
     | 'labelstudio'
     | 'irit-zip'
     | 'text'
+    | 'csv'
 
 export type CorpusImportFormatConfig = {
   label: string
@@ -30,6 +31,10 @@ export const CORPUS_IMPORT_FORMATS: Record<CorpusImportFormat, CorpusImportForma
   'text': {
     label: 'Text / Markdown / HTML',
     extensions: ['.txt', '.md', '.markdown', '.html', '.htm'],
+  },
+  'csv': {
+    label: 'CSV / TSV',
+    extensions: ['.csv', '.tsv'],
   },
 }
 
