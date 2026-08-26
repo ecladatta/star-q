@@ -13,6 +13,7 @@ import {
 } from '@/lib/imports/import-format'
 import { importIritDocuments } from '@/lib/imports/iritImport'
 import { importLabelStudioDocuments } from '@/lib/imports/labelstudioImport'
+import { importTextDocument } from '@/lib/imports/textDocumentImport'
 
 type ImportDocumentsResult = {
   count: number
@@ -99,6 +100,11 @@ export async function importDocuments(
         break
       }
       result = await importFullCorpusExportDocuments(corpusId, parsed)
+      break
+    }
+    case 'text': {
+      const content = await file.text()
+      result = await importTextDocument(corpusId, file.name, content)
       break
     }
   }
