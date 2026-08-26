@@ -3,6 +3,7 @@ export type CorpusImportFormat
     | 'corpuswalker'
     | 'labelstudio'
     | 'irit-zip'
+    | 'text'
 
 export type CorpusImportFormatConfig = {
   label: string
@@ -25,6 +26,10 @@ export const CORPUS_IMPORT_FORMATS: Record<CorpusImportFormat, CorpusImportForma
   'irit-zip': {
     label: 'IRIT archive',
     extensions: ['.zip'],
+  },
+  'text': {
+    label: 'Text / Markdown / HTML',
+    extensions: ['.txt', '.md', '.markdown', '.html', '.htm'],
   },
 }
 
