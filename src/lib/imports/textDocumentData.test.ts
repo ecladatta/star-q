@@ -60,6 +60,10 @@ describe('stripHtml', () => {
     expect(stripHtml('<p>first</p><p>second</p>')).toBe('first\n\nsecond')
   })
 
+  it('preserves heading case', () => {
+    expect(stripHtml('<h1>Welcome</h1><p>text</p>')).toBe('Welcome\n\ntext')
+  })
+
   it('does not wrap long lines', () => {
     const longSentence = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. '.repeat(4).trim()
     expect(stripHtml(`<p>${longSentence}</p>`)).toBe(longSentence)
