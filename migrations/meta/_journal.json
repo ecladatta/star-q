@@ -120,6 +120,13 @@
       "when": 1787579673009,
       "tag": "0016_naive_red_wolf",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1787759426553,
+      "tag": "0017_authorization",
+      "breakpoints": true
     }
   ]
 }
