@@ -1,11 +1,28 @@
-import { getCorpuses } from '@/actions/corpus/corpusActions'
+import { redirect } from 'next/navigation'
+import { getMyCorpuses } from '@/actions/corpus/corpusActions'
+import { getOwnedTeams } from '@/actions/team/teamActions'
+import { auth } from '@/auth'
 import { Corpuses } from '@/components/corpus'
-import { canEdit } from '@/lib/corpus-access'
+import { getAppSettings } from '@/lib/app-settings'
 
 export const dynamic = 'force-dynamic'
 
 export default async function CorpusesPage() {
-  const corpuses = await getCorpuses()
-  const edit = await canEdit()
-  return <Corpuses corpuses={corpuses} canEdit={edit} />
+  const [settings, session] = await Promise.all([getAppSettings(), auth()])
+  if (!settings.setupCompletedAt) {
+    redirect('/setup')
+  }
+  if (!session?.user?.valid) {
+    redirect('/browse')
+  }
+  if (!session.user.username) {
+    redirect('/onboarding')
+  }
+  if (session.user.mustChangePassword) {
+    redirect('/account/password')
+  }
+  const corpuses = await getMyCorpuses()
+  const canCreate = true
+  const ownedTeams = await getOwnedTeams()
+  return <Corpuses corpuses={corpuses} canCreate={canCreate} ownedTeams={ownedTeams} title="My corpora" description="Corpora you own or collaborate on" />
 }

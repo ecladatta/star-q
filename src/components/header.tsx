@@ -1,94 +1,59 @@
+import type { BreadcrumbCrumb } from '@/components/header-breadcrumbs'
 import type { Corpus, Document } from '@/db/schema'
 import Link from 'next/link'
-import { auth, signOut } from '@/auth'
-import { isAuthEnabled } from '@/auth.config'
+import { getPendingInvitationCount } from '@/actions/collaboration/collaborationActions'
+import { auth } from '@/auth'
+import { HeaderBreadcrumbs } from '@/components/header-breadcrumbs'
+import { HeaderNav } from '@/components/header-nav'
+import { Button } from '@/components/ui/button'
+import { getAppSettings } from '@/lib/app-settings'
 import { APP_NAME } from '@/lib/config'
 import pkg from '../../package.json'
-import { Button } from './ui/button'
 
 type HeaderProps = {
   corpus?: Corpus
   document?: Document
+  crumbs?: BreadcrumbCrumb[]
 }
 
-async function Header({ corpus, document }: HeaderProps) {
-  const authEnabled = isAuthEnabled()
-  const session = authEnabled ? await auth() : null
+async function Header({ corpus, document, crumbs }: HeaderProps) {
+  const [session, settings] = await Promise.all([auth(), getAppSettings()])
+  const signedIn = Boolean(session?.user?.valid && session.user.username && !session.user.mustChangePassword)
+  const invitationCount = signedIn ? await getPendingInvitationCount() : 0
 
   return (
     <header className="fixed inset-x-0 top-0 z-10 border-b bg-white">
-      <nav className="flex flex-col p-2 sm:flex-row sm:items-center sm:px-6 lg:px-8">
-        <div className="flex w-full items-center justify-between">
-          <div className="flex min-w-0 items-center gap-3">
-            <h1 className="hidden truncate text-lg font-semibold md:block">
-              <Link href="/" aria-label="Home">
-                {APP_NAME}
-                <span className="ml-1 text-xs font-normal text-gray-400">
-                  v
-                  {pkg.version}
-                </span>
-              </Link>
-            </h1>
-
-            {(corpus || document) && (
-              <div className="flex min-w-0 items-center gap-2 text-sm">
-                {corpus && (
-                  <>
-                    <span className="hidden text-gray-400 md:block">/</span>
-                    <Link
-                      href={`/corpus/${corpus.id}`}
-                      className="max-w-[120px] truncate hover:text-gray-900 sm:max-w-[240px]"
-                      aria-label={corpus.title ?? undefined}
-                    >
-                      {corpus.title}
-                    </Link>
-                  </>
-                )}
-                {document && (
-                  <>
-                    <span className="text-gray-400">/</span>
-                    <Link
-                      href={`/document/${document.id}`}
-                      className="max-w-[120px] truncate hover:text-gray-900 sm:max-w-[240px]"
-                      aria-label={document.title ?? undefined}
-                    >
-                      {document.title}
-                    </Link>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-
-          {authEnabled && (
-            <div className="flex items-center gap-3">
-              {session
-                ? (
-                    <>
-                      <span className="max-w-[120px] truncate text-sm sm:max-w-[200px]" aria-label={session.user?.name ?? undefined}>
-                        {session.user?.name}
-                        <span className="hidden text-xs text-gray-500 sm:inline">
-                          {session.user?.email && ` (${session.user.email})`}
-                        </span>
-                      </span>
-
-                      <form
-                        action={async () => {
-                          'use server'
-                          await signOut()
-                        }}
-                      >
-                        <Button variant="outline" type="submit">Sign out</Button>
-                      </form>
-                    </>
-                  )
-                : (
-                    <Link href="/sign-in">
-                      <Button variant="outline">Sign in</Button>
-                    </Link>
-                  )}
-            </div>
+      <nav className="flex min-h-14 items-center justify-between gap-4 px-3 sm:px-6 lg:px-8">
+        <div className="flex min-w-0 items-center gap-3">
+          <h1 className="truncate text-lg font-semibold">
+            <Link href="/" aria-label="Home">
+              {APP_NAME}
+              <span className="ml-1 text-xs font-normal text-gray-400">
+                v
+                {pkg.version}
+              </span>
+            </Link>
+          </h1>
+          {(corpus || document || crumbs?.length) && (
+            <>
+              <span className="hidden shrink-0 text-gray-400 md:block">/</span>
+              <HeaderBreadcrumbs corpus={corpus} document={document} crumbs={crumbs} />
+            </>
           )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          {signedIn
+            ? <HeaderNav invitationCount={invitationCount} username={session!.user.username ?? ''} isAdmin={session!.user.role === 'admin'} />
+            : settings.setupCompletedAt
+              ? (
+                  <>
+                    <Button variant="ghost" size="sm" asChild><Link href="/browse">Browse</Link></Button>
+                    {settings.signupEnabled && settings.signinEnabled && <Button variant="ghost" size="sm" asChild><Link href="/sign-up">Sign up</Link></Button>}
+                    <Button variant="outline" size="sm" asChild><Link href="/sign-in">Sign in</Link></Button>
+                  </>
+                )
+              : <Button variant="outline" size="sm" asChild><Link href="/setup">Set up</Link></Button>}
         </div>
       </nav>
     </header>

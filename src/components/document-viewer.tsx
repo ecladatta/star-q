@@ -335,7 +335,6 @@ export function DocumentViewer({
           {documentData && document && (
             <>
               <DocumentHeader
-                corpus={corpus}
                 document={document}
                 documentData={documentData}
                 readOnly={readOnly}

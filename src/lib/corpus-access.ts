@@ -1,90 +1,149 @@
-import { eq } from 'drizzle-orm'
-import { isAuthEnabled } from '@/auth.config'
+import type { RequestActor } from '@/lib/auth-utils'
+import type { CorpusAccess } from '@/lib/corpus-access-policy'
+import { and, eq } from 'drizzle-orm'
 import { db } from '@/db/drizzle'
-import { corpus, document } from '@/db/schema'
-import { getOptionalUserId, isApiKeyAuthenticated, NotFoundError } from '@/lib/auth-utils'
+import { annotation, corpus, corpusCollaboration, corpusCustomEntity, document, teamMembership } from '@/db/schema'
+import { ForbiddenError, getRequestActor, NotFoundError } from '@/lib/auth-utils'
+import { hasMinimumCorpusAccess, resolveCorpusAccess } from '@/lib/corpus-access-policy'
 
-/**
- * Whether the current caller has full read access: a signed-in session or a
- * valid API key. Both are treated identically for access-control purposes.
- * Returns true when auth is disabled (no login is required).
- */
-async function isFullAccess(): Promise<boolean> {
-  if (!isAuthEnabled()) {
-    return true
+export type { CorpusAccess, CorpusAccessFacts } from '@/lib/corpus-access-policy'
+export { corpusAccessValues, resolveCorpusAccess } from '@/lib/corpus-access-policy'
+
+export async function getCorpusAccessForActor(corpusId: string, actor: RequestActor): Promise<CorpusAccess | null> {
+  const [resource] = await db.select().from(corpus).where(eq(corpus.id, corpusId)).limit(1)
+  if (!resource) {
+    return null
   }
-  if (await isApiKeyAuthenticated()) {
-    return true
+
+  if (actor.type !== 'user' || actor.role === 'admin') {
+    return resolveCorpusAccess({
+      actorType: actor.type,
+      visibility: resource.visibility,
+      isAdmin: actor.type === 'user' && actor.role === 'admin',
+    })
   }
-  return (await getOptionalUserId()) !== null
+
+  const isPersonalOwner = resource.ownerType === 'user' && resource.ownerUserId === actor.userId
+  let owningTeamRole: 'owner' | 'member' | null = null
+
+  if (resource.ownerType === 'team' && resource.ownerTeamId) {
+    const [membership] = await db
+      .select({ role: teamMembership.role })
+      .from(teamMembership)
+      .where(and(
+        eq(teamMembership.teamId, resource.ownerTeamId),
+        eq(teamMembership.userId, actor.userId),
+      ))
+      .limit(1)
+    if (membership) {
+      owningTeamRole = membership.role
+    }
+  }
+
+  const directCollaborations = await db
+    .select({ role: corpusCollaboration.role })
+    .from(corpusCollaboration)
+    .where(and(
+      eq(corpusCollaboration.corpusId, corpusId),
+      eq(corpusCollaboration.targetUserId, actor.userId),
+      eq(corpusCollaboration.status, 'accepted'),
+    ))
+  const teamCollaborations = await db
+    .select({ role: corpusCollaboration.role })
+    .from(corpusCollaboration)
+    .innerJoin(teamMembership, eq(teamMembership.teamId, corpusCollaboration.targetTeamId))
+    .where(and(
+      eq(corpusCollaboration.corpusId, corpusId),
+      eq(corpusCollaboration.status, 'accepted'),
+      eq(teamMembership.userId, actor.userId),
+    ))
+  return resolveCorpusAccess({
+    actorType: actor.type,
+    visibility: resource.visibility,
+    isPersonalOwner,
+    owningTeamRole,
+    directCollaborationRoles: directCollaborations.map(collaboration => collaboration.role),
+    teamCollaborationRoles: teamCollaborations.map(collaboration => collaboration.role),
+  })
 }
 
-/**
- * Whether the current caller is an anonymous viewer under auth.
- * Returns false when auth is disabled (no login is required).
- */
-export async function isAnonymousViewer(): Promise<boolean> {
-  return !(await isFullAccess())
+export async function getCorpusAccess(corpusId: string): Promise<CorpusAccess | null> {
+  return getCorpusAccessForActor(corpusId, await getRequestActor())
 }
 
-/**
- * Whether the current caller may edit content. Edit access equals
- * authenticated when auth is enabled, and is always allowed when disabled.
- */
-export async function canEdit(): Promise<boolean> {
-  return await isFullAccess()
+export async function requireCorpusAccess(corpusId: string, minimum: CorpusAccess): Promise<CorpusAccess> {
+  const actor = await getRequestActor()
+  const access = await getCorpusAccessForActor(corpusId, actor)
+  if (!access) {
+    throw new NotFoundError()
+  }
+  if (!hasMinimumCorpusAccess(access, minimum)) {
+    throw new ForbiddenError()
+  }
+  return access
 }
 
-/**
- * Requires read access to a corpus. Authenticated and API-key callers may
- * always read. Anonymous callers may read only when the corpus is public.
- * Returns the user ID when authenticated, null otherwise (API key, auth
- * disabled, or public read).
- * Does not throw for a missing corpus, so callers keep their own 404 handling.
- * A private corpus is indistinguishable from a missing one for anonymous
- * callers: both surface as 404.
- */
 export async function requireViewCorpus(corpusId: string): Promise<string | null> {
-  if (await isFullAccess()) {
-    return await getOptionalUserId()
-  }
-
-  const [row] = await db
-    .select({ visibility: corpus.visibility })
-    .from(corpus)
-    .where(eq(corpus.id, corpusId))
-  if (!row) {
-    return null
-  }
-  if (row.visibility === 'public') {
-    return null
-  }
-  throw new NotFoundError()
+  await requireCorpusAccess(corpusId, 'viewer')
+  const actor = await getRequestActor()
+  return actor.type === 'user' ? actor.userId : null
 }
 
-/**
- * Requires read access to a document by resolving it to its corpus.
- * Returns the user ID when authenticated, null otherwise (API key, auth
- * disabled, or public read).
- * Does not throw for a missing document, so callers keep their own 404 handling.
- * A document in a private corpus is indistinguishable from a missing one for
- * anonymous callers: both surface as 404.
- */
-export async function requireViewDocument(documentId: string): Promise<string | null> {
-  if (await isFullAccess()) {
-    return await getOptionalUserId()
-  }
+export async function requireEditCorpus(corpusId: string): Promise<void> {
+  await requireCorpusAccess(corpusId, 'editor')
+}
 
-  const [row] = await db
-    .select({ visibility: corpus.visibility })
-    .from(document)
-    .innerJoin(corpus, eq(corpus.id, document.corpusId))
-    .where(eq(document.id, documentId))
+export async function requireManageCorpus(corpusId: string): Promise<void> {
+  await requireCorpusAccess(corpusId, 'manager')
+}
+
+async function getDocumentCorpusId(documentId: string): Promise<string> {
+  const [row] = await db.select({ corpusId: document.corpusId }).from(document).where(eq(document.id, documentId)).limit(1)
   if (!row) {
-    return null
+    throw new NotFoundError()
   }
-  if (row.visibility === 'public') {
-    return null
+  return row.corpusId
+}
+
+export async function requireViewDocument(documentId: string): Promise<string | null> {
+  const corpusId = await getDocumentCorpusId(documentId)
+  return requireViewCorpus(corpusId)
+}
+
+export async function requireEditDocument(documentId: string): Promise<string> {
+  const corpusId = await getDocumentCorpusId(documentId)
+  await requireEditCorpus(corpusId)
+  return corpusId
+}
+
+export async function requireEditCustomEntity(entityId: string): Promise<string> {
+  const [row] = await db.select({ corpusId: corpusCustomEntity.corpusId }).from(corpusCustomEntity).where(eq(corpusCustomEntity.id, entityId)).limit(1)
+  if (!row) {
+    throw new NotFoundError()
   }
-  throw new NotFoundError()
+  await requireEditCorpus(row.corpusId)
+  return row.corpusId
+}
+
+export async function requireEditAnnotation(annotationId: string): Promise<{ corpusId: string, documentId: string }> {
+  const [row] = await db
+    .select({ corpusId: document.corpusId, documentId: document.id })
+    .from(annotation)
+    .innerJoin(document, eq(document.id, annotation.documentId))
+    .where(eq(annotation.id, annotationId))
+    .limit(1)
+  if (!row) {
+    throw new NotFoundError()
+  }
+  await requireEditCorpus(row.corpusId)
+  return row
+}
+
+export async function canEdit(corpusId: string): Promise<boolean> {
+  const access = await getCorpusAccess(corpusId)
+  return access === 'editor' || access === 'manager'
+}
+
+export async function isAnonymousViewer(): Promise<boolean> {
+  return (await getRequestActor()).type === 'anonymous'
 }

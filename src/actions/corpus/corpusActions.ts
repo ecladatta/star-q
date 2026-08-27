@@ -1,45 +1,138 @@
 'use server'
 import type { Column, SQL, SQLWrapper } from 'drizzle-orm'
 import type { Corpus, CorpusCustomEntity, CorpusVisibility, Document } from '@/db/schema'
+import type { AuthenticatedActor, RequestActor } from '@/lib/auth-utils'
+import type { CorpusAccess } from '@/lib/corpus-access'
 import type { CorpusSettings } from '@/lib/corpus-settings'
 import { and, count, countDistinct, desc, eq, getTableColumns, inArray, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { db } from '@/db/drizzle'
-import { annotation, annotationComponent, annotationQualifier, corpus, corpusCustomEntity, document } from '@/db/schema'
-import { requireAuth } from '@/lib/auth-utils'
-import { isAnonymousViewer, requireViewCorpus } from '@/lib/corpus-access'
+import { annotation, annotationComponent, annotationQualifier, auditLog, corpus, corpusCustomEntity, document, team, teamMembership, users } from '@/db/schema'
+import { ForbiddenError, getRequestActor } from '@/lib/auth-utils'
+import { MAX_CORPORA_PER_TEAM, MAX_CUSTOM_ENTITIES_PER_CORPUS, MAX_OWNED_CORPORA_PER_USER } from '@/lib/constants'
+import { getCorpusAccessForActor, requireEditCorpus, requireEditCustomEntity, requireManageCorpus, requireViewCorpus } from '@/lib/corpus-access'
 import { mergeCorpusSettings, sanitizeCorpusSettingsPatch } from '@/lib/corpus-settings'
+import { validateCorpusVisibility } from '@/lib/identity'
+
+type DbExecutor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0]
 
 export type DocumentMetadata = Omit<Document, 'raw'> & { annotationsCount: number }
+export type CorpusOwnerInput = { type: 'user' } | { type: 'team', teamId: string }
+export type CorpusListItem = Corpus & {
+  documentsCount: number
+  annotationsCount: number
+  access: CorpusAccess
+  ownerName: string | null
+  ownerIdentifier: string | null
+}
 
-export async function getCorpuses() {
-  const anonymous = await isAnonymousViewer()
+async function resolveCorpusOwner(owner: CorpusOwnerInput) {
+  const actor = await getRequestActor()
+  if (actor.type !== 'user') {
+    throw new ForbiddenError()
+  }
+  if (owner.type === 'user') {
+    return { ownerType: 'user' as const, ownerUserId: actor.userId, ownerTeamId: null }
+  }
 
-  return db.select({
+  const [membership] = await db.select({ role: teamMembership.role })
+    .from(teamMembership)
+    .where(and(eq(teamMembership.teamId, owner.teamId), eq(teamMembership.userId, actor.userId)))
+    .limit(1)
+  if (membership?.role !== 'owner' && actor.role !== 'admin') {
+    throw new ForbiddenError('Only team owners can create a corpus for that team.')
+  }
+  return { ownerType: 'team' as const, ownerUserId: null, ownerTeamId: owner.teamId }
+}
+
+export async function getCorpuses(): Promise<CorpusListItem[]> {
+  return queryCorpuses(await getRequestActor(), null)
+}
+
+export async function getMyCorpuses(): Promise<CorpusListItem[]> {
+  const rows = await queryCorpuses(await getRequestActor(), null)
+  return rows.filter(row => row.access === 'editor' || row.access === 'manager')
+}
+
+export async function getPublicCorpuses(): Promise<CorpusListItem[]> {
+  return queryCorpuses(await getRequestActor(), 'public')
+}
+
+async function queryCorpuses(actor: RequestActor, visibility: CorpusVisibility | null): Promise<CorpusListItem[]> {
+  const rows = await db.select({
     ...getTableColumns(corpus),
     documentsCount: countDistinct(document.id),
     annotationsCount: count(annotation.id),
+    ownerName: sql<string | null>`COALESCE(${users.name}, ${team.name})`,
+    ownerIdentifier: sql<string | null>`COALESCE(${users.username}, ${team.slug})`,
   })
     .from(corpus)
+    .leftJoin(users, eq(users.id, corpus.ownerUserId))
+    .leftJoin(team, eq(team.id, corpus.ownerTeamId))
     .leftJoin(document, eq(document.corpusId, corpus.id))
     .leftJoin(annotation, eq(annotation.documentId, document.id))
-    .where(anonymous ? eq(corpus.visibility, 'public') : undefined)
-    .groupBy(corpus.id)
+    .where(visibility ? eq(corpus.visibility, visibility) : undefined)
+    .groupBy(corpus.id, users.name, users.username, team.name, team.slug)
     .orderBy(desc(corpus.createdAt))
+
+  const withAccess = await Promise.all(rows.map(async row => ({
+    ...row,
+    access: await getCorpusAccessForActor(row.id, actor),
+  })))
+  return withAccess.filter((row): row is typeof row & { access: CorpusAccess } => row.access !== null)
 }
 
-export async function addCorpus(title: string) {
-  await requireAuth()
+async function assertWithinCorpusLimit(
+  executor: DbExecutor,
+  actor: AuthenticatedActor,
+  owner: { ownerType: string, ownerUserId: string | null, ownerTeamId: string | null },
+) {
+  if (actor.role === 'admin') {
+    return
+  }
+  if (owner.ownerType === 'user' && owner.ownerUserId) {
+    const [row] = await executor.select({ count: count() })
+      .from(corpus)
+      .where(and(eq(corpus.ownerType, 'user'), eq(corpus.ownerUserId, owner.ownerUserId)))
+    if ((row?.count ?? 0) >= MAX_OWNED_CORPORA_PER_USER) {
+      throw new Error(`You can own at most ${MAX_OWNED_CORPORA_PER_USER} corpora.`)
+    }
+    return
+  }
+  if (owner.ownerType === 'team' && owner.ownerTeamId) {
+    const [row] = await executor.select({ count: count() })
+      .from(corpus)
+      .where(and(eq(corpus.ownerType, 'team'), eq(corpus.ownerTeamId, owner.ownerTeamId)))
+    if ((row?.count ?? 0) >= MAX_CORPORA_PER_TEAM) {
+      throw new Error(`This team can own at most ${MAX_CORPORA_PER_TEAM} corpora.`)
+    }
+  }
+}
 
-  const [result] = await db.insert(corpus).values({ title }).returning({ id: corpus.id })
+export async function addCorpus(title: string, owner: CorpusOwnerInput) {
+  const resolvedOwner = await resolveCorpusOwner(owner)
+  const actor = await getRequestActor()
+  if (actor.type !== 'user')
+    throw new ForbiddenError()
+  const result = await db.transaction(async (trx) => {
+    await assertWithinCorpusLimit(trx, actor, resolvedOwner)
+    const [created] = await trx.insert(corpus).values({ title, ...resolvedOwner }).returning({ id: corpus.id })
+    await trx.insert(auditLog).values({ actorUserId: actor.userId, action: 'corpus.created', targetType: 'corpus', targetId: created.id, metadata: { ownerType: resolvedOwner.ownerType, ownerTeamId: resolvedOwner.ownerTeamId } })
+    return created
+  })
   revalidatePath('/')
   return result
 }
 
 export async function deleteCorpus(id: string) {
-  await requireAuth()
-
-  await db.delete(corpus).where(eq(corpus.id, id))
+  await requireManageCorpus(id)
+  const actor = await getRequestActor()
+  if (actor.type !== 'user')
+    throw new ForbiddenError()
+  await db.transaction(async (trx) => {
+    await trx.delete(corpus).where(eq(corpus.id, id))
+    await trx.insert(auditLog).values({ actorUserId: actor.userId, action: 'corpus.deleted', targetType: 'corpus', targetId: id })
+  })
   revalidatePath('/')
 }
 
@@ -63,16 +156,31 @@ export async function getCorpusAnnotationsCount(corpusId: string): Promise<numbe
 }
 
 export async function duplicateCorpus(id: string, newTitle?: string) {
-  await requireAuth()
+  await requireManageCorpus(id)
+  const actor = await getRequestActor()
 
   const newCorpus = await db.transaction(async (trx) => {
     const [originalCorpus] = await trx.select().from(corpus).where(eq(corpus.id, id))
     if (!originalCorpus) {
       throw new Error('Corpus not found')
     }
+    if (actor.type === 'user') {
+      await assertWithinCorpusLimit(trx, actor, {
+        ownerType: originalCorpus.ownerType,
+        ownerUserId: originalCorpus.ownerUserId,
+        ownerTeamId: originalCorpus.ownerTeamId,
+      })
+    }
 
     const title = newTitle || `${originalCorpus.title} (copy)`
-    const [newCorpus] = await trx.insert(corpus).values({ title, settings: originalCorpus.settings }).returning()
+    const [newCorpus] = await trx.insert(corpus).values({
+      title,
+      settings: originalCorpus.settings,
+      visibility: originalCorpus.visibility,
+      ownerType: originalCorpus.ownerType,
+      ownerUserId: originalCorpus.ownerUserId,
+      ownerTeamId: originalCorpus.ownerTeamId,
+    }).returning()
 
     // Copy custom entities first and create mapping
     const customEntities = await trx.select().from(corpusCustomEntity).where(eq(corpusCustomEntity.corpusId, id))
@@ -263,14 +371,14 @@ export async function duplicateCorpus(id: string, newTitle?: string) {
 }
 
 export async function renameCorpus(id: string, newTitle: string) {
-  await requireAuth()
+  await requireManageCorpus(id)
 
   await db.update(corpus).set({ title: newTitle }).where(eq(corpus.id, id))
   revalidatePath('/')
 }
 
 export async function updateCorpusSettings(corpusId: string, patch: Partial<CorpusSettings>) {
-  await requireAuth()
+  await requireEditCorpus(corpusId)
 
   const [existing] = await db
     .select({ settings: corpus.settings })
@@ -289,7 +397,11 @@ export async function updateCorpusSettings(corpusId: string, patch: Partial<Corp
 }
 
 export async function updateCorpusVisibility(corpusId: string, visibility: CorpusVisibility) {
-  await requireAuth()
+  visibility = validateCorpusVisibility(visibility)
+  await requireManageCorpus(corpusId)
+  const actor = await getRequestActor()
+  if (actor.type !== 'user')
+    throw new ForbiddenError()
 
   const [existing] = await db
     .select({ id: corpus.id })
@@ -299,10 +411,10 @@ export async function updateCorpusVisibility(corpusId: string, visibility: Corpu
     throw new Error('Corpus not found')
   }
 
-  await db
-    .update(corpus)
-    .set({ visibility, updatedAt: new Date() })
-    .where(eq(corpus.id, corpusId))
+  await db.transaction(async (trx) => {
+    await trx.update(corpus).set({ visibility, updatedAt: new Date() }).where(eq(corpus.id, corpusId))
+    await trx.insert(auditLog).values({ actorUserId: actor.userId, action: 'corpus.visibility_updated', targetType: 'corpus', targetId: corpusId, metadata: { visibility } })
+  })
   revalidatePath(`/corpus/${corpusId}`)
   revalidatePath('/')
 }
@@ -314,7 +426,12 @@ export async function getCorpusCustomEntities(corpusId: string): Promise<CorpusC
 }
 
 export async function addCorpusCustomEntity(corpusId: string, label: string, value: string, datatype: string, customType: 'entity' | 'relation') {
-  await requireAuth()
+  await requireEditCorpus(corpusId)
+
+  const [existing] = await db.select({ count: count() }).from(corpusCustomEntity).where(eq(corpusCustomEntity.corpusId, corpusId))
+  if ((existing?.count ?? 0) >= MAX_CUSTOM_ENTITIES_PER_CORPUS) {
+    throw new Error(`A corpus can have at most ${MAX_CUSTOM_ENTITIES_PER_CORPUS} custom entities.`)
+  }
 
   const [result] = await db.insert(corpusCustomEntity).values({
     corpusId,
@@ -328,7 +445,7 @@ export async function addCorpusCustomEntity(corpusId: string, label: string, val
 }
 
 export async function updateCorpusCustomEntity(id: string, label: string, value: string, datatype: string, customType: 'entity' | 'relation') {
-  await requireAuth()
+  const corpusId = await requireEditCustomEntity(id)
 
   await db.update(corpusCustomEntity).set({
     label,
@@ -337,14 +454,14 @@ export async function updateCorpusCustomEntity(id: string, label: string, value:
     customType,
     updatedAt: new Date(),
   }).where(eq(corpusCustomEntity.id, id))
-  revalidatePath(`/corpus/*`)
+  revalidatePath(`/corpus/${corpusId}`)
 }
 
 export async function deleteCorpusCustomEntity(id: string) {
-  await requireAuth()
+  const corpusId = await requireEditCustomEntity(id)
 
   await db.delete(corpusCustomEntity).where(eq(corpusCustomEntity.id, id))
-  revalidatePath(`/corpus/*`)
+  revalidatePath(`/corpus/${corpusId}`)
 }
 
 function levenshtein(
