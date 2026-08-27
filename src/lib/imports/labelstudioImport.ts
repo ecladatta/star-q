@@ -5,6 +5,7 @@ import { addAnnotation } from '@/actions/annotation/annotationActions'
 import { db } from '@/db/drizzle'
 
 import { document } from '@/db/schema'
+import { MAX_DOCUMENTS_PER_IMPORT } from '@/lib/constants'
 
 /**
  * Imports documents from a Label Studio formatted JSON file
@@ -12,18 +13,23 @@ import { document } from '@/db/schema'
 export async function importLabelStudioDocuments(
   corpusId: string,
   content: string,
-): Promise<{ ids: string[], errors: string[] }> {
+): Promise<{ ids: string[], errors: string[], warnings: string[] }> {
   const importedDocumentsIds: string[] = []
   const errors: string[] = []
+  const warnings: string[] = []
   let parsedJson: any[] = []
   try {
     parsedJson = JSON.parse(content)
   } catch (err) {
     errors.push(`Error parsing JSON: ${err}`)
-    return { ids: importedDocumentsIds, errors }
+    return { ids: importedDocumentsIds, errors, warnings }
   }
 
   for (const [index, item] of parsedJson.entries()) {
+    if (importedDocumentsIds.length >= MAX_DOCUMENTS_PER_IMPORT) {
+      warnings.push(`Import stopped at ${MAX_DOCUMENTS_PER_IMPORT} documents.`)
+      break
+    }
     try {
       // Convert Label Studio format to Corpus Walker format
       const raw: DocumentData = {
@@ -155,5 +161,5 @@ export async function importLabelStudioDocuments(
     }
   }
 
-  return { ids: importedDocumentsIds, errors }
+  return { ids: importedDocumentsIds, errors, warnings }
 }

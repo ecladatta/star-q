@@ -2,6 +2,7 @@
 
 import type { ChangeEvent, ReactNode } from 'react'
 import type { Corpus } from '@/db/schema'
+import type { CorpusAccess } from '@/lib/corpus-access'
 import type { CorpusExportFormat } from '@/lib/exports/export-format'
 import {
   BarChart3Icon,
@@ -14,7 +15,9 @@ import {
   MoreVerticalIcon,
   SettingsIcon,
   Trash2Icon,
+  UsersIcon,
 } from 'lucide-react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useRef, useState } from 'react'
 import { toast } from 'sonner'
@@ -50,11 +53,13 @@ import {
 type CorpusActionsProps = {
   corpus: Corpus & { documentsCount?: number, annotationsCount?: number }
   showOpenAction?: boolean
-  canEdit?: boolean
+  access: CorpusAccess
   triggerButton?: ReactNode
 }
 
-export function CorpusActions({ corpus, showOpenAction = true, canEdit = true, triggerButton }: CorpusActionsProps) {
+export function CorpusActions({ corpus, showOpenAction = true, access, triggerButton }: CorpusActionsProps) {
+  const canEdit = access === 'editor' || access === 'manager'
+  const canManage = access === 'manager'
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -234,6 +239,14 @@ export function CorpusActions({ corpus, showOpenAction = true, canEdit = true, t
                 <SettingsIcon className="mr-2 size-4" />
                 Settings
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleImportClick}>
+                <FileUpIcon className="mr-2 size-4" />
+                Import
+              </DropdownMenuItem>
+            </>
+          )}
+          {canManage && (
+            <>
               <DropdownMenuItem onClick={handleRenameClick}>
                 <EditIcon className="mr-2 size-4" />
                 Rename
@@ -242,9 +255,11 @@ export function CorpusActions({ corpus, showOpenAction = true, canEdit = true, t
                 <CopyIcon className="mr-2 size-4" />
                 Duplicate
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleImportClick}>
-                <FileUpIcon className="mr-2 size-4" />
-                Import
+              <DropdownMenuItem asChild>
+                <Link href={`/corpus/${corpus.id}/access`}>
+                  <UsersIcon className="mr-2 size-4" />
+                  Manage access
+                </Link>
               </DropdownMenuItem>
             </>
           )}
@@ -264,7 +279,7 @@ export function CorpusActions({ corpus, showOpenAction = true, canEdit = true, t
               ))}
             </DropdownMenuSubContent>
           </DropdownMenuSub>
-          {canEdit && (
+          {canManage && (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -482,6 +497,7 @@ export function CorpusActions({ corpus, showOpenAction = true, canEdit = true, t
         open={showSettingsDialog}
         onOpenChange={setShowSettingsDialog}
         corpus={corpus}
+        canManageVisibility={canManage}
       />
 
       {/* Hidden file input */}

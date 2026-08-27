@@ -2,6 +2,7 @@
 import type { AnnotationComponentRole, ExportModel } from '@/types/types'
 import { db } from '@/db/drizzle'
 import { annotation, annotationComponent, annotationQualifier, corpusCustomEntity, document } from '@/db/schema'
+import { MAX_DOCUMENTS_PER_IMPORT } from '@/lib/constants'
 import { ENTITY_DATATYPES, normalizeDatatype } from '@/lib/datatypes'
 
 const POSTGRES_INTEGER_MIN = -2_147_483_648
@@ -208,6 +209,10 @@ export async function importFullCorpusExportDocuments(
 
     for (let i = 0; i < corpusData.documents.length; i++) {
       const doc = corpusData.documents[i]
+      if (importedDocumentsIds.length >= MAX_DOCUMENTS_PER_IMPORT) {
+        warnings.push(`Import stopped at ${MAX_DOCUMENTS_PER_IMPORT} documents.`)
+        break
+      }
       try {
         if (!isDocumentData(doc.raw)) {
           errors.push(`Error inserting document ${doc.title}: raw document data is missing or invalid.`)
