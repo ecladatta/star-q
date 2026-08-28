@@ -3,7 +3,7 @@ import type { DocumentAnnotation, EntityType } from '@/types/types'
 import { BoxIcon, EditIcon, LinkIcon, Loader2Icon, TextSelectIcon, Trash2Icon, UserIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { TYPE_TO_COLOR } from '@/lib/constants'
+import { cn } from '@/lib/utils'
 import { DocumentPopoverAnchor } from './document-popover-anchor'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
 
@@ -13,14 +13,14 @@ const QUALIFIER_ACTIONS = [
   {
     side: 'predicate',
     label: 'Q predicate',
-    color: TYPE_TO_COLOR['qualifier-predicate'],
+    className: 'bg-qualifier-soft text-qualifier-fg hover:bg-qualifier-soft/70',
   },
   {
     side: 'value',
     label: 'Q value',
-    color: TYPE_TO_COLOR['qualifier-value'],
+    className: 'bg-qualifier-soft text-qualifier-fg hover:bg-qualifier-soft/70',
   },
-] satisfies Array<{ side: QualifierSide, label: string, color: string }>
+] satisfies Array<{ side: QualifierSide, label: string, className: string }>
 
 type SelectionPopoverProps = {
   popoverState: PopoverState
@@ -80,7 +80,7 @@ export function SelectionPopover({
                           <TooltipTrigger asChild>
                             <Button
                               variant="outline"
-                              className="border-red-400 text-red-500 hover:text-red-500 focus-visible:ring-red-500"
+                              className="border-destructive/50 text-destructive hover:text-destructive focus-visible:ring-destructive"
                               data-delete-annotation-popover-trigger
                             >
                               <Trash2Icon />
@@ -121,7 +121,7 @@ export function SelectionPopover({
                       </PopoverContent>
                     </Popover>
                   </TooltipProvider>
-                  <div className="mx-1 border-l border-gray-300" />
+                  <div className="mx-1 border-l border-border" />
                 </>
               )}
               <Tooltip>
@@ -129,7 +129,7 @@ export function SelectionPopover({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="flex-1 border-orange-400 text-orange-700 hover:bg-orange-50 focus-visible:ring-orange-500"
+                    className="flex-1 border-subject/50 text-subject-fg hover:bg-subject-soft/50 focus-visible:ring-subject"
                     onClick={() => onMentionAssociation('subject')}
                   >
                     <UserIcon />
@@ -150,7 +150,7 @@ export function SelectionPopover({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="flex-1 border-blue-400 text-blue-700 hover:bg-blue-50 focus-visible:ring-blue-500"
+                    className="flex-1 border-predicate/50 text-predicate-fg hover:bg-predicate-soft/50 focus-visible:ring-predicate"
                     onClick={() => onMentionAssociation('predicate')}
                   >
                     <LinkIcon />
@@ -171,7 +171,7 @@ export function SelectionPopover({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="flex-1 border-green-400 text-green-700 hover:bg-green-50 focus-visible:ring-green-500"
+                    className="flex-1 border-object/50 text-object-fg hover:bg-object-soft/50 focus-visible:ring-object"
                     onClick={() => onMentionAssociation('object')}
                   >
                     <BoxIcon />
@@ -197,8 +197,7 @@ export function SelectionPopover({
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="h-8 justify-center gap-1.5 px-2 text-xs font-medium text-slate-800 hover:opacity-90"
-                        style={{ backgroundColor: action.color }}
+                        className={cn('h-8 justify-center gap-1.5 px-2 text-xs font-medium', action.className)}
                         onClick={() => onQualifierSelectionAssociation(action.side)}
                       >
                         <TextSelectIcon className="size-3.5" />

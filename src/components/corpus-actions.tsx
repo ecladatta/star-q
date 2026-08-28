@@ -1,6 +1,7 @@
 'use client'
 
 import type { ChangeEvent, ReactNode } from 'react'
+import type { CorpusOwnerInput } from '@/actions/corpus/corpusActions'
 import type { Corpus } from '@/db/schema'
 import type { CorpusAccess } from '@/lib/corpus-access'
 import type { CorpusExportFormat } from '@/lib/exports/export-format'
@@ -24,7 +25,6 @@ import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { deleteCorpus, duplicateCorpus, renameCorpus } from '@/actions/corpus/corpusActions'
 import { importDocuments } from '@/actions/imports/importActions'
-import { CorpusSettingsDialog } from '@/components/corpus-settings-dialog'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -69,9 +69,11 @@ type CorpusActionsProps = {
   showOpenAction?: boolean
   access: CorpusAccess
   triggerButton?: ReactNode
+  ownedTeams?: { id: string, name: string, slug: string }[]
+  canCopy?: boolean
 }
 
-export function CorpusActions({ corpus, showOpenAction = true, access, triggerButton }: CorpusActionsProps) {
+export function CorpusActions({ corpus, showOpenAction = true, access, triggerButton, ownedTeams = [], canCopy = true }: CorpusActionsProps) {
   const canEdit = access === 'editor' || access === 'manager'
   const canManage = access === 'manager'
   const router = useRouter()
@@ -86,7 +88,6 @@ export function CorpusActions({ corpus, showOpenAction = true, access, triggerBu
   const [showDuplicateDialog, setShowDuplicateDialog] = useState(false)
   const [showRenameDialog, setShowRenameDialog] = useState(false)
   const [showImportDialog, setShowImportDialog] = useState(false)
-  const [showSettingsDialog, setShowSettingsDialog] = useState(false)
 
   const [newDuplicateTitle, setNewDuplicateTitle] = useState('')
   const [newRenameTitle, setNewRenameTitle] = useState('')
@@ -96,6 +97,11 @@ export function CorpusActions({ corpus, showOpenAction = true, access, triggerBu
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [uploadWarning, setUploadWarning] = useState<string | null>(null)
   const [importedCount, setImportedCount] = useState(0)
+  const [ownerSelection, setOwnerSelection] = useState('user')
+
+  const selectedOwner = (): CorpusOwnerInput => ownerSelection === 'user'
+    ? { type: 'user' }
+    : { type: 'team', teamId: ownerSelection }
 
   const handleImportClick = () => {
     setUploadError(null)
@@ -185,6 +191,11 @@ export function CorpusActions({ corpus, showOpenAction = true, access, triggerBu
 
   const handleDuplicateClick = () => {
     setNewDuplicateTitle(`${corpus.title} (copy)`)
+    if (corpus.ownerType === 'team' && corpus.ownerTeamId && ownedTeams.some(team => team.id === corpus.ownerTeamId)) {
+      setOwnerSelection(corpus.ownerTeamId)
+    } else {
+      setOwnerSelection('user')
+    }
     setShowDuplicateDialog(true)
   }
 
@@ -194,7 +205,7 @@ export function CorpusActions({ corpus, showOpenAction = true, access, triggerBu
     }
     try {
       setIsDuplicating(true)
-      await duplicateCorpus(corpus.id, newDuplicateTitle)
+      await duplicateCorpus(corpus.id, selectedOwner(), newDuplicateTitle)
       setShowDuplicateDialog(false)
       setNewDuplicateTitle('')
       router.refresh()
@@ -237,7 +248,7 @@ export function CorpusActions({ corpus, showOpenAction = true, access, triggerBu
             </Button>
           )}
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
+        <DropdownMenuContent align="end" className="w-48">
           {showOpenAction && (
             <DropdownMenuItem asChild>
               <a href={`/corpus/${corpus.id}`}>
@@ -252,11 +263,19 @@ export function CorpusActions({ corpus, showOpenAction = true, access, triggerBu
               Analytics
             </a>
           </DropdownMenuItem>
+          {canCopy && (
+            <DropdownMenuItem onClick={handleDuplicateClick}>
+              <CopyIcon className="mr-2 size-4" />
+              Make a copy...
+            </DropdownMenuItem>
+          )}
           {canEdit && (
             <>
-              <DropdownMenuItem onClick={() => setShowSettingsDialog(true)}>
-                <SettingsIcon className="mr-2 size-4" />
-                Settings
+              <DropdownMenuItem asChild>
+                <Link href={`/corpus/${corpus.id}/settings`}>
+                  <SettingsIcon className="mr-2 size-4" />
+                  Settings
+                </Link>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleImportClick}>
                 <FileUpIcon className="mr-2 size-4" />
@@ -269,10 +288,6 @@ export function CorpusActions({ corpus, showOpenAction = true, access, triggerBu
               <DropdownMenuItem onClick={handleRenameClick}>
                 <EditIcon className="mr-2 size-4" />
                 Rename
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleDuplicateClick}>
-                <CopyIcon className="mr-2 size-4" />
-                Duplicate
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href={`/corpus/${corpus.id}/access`}>
@@ -304,7 +319,7 @@ export function CorpusActions({ corpus, showOpenAction = true, access, triggerBu
               <DropdownMenuItem
                 onClick={handleDeleteClick}
                 disabled={isDeleting}
-                className="text-red-600 focus:text-red-600"
+                className="text-destructive focus:text-destructive"
               >
                 {isDeleting
                   ? (
@@ -313,7 +328,7 @@ export function CorpusActions({ corpus, showOpenAction = true, access, triggerBu
                   : (
                       <Trash2Icon className="mr-2 size-4" />
                     )}
-                Delete
+                Delete...
               </DropdownMenuItem>
             </>
           )}
@@ -342,15 +357,15 @@ export function CorpusActions({ corpus, showOpenAction = true, access, triggerBu
               )
             : hasImported && uploadError
               ? (
-                  <div className="mb-2 max-h-48 overflow-y-auto rounded-sm border border-red-200 bg-red-50 p-2">
-                    <p className="whitespace-pre-line text-red-500">{uploadError}</p>
+                  <div className="mb-2 max-h-48 overflow-y-auto rounded-md border border-destructive/30 bg-destructive/10 p-2">
+                    <p className="whitespace-pre-line text-destructive">{uploadError}</p>
                   </div>
                 )
               : hasImported && uploadWarning
                 ? (
-                    <div className="mb-2 max-h-48 overflow-y-auto rounded-sm border border-yellow-200 bg-yellow-50 p-2">
-                      <p className="font-medium text-yellow-700">Import completed with warnings:</p>
-                      <p className="whitespace-pre-line text-yellow-700">{uploadWarning}</p>
+                    <div className="mb-2 max-h-48 overflow-y-auto rounded-md border border-warning bg-warning/40 p-2">
+                      <p className="font-medium text-warning-foreground">Import completed with warnings:</p>
+                      <p className="whitespace-pre-line text-warning-foreground">{uploadWarning}</p>
                     </div>
                   )
                 : hasImported
@@ -453,7 +468,7 @@ export function CorpusActions({ corpus, showOpenAction = true, access, triggerBu
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
           </DialogHeader>
-          <div className="text-sm text-gray-600">
+          <div className="text-sm text-muted-foreground">
             <p>
               Are you sure you want to delete the corpus "
               <strong>{corpus.title}</strong>
@@ -483,15 +498,12 @@ export function CorpusActions({ corpus, showOpenAction = true, access, triggerBu
       <Dialog open={showDuplicateDialog} onOpenChange={setShowDuplicateDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Duplicate Corpus</DialogTitle>
-            <DialogDescription>
-              Create a copy of this corpus with all its documents and annotations.
-            </DialogDescription>
+            <DialogTitle>Make a copy</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-muted-foreground">
               <p>
-                You are about to duplicate the corpus "
+                You are about to make a copy of the corpus "
                 <strong>{corpus.title}</strong>
                 ".
               </p>
@@ -519,6 +531,21 @@ export function CorpusActions({ corpus, showOpenAction = true, access, triggerBu
                 </>
               )}
             </div>
+            <div>
+              <Label htmlFor="duplicate-corpus-owner">Owner</Label>
+              <Select value={ownerSelection} onValueChange={setOwnerSelection}>
+                <SelectTrigger id="duplicate-corpus-owner" className="mt-1 w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="user">Personal</SelectItem>
+                  {ownedTeams.map(team => (
+                    <SelectItem key={team.id} value={team.id}>
+                      Team:
+                      {team.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="mt-4">
               <Label htmlFor="duplicate-corpus-name">
                 New corpus name
@@ -542,7 +569,7 @@ export function CorpusActions({ corpus, showOpenAction = true, access, triggerBu
               disabled={isDuplicating || !newDuplicateTitle.trim()}
             >
               {isDuplicating ? <Loader2Icon className="mr-2 size-4 animate-spin" /> : <CopyIcon className="mr-2 size-4" />}
-              {isDuplicating ? 'Duplicating...' : 'Duplicate'}
+              {isDuplicating ? 'Making a copy...' : 'Make a copy'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -586,14 +613,6 @@ export function CorpusActions({ corpus, showOpenAction = true, access, triggerBu
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Settings Dialog */}
-      <CorpusSettingsDialog
-        open={showSettingsDialog}
-        onOpenChange={setShowSettingsDialog}
-        corpus={corpus}
-        canManageVisibility={canManage}
-      />
 
       {/* Hidden file input */}
       <input

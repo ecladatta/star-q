@@ -10,10 +10,17 @@ import { ArrowDownIcon, ArrowRightIcon, ExternalLinkIcon, XIcon } from 'lucide-r
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { TYPE_TO_COLOR } from '@/lib/constants'
 import { cn } from '@/lib/utils'
 
 const ENTITY_ORDER: EntityType[] = ['subject', 'predicate', 'object']
+
+const ROLE_SOFT: Record<AnnotationComponentRole, string> = {
+  'subject': 'bg-subject-soft text-subject-fg',
+  'predicate': 'bg-predicate-soft text-predicate-fg',
+  'object': 'bg-object-soft text-object-fg',
+  'qualifier-predicate': 'bg-qualifier-soft text-qualifier-fg',
+  'qualifier-value': 'bg-qualifier-soft text-qualifier-fg',
+}
 
 function isWikidataId(value: string | null): boolean {
   return value != null && /^(?:Q|P)\d+$/.test(value)
@@ -30,7 +37,7 @@ function EntityId({ component }: { component: DocumentAnnotationComponent }) {
         href={`https://www.wikidata.org/wiki/${entityValue}`}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex items-center gap-0.5 font-medium text-blue-600 hover:underline"
+        className="inline-flex items-center gap-0.5 font-medium text-accent hover:underline"
         onClick={event => event.stopPropagation()}
       >
         {entityValue}
@@ -69,8 +76,10 @@ function ComponentBlock({
       <button
         type="button"
         onClick={() => onLocate(component)}
-        className="mb-1 flex w-full items-center justify-between truncate rounded-md px-2 py-0.5 text-sm font-semibold transition-opacity hover:opacity-80"
-        style={{ backgroundColor: TYPE_TO_COLOR[tagRole] }}
+        className={cn(
+          'mb-1 flex w-full items-center justify-between truncate rounded-md px-2 py-0.5 text-sm font-medium transition-opacity hover:opacity-80',
+          ROLE_SOFT[tagRole],
+        )}
         title={component.annotationValue}
       >
         <span className="truncate">{component.annotationValue || '\u00A0'}</span>
@@ -131,7 +140,7 @@ export function ReadOnlyAnnotationDetail({
 
   return (
     <div className="fixed bottom-0 left-1/2 z-10 w-full max-w-(--breakpoint-md) -translate-x-1/2 md:w-3/4 lg:w-2/3">
-      <Card className="mb-6 w-full rounded-lg border shadow-lg">
+      <Card className="mb-6 w-full rounded-lg border">
         <CardHeader className="flex flex-row items-center pt-4 pb-2">
           <CardTitle>Annotation</CardTitle>
           <div className="ml-auto">

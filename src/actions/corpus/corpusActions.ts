@@ -22,7 +22,6 @@ export type CorpusListItem = Corpus & {
   documentsCount: number
   annotationsCount: number
   access: CorpusAccess
-  ownerName: string | null
   ownerIdentifier: string | null
 }
 
@@ -45,25 +44,24 @@ async function resolveCorpusOwner(owner: CorpusOwnerInput) {
   return { ownerType: 'team' as const, ownerUserId: null, ownerTeamId: owner.teamId }
 }
 
-export async function getCorpuses(): Promise<CorpusListItem[]> {
-  return queryCorpuses(await getRequestActor(), null)
+export async function getCorpora(): Promise<CorpusListItem[]> {
+  return queryCorpora(await getRequestActor(), null)
 }
 
-export async function getMyCorpuses(): Promise<CorpusListItem[]> {
-  const rows = await queryCorpuses(await getRequestActor(), null)
+export async function getMyCorpora(): Promise<CorpusListItem[]> {
+  const rows = await queryCorpora(await getRequestActor(), null)
   return rows.filter(row => row.access === 'editor' || row.access === 'manager')
 }
 
-export async function getPublicCorpuses(): Promise<CorpusListItem[]> {
-  return queryCorpuses(await getRequestActor(), 'public')
+export async function getPublicCorpora(): Promise<CorpusListItem[]> {
+  return queryCorpora(await getRequestActor(), 'public')
 }
 
-async function queryCorpuses(actor: RequestActor, visibility: CorpusVisibility | null): Promise<CorpusListItem[]> {
+async function queryCorpora(actor: RequestActor, visibility: CorpusVisibility | null): Promise<CorpusListItem[]> {
   const rows = await db.select({
     ...getTableColumns(corpus),
     documentsCount: countDistinct(document.id),
     annotationsCount: count(annotation.id),
-    ownerName: sql<string | null>`COALESCE(${users.name}, ${team.name})`,
     ownerIdentifier: sql<string | null>`COALESCE(${users.username}, ${team.slug})`,
   })
     .from(corpus)
@@ -72,7 +70,7 @@ async function queryCorpuses(actor: RequestActor, visibility: CorpusVisibility |
     .leftJoin(document, eq(document.corpusId, corpus.id))
     .leftJoin(annotation, eq(annotation.documentId, document.id))
     .where(visibility ? eq(corpus.visibility, visibility) : undefined)
-    .groupBy(corpus.id, users.name, users.username, team.name, team.slug)
+    .groupBy(corpus.id, users.username, team.slug)
     .orderBy(desc(corpus.createdAt))
 
   const withAccess = await Promise.all(rows.map(async row => ({
@@ -143,6 +141,22 @@ export async function getCorpus(id: string): Promise<Corpus> {
   return data
 }
 
+export async function getCorpusOwner(id: string): Promise<{ name: string | null, identifier: string | null }> {
+  await requireViewCorpus(id)
+
+  const [row] = await db
+    .select({
+      name: sql<string | null>`COALESCE(${users.name}, ${team.name})`,
+      identifier: sql<string | null>`COALESCE(${users.username}, ${team.slug})`,
+    })
+    .from(corpus)
+    .leftJoin(users, eq(users.id, corpus.ownerUserId))
+    .leftJoin(team, eq(team.id, corpus.ownerTeamId))
+    .where(eq(corpus.id, id))
+
+  return row ?? { name: null, identifier: null }
+}
+
 export async function getCorpusAnnotationsCount(corpusId: string): Promise<number> {
   await requireViewCorpus(corpusId)
 
@@ -155,31 +169,26 @@ export async function getCorpusAnnotationsCount(corpusId: string): Promise<numbe
   return result?.count || 0
 }
 
-export async function duplicateCorpus(id: string, newTitle?: string) {
-  await requireManageCorpus(id)
+export async function duplicateCorpus(id: string, owner: CorpusOwnerInput, newTitle?: string) {
+  await requireViewCorpus(id)
   const actor = await getRequestActor()
+  if (actor.type !== 'user')
+    throw new ForbiddenError()
+  const resolvedOwner = await resolveCorpusOwner(owner)
 
   const newCorpus = await db.transaction(async (trx) => {
     const [originalCorpus] = await trx.select().from(corpus).where(eq(corpus.id, id))
     if (!originalCorpus) {
       throw new Error('Corpus not found')
     }
-    if (actor.type === 'user') {
-      await assertWithinCorpusLimit(trx, actor, {
-        ownerType: originalCorpus.ownerType,
-        ownerUserId: originalCorpus.ownerUserId,
-        ownerTeamId: originalCorpus.ownerTeamId,
-      })
-    }
+    await assertWithinCorpusLimit(trx, actor, resolvedOwner)
 
     const title = newTitle || `${originalCorpus.title} (copy)`
     const [newCorpus] = await trx.insert(corpus).values({
       title,
       settings: originalCorpus.settings,
       visibility: originalCorpus.visibility,
-      ownerType: originalCorpus.ownerType,
-      ownerUserId: originalCorpus.ownerUserId,
-      ownerTeamId: originalCorpus.ownerTeamId,
+      ...resolvedOwner,
     }).returning()
 
     // Copy custom entities first and create mapping

@@ -55,12 +55,19 @@ import {
 } from '@/components/ui/tooltip'
 import { entityTypeForComponentRole } from '@/lib/annotation-roles'
 import { validateAnnotationQualifiers } from '@/lib/annotation-validation'
-import { TYPE_TO_COLOR } from '@/lib/constants'
 import { cn, isMac } from '@/lib/utils'
 import { WIKIDATA_ITEM_PATTERN, WIKIDATA_PROPERTY_PATTERN } from '@/lib/wikidata-constraints'
 import { fetchPropertyConstraints } from '@/lib/wikidata-sparql'
 
 type QualifierSide = 'predicate' | 'value'
+
+const ROLE_SOFT: Record<AnnotationComponentRole, string> = {
+  'subject': 'bg-subject-soft text-subject-fg',
+  'predicate': 'bg-predicate-soft text-predicate-fg',
+  'object': 'bg-object-soft text-object-fg',
+  'qualifier-predicate': 'bg-qualifier-soft text-qualifier-fg',
+  'qualifier-value': 'bg-qualifier-soft text-qualifier-fg',
+}
 
 type AnnotationFormProps = {
   currentAnnotation: CurrentAnnotation | null
@@ -465,12 +472,11 @@ export function AnnotationForm({
       <div className="min-w-0">
         <div
           className={cn(
-            'mb-1 flex h-7 min-w-0 overflow-hidden rounded-md border text-sm font-semibold',
+            'mb-1 flex h-7 min-w-0 overflow-hidden rounded-md border text-sm font-medium',
             component
-              ? 'border-transparent'
-              : 'border-dashed border-muted-foreground/40',
+              ? cn('border-transparent', ROLE_SOFT[role])
+              : 'border-dashed border-muted-foreground/40 text-muted-foreground',
           )}
-          style={{ backgroundColor: TYPE_TO_COLOR[role] }}
         >
           <Tooltip>
             <TooltipTrigger asChild>
@@ -513,7 +519,7 @@ export function AnnotationForm({
           {component && (
             <button
               type="button"
-              className="flex w-7 shrink-0 items-center justify-center border-l border-slate-900/10 transition-colors hover:bg-white/30"
+              className="flex w-7 shrink-0 items-center justify-center border-l border-border transition-colors hover:bg-foreground/10"
               onClick={() => clearQualifierSide(qualifierId, side)}
               aria-label={`Clear qualifier ${side}`}
             >
@@ -555,10 +561,9 @@ export function AnnotationForm({
         className={cn(
           'flex min-w-0 flex-1 items-center gap-1 rounded-sm px-1.5 py-0.5 text-xs font-medium',
           component
-            ? 'text-slate-800'
+            ? ROLE_SOFT[role]
             : 'border border-dashed text-muted-foreground',
         )}
-        style={component ? { backgroundColor: TYPE_TO_COLOR[role] } : undefined}
         title={title}
       >
         <span className="truncate">{component?.annotationValue || label}</span>
@@ -759,7 +764,7 @@ export function AnnotationForm({
         className={cn(
           'mb-6 w-full rounded-lg border text-left transition-all',
           currentAnnotation?.id
-          && 'border-blue-500 shadow-md ring-2 ring-blue-500/20',
+          && 'border-accent ring-1 ring-accent/20',
         )}
       >
         <CardHeader className="flex flex-row pb-4">
@@ -854,7 +859,7 @@ export function AnnotationForm({
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
-                  className="bg-green-600 text-green-50 hover:bg-green-700 focus-visible:ring-green-500"
+                  className="bg-success text-success-foreground hover:bg-success/90"
                   onClick={handleSave}
                   disabled={
                     !hasAllTags || annotationFormLoading || isDeletingAnnotation
@@ -924,8 +929,7 @@ export function AnnotationForm({
               <div
                 role="button"
                 tabIndex={0}
-                className="mb-1 flex w-full cursor-pointer items-center justify-between truncate rounded-md px-2 py-0.5 text-sm font-semibold transition-opacity hover:opacity-80"
-                style={{ backgroundColor: TYPE_TO_COLOR.subject }}
+                className="mb-1 flex w-full cursor-pointer items-center justify-between truncate rounded-md bg-subject-soft px-2 py-0.5 text-sm font-medium text-subject-fg transition-opacity hover:opacity-80"
                 onClick={() => scrollToElement(subjectTag)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
@@ -976,8 +980,7 @@ export function AnnotationForm({
               <div
                 role="button"
                 tabIndex={0}
-                className="mb-1 flex w-full cursor-pointer items-center justify-between truncate rounded-md px-2 py-0.5 text-sm font-semibold transition-opacity hover:opacity-80"
-                style={{ backgroundColor: TYPE_TO_COLOR.predicate }}
+                className="mb-1 flex w-full cursor-pointer items-center justify-between truncate rounded-md bg-predicate-soft px-2 py-0.5 text-sm font-medium text-predicate-fg transition-opacity hover:opacity-80"
                 onClick={() => scrollToElement(predicateTag)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
@@ -1045,8 +1048,7 @@ export function AnnotationForm({
               <div
                 role="button"
                 tabIndex={0}
-                className="mb-1 flex w-full cursor-pointer items-center justify-between truncate rounded-md px-2 py-0.5 text-sm font-semibold transition-opacity hover:opacity-80"
-                style={{ backgroundColor: TYPE_TO_COLOR.object }}
+                className="mb-1 flex w-full cursor-pointer items-center justify-between truncate rounded-md bg-object-soft px-2 py-0.5 text-sm font-medium text-object-fg transition-opacity hover:opacity-80"
                 onClick={() => scrollToElement(objectTag)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
@@ -1100,7 +1102,7 @@ export function AnnotationForm({
                   qualifiers.length > 0 && 'mb-2',
                 )}
               >
-                <h3 className="text-sm font-semibold">
+                <h3 className="text-sm font-medium">
                   Qualifiers (
                   {qualifiers.length}
                   )
@@ -1128,10 +1130,10 @@ export function AnnotationForm({
                       key={qualifier.id}
                       className={cn(
                         'rounded-md border transition-colors',
-                        isExpanded && 'border-blue-400 bg-blue-50/40',
+                        isExpanded && 'border-accent bg-accent/10',
                         !isExpanded
                         && qualifierHasValidationError
-                        && 'border-red-200 bg-red-50/40',
+                        && 'border-destructive/40 bg-destructive/10',
                       )}
                     >
                       <div className="flex items-start gap-2 p-2">

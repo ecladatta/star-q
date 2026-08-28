@@ -1,4 +1,5 @@
 import type { KeyboardEvent, MouseEvent } from 'react'
+import type { AnnotationComponentRole } from '@/types/types'
 import { cn } from '@/lib/utils'
 import Mark from './mark'
 
@@ -6,7 +7,7 @@ function Split(props: {
   start: number
   end: number
   content: string
-  color: string
+  role?: AnnotationComponentRole
   mark?: boolean
   isCurrentAnnotation?: boolean
   className?: string

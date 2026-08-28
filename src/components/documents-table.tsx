@@ -213,13 +213,16 @@ function DataTable({
           </Button>
         </div>
       )}
-      <div className="rounded-md border">
+      <div className="w-full overflow-hidden rounded-lg border border-border">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map(headerGroup => (
-              <TableRow key={headerGroup.id}>
+              <TableRow key={headerGroup.id} className="hover:bg-transparent">
                 {headerGroup.headers.map(header => (
-                  <TableHead key={header.id}>
+                  <TableHead
+                    key={header.id}
+                    className="bg-muted/40 px-3 py-2 text-left text-xs font-medium text-muted-foreground"
+                  >
                     {header.isPlaceholder
                       ? null
                       : flexRender(
@@ -235,9 +238,9 @@ function DataTable({
             {table.getRowModel().rows?.length
               ? (
                   table.getRowModel().rows.map(row => (
-                    <TableRow key={row.id} className="transition-colors hover:bg-muted/50">
+                    <TableRow key={row.id} className="border-t border-border transition-colors hover:bg-muted/30">
                       {row.getVisibleCells().map(cell => (
-                        <TableCell key={cell.id}>
+                        <TableCell key={cell.id} className="px-3 py-2.5 text-[13px]">
                           {flexRender(
                             cell.column.columnDef.cell,
                             cell.getContext(),
@@ -251,7 +254,7 @@ function DataTable({
                   <TableRow>
                     <TableCell
                       colSpan={columns.length}
-                      className="h-24 text-center"
+                      className="h-24 px-3 py-2.5 text-center text-[13px]"
                     >
                       No documents found.
                     </TableCell>
@@ -425,7 +428,10 @@ const columns: ColumnDef<DocumentMetadata, any>[] = [
       <DataTableColumnHeader column={column} title="Title" />
     ),
     cell: ({ row }) => (
-      <Link href={`/document/${row.original.id}`} className="block hover:underline">
+      <Link
+        href={`/document/${row.original.id}`}
+        className="block text-foreground hover:text-accent hover:underline"
+      >
         {row.original.title}
       </Link>
     ),
@@ -437,7 +443,9 @@ const columns: ColumnDef<DocumentMetadata, any>[] = [
       <DataTableColumnHeader column={column} title="Annotations" />
     ),
     cell: ({ row }) => (
-      <div>{JSON.stringify(row.original.annotationsCount)}</div>
+      <div className="font-mono text-muted-foreground tabular-nums">
+        {JSON.stringify(row.original.annotationsCount)}
+      </div>
     ),
   },
   {
@@ -466,10 +474,14 @@ const columns: ColumnDef<DocumentMetadata, any>[] = [
                   )}
             </>
           )}
-          <span suppressHydrationWarning className="text-sm">
+          <span suppressHydrationWarning className="text-muted-foreground">
             {row.original.completedAt
               ? row.original.completedAt.toLocaleString()
-              : 'Not completed'}
+              : (
+                  <span className="inline-flex rounded-full border border-border bg-secondary px-2 py-0.5 text-[11px] text-foreground">
+                    Not completed
+                  </span>
+                )}
           </span>
         </div>
       )
@@ -540,7 +552,7 @@ const columns: ColumnDef<DocumentMetadata, any>[] = [
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => meta.setDocumentToDelete(row.original)}
-                  className="font-bold text-red-600"
+                  className="font-medium text-destructive focus:text-destructive"
                 >
                   <Trash2Icon className="mr-2 size-4" />
                   Delete
@@ -570,7 +582,7 @@ function DataTableColumnHeader<TData, TValue>({
           <Button
             variant="ghost"
             size="sm"
-            className="-ml-3 h-8 data-[state=open]:bg-accent"
+            className="-ml-3 h-8 text-muted-foreground data-[state=open]:bg-accent data-[state=open]:text-accent-foreground"
           >
             <span>{title}</span>
             {column.getIsSorted() === 'desc'
@@ -710,7 +722,7 @@ export default function DocumentsTable({
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
           </DialogHeader>
-          <div className="text-sm text-gray-600">
+          <div className="text-sm text-muted-foreground">
             <p>
               Are you sure you want to delete the document "
               <strong>{documentToDelete?.title}</strong>
@@ -752,7 +764,7 @@ export default function DocumentsTable({
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
           </DialogHeader>
-          <div className="text-sm text-gray-600">
+          <div className="text-sm text-muted-foreground">
             <p>
               Are you sure you want to delete
               {' '}

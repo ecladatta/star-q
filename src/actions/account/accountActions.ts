@@ -244,5 +244,5 @@ export async function unlinkOAuthProvider(provider: 'github' | 'wikimedia'): Pro
 }
 
 export async function signOutCurrentUser() {
-  await signOut({ redirectTo: '/sign-in' })
+  await signOut({ redirectTo: '/' })
 }

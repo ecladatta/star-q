@@ -1,6 +1,6 @@
 'use client'
 import type { Offset } from '@/lib/utils'
-import type { CurrentAnnotation, DocumentElement } from '@/types/types'
+import type { AnnotationComponentRole, CurrentAnnotation, DocumentElement } from '@/types/types'
 import { Check, Copy } from 'lucide-react'
 import { createElement, useState } from 'react'
 
@@ -9,9 +9,16 @@ import { Button } from '@/components/ui/button'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { getAnnotationComponents } from '@/lib/annotation-roles'
-import { TYPE_TO_COLOR } from '@/lib/constants'
 import { cn, splitWithOffsets } from '@/lib/utils'
 import Split from './split'
+
+const ROLE_COLOR_VAR: Record<AnnotationComponentRole, string> = {
+  'subject': 'var(--subject)',
+  'predicate': 'var(--predicate)',
+  'object': 'var(--object)',
+  'qualifier-predicate': 'var(--qualifier)',
+  'qualifier-value': 'var(--qualifier)',
+}
 
 export type CombinedElementProps = {
   elementIndex: number
@@ -36,17 +43,17 @@ function normalizeRenderedWhitespace(text: string | null | undefined) {
   return (text ?? '').replace(/[\u00A0\u202F]/g, ' ')
 }
 
-function getComponentColor(
+function getComponentRole(
   componentId: string | undefined,
   element: DocumentElement,
   currentAnnotation: CurrentAnnotation | null,
-): string {
+): AnnotationComponentRole | undefined {
   const component = element.components.find(annotation => annotation.id === componentId)
     ?? (currentAnnotation
       ? getAnnotationComponents(currentAnnotation).find(annotation => annotation.id === componentId)
       : undefined)
 
-  return component ? TYPE_TO_COLOR[component.annotationTag] : 'lightgrey'
+  return component?.annotationTag
 }
 
 function CombinedElement({
@@ -157,7 +164,7 @@ function CombinedElement({
               {...split}
               className="wrap-break-word"
               onClick={anchorRect => handleSplitClick(split, anchorRect)}
-              color={getComponentColor(split.componentId, element, currentAnnotation)}
+              role={getComponentRole(split.componentId, element, currentAnnotation)}
               isCurrentAnnotation={split.componentId ? isComponentFromCurrentAnnotation(split.componentId, currentAnnotation) : false}
             />
           ))
@@ -167,7 +174,7 @@ function CombinedElement({
       <div key={elementIndex} className="mb-4 min-w-0" id={`element-${elementIndex}`}>
         {createElement(data.level ? `h${data.level}` : 'div', headingProps, headingContent)}
         <div
-          className="min-w-0 text-lg/relaxed wrap-break-word"
+          className="min-w-0 text-[15px]/7 wrap-break-word"
           {...(!readOnly && {
             role: 'textbox',
             tabIndex: 0,
@@ -183,7 +190,7 @@ function CombinedElement({
                 {...split}
                 className="wrap-break-word"
                 onClick={anchorRect => handleSplitClick(split, anchorRect)}
-                color={getComponentColor(split.componentId, element, currentAnnotation)}
+                role={getComponentRole(split.componentId, element, currentAnnotation)}
                 isCurrentAnnotation={split.componentId ? isComponentFromCurrentAnnotation(split.componentId, currentAnnotation) : false}
               />
             ))}
@@ -255,11 +262,11 @@ function CombinedElement({
           .filter((component, index, components) =>
             components.findIndex(candidate => candidate.annotationTag === component.annotationTag) === index,
           )
-          .map(component => ({ color: TYPE_TO_COLOR[component.annotationTag] }))
+          .map(component => ({ color: ROLE_COLOR_VAR[component.annotationTag] }))
       : []
     borderConfig.forEach(({ color }) => {
       if (borderOffset > 0) {
-        borderLayers.push(`0 0 0 ${borderOffset + 1}px white`)
+        borderLayers.push(`0 0 0 ${borderOffset + 1}px var(--background)`)
         borderOffset += 1
       }
       borderLayers.push(`0 0 0 ${borderOffset + 3}px ${color}`)
@@ -311,7 +318,7 @@ function CombinedElement({
                         key={cellIndex}
                         role="button"
                         tabIndex={0}
-                        className={cn('relative p-3 font-medium transition-all duration-200 select-text', isHovered ? 'bg-blue-50! shadow-[inset_0_0_0_1px_rgb(147_197_253)]' : 'hover:bg-blue-50! hover:shadow-[inset_0_0_0_1px_rgb(147_197_253)]')}
+                        className={cn('relative p-3 font-medium transition-colors duration-200 select-text', isHovered ? 'bg-accent/10! ring-1! ring-inset! ring-accent/40!' : 'hover:bg-accent/10! hover:ring-1! hover:ring-inset! hover:ring-accent/40!')}
                         onMouseEnter={() => setHoveredCell({ row: 0, cell: cellIndex })}
                         onMouseLeave={() => setHoveredCell(null)}
                         {...(!readOnly && { onMouseUp: () => handleCellMouseUp(0, cellIndex) })}
@@ -324,7 +331,7 @@ function CombinedElement({
                             key={`table-header-split-${split.componentId}-${split.start}-${split.end}`}
                             {...split}
                             onClick={anchorRect => handleSplitClick(split, anchorRect)}
-                            color={getComponentColor(split.componentId, element, currentAnnotation)}
+                            role={getComponentRole(split.componentId, element, currentAnnotation)}
                             isCurrentAnnotation={split.componentId ? isComponentFromCurrentAnnotation(split.componentId, currentAnnotation) : false}
                           />
                         ))}
@@ -346,7 +353,7 @@ function CombinedElement({
                         key={cellIndex}
                         role="button"
                         tabIndex={0}
-                        className={cn('relative p-3 transition-all duration-200 select-text', isHovered ? 'bg-blue-50! shadow-[inset_0_0_0_1px_rgb(147_197_253)]' : 'hover:bg-blue-50! hover:shadow-[inset_0_0_0_1px_rgb(147_197_253)]')}
+                        className={cn('relative p-3 transition-colors duration-200 select-text', isHovered ? 'bg-accent/10! ring-1! ring-inset! ring-accent/40!' : 'hover:bg-accent/10! hover:ring-1! hover:ring-inset! hover:ring-accent/40!')}
                         onMouseEnter={() => setHoveredCell({ row: actualRowIndex, cell: cellIndex })}
                         onMouseLeave={() => setHoveredCell(null)}
                         {...(!readOnly && { onMouseUp: () => handleCellMouseUp(actualRowIndex, cellIndex) })}
@@ -359,7 +366,7 @@ function CombinedElement({
                             key={`table-row-split-${split.componentId}-${split.start}-${split.end}`}
                             {...split}
                             onClick={anchorRect => handleSplitClick(split, anchorRect)}
-                            color={getComponentColor(split.componentId, element, currentAnnotation)}
+                            role={getComponentRole(split.componentId, element, currentAnnotation)}
                             isCurrentAnnotation={split.componentId ? isComponentFromCurrentAnnotation(split.componentId, currentAnnotation) : false}
                           />
                         ))}

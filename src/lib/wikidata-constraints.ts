@@ -17,6 +17,27 @@ export type ClassConstraint = {
   relation: ConstraintRelation
 }
 
+export type ConstraintGroup = {
+  relation: ConstraintRelation
+  classes: Array<{ class: string, label: string }>
+}
+
+export function groupByRelation(classes: Array<ClassConstraint & { label: string }>): ConstraintGroup[] {
+  const groups: ConstraintGroup[] = []
+  for (const constraint of classes) {
+    const last = groups[groups.length - 1]
+    if (last && last.relation === constraint.relation) {
+      last.classes.push({ class: constraint.class, label: constraint.label })
+      continue
+    }
+    groups.push({
+      relation: constraint.relation,
+      classes: [{ class: constraint.class, label: constraint.label }],
+    })
+  }
+  return groups
+}
+
 export type PropertyConstraints = {
   domain: ClassConstraint[]
   range: ClassConstraint[]

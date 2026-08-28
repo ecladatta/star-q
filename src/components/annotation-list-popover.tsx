@@ -17,10 +17,7 @@ const ENTITY_ORDER: EntityType[] = ['subject', 'predicate', 'object']
 
 type EntityMeta = {
   icon: LucideIcon
-  iconClass: string
-  textClass: string
-  highlightIconClass: string
-  highlightTextClass: string
+  chipClass: string
   buttonClass: string
   tooltip: string
   hotkey: string
@@ -30,33 +27,24 @@ type EntityMeta = {
 const ENTITY_META: Record<EntityType, EntityMeta> = {
   subject: {
     icon: UserIcon,
-    iconClass: 'text-orange-500',
-    textClass: 'text-orange-700',
-    highlightIconClass: 'ml-1 inline size-3 align-text-bottom text-orange-500',
-    highlightTextClass: 'ml-1 font-semibold text-orange-700',
-    buttonClass: 'border-orange-400 text-orange-700 hover:bg-orange-50 focus-visible:ring-orange-500',
+    chipClass: 'bg-subject-soft text-subject-fg',
+    buttonClass: 'border-subject/50 text-subject-fg hover:bg-subject-soft/50 focus-visible:ring-subject',
     tooltip: 'New subject from this mention (S)',
     hotkey: 'S',
     label: 'Subject',
   },
   predicate: {
     icon: LinkIcon,
-    iconClass: 'text-blue-500',
-    textClass: 'text-blue-700',
-    highlightIconClass: 'ml-1 inline size-3 align-text-bottom text-blue-500',
-    highlightTextClass: 'ml-1 font-semibold text-blue-700',
-    buttonClass: 'border-blue-400 text-blue-700 hover:bg-blue-50 focus-visible:ring-blue-500',
+    chipClass: 'bg-predicate-soft text-predicate-fg',
+    buttonClass: 'border-predicate/50 text-predicate-fg hover:bg-predicate-soft/50 focus-visible:ring-predicate',
     tooltip: 'New predicate from this mention (P)',
     hotkey: 'P',
     label: 'Predicate',
   },
   object: {
     icon: BoxIcon,
-    iconClass: 'text-green-500',
-    textClass: 'text-green-700',
-    highlightIconClass: 'ml-1 inline size-3 align-text-bottom text-green-500',
-    highlightTextClass: 'ml-1 font-semibold text-green-700',
-    buttonClass: 'border-green-400 text-green-700 hover:bg-green-50 focus-visible:ring-green-500',
+    chipClass: 'bg-object-soft text-object-fg',
+    buttonClass: 'border-object/50 text-object-fg hover:bg-object-soft/50 focus-visible:ring-object',
     tooltip: 'New object from this mention (O)',
     hotkey: 'O',
     label: 'Object',
@@ -203,10 +191,10 @@ export function AnnotationListPopover({
                 <ScrollArea className="flex max-h-40 w-full flex-col overflow-y-auto">
                   <div className="space-y-2 pb-2">
                     {annotations.map(annotation => (
-                      <Card key={annotation.id} className="overflow-hidden transition-shadow delay-75 ease-in-out hover:shadow-md">
+                      <Card key={annotation.id} className="overflow-hidden">
                         <CardContent className="p-3">
                           <div className="grid grid-cols-[1fr_auto] gap-2">
-                            <div className="flex min-w-0 flex-col gap-1 text-xs">
+                            <div className="flex min-w-0 flex-col gap-1">
                               {ENTITY_ORDER.map((entityType) => {
                                 const component = annotation[entityType]
                                 if (!component)
@@ -216,15 +204,18 @@ export function AnnotationListPopover({
                                 const Icon = meta.icon
 
                                 return (
-                                  <div key={entityType} className="flex min-w-0 items-center gap-1.5">
-                                    <Icon className={cn('size-3 shrink-0', meta.iconClass)} />
+                                  <span
+                                    key={entityType}
+                                    className={cn('flex min-w-0 items-center gap-1 rounded-sm px-1.5 py-0.5 text-[11px] font-medium', meta.chipClass)}
+                                  >
+                                    <Icon className="size-3 shrink-0" />
                                     <span
-                                      className={cn('min-w-0 flex-1 truncate font-medium', meta.textClass)}
+                                      className="min-w-0 flex-1 truncate"
                                       title={getAnnotationComponentTitle(component)}
                                     >
                                       {getAnnotationComponentDisplayText(component)}
                                     </span>
-                                  </div>
+                                  </span>
                                 )
                               })}
                               <QualifierSummary qualifiers={annotation.qualifiers} className="mt-1 pt-1.5" />
@@ -288,7 +279,7 @@ export function AnnotationListPopover({
                                             <Button
                                               variant="ghost"
                                               size="sm"
-                                              className="col-start-2 row-start-1 size-7 p-0 text-red-500 hover:text-red-600"
+                                              className="col-start-2 row-start-1 size-7 p-0 text-destructive hover:text-destructive"
                                               aria-label="Delete annotation"
                                               disabled={isDeletingAnnotation || deletingId === annotation.id}
                                             >
@@ -334,7 +325,7 @@ export function AnnotationListPopover({
               {mentionData && !readOnly && (
                 <div className="space-y-3">
                   <div>
-                    <h5 className="mb-2 text-xs font-semibold text-muted-foreground">Create new annotation</h5>
+                    <h5 className="mb-2 text-xs font-medium text-muted-foreground">Create new annotation</h5>
                     <div className="flex gap-2">
                       {ENTITY_ORDER.map((entityType) => {
                         const meta = ENTITY_META[entityType]

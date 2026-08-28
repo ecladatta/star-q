@@ -70,9 +70,10 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       session.user.sessionVersion = token.sessionVersion as number
       session.user.mustChangePassword = Boolean(token.mustChangePassword)
       session.user.valid = token.valid !== false
+      session.user.lastSignInProvider = (token.lastSignInProvider as string | null) ?? null
       return session
     },
-    async jwt({ token, user }) {
+    async jwt({ token, user, account }) {
       const userId = (user?.id ?? token.id ?? token.sub) as string | undefined
       if (!userId) {
         token.valid = false
@@ -104,6 +105,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         sessionVersion: dbUser.sessionVersion,
         mustChangePassword: dbUser.mustChangePassword,
         valid: true,
+        lastSignInProvider: isNewSession ? (account?.provider ?? 'unknown') : token.lastSignInProvider,
       }
     },
   },

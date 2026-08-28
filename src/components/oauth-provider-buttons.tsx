@@ -1,4 +1,5 @@
 import { SignInButton } from '@/components/sign-in-button'
+import { Badge } from '@/components/ui/badge'
 
 function ProviderIcon({ id }: { id: string }) {
   if (id === 'github') {
@@ -25,17 +26,25 @@ function ProviderIcon({ id }: { id: string }) {
 
 export type OAuthProviderDescriptor = { id: string, name: string }
 
-export function OAuthProviderButtons({ providers, action, redirectTo }: {
+export function OAuthProviderButtons({ providers, action, redirectTo, lastUsedId }: {
   providers: OAuthProviderDescriptor[]
   action: 'Sign in' | 'Sign up' | 'Continue'
   redirectTo?: string
+  lastUsedId?: string
 }) {
   return providers.map(provider => (
-    <SignInButton key={provider.id} id={provider.id} redirectTo={redirectTo}>
-      <ProviderIcon id={provider.id} />
-      {action}
-      {' with '}
-      {provider.name}
-    </SignInButton>
+    <div key={provider.id} className="relative">
+      <SignInButton id={provider.id} redirectTo={redirectTo}>
+        <ProviderIcon id={provider.id} />
+        {action}
+        {' with '}
+        {provider.name}
+      </SignInButton>
+      {lastUsedId === provider.id && (
+        <Badge variant="secondary" className="pointer-events-none absolute -top-2 -right-2">
+          Last used
+        </Badge>
+      )}
+    </div>
   ))
 }

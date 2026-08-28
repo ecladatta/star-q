@@ -531,7 +531,7 @@ export function EntitySelector({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span className="inline-flex shrink-0">
-                      <TriangleAlertIcon className="size-4 text-amber-500" />
+                      <TriangleAlertIcon className="size-4 text-warning-foreground" />
                     </span>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -551,7 +551,7 @@ export function EntitySelector({
                     )}
               </div>
             </div>
-            <ChevronsUpDownIcon className="ml-2 size-4 shrink-0 opacity-50" />
+            <ChevronsUpDownIcon className="ml-2 size-3.5 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
         {value?.custom && (
@@ -598,7 +598,7 @@ export function EntitySelector({
               handleSearch(value)
             }}
           />
-          <CommandList className={isSearching ? 'opacity-50' : ''}>
+          <CommandList className={cn('text-[13px]', isSearching ? 'opacity-50' : '')}>
             <CommandEmpty>
               {filteringActive && !showAllResults
                 ? (constraintEntityChecks?.length
@@ -638,7 +638,7 @@ export function EntitySelector({
                       setOpen(false)
                     }}
                   >
-                    <XIcon className="size-4" />
+                    <XIcon className="size-3.5" />
                     <span>Clear entity</span>
                   </CommandItem>
                 </CommandGroup>
@@ -661,7 +661,7 @@ export function EntitySelector({
                   }}
                   className="items-start rounded-none border-b py-2"
                 >
-                  <CheckIcon className="size-4" />
+                  <CheckIcon className="size-3.5 text-muted-foreground" />
                   <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                     <div className="min-w-0 leading-5">
                       <span>{value.label}</span>
@@ -695,7 +695,7 @@ export function EntitySelector({
                   </div>
                   {value.custom
                     ? (
-                        <span className="ml-auto text-xs text-purple-600">
+                        <span className="ml-auto text-xs text-muted-foreground">
                           Corpus
                         </span>
                       )
@@ -704,7 +704,7 @@ export function EntitySelector({
                           href={`https://www.wikidata.org/wiki/${value.value?.startsWith('P') ? 'Property:' : ''}${value.value}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="ml-auto shrink-0 self-center text-xs text-blue-500 underline"
+                          className="ml-auto shrink-0 self-center text-xs text-accent hover:underline"
                           onClick={e => e.stopPropagation()}
                         >
                           View
@@ -729,7 +729,7 @@ export function EntitySelector({
                   >
                     <CheckIcon
                       className={cn(
-                        'size-4',
+                        'size-3.5 text-muted-foreground',
                         isSelectedEntity(value, entity) ? '' : 'hidden',
                       )}
                     />
@@ -748,7 +748,7 @@ export function EntitySelector({
                         </span>
                       )}
                     </div>
-                    <span className="ml-auto text-xs text-purple-600">
+                    <span className="ml-auto text-xs text-muted-foreground">
                       Corpus
                     </span>
                   </CommandItem>
@@ -771,7 +771,7 @@ export function EntitySelector({
                   >
                     <CheckIcon
                       className={cn(
-                        'size-4',
+                        'size-3.5 text-muted-foreground',
                         isSelectedEntity(value, entity) ? '' : 'hidden',
                       )}
                     />
@@ -807,7 +807,7 @@ export function EntitySelector({
                       href={`https://www.wikidata.org/wiki/${entity.value.startsWith('P') ? 'Property:' : ''}${entity.value}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="ml-auto shrink-0 self-center text-xs text-blue-500 underline"
+                      className="ml-auto shrink-0 self-center text-xs text-accent hover:underline"
                       onClick={e => e.stopPropagation()}
                     >
                       View

@@ -319,19 +319,21 @@ export function DocumentViewer({
   const ctrlKey = isMac() ? '⌘' : 'Ctrl'
 
   return (
-    <div className="flex min-w-0">
+    <div className="flex h-full min-h-0">
       {documentData && (
-        <DocumentSidebar documents={documents} currentDocument={document} />
+        <DocumentSidebar
+          documents={documents}
+          currentDocument={document}
+        />
       )}
 
       <main
         className={cn(
-          'ml-0 min-w-0 flex-1 lg:ml-70',
-          documentAnnotations.length > 0 && 'md:mr-70',
+          'min-h-0 min-w-0 flex-1 overflow-y-auto',
           currentAnnotation && 'pb-80 sm:pb-48',
         )}
       >
-        <div className="container mx-auto max-w-full p-6 lg:px-12">
+        <div className="mx-auto w-full max-w-4xl px-5 py-6 lg:px-8">
           {documentData && document && (
             <>
               <DocumentHeader
@@ -343,19 +345,20 @@ export function DocumentViewer({
               {warningsSlot}
 
               <Card className="mb-6 min-w-0 overflow-hidden">
-                <CardHeader className="min-w-0">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <CardDescription className="min-w-0 flex-1">
-                      Select text or table cells to start annotating
-                    </CardDescription>
+                <CardHeader className="flex h-10 min-w-0 flex-row items-center justify-between gap-2 border-b px-3 py-0">
+                  <CardDescription className="mb-0 min-w-0 flex-1 truncate text-xs font-medium text-muted-foreground">
+                    Select text or table cells to start annotating
+                  </CardDescription>
+                  <div className="flex shrink-0 items-center gap-1">
                     <Dialog>
                       <DialogTrigger asChild>
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="size-6 p-0"
+                          className="size-7 p-0"
+                          aria-label="Keyboard shortcuts"
                         >
-                          <InfoIcon className="size-4" />
+                          <InfoIcon className="size-3.5" />
                         </Button>
                       </DialogTrigger>
                       <DialogContent className="sm:max-w-md">
@@ -450,29 +453,32 @@ export function DocumentViewer({
                         </div>
                       </DialogContent>
                     </Dialog>
-                    <div className="ml-auto flex shrink-0 justify-end">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" size="sm">
-                            {copiedDocument
-                              ? (
-                                  <Check className="size-4" />
-                                )
-                              : (
-                                  <Copy className="size-4" />
-                                )}
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48">
-                          <DropdownMenuItem onClick={copyTextOnly}>
-                            Copy Text Only
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={copyWholeDocument}>
-                            Copy Whole Document
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="size-7 p-0"
+                          aria-label="Copy document"
+                        >
+                          {copiedDocument
+                            ? (
+                                <Check className="size-3.5" />
+                              )
+                            : (
+                                <Copy className="size-3.5" />
+                              )}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuItem onClick={copyTextOnly}>
+                          Copy Text Only
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={copyWholeDocument}>
+                          Copy Whole Document
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </CardHeader>
                 <CardContent className="min-w-0">

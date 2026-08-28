@@ -53,7 +53,7 @@ export function DocumentHeader({ document, documentData, readOnly = false }: Doc
               href={`https://www.wikidata.org/wiki/${documentData._source.identificationMetadata.wikidata}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="ml-1 break-all text-blue-500 underline"
+              className="ml-1 break-all text-accent hover:underline"
             >
               {documentData._source.identificationMetadata.wikidata}
             </Link>
@@ -71,7 +71,7 @@ export function DocumentHeader({ document, documentData, readOnly = false }: Doc
                         href={url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="ml-1 break-all text-blue-500 underline"
+                        className="ml-1 break-all text-accent hover:underline"
                       >
                         {url}
                       </Link>
@@ -83,7 +83,7 @@ export function DocumentHeader({ document, documentData, readOnly = false }: Doc
                     href={documentData._source.identificationMetadata.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="ml-1 break-all text-blue-500 underline"
+                    className="ml-1 break-all text-accent hover:underline"
                   >
                     {documentData._source.identificationMetadata.url}
                   </Link>
