@@ -234,6 +234,23 @@ export const auditLog = pgTable(
   table => [index('audit_log_created_at_idx').on(table.createdAt)],
 )
 
+export const apiKey = pgTable(
+  'api_key',
+  {
+    id: uuid('id').primaryKey().$defaultFn(() => randomUUID()),
+    name: text('name').notNull(),
+    keyHash: text('key_hash').notNull(),
+    keyPrefix: text('key_prefix').notNull(),
+    createdByUserId: text('created_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+    lastUsedAt: timestamp('last_used_at', { mode: 'date' }),
+    revokedAt: timestamp('revoked_at', { mode: 'date' }),
+    createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
+  },
+  table => [uniqueIndex('api_key_hash_idx').on(table.keyHash)],
+)
+export type ApiKey = InferSelectModel<typeof apiKey>
+
 export const corpusCustomEntity = pgTable('corpus_custom_entity', {
   id: uuid('id').primaryKey().$defaultFn(() => randomUUID()),
   corpusId: uuid('corpus_id').references(() => corpus.id, { onDelete: 'cascade' }).notNull(),
