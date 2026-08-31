@@ -1,5 +1,59 @@
 # Changelog
 
+## [1.0.0](https://github.com/ecladatta/star-q/compare/v0.3.0...v1.0.0) (2026-08-31)
+
+
+### ⚠ BREAKING CHANGES
+
+* The Docker Compose project was renamed to `star-q`, which changes the name of the Docker volume. To avoid data loss during the upgrade, migrate the data from the existing `annotation-tool_postgres-data` volume to the new `star-q_postgres-data` volume.
+
+  Recommended upgrade steps:
+
+  1. Stop the containers:
+
+  ```bash
+  docker compose -f compose.prod.yaml down
+  ```
+
+  2. Copy the data from the old volume to the new volume:
+
+  ```bash
+  docker run --rm \
+    -v annotation-tool_postgres-data:/from \
+    -v star-q_postgres-data:/to \
+    alpine sh -c 'cd /from && cp -a . /to'
+  ```
+
+  3. Restart the containers:
+
+  ```bash
+  docker compose -f compose.prod.yaml up -d --build
+  ```
+
+* Authentication is now mandatory. The `AUTH_ENABLED` option and anonymous mode are removed, and an initial administrator must be created at `/setup` after migrating the database
+* The static API key mechanism was removed. Both `API_KEY` and the `x-api-key` header no longer grant access. Create API keys in the admin interface instead
+* Removed environment variables `AUTH_ENABLED`, `AUTH_DRIZZLE_URL`, `ALLOWED_EMAILS`, `ALLOWED_WIKIMEDIA_IDS`, and `API_KEY`, and added `APP_NAME`, `RDF_NAMESPACE_BASE`, and `LOCAL_CREDENTIALS_ENABLED`
+* Corpus access is now per-corpus. Authenticated users no longer implicitly read and edit every corpus, and existing corpora are migrated without an owner until ownership is assigned via the admin dashboard
+
+
+### Features
+
+* add authorization, roles, teams, and corpus access control ([#14](https://github.com/ecladatta/star-q/issues/14)) ([53cada9](https://github.com/ecladatta/star-q/commit/53cada92d6c7fb9cf88ea2e0cfee3f4199691af9))
+* add text, CSV/TSV, and ZIP formats and replace import auto-detection with explicit format selection ([#15](https://github.com/ecladatta/star-q/issues/15)) ([01dc79a](https://github.com/ecladatta/star-q/commit/01dc79a2be4c3f82f30b892861825c592cf87d65))
+* make RDF namespace base URI configurable ([3e9c837](https://github.com/ecladatta/star-q/commit/3e9c837c05aa735eafa15a4b0dc3d0dd8cca68de))
+* redesign app shell with route groups and persistent navigation ([#16](https://github.com/ecladatta/star-q/issues/16)) ([2b7e54d](https://github.com/ecladatta/star-q/commit/2b7e54da536e54367e06ccb98235faca8f843b3a))
+* rename ECLADATTA Annotation Tool to STAR-Q with configurable APP_NAME ([1fac3eb](https://github.com/ecladatta/star-q/commit/1fac3eb3e78c5802b6de39655bc0253b57f2668c))
+
+
+### Bug Fixes
+
+* log Wikidata constraint check failures to identify root cause ([5a0e22d](https://github.com/ecladatta/star-q/commit/5a0e22d90d957838325fa476a2779645f00d9e98))
+
+
+### Miscellaneous Chores
+
+* release 1.0.0 ([71eac95](https://github.com/ecladatta/star-q/commit/71eac9520764e5c4b5e25ba2b0bc003659ed6b80))
+
 ## [0.3.0](https://github.com/ecladatta/star-q/compare/v0.2.0...v0.3.0) (2026-08-25)
 
 ### Features

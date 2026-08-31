@@ -1,7 +1,7 @@
 {
   "name": "star-q",
   "type": "module",
-  "version": "0.3.0",
+  "version": "1.0.0",
   "private": true,
   "packageManager": "pnpm@11.18.0",
   "scripts": {
