@@ -7,14 +7,15 @@ import type {
   DocumentAnnotationQualifier,
   Entity,
 } from '@/types/types'
-import { and, asc, eq, getTableColumns, inArray } from 'drizzle-orm'
+import { and, asc, count, eq, getTableColumns, inArray } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { revalidatePath } from 'next/cache'
 import { db } from '@/db/drizzle'
 import { annotation, annotationComponent, annotationQualifier, corpusCustomEntity, document } from '@/db/schema'
 import { entityTypeForComponentRole } from '@/lib/annotation-roles'
-import { getOptionalUserId, requireAuth } from '@/lib/auth-utils'
-import { requireViewDocument } from '@/lib/corpus-access'
+import { NotFoundError, requireAuth } from '@/lib/auth-utils'
+import { MAX_ANNOTATIONS_PER_DOCUMENT } from '@/lib/constants'
+import { requireEditAnnotation, requireEditCorpus, requireEditDocument, requireViewDocument } from '@/lib/corpus-access'
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0]
 type DbExecutor = typeof db | Transaction
@@ -248,9 +249,8 @@ export async function addAnnotation(
   objectEntity: Entity | null,
   qualifiers: AnnotationQualifierInput[] = [],
 ) {
-  await requireAuth()
-
-  const userId = await getOptionalUserId()
+  const userId = await requireAuth()
+  await requireEditDocument(documentId)
 
   // Get corpus ID from document
   const [doc] = await db.select({ corpusId: document.corpusId }).from(document).where(eq(document.id, documentId))
@@ -259,6 +259,11 @@ export async function addAnnotation(
   }
 
   const annotationId = await db.transaction(async (trx) => {
+    const [existing] = await trx.select({ count: count() }).from(annotation).where(eq(annotation.documentId, documentId))
+    if ((existing?.count ?? 0) >= MAX_ANNOTATIONS_PER_DOCUMENT) {
+      throw new Error(`A document can have at most ${MAX_ANNOTATIONS_PER_DOCUMENT} annotations.`)
+    }
+
     const [subjectId, predicateId, objectId] = await Promise.all([
       upsertAnnotationComponent(subjectAnnotation, subjectEntity, doc.corpusId, undefined, trx),
       upsertAnnotationComponent(predicateAnnotation, predicateEntity, doc.corpusId, undefined, trx),
@@ -295,7 +300,7 @@ export async function updateAnnotation(
   objectEntity: Entity | null,
   qualifiers?: AnnotationQualifierInput[],
 ) {
-  await requireAuth()
+  await requireEditAnnotation(id)
 
   const annotationData = await getAnnotationById(id)
 
@@ -373,8 +378,6 @@ export async function getAnnotations(documentId: string): Promise<DocumentAnnota
 }
 
 export async function getAnnotationById(id: string): Promise<DocumentAnnotation> {
-  await requireAuth()
-
   const component1 = alias(annotationComponent, 'component1')
   const component2 = alias(annotationComponent, 'component2')
   const component3 = alias(annotationComponent, 'component3')
@@ -406,8 +409,10 @@ export async function getAnnotationById(id: string): Promise<DocumentAnnotation>
     .limit(1)
 
   if (!result) {
-    throw new Error('Annotation not found')
+    throw new NotFoundError('Annotation not found')
   }
+
+  await requireViewDocument(result.documentId!)
 
   const qualifiersByAnnotation = await getQualifiersForAnnotations([result.id])
 
@@ -421,7 +426,7 @@ export async function getAnnotationById(id: string): Promise<DocumentAnnotation>
 }
 
 export async function deleteAnnotation(id: string) {
-  await requireAuth()
+  await requireEditAnnotation(id)
 
   const annotationData = await getAnnotationById(id)
   const baseComponentIds = [
@@ -446,8 +451,6 @@ export async function deleteAnnotation(id: string) {
 }
 
 export async function deleteAnnotations(ids: string[]) {
-  await requireAuth()
-
   if (ids.length === 0) {
     return
   }
@@ -455,16 +458,20 @@ export async function deleteAnnotations(ids: string[]) {
   const uniqueAnnotationIds = [...new Set(ids)]
   const annotationsData = await db.select({
     documentId: annotation.documentId,
+    corpusId: document.corpusId,
     subjectId: annotation.subjectId,
     predicateId: annotation.predicateId,
     objectId: annotation.objectId,
   })
     .from(annotation)
+    .innerJoin(document, eq(document.id, annotation.documentId))
     .where(inArray(annotation.id, uniqueAnnotationIds))
 
   if (annotationsData.length !== uniqueAnnotationIds.length) {
-    throw new Error('Annotation not found')
+    throw new NotFoundError('Annotation not found')
   }
+
+  await Promise.all([...new Set(annotationsData.map(row => row.corpusId))].map(requireEditCorpus))
 
   const uniqueDocumentIds = [...new Set(
     annotationsData

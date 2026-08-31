@@ -9,6 +9,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { addAnnotation } from '@/actions/annotation/annotationActions'
 import { db } from '@/db/drizzle'
 import { document } from '@/db/schema'
+import { MAX_DOCUMENTS_PER_IMPORT, MAX_IMPORT_UNCOMPRESSED_BYTES } from '@/lib/constants'
 import {
   extractEntitiesFromTriplet,
   findEntityPositionsInTable,
@@ -576,10 +577,22 @@ async function createAnnotationsInDb(
 export async function importIritDocuments(
   corpusId: string,
   zipBuffer: ArrayBuffer,
-): Promise<{ ids: string[], errors: string[] }> {
+): Promise<{ ids: string[], errors: string[], warnings: string[] }> {
   const importedDocumentIds: string[] = []
   const errors: string[] = []
+  const warnings: string[] = []
   const zip = await JSZip.loadAsync(zipBuffer)
+
+  const totalUncompressedSize = Object.values(zip.files)
+    .filter(entry => !entry.dir)
+    .reduce((sum, entry) => sum + ((entry as { _data?: { uncompressedSize?: number } })._data?.uncompressedSize ?? 0), 0)
+  if (totalUncompressedSize > MAX_IMPORT_UNCOMPRESSED_BYTES) {
+    return {
+      ids: [],
+      errors: [`Archive is too large. The maximum extracted size is ${MAX_IMPORT_UNCOMPRESSED_BYTES / (1024 * 1024)} MB.`],
+      warnings: [],
+    }
+  }
 
   const { paragraphsFile, tablesFile: tablesMetadataFile, tablesArchive } = findRequiredFiles(zip)
 
@@ -605,6 +618,11 @@ export async function importIritDocuments(
       continue
     }
 
+    if (importedDocumentIds.length >= MAX_DOCUMENTS_PER_IMPORT) {
+      warnings.push(`Import stopped at ${MAX_DOCUMENTS_PER_IMPORT} documents.`)
+      break
+    }
+
     try {
       const documentId = await createDocumentInDb(docData, index + 1)
       importedDocumentIds.push(documentId)
@@ -617,5 +635,5 @@ export async function importIritDocuments(
 
   // eslint-disable-next-line no-console
   console.log(`Import completed. ${importedDocumentIds.length} documents processed.`)
-  return { ids: importedDocumentIds, errors }
+  return { ids: importedDocumentIds, errors, warnings }
 }

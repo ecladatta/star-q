@@ -23,9 +23,10 @@ type CorpusSettingsDialogProps = {
   onOpenChange: (open: boolean) => void
   corpus: Corpus
   onCorpusRenamed?: (newTitle: string) => void
+  canManageVisibility?: boolean
 }
 
-export function CorpusSettingsDialog({ open, onOpenChange, corpus, onCorpusRenamed }: CorpusSettingsDialogProps) {
+export function CorpusSettingsDialog({ open, onOpenChange, corpus, onCorpusRenamed, canManageVisibility = false }: CorpusSettingsDialogProps) {
   const [corpusTitle, setCorpusTitle] = useState(corpus.title)
   const [visibility, setVisibility] = useState<CorpusVisibility>(corpus.visibility ?? 'private')
   const [settings, setSettings] = useState<CorpusSettings>(corpus.settings ?? {})
@@ -219,10 +220,11 @@ export function CorpusSettingsDialog({ open, onOpenChange, corpus, onCorpusRenam
                   value={corpusTitle || ''}
                   onChange={e => setCorpusTitle(e.target.value)}
                   placeholder="Enter corpus name"
+                  disabled={!canManageVisibility}
                 />
                 <Button
                   onClick={handleSaveCorpusTitle}
-                  disabled={isSaving || !corpusTitle || !corpusTitle.trim() || corpusTitle === corpus.title}
+                  disabled={!canManageVisibility || isSaving || !corpusTitle || !corpusTitle.trim() || corpusTitle === corpus.title}
                 >
                   {isSaving ? <Loader2Icon className="size-4 animate-spin" /> : <EditIcon className="size-4" />}
                   Save
@@ -238,13 +240,13 @@ export function CorpusSettingsDialog({ open, onOpenChange, corpus, onCorpusRenam
                     Who can view this corpus?
                   </Label>
                   <p className="text-sm text-muted-foreground">
-                    Public corpora are readable by anyone without signing in. Only signed-in users can edit.
+                    Public corpora are readable by anyone without signing in. Editing still requires explicit access.
                   </p>
                 </div>
                 <Select
                   value={visibility}
                   onValueChange={handleVisibilityChange}
-                  disabled={isSavingSettings}
+                  disabled={!canManageVisibility || isSavingSettings}
                 >
                   <SelectTrigger id="corpus-visibility" className="w-40">
                     <SelectValue />

@@ -2,6 +2,7 @@
 import type { DocumentData } from '@/types/types'
 import { db } from '@/db/drizzle'
 import { document } from '@/db/schema'
+import { MAX_DOCUMENTS_PER_IMPORT } from '@/lib/constants'
 
 /**
  * Imports documents from a Corpus Walker formatted JSON Lines file
@@ -9,12 +10,17 @@ import { document } from '@/db/schema'
 export async function importCorpuswalkerDocuments(
   corpusId: string,
   content: string,
-): Promise<{ ids: string[], errors: string[] }> {
+): Promise<{ ids: string[], errors: string[], warnings: string[] }> {
   const importedDocumentsIds: string[] = []
   const errors: string[] = []
+  const warnings: string[] = []
   const lines = content.split('\n').filter(line => line.trim() !== '')
 
   for (const [index, line] of lines.entries()) {
+    if (importedDocumentsIds.length >= MAX_DOCUMENTS_PER_IMPORT) {
+      warnings.push(`Import stopped at ${MAX_DOCUMENTS_PER_IMPORT} documents.`)
+      break
+    }
     try {
       const parsedJson = JSON.parse(line) as DocumentData
       if (!('_index' in parsedJson)) {
@@ -36,5 +42,5 @@ export async function importCorpuswalkerDocuments(
     }
   }
 
-  return { ids: importedDocumentsIds, errors }
+  return { ids: importedDocumentsIds, errors, warnings }
 }

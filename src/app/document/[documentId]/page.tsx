@@ -1,16 +1,25 @@
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
 import { getDocumentWarnings } from '@/actions/analytics/warningsActions'
 import { getAnnotations } from '@/actions/annotation/annotationActions'
 import { getCorpus } from '@/actions/corpus/corpusActions'
 import { getDocument, getDocumentsMetadata } from '@/actions/document/documentActions'
+import { auth } from '@/auth'
 import { DocumentViewer } from '@/components/document-viewer'
 import { WikidataWarningsSection, WikidataWarningsSkeleton } from '@/components/wikidata-warnings-section'
-import { canEdit } from '@/lib/corpus-access'
+import { getAppSettings } from '@/lib/app-settings'
+import { getCorpusAccess } from '@/lib/corpus-access'
 
 export default async function DocumentPage({ params }: { params: Promise<{ documentId: string }> }) {
   const { documentId } = await params
-  const edit = await canEdit()
+  if (!(await getAppSettings()).setupCompletedAt)
+    redirect('/setup')
+  const session = await auth()
+  if (session?.user?.valid && !session.user.username)
+    redirect('/onboarding')
+  if (session?.user?.valid && session.user.mustChangePassword)
+    redirect('/account/password')
   const document = await getDocument(documentId)
 
   if (!document) {
@@ -31,6 +40,8 @@ export default async function DocumentPage({ params }: { params: Promise<{ docum
   }
 
   const corpus = await getCorpus(document.corpusId)
+  const access = await getCorpusAccess(document.corpusId)
+  const edit = access === 'editor' || access === 'manager'
   const documentsList = await getDocumentsMetadata(document.corpusId)
   const annotations = await getAnnotations(documentId)
 

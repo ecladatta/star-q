@@ -1,5 +1,5 @@
 'use client'
-import type { Corpus, Document } from '@/db/schema'
+import type { Document } from '@/db/schema'
 import type { DocumentData } from '@/types/types'
 import { Check, Circle } from 'lucide-react'
 import Link from 'next/link'
@@ -9,13 +9,12 @@ import { markDocumentsAsCompleted } from '@/actions/document/documentActions'
 import { Button } from '@/components/ui/button'
 
 type DocumentHeaderProps = {
-  corpus: Corpus
   document: Document
   documentData: DocumentData
   readOnly?: boolean
 }
 
-export function DocumentHeader({ corpus, document, documentData, readOnly = false }: DocumentHeaderProps) {
+export function DocumentHeader({ document, documentData, readOnly = false }: DocumentHeaderProps) {
   const [isCompleted, setIsCompleted] = useState(!!document.completedAt)
   const [isPending, startTransition] = useTransition()
 
@@ -34,29 +33,8 @@ export function DocumentHeader({ corpus, document, documentData, readOnly = fals
   }
 
   return (
-    <>
-      <div className="mb-6 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="min-w-0 text-xl font-bold wrap-break-word sm:text-3xl">
-          Corpus:
-          {' '}
-          <Link href={`/corpus/${corpus.id}`} className="underline">
-            {corpus.title}
-          </Link>
-        </h1>
-        {!readOnly && (
-          <Button
-            onClick={toggleCompletion}
-            disabled={isPending}
-            variant={isCompleted ? 'default' : 'outline'}
-            size="sm"
-            className="w-full shrink-0 gap-2 self-start sm:w-auto sm:self-auto"
-          >
-            {isCompleted ? <Check className="size-4" /> : <Circle className="size-4" />}
-            {isCompleted ? 'Completed' : 'Mark as Complete'}
-          </Button>
-        )}
-      </div>
-      <div className="mb-4 min-w-0">
+    <div className="mb-6 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="min-w-0">
         <h2 className="text-2xl font-bold wrap-break-word">
           {documentData._source.identificationMetadata.title}
         </h2>
@@ -113,6 +91,18 @@ export function DocumentHeader({ corpus, document, documentData, readOnly = fals
           </p>
         )}
       </div>
-    </>
+      {!readOnly && (
+        <Button
+          onClick={toggleCompletion}
+          disabled={isPending}
+          variant={isCompleted ? 'default' : 'outline'}
+          size="sm"
+          className="w-full shrink-0 gap-2 sm:w-auto"
+        >
+          {isCompleted ? <Check className="size-4" /> : <Circle className="size-4" />}
+          {isCompleted ? 'Completed' : 'Mark as Complete'}
+        </Button>
+      )}
+    </div>
   )
 }

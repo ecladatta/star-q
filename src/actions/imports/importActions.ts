@@ -1,9 +1,12 @@
 'use server'
+import type { CorpusOwnerInput } from '@/actions/corpus/corpusActions'
 import { eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
+import { addCorpus } from '@/actions/corpus/corpusActions'
 import { db } from '@/db/drizzle'
 import { corpus } from '@/db/schema'
-import { requireAuth } from '@/lib/auth-utils'
+import { MAX_IMPORT_FILE_SIZE_BYTES } from '@/lib/constants'
+import { requireEditCorpus } from '@/lib/corpus-access'
 import { importCorpuswalkerDocuments } from '@/lib/imports/corpuswalkerImport'
 import { importFullCorpusExportDocuments } from '@/lib/imports/fullCorpusImport'
 import { importIritDocuments } from '@/lib/imports/iritImport'
@@ -37,12 +40,16 @@ async function removeCorpus(id: string) {
  * Main import function that determines the file type and routes to the appropriate importer
  */
 export async function importDocuments(corpusId: string, formData: FormData): Promise<ImportDocumentsResult> {
-  await requireAuth()
+  await requireEditCorpus(corpusId)
 
   const file = formData.get('file') as File
 
   if (!file) {
     return importError('No file was provided for import.')
+  }
+
+  if (file.size > MAX_IMPORT_FILE_SIZE_BYTES) {
+    return importError(`File is too large. The maximum import size is ${MAX_IMPORT_FILE_SIZE_BYTES / (1024 * 1024)} MB.`)
   }
 
   // Determine import type based on file content and name
@@ -90,11 +97,10 @@ export async function importDocuments(corpusId: string, formData: FormData): Pro
 
 export async function createCorpusWithDocumentsImport(
   title: string,
+  owner: CorpusOwnerInput,
   formData: FormData,
 ): Promise<CreateCorpusWithDocumentsImportResult> {
-  await requireAuth()
-
-  const [newCorpus] = await db.insert(corpus).values({ title }).returning({ id: corpus.id })
+  const newCorpus = await addCorpus(title, owner)
 
   try {
     const result = await importDocuments(newCorpus.id, formData)

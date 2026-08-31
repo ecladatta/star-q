@@ -1,97 +1,50 @@
 import type { NextAuthConfig } from 'next-auth'
+import Credentials from 'next-auth/providers/credentials'
 import GitHub from 'next-auth/providers/github'
 import WikimediaProvider from 'next-auth/providers/wikimedia'
 import { NextResponse } from 'next/server'
 
-function isAllowlisted(
-  value: string | null | undefined,
-  allowlist: string | undefined,
-  normalize: (entry: string) => string = entry => entry,
-): boolean {
-  if (!value)
-    return false
-
-  if (!allowlist)
-    return true // If no whitelist is configured, allow all
-
-  const normalizedValue = normalize(value.trim())
-  return allowlist
-    .split(',')
-    .some(entry => normalize(entry.trim()) === normalizedValue)
+function isLocalCredentialsEnabled(): boolean {
+  return process.env.LOCAL_CREDENTIALS_ENABLED === 'true'
 }
 
-function isEmailAllowed(email: string | null | undefined): boolean {
-  return isAllowlisted(
-    email,
-    process.env.ALLOWED_EMAILS,
-    entry => entry.toLowerCase(),
-  )
-}
-
-function isWikimediaIdAllowed(id: string | null | undefined): boolean {
-  return isAllowlisted(id, process.env.ALLOWED_WIKIMEDIA_IDS)
-}
-
-export function isAuthEnabled(): boolean {
-  return process.env.AUTH_ENABLED === 'true'
-}
-
-export const providers: NonNullable<NextAuthConfig['providers']> = isAuthEnabled()
-  ? [
-      ...(process.env.GITHUB_ID && process.env.GITHUB_SECRET
-        ? [GitHub({
-            clientId: process.env.GITHUB_ID,
-            clientSecret: process.env.GITHUB_SECRET,
-          })]
-        : []),
-      ...(process.env.WIKIMEDIA_ID && process.env.WIKIMEDIA_SECRET
-        ? [WikimediaProvider({
-            clientId: process.env.WIKIMEDIA_ID,
-            clientSecret: process.env.WIKIMEDIA_SECRET,
-          })]
-        : []),
-    ]
-  : []
+export const providers: NonNullable<NextAuthConfig['providers']> = [
+  ...(isLocalCredentialsEnabled()
+    ? [Credentials({
+        credentials: {
+          username: { label: 'Username', type: 'text' },
+          password: { label: 'Password', type: 'password' },
+        },
+        async authorize(credentials) {
+          const { authorizeCredentials } = await import('@/lib/password-auth')
+          return authorizeCredentials(credentials)
+        },
+      })]
+    : []),
+  ...(process.env.GITHUB_ID && process.env.GITHUB_SECRET
+    ? [GitHub({ clientId: process.env.GITHUB_ID, clientSecret: process.env.GITHUB_SECRET })]
+    : []),
+  ...(process.env.WIKIMEDIA_ID && process.env.WIKIMEDIA_SECRET
+    ? [WikimediaProvider({ clientId: process.env.WIKIMEDIA_ID, clientSecret: process.env.WIKIMEDIA_SECRET })]
+    : []),
+]
 
 export default {
   providers,
-  pages: {
-    signIn: '/sign-in',
-  },
+  pages: { signIn: '/sign-in' },
   callbacks: {
-    async signIn({ user, account }) {
-      if (account?.provider === 'wikimedia')
-        return isWikimediaIdAllowed(account.providerAccountId)
+    authorized({ auth, request: { method, nextUrl } }) {
+      const isAuthRoute = nextUrl.pathname.startsWith('/api/auth')
+      const isPublicAccountRoute = nextUrl.pathname.startsWith('/sign-in')
+        || nextUrl.pathname.startsWith('/sign-up')
+        || nextUrl.pathname.startsWith('/setup')
 
-      return isEmailAllowed(user.email)
-    },
-    authorized({ auth, request: { method, nextUrl, headers } }) {
-      if (!isAuthEnabled()) {
+      if (isAuthRoute || isPublicAccountRoute) {
         return true
       }
-
-      const apiKey = process.env.API_KEY
-      const requestApiKey = headers.get?.('x-api-key')
-      const isOnApiRoute = nextUrl.pathname.startsWith('/api')
-
-      // Allow API access via API key without requiring NextAuth login
-      if (apiKey && isOnApiRoute && requestApiKey === apiKey) {
-        return true
-      }
-
-      const isLoggedIn = !!auth?.user
-      const isOnAuthApi = nextUrl.pathname.startsWith('/api/auth')
-
-      if (isOnAuthApi) {
-        return true // Always allow access to the auth API
-      }
-
-      if (method === 'POST' && !isLoggedIn) {
+      if (method !== 'GET' && !auth?.user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
       }
-
-      // Allow anonymous reads at the edge. Per-corpus visibility is enforced
-      // in the data-access layer, where the database is reachable.
       return true
     },
   },

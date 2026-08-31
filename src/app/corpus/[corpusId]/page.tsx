@@ -1,18 +1,30 @@
 import { MoreVerticalIcon } from 'lucide-react'
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
 import { getCorpusAnalytics } from '@/actions/analytics/analyticsActions'
 import { getCorpus, getCorpusAnnotationsCount } from '@/actions/corpus/corpusActions'
 import { getDocumentsMetadata } from '@/actions/document/documentActions'
+import { auth } from '@/auth'
 import { CompletionScore, CompletionScoreSkeleton } from '@/components/completion-score'
 import { CorpusActions } from '@/components/corpus-actions'
 import DocumentsTable from '@/components/documents-table'
 import { Button } from '@/components/ui/button'
-import { canEdit } from '@/lib/corpus-access'
+import { getAppSettings } from '@/lib/app-settings'
+import { getCorpusAccess } from '@/lib/corpus-access'
 
 export default async function CorpusPage({ params }: { params: Promise<{ corpusId: string }> }) {
   const corpusId = (await params).corpusId
-  const edit = await canEdit()
+  if (!(await getAppSettings()).setupCompletedAt) {
+    redirect('/setup')
+  }
+  const session = await auth()
+  if (session?.user?.valid && !session.user.username)
+    redirect('/onboarding')
+  if (session?.user?.valid && session.user.mustChangePassword)
+    redirect('/account/password')
+  const access = await getCorpusAccess(corpusId)
+  const edit = access === 'editor' || access === 'manager'
   const documentsList = await getDocumentsMetadata(corpusId)
   const corpus = await getCorpus(corpusId)
   const totalAnnotations = await getCorpusAnnotationsCount(corpusId)
@@ -40,8 +52,6 @@ export default async function CorpusPage({ params }: { params: Promise<{ corpusI
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex-1">
           <h1 className="text-2xl font-bold sm:text-3xl">
-            Corpus:
-            {' '}
             {corpus.title}
           </h1>
           <p className="text-sm text-muted-foreground">
@@ -61,7 +71,7 @@ export default async function CorpusPage({ params }: { params: Promise<{ corpusI
           </Link>
           <CorpusActions
             corpus={corpus}
-            canEdit={edit}
+            access={access!}
             showOpenAction={false}
             triggerButton={(
               <Button variant="outline" size="sm" className="w-full sm:w-auto">

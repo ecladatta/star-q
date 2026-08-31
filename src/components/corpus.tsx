@@ -7,7 +7,7 @@ import type {
   Table as TableType,
 } from '@tanstack/react-table'
 import type { ChangeEvent, HTMLAttributes } from 'react'
-import type { Corpus } from '@/db/schema'
+import type { CorpusListItem, CorpusOwnerInput } from '@/actions/corpus/corpusActions'
 import {
   flexRender,
   getCoreRowModel,
@@ -50,11 +50,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { cn } from '@/lib/utils'
 
 export type CorpusesProps = {
-  corpuses: (Corpus & { documentsCount: number, annotationsCount: number })[]
-  canEdit?: boolean
+  corpuses: CorpusListItem[]
+  canCreate: boolean
+  ownedTeams: { id: string, name: string, slug: string }[]
+  title?: string
+  description?: string
 }
 
-type CorpusWithCounts = Corpus & { documentsCount: number, annotationsCount: number }
+type CorpusWithCounts = CorpusListItem
 
 type DataTableColumnHeaderProps<TData, TValue> = {
   column: Column<TData, TValue>
@@ -295,7 +298,7 @@ function DataTableColumnHeader<TData, TValue>({
   )
 }
 
-function buildColumns(canEdit: boolean): ColumnDef<CorpusWithCounts, any>[] {
+function buildColumns(): ColumnDef<CorpusWithCounts, any>[] {
   return [
     {
       accessorKey: 'title',
@@ -308,6 +311,31 @@ function buildColumns(canEdit: boolean): ColumnDef<CorpusWithCounts, any>[] {
         </Link>
       ),
       filterFn: 'includesString',
+    },
+    {
+      accessorKey: 'ownerIdentifier',
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Owner" />
+      ),
+      cell: ({ row }) => (
+        <div>
+          {row.original.ownerName ?? 'Setup pending'}
+          {row.original.ownerIdentifier && (
+            <span className="ml-1 text-xs text-muted-foreground">
+              (
+              {row.original.ownerIdentifier}
+              )
+            </span>
+          )}
+        </div>
+      ),
+    },
+    {
+      accessorKey: 'access',
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} title="Your access" />
+      ),
+      cell: ({ row }) => <div className="capitalize">{row.original.access}</div>,
     },
     {
       accessorKey: 'documentsCount',
@@ -333,13 +361,13 @@ function buildColumns(canEdit: boolean): ColumnDef<CorpusWithCounts, any>[] {
         <DataTableColumnHeader column={column} title="Actions" />
       ),
       cell: ({ row }) => (
-        <CorpusActions corpus={row.original} showOpenAction canEdit={canEdit} />
+        <CorpusActions corpus={row.original} showOpenAction access={row.original.access} />
       ),
     },
   ]
 }
 
-export function Corpuses({ corpuses, canEdit = true }: CorpusesProps) {
+export function Corpuses({ corpuses, canCreate, ownedTeams, title = 'Corpus Management', description = 'Create and manage your document collections' }: CorpusesProps) {
   const newCorpusFileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const [newCorpusName, setNewCorpusName] = useState('')
@@ -352,6 +380,11 @@ export function Corpuses({ corpuses, canEdit = true }: CorpusesProps) {
   const [showImportDialog, setShowImportDialog] = useState(false)
   const [importedCount, setImportedCount] = useState(0)
   const [newCorpusId, setNewCorpusId] = useState<string | null>(null)
+  const [ownerSelection, setOwnerSelection] = useState('user')
+
+  const selectedOwner = (): CorpusOwnerInput => ownerSelection === 'user'
+    ? { type: 'user' }
+    : { type: 'team', teamId: ownerSelection }
 
   const handleCreateCorpusWithFileImport = async (file: File) => {
     try {
@@ -362,7 +395,7 @@ export function Corpuses({ corpuses, canEdit = true }: CorpusesProps) {
       setNewCorpusId(null)
       const formData = new FormData()
       formData.append('file', file)
-      const { count, errors, warnings, corpusId } = await createCorpusWithDocumentsImport(newCorpusName, formData)
+      const { count, errors, warnings, corpusId } = await createCorpusWithDocumentsImport(newCorpusName, selectedOwner(), formData)
       setImportedCount(count)
       setNewCorpusId(corpusId)
       if (errors && errors.length > 0) {
@@ -388,7 +421,7 @@ export function Corpuses({ corpuses, canEdit = true }: CorpusesProps) {
       if (newCorpusFile) {
         await handleCreateCorpusWithFileImport(newCorpusFile)
       } else {
-        await addCorpus(newCorpusName)
+        await addCorpus(newCorpusName, selectedOwner())
       }
 
       setNewCorpusName('')
@@ -421,7 +454,7 @@ export function Corpuses({ corpuses, canEdit = true }: CorpusesProps) {
     }
   }
 
-  const tableColumns = useMemo(() => buildColumns(canEdit), [canEdit])
+  const tableColumns = useMemo(() => buildColumns(), [])
 
   return (
     <main className="ml-0 min-w-0">
@@ -429,12 +462,12 @@ export function Corpuses({ corpuses, canEdit = true }: CorpusesProps) {
         <div className="mb-6 flex flex-col space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold">Corpus Management</h1>
+              <h1 className="text-3xl font-bold">{title}</h1>
               <p className="text-sm text-muted-foreground">
-                Create and manage your document collections
+                {description}
               </p>
             </div>
-            {canEdit && (
+            {canCreate && (
               <Button onClick={() => setShowNewCorpusDialog(true)}>
                 <PlusCircleIcon className="mr-2 size-4" />
                 New Corpus
@@ -457,7 +490,7 @@ export function Corpuses({ corpuses, canEdit = true }: CorpusesProps) {
                   No corpuses available.
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {canEdit
+                  {canCreate
                     ? 'Create your first corpus to get started.'
                     : 'There are no public corpora to view yet.'}
                 </p>
@@ -475,6 +508,21 @@ export function Corpuses({ corpuses, canEdit = true }: CorpusesProps) {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
+            <div>
+              <Label htmlFor="new-corpus-owner">Owner</Label>
+              <Select value={ownerSelection} onValueChange={setOwnerSelection}>
+                <SelectTrigger id="new-corpus-owner" className="mt-1 w-full"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="user">Personal</SelectItem>
+                  {ownedTeams.map(team => (
+                    <SelectItem key={team.id} value={team.id}>
+                      Team:
+                      {team.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div>
               <Label htmlFor="new-corpus-name-input">
                 Corpus name
