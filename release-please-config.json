@@ -2,7 +2,8 @@
   "packages": {
     ".": {
       "release-type": "node",
-      "package-name": "star-q"
+      "package-name": "star-q",
+      "include-component-in-tag": false
     }
   }
 }
