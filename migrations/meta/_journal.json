@@ -127,6 +127,13 @@
       "when": 1787759426553,
       "tag": "0017_authorization",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1788164697998,
+      "tag": "0018_majestic_pride",
+      "breakpoints": true
     }
   ]
 }
