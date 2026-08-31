@@ -1,12 +1,12 @@
 import type { UserRole } from '@/db/schema'
 import { AsyncLocalStorage } from 'node:async_hooks'
-import { createHash, timingSafeEqual } from 'node:crypto'
-import { eq } from 'drizzle-orm'
+import { createHash } from 'node:crypto'
+import { and, eq, isNull } from 'drizzle-orm'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { auth } from '@/auth'
 import { db } from '@/db/drizzle'
-import { users } from '@/db/schema'
+import { apiKey, users } from '@/db/schema'
 
 export class UnauthorizedError extends Error {
   constructor(message = 'Unauthorized') {
@@ -42,20 +42,23 @@ export type RequestActor = AuthenticatedActor | AnonymousActor | AdminReadKeyAct
 
 const requestActorStorage = new AsyncLocalStorage<RequestActor>()
 
-function secretsEqual(expected: string, actual: string): boolean {
-  const expectedDigest = createHash('sha256').update(expected).digest()
-  const actualDigest = createHash('sha256').update(actual).digest()
-  return timingSafeEqual(expectedDigest, actualDigest)
-}
-
 export async function isAdminReadKeyAuthenticated(): Promise<boolean> {
-  const apiKey = process.env.ADMIN_READ_API_KEY
-  if (!apiKey) {
-    return false
-  }
   const headersList = await headers()
   const requestKey = headersList.get('x-api-key')
-  return Boolean(requestKey && secretsEqual(apiKey, requestKey))
+  if (!requestKey) {
+    return false
+  }
+  const keyHash = createHash('sha256').update(requestKey).digest('hex')
+  const [matchedKey] = await db
+    .select({ id: apiKey.id })
+    .from(apiKey)
+    .where(and(eq(apiKey.keyHash, keyHash), isNull(apiKey.revokedAt)))
+    .limit(1)
+  if (!matchedKey) {
+    return false
+  }
+  await db.update(apiKey).set({ lastUsedAt: new Date(), updatedAt: new Date() }).where(eq(apiKey.id, matchedKey.id))
+  return true
 }
 
 async function getSessionUser(requireUsername: boolean) {
