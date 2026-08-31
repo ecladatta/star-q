@@ -8,7 +8,7 @@ const sections = [
   ['/admin/users', 'Users', 'Create, edit, block, reset, and delete accounts.'],
   ['/admin/teams', 'Teams', 'Inspect and manage every team.'],
   ['/admin/corpora', 'Corpora', 'Open any corpus with support access.'],
-  ['/admin/api-keys', 'API keys', 'Create and revoke read-only API keys.'],
+  ['/admin/api-keys', 'API keys', 'Create and delete read-only API keys.'],
   ['/admin/settings', 'Settings', 'Control signup and sign-in.'],
   ['/admin/audit', 'Audit log', 'Review security and access events.'],
 ] as const

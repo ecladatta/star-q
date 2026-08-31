@@ -19,7 +19,6 @@ export async function getAdminApiKeys() {
     name: apiKey.name,
     keyPrefix: apiKey.keyPrefix,
     lastUsedAt: apiKey.lastUsedAt,
-    revokedAt: apiKey.revokedAt,
     createdAt: apiKey.createdAt,
   }).from(apiKey).orderBy(desc(apiKey.createdAt))
 }
@@ -39,12 +38,12 @@ export async function createAdminApiKey(input: { name: string }): Promise<{ id: 
   return { id: created.id, rawKey }
 }
 
-export async function revokeAdminApiKey(apiKeyId: string) {
+export async function deleteAdminApiKey(apiKeyId: string) {
   const actor = await requireAdmin()
-  const updated = await db.update(apiKey).set({ revokedAt: new Date(), updatedAt: new Date() }).where(eq(apiKey.id, apiKeyId)).returning({ id: apiKey.id })
-  if (!updated.length) {
+  const deleted = await db.delete(apiKey).where(eq(apiKey.id, apiKeyId)).returning({ id: apiKey.id })
+  if (!deleted.length) {
     throw new NotFoundError('API key not found.')
   }
-  await db.insert(auditLog).values({ actorUserId: actor.userId, action: 'admin.api_key_revoked', targetType: 'api_key', targetId: apiKeyId })
+  await db.insert(auditLog).values({ actorUserId: actor.userId, action: 'admin.api_key_deleted', targetType: 'api_key', targetId: apiKeyId })
   revalidatePath('/admin/api-keys')
 }

@@ -1,7 +1,7 @@
 import type { UserRole } from '@/db/schema'
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { createHash } from 'node:crypto'
-import { and, eq, isNull } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { auth } from '@/auth'
@@ -52,7 +52,7 @@ export async function isAdminReadKeyAuthenticated(): Promise<boolean> {
   const [matchedKey] = await db
     .select({ id: apiKey.id })
     .from(apiKey)
-    .where(and(eq(apiKey.keyHash, keyHash), isNull(apiKey.revokedAt)))
+    .where(eq(apiKey.keyHash, keyHash))
     .limit(1)
   if (!matchedKey) {
     return false

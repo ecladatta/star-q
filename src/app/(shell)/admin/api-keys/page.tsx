@@ -1,4 +1,4 @@
-import { getAdminApiKeys, revokeAdminApiKey } from '@/actions/admin/apiKeyActions'
+import { deleteAdminApiKey, getAdminApiKeys } from '@/actions/admin/apiKeyActions'
 import { Page, PageHeader } from '@/components/page'
 import { ServerActionForm } from '@/components/server-action-form'
 import { Button } from '@/components/ui/button'
@@ -29,7 +29,7 @@ export default async function AdminApiKeysPage() {
       <CreateApiKeyForm />
       <section className="w-full overflow-hidden rounded-lg border border-border">
         {keys.map(key => (
-          <div key={key.id} className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 border-b border-border p-4 last:border-0">
+          <div key={key.id} className="grid grid-cols-[1fr_auto_auto] items-center gap-4 border-b border-border p-4 last:border-0">
             <div>
               <p className="text-sm font-medium">{key.name}</p>
               <p className="text-sm text-muted-foreground">
@@ -48,20 +48,15 @@ export default async function AdminApiKeysPage() {
               {' '}
               {formatDate(key.lastUsedAt)}
             </span>
-            <span className={`text-sm capitalize ${key.revokedAt ? 'text-muted-foreground' : ''}`}>{key.revokedAt ? 'Revoked' : 'Active'}</span>
-            {key.revokedAt
-              ? <span className="w-20" />
-              : (
-                  <ServerActionForm
-                    action={async () => {
-                      'use server'
-                      await revokeAdminApiKey(key.id)
-                    }}
-                    successMessage="API key revoked"
-                  >
-                    <Button type="submit" variant="outline">Revoke</Button>
-                  </ServerActionForm>
-                )}
+            <ServerActionForm
+              action={async () => {
+                'use server'
+                await deleteAdminApiKey(key.id)
+              }}
+              successMessage="API key deleted"
+            >
+              <Button type="submit" variant="destructive">Delete</Button>
+            </ServerActionForm>
           </div>
         ))}
         {keys.length === 0 && (
