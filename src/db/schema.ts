@@ -243,7 +243,6 @@ export const apiKey = pgTable(
     keyPrefix: text('key_prefix').notNull(),
     createdByUserId: text('created_by_user_id').references(() => users.id, { onDelete: 'set null' }),
     lastUsedAt: timestamp('last_used_at', { mode: 'date' }),
-    revokedAt: timestamp('revoked_at', { mode: 'date' }),
     createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
   },
