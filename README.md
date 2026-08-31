@@ -18,7 +18,7 @@ To deploy STAR-Q in production, follow these steps:
     - Set `BASE_URL` to the public HTTPS URL, for example `https://annotation.example.org`.
     - Set `POSTGRES_USER`, `POSTGRES_PASSWORD`, and `POSTGRES_DB` to deployment-specific values. Use a unique, strong `POSTGRES_PASSWORD`.
     - Configure at least one sign-in method and the corresponding secrets as described in [Authentication](#authentication).
-    - Optionally set `ADMIN_READ_API_KEY` for deployment-level, read-only API access. Generate one with `openssl rand -hex 32`. Treat it as a secret: it grants read access to every corpus, including non-public ones.
+    - Create read-only API keys in the admin dashboard under **API keys** for deployment-level, read-only API access. Keys grant read access to every corpus, including non-public ones.
 
 2. Build and run the Docker containers:
     ```bash
@@ -132,13 +132,13 @@ pnpm test
 
 ### Authentication and permissions
 
-An optional `ADMIN_READ_API_KEY` sent in the `x-api-key` header grants read access to every corpus, including non-public ones:
+Administrators create read-only API keys in the admin dashboard under **API keys**. A key sent in the `x-api-key` header grants read access to every corpus, including non-public ones. The raw key is shown only once at creation; revoked keys stop working immediately.
 
 Example:
 
 ```bash
 curl \
-  -H "x-api-key: $ADMIN_READ_API_KEY" \
+  -H "x-api-key: $API_KEY" \
   https://annotation.example.org/api/corpus
 ```
 
