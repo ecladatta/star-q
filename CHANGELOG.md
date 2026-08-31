@@ -1,5 +1,26 @@
 # Changelog
 
+## [1.0.0](https://github.com/ecladatta/star-q/compare/v0.3.0...v1.0.0) (2026-08-31)
+
+
+### Features
+
+* add authorization, roles, teams, and corpus access control ([#14](https://github.com/ecladatta/star-q/issues/14)) ([53cada9](https://github.com/ecladatta/star-q/commit/53cada92d6c7fb9cf88ea2e0cfee3f4199691af9))
+* add text, CSV/TSV, and ZIP formats and replace import auto-detection with explicit format selection ([#15](https://github.com/ecladatta/star-q/issues/15)) ([01dc79a](https://github.com/ecladatta/star-q/commit/01dc79a2be4c3f82f30b892861825c592cf87d65))
+* make RDF namespace base URI configurable ([3e9c837](https://github.com/ecladatta/star-q/commit/3e9c837c05aa735eafa15a4b0dc3d0dd8cca68de))
+* redesign app shell with route groups and persistent navigation ([#16](https://github.com/ecladatta/star-q/issues/16)) ([2b7e54d](https://github.com/ecladatta/star-q/commit/2b7e54da536e54367e06ccb98235faca8f843b3a))
+* rename ECLADATTA Annotation Tool to STAR-Q with configurable APP_NAME ([1fac3eb](https://github.com/ecladatta/star-q/commit/1fac3eb3e78c5802b6de39655bc0253b57f2668c))
+
+
+### Bug Fixes
+
+* log Wikidata constraint check failures to identify root cause ([5a0e22d](https://github.com/ecladatta/star-q/commit/5a0e22d90d957838325fa476a2779645f00d9e98))
+
+
+### Miscellaneous Chores
+
+* release 1.0.0 ([71eac95](https://github.com/ecladatta/star-q/commit/71eac9520764e5c4b5e25ba2b0bc003659ed6b80))
+
 ## [0.3.0](https://github.com/ecladatta/star-q/compare/v0.2.0...v0.3.0) (2026-08-25)
 
 ### Features
