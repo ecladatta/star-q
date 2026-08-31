@@ -1,6 +1,7 @@
 import type { CorpusCollaboratorRole } from '@/db/schema'
-import { getCorpusCollaborations, inviteTeamToCorpus, inviteUserToCorpus, revokeCorpusCollaboration, updateCorpusCollaboratorRole } from '@/actions/collaboration/collaborationActions'
+import { getCorpusCollaborations, inviteTeamToCorpus, inviteUserToCorpus, revokeCorpusCollaboration } from '@/actions/collaboration/collaborationActions'
 import { getCorpus } from '@/actions/corpus/corpusActions'
+import { CorpusCollaboratorRoleSelect } from '@/components/corpus-collaborator-role-select'
 import { Page, PageHeader } from '@/components/page'
 import { ServerActionForm } from '@/components/server-action-form'
 import { Button } from '@/components/ui/button'
@@ -67,13 +68,7 @@ export default async function CorpusAccessPage({ params }: { params: Promise<{ c
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-1">
-              <ServerActionForm action={async () => {
-                'use server'
-                await updateCorpusCollaboratorRole(item.id, item.role === 'viewer' ? 'editor' : 'viewer')
-              }}
-              >
-                <Button type="submit" variant="ghost" size="sm" className="capitalize">{item.role}</Button>
-              </ServerActionForm>
+              <CorpusCollaboratorRoleSelect collaborationId={item.id} role={item.role} />
               <ServerActionForm action={async () => {
                 'use server'
                 await revokeCorpusCollaboration(item.id)
