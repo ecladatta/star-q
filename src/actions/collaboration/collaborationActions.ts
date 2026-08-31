@@ -44,18 +44,20 @@ async function upsertCollaboration(input: {
   corpusId: string
   role: CorpusCollaboratorRole
   actorUserId: string
+  status: 'pending' | 'accepted'
   targetUserId?: string
   targetTeamId?: string
 }) {
+  const respondedAt = input.status === 'accepted' ? new Date() : null
   const values = {
     corpusId: input.corpusId,
     role: input.role,
     targetUserId: input.targetUserId ?? null,
     targetTeamId: input.targetTeamId ?? null,
     invitedByUserId: input.actorUserId,
-    status: 'pending' as const,
-    respondedByUserId: null,
-    respondedAt: null,
+    status: input.status,
+    respondedByUserId: input.status === 'accepted' ? input.actorUserId : null,
+    respondedAt,
   }
   const target = input.targetUserId
     ? [corpusCollaboration.corpusId, corpusCollaboration.targetUserId]
@@ -65,10 +67,10 @@ async function upsertCollaboration(input: {
     target,
     set: {
       role: input.role,
-      status: 'pending',
+      status: input.status,
       invitedByUserId: input.actorUserId,
-      respondedByUserId: null,
-      respondedAt: null,
+      respondedByUserId: input.status === 'accepted' ? input.actorUserId : null,
+      respondedAt,
       updatedAt: new Date(),
     },
   })
@@ -85,9 +87,12 @@ async function assertWithinPendingInviteLimit(corpusId: string) {
 
 export async function inviteUserToCorpus(corpusId: string, usernameValue: string, role: CorpusCollaboratorRole) {
   await requireManageCorpus(corpusId)
-  await assertWithinPendingInviteLimit(corpusId)
   const actor = await requireUserActor()
   role = validateCorpusCollaboratorRole(role)
+  const status = actor.role === 'admin' ? 'accepted' : 'pending'
+  if (status === 'pending') {
+    await assertWithinPendingInviteLimit(corpusId)
+  }
   const username = normalizeUsername(usernameValue)
   const [targetUser] = await db.select({ id: users.id, status: users.status }).from(users).where(eq(users.username, username)).limit(1)
   if (!targetUser || targetUser.status !== 'active') {
@@ -99,23 +104,27 @@ export async function inviteUserToCorpus(corpusId: string, usernameValue: string
     throw new Error('The corpus owner cannot be added as a collaborator.')
   }
 
-  await upsertCollaboration({ corpusId, role, actorUserId: actor.userId, targetUserId: targetUser.id })
+  await upsertCollaboration({ corpusId, role, status, actorUserId: actor.userId, targetUserId: targetUser.id })
   await db.insert(auditLog).values({
     actorUserId: actor.userId,
-    action: 'corpus.user_invited',
+    action: status === 'accepted' ? 'corpus.user_added' : 'corpus.user_invited',
     targetType: 'corpus',
     targetId: corpusId,
     metadata: { targetUserId: targetUser.id, role },
   })
   revalidatePath(`/corpus/${corpusId}/access`)
   revalidatePath('/invitations')
+  revalidatePath('/')
 }
 
 export async function inviteTeamToCorpus(corpusId: string, slugValue: string, role: CorpusCollaboratorRole) {
   await requireManageCorpus(corpusId)
-  await assertWithinPendingInviteLimit(corpusId)
   const actor = await requireUserActor()
   role = validateCorpusCollaboratorRole(role)
+  const status = actor.role === 'admin' ? 'accepted' : 'pending'
+  if (status === 'pending') {
+    await assertWithinPendingInviteLimit(corpusId)
+  }
   const slug = normalizeTeamSlug(slugValue)
   const [targetTeam] = await db.select({ id: team.id }).from(team).where(eq(team.slug, slug)).limit(1)
   if (!targetTeam) {
@@ -126,16 +135,17 @@ export async function inviteTeamToCorpus(corpusId: string, slugValue: string, ro
     throw new Error('The owning team cannot be added as a collaborator.')
   }
 
-  await upsertCollaboration({ corpusId, role, actorUserId: actor.userId, targetTeamId: targetTeam.id })
+  await upsertCollaboration({ corpusId, role, status, actorUserId: actor.userId, targetTeamId: targetTeam.id })
   await db.insert(auditLog).values({
     actorUserId: actor.userId,
-    action: 'corpus.team_invited',
+    action: status === 'accepted' ? 'corpus.team_added' : 'corpus.team_invited',
     targetType: 'corpus',
     targetId: corpusId,
     metadata: { targetTeamId: targetTeam.id, role },
   })
   revalidatePath(`/corpus/${corpusId}/access`)
   revalidatePath('/invitations')
+  revalidatePath('/')
 }
 
 export async function respondToCorpusInvitation(invitationId: string, response: 'accepted' | 'declined') {

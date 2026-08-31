@@ -12,28 +12,33 @@ export const dynamic = 'force-dynamic'
 
 export default async function CorpusAccessPage({ params }: { params: Promise<{ corpusId: string }> }) {
   const { corpusId } = await params
-  await requirePageUser()
+  const actor = await requirePageUser()
+  const isAdmin = actor.role === 'admin'
   const [resource, collaborations] = await Promise.all([getCorpus(corpusId), getCorpusCollaborations(corpusId)])
   return (
     <Page>
       <PageHeader
         title={`Access: ${resource.title}`}
-        description="Invite existing users or teams. Access begins after acceptance."
+        description={isAdmin
+          ? 'Add existing users or teams. Access is granted immediately.'
+          : 'Invite existing users or teams. Access begins after acceptance.'}
       />
       <div className="grid gap-5 md:grid-cols-2">
         <InviteForm
-          title="Invite a user"
+          title={isAdmin ? 'Add a user' : 'Invite a user'}
           label="Exact username"
           field="username"
+          grantsImmediately={isAdmin}
           action={async (value, role) => {
             'use server'
             await inviteUserToCorpus(corpusId, value, role)
           }}
         />
         <InviteForm
-          title="Invite a team"
+          title={isAdmin ? 'Add a team' : 'Invite a team'}
           label="Exact team slug"
           field="slug"
+          grantsImmediately={isAdmin}
           action={async (value, role) => {
             'use server'
             await inviteTeamToCorpus(corpusId, value, role)
@@ -75,7 +80,7 @@ export default async function CorpusAccessPage({ params }: { params: Promise<{ c
               }}
               >
                 <Button type="submit" variant="ghost" size="sm" className="text-destructive hover:text-destructive">
-                  Revoke
+                  {isAdmin ? 'Remove' : 'Revoke'}
                 </Button>
               </ServerActionForm>
             </div>
@@ -87,7 +92,7 @@ export default async function CorpusAccessPage({ params }: { params: Promise<{ c
   )
 }
 
-function InviteForm({ title, label, field, action }: { title: string, label: string, field: string, action: (value: string, role: CorpusCollaboratorRole) => Promise<void> }) {
+function InviteForm({ title, label, field, grantsImmediately, action }: { title: string, label: string, field: string, grantsImmediately: boolean, action: (value: string, role: CorpusCollaboratorRole) => Promise<void> }) {
   return (
     <section className="rounded-lg border border-border bg-card p-4">
       <h2 className="mb-4 text-sm font-medium text-foreground">{title}</h2>
@@ -97,7 +102,7 @@ function InviteForm({ title, label, field, action }: { title: string, label: str
           await action(String(formData.get(field)), String(formData.get('role')) as CorpusCollaboratorRole)
         }}
         className="space-y-4"
-        successMessage="Invitation sent"
+        successMessage={grantsImmediately ? 'Access granted' : 'Invitation sent'}
       >
         <div className="space-y-2">
           <Label htmlFor={field}>{label}</Label>
@@ -107,7 +112,7 @@ function InviteForm({ title, label, field, action }: { title: string, label: str
           <option value="viewer">Viewer</option>
           <option value="editor">Editor</option>
         </select>
-        <Button type="submit">Send invitation</Button>
+        <Button type="submit">{grantsImmediately ? 'Add' : 'Send invitation'}</Button>
       </ServerActionForm>
     </section>
   )
