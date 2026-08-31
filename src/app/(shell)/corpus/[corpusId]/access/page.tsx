@@ -1,0 +1,114 @@
+import type { CorpusCollaboratorRole } from '@/db/schema'
+import { getCorpusCollaborations, inviteTeamToCorpus, inviteUserToCorpus, revokeCorpusCollaboration, updateCorpusCollaboratorRole } from '@/actions/collaboration/collaborationActions'
+import { getCorpus } from '@/actions/corpus/corpusActions'
+import { Page, PageHeader } from '@/components/page'
+import { ServerActionForm } from '@/components/server-action-form'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { requirePageUser } from '@/lib/auth-utils'
+
+export const dynamic = 'force-dynamic'
+
+export default async function CorpusAccessPage({ params }: { params: Promise<{ corpusId: string }> }) {
+  const { corpusId } = await params
+  await requirePageUser()
+  const [resource, collaborations] = await Promise.all([getCorpus(corpusId), getCorpusCollaborations(corpusId)])
+  return (
+    <Page>
+      <PageHeader
+        title={`Access: ${resource.title}`}
+        description="Invite existing users or teams. Access begins after acceptance."
+      />
+      <div className="grid gap-5 md:grid-cols-2">
+        <InviteForm
+          title="Invite a user"
+          label="Exact username"
+          field="username"
+          action={async (value, role) => {
+            'use server'
+            await inviteUserToCorpus(corpusId, value, role)
+          }}
+        />
+        <InviteForm
+          title="Invite a team"
+          label="Exact team slug"
+          field="slug"
+          action={async (value, role) => {
+            'use server'
+            await inviteTeamToCorpus(corpusId, value, role)
+          }}
+        />
+      </div>
+      <section className="mt-8 space-y-3">
+        <h2 className="text-sm font-semibold text-foreground">Collaborators</h2>
+        {collaborations.map(item => (
+          <div key={item.id} className="flex items-center justify-between gap-4 rounded-lg border border-border bg-card px-4 py-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-secondary text-[13px] font-medium text-secondary-foreground">
+                {(item.targetUserId ? item.username : item.teamName)?.charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-[13px] font-medium text-foreground">
+                  {item.targetUserId ? `@${item.username}` : item.teamName}
+                </p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {item.targetTeamId ? `Team: ${item.teamSlug}` : 'User'}
+                  {' '}
+                  ·
+                  {' '}
+                  {item.status}
+                </p>
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
+              <ServerActionForm action={async () => {
+                'use server'
+                await updateCorpusCollaboratorRole(item.id, item.role === 'viewer' ? 'editor' : 'viewer')
+              }}
+              >
+                <Button type="submit" variant="ghost" size="sm" className="capitalize">{item.role}</Button>
+              </ServerActionForm>
+              <ServerActionForm action={async () => {
+                'use server'
+                await revokeCorpusCollaboration(item.id)
+              }}
+              >
+                <Button type="submit" variant="ghost" size="sm" className="text-destructive hover:text-destructive">
+                  Revoke
+                </Button>
+              </ServerActionForm>
+            </div>
+          </div>
+        ))}
+        {!collaborations.length && <p className="text-sm text-muted-foreground">No collaborators yet.</p>}
+      </section>
+    </Page>
+  )
+}
+
+function InviteForm({ title, label, field, action }: { title: string, label: string, field: string, action: (value: string, role: CorpusCollaboratorRole) => Promise<void> }) {
+  return (
+    <section className="rounded-lg border border-border bg-card p-4">
+      <h2 className="mb-4 text-sm font-medium text-foreground">{title}</h2>
+      <ServerActionForm
+        action={async (formData) => {
+          'use server'
+          await action(String(formData.get(field)), String(formData.get('role')) as CorpusCollaboratorRole)
+        }}
+        className="space-y-4"
+        successMessage="Invitation sent"
+      >
+        <div className="space-y-2">
+          <Label htmlFor={field}>{label}</Label>
+          <Input id={field} name={field} required />
+        </div>
+        <select name="role" className="h-8 w-full rounded-md border border-border bg-background px-3 text-sm">
+          <option value="viewer">Viewer</option>
+          <option value="editor">Editor</option>
+        </select>
+        <Button type="submit">Send invitation</Button>
+      </ServerActionForm>
+    </section>
+  )
+}

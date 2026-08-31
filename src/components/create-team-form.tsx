@@ -15,10 +15,10 @@ export function CreateTeamForm({ action }: { action: (formData: FormData) => Pro
   return (
     <ServerActionForm
       action={action}
-      className="grid gap-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end"
+      className="grid gap-x-4 gap-y-2 sm:grid-cols-[1fr_1fr_auto]"
       successMessage="Team created"
     >
-      <div className="space-y-2">
+      <div className="space-y-2 sm:col-start-1 sm:row-start-1">
         <Label htmlFor="name">Name</Label>
         <Input
           id="name"
@@ -34,7 +34,7 @@ export function CreateTeamForm({ action }: { action: (formData: FormData) => Pro
           }}
         />
       </div>
-      <div className="space-y-2">
+      <div className="space-y-2 sm:col-start-2 sm:row-start-1">
         <Label htmlFor="slug">Unique slug</Label>
         <Input
           id="slug"
@@ -48,7 +48,12 @@ export function CreateTeamForm({ action }: { action: (formData: FormData) => Pro
           }}
         />
       </div>
-      <Button type="submit">Create</Button>
+      <p className="text-xs text-muted-foreground sm:col-start-2 sm:row-start-2">
+        Slugs use lowercase letters, digits, and dashes.
+      </p>
+      <Button type="submit" className="sm:col-start-3 sm:row-start-1 sm:self-end">
+        Create
+      </Button>
     </ServerActionForm>
   )
 }

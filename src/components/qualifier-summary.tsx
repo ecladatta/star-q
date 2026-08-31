@@ -1,7 +1,6 @@
 import type { DocumentAnnotationQualifier } from '@/types/types'
 
 import { getAnnotationComponentDisplayText, getAnnotationComponentTitle } from '@/lib/annotation-roles'
-import { TYPE_TO_COLOR } from '@/lib/constants'
 import { cn } from '@/lib/utils'
 
 const DEFAULT_VISIBLE_QUALIFIER_COUNT = 2
@@ -32,8 +31,7 @@ export function QualifierSummary({
             className="flex min-w-0 items-center gap-1 rounded-md bg-muted/60 px-1.5 py-1 text-[11px] leading-tight"
           >
             <span
-              className="w-0 min-w-0 flex-1 truncate rounded-sm px-1.5 py-0.5 font-medium text-slate-800"
-              style={{ backgroundColor: TYPE_TO_COLOR['qualifier-predicate'] }}
+              className="w-0 min-w-0 flex-1 truncate rounded-sm bg-qualifier-soft px-1.5 py-0.5 font-medium text-qualifier-fg"
               title={getAnnotationComponentTitle(qualifier.predicate)}
             >
               {getAnnotationComponentDisplayText(qualifier.predicate)}
@@ -42,8 +40,7 @@ export function QualifierSummary({
               &rarr;
             </span>
             <span
-              className="w-0 min-w-0 flex-1 truncate rounded-sm px-1.5 py-0.5 font-medium text-slate-800"
-              style={{ backgroundColor: TYPE_TO_COLOR['qualifier-value'] }}
+              className="w-0 min-w-0 flex-1 truncate rounded-sm bg-qualifier-soft px-1.5 py-0.5 font-medium text-qualifier-fg"
               title={getAnnotationComponentTitle(qualifier.value)}
             >
               {getAnnotationComponentDisplayText(qualifier.value)}

@@ -79,3 +79,20 @@ export function validateCorpusVisibility(value: string): 'private' | 'public' {
 export function validateOAuthProvider(value: string): 'github' | 'wikimedia' {
   return validateChoice(value, ['github', 'wikimedia'] as const, 'OAuth provider')
 }
+
+const AUTH_ERROR_MESSAGES: Record<string, string> = {
+  OAuthAccountNotLinked: 'This account is already linked to a different account. Sign in with the account that owns it, or ask an administrator to resolve the conflict.',
+  CredentialsSignin: 'Invalid username or password.',
+  AccessDenied: 'You do not have permission to sign in. Your account may be blocked.',
+  Configuration: 'There is a problem with the server configuration. Contact an administrator.',
+  Verification: 'The verification link is invalid or has expired.',
+  CallbackRouteError: 'There was a problem completing sign-in. Please try again.',
+}
+
+export function authErrorMessage(value: string | string[] | undefined): string | null {
+  const code = Array.isArray(value) ? value[0] : value
+  if (!code) {
+    return null
+  }
+  return AUTH_ERROR_MESSAGES[code] ?? 'Something went wrong. Please try again.'
+}

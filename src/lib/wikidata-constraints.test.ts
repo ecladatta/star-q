@@ -16,6 +16,7 @@ import {
   classifyCandidates,
   collectPairs,
   evaluateConstraintChecks,
+  groupByRelation,
   membershipKey,
   parsePropertyConstraints,
 } from './wikidata-constraints'
@@ -431,4 +432,58 @@ it('skips qualifiers whose predicate has no range constraint', () => {
 it('skips qualifiers whose predicate has no constraints at all', () => {
   const checks = buildQualifierRangeChecks([qualifierRow()], new Map())
   expect(checks).toEqual([])
+})
+
+it('groups consecutive classes that share a relation into a single group', () => {
+  const groups = groupByRelation([
+    { class: 'Q5', relation: 'instance-or-subclass', label: 'human' },
+    { class: 'Q95074', relation: 'instance-or-subclass', label: 'agent' },
+    { class: 'Q2385804', relation: 'instance-or-subclass', label: 'manufacturer' },
+  ])
+
+  expect(groups).toEqual([
+    {
+      relation: 'instance-or-subclass',
+      classes: [
+        { class: 'Q5', label: 'human' },
+        { class: 'Q95074', label: 'agent' },
+        { class: 'Q2385804', label: 'manufacturer' },
+      ],
+    },
+  ])
+})
+
+it('keeps a separate group for each consecutive run of relations', () => {
+  const groups = groupByRelation([
+    { class: 'Q5', relation: 'instance', label: 'human' },
+    { class: 'Q95074', relation: 'instance', label: 'agent' },
+    { class: 'Q9', relation: 'subclass', label: 'thing' },
+    { class: 'Q2', relation: 'instance', label: 'Earth' },
+  ])
+
+  expect(groups).toEqual([
+    {
+      relation: 'instance',
+      classes: [
+        { class: 'Q5', label: 'human' },
+        { class: 'Q95074', label: 'agent' },
+      ],
+    },
+    { relation: 'subclass', classes: [{ class: 'Q9', label: 'thing' }] },
+    { relation: 'instance', classes: [{ class: 'Q2', label: 'Earth' }] },
+  ])
+})
+
+it('returns no groups for an empty class list', () => {
+  expect(groupByRelation([])).toEqual([])
+})
+
+it('preserves class ids and labels while grouping', () => {
+  const groups = groupByRelation([
+    { class: 'Q5', relation: 'instance', label: 'human' },
+    { class: 'Q9', relation: 'subclass', label: 'thing' },
+  ])
+
+  expect(groups[0].classes).toEqual([{ class: 'Q5', label: 'human' }])
+  expect(groups[1].classes).toEqual([{ class: 'Q9', label: 'thing' }])
 })

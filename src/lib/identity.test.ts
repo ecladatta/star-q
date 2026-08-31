@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeTeamSlug, normalizeUsername, slugifyTeamName, validateCorpusCollaboratorRole, validateInvitationResponse, validatePassword, validateTeamRole, validateTeamSlug, validateUsername, validateUserRole } from './identity'
+import { authErrorMessage, normalizeTeamSlug, normalizeUsername, slugifyTeamName, validateCorpusCollaboratorRole, validateInvitationResponse, validatePassword, validateTeamRole, validateTeamSlug, validateUsername, validateUserRole } from './identity'
 
 describe('account identity validation', () => {
   it('normalizes and accepts stable usernames and team slugs', () => {
@@ -41,5 +41,25 @@ describe('authorization input validation', () => {
     expect(() => validateTeamRole('manager')).toThrow('Invalid team role')
     expect(() => validateCorpusCollaboratorRole('manager')).toThrow('Invalid corpus collaborator role')
     expect(() => validateInvitationResponse('ignored')).toThrow('Invalid invitation response')
+  })
+})
+
+describe('authErrorMessage', () => {
+  it('maps known authjs error codes to friendly messages', () => {
+    expect(authErrorMessage('OAuthAccountNotLinked')).toMatch(/already linked to a different account/)
+    expect(authErrorMessage('CredentialsSignin')).toBe('Invalid username or password.')
+    expect(authErrorMessage('AccessDenied')).toMatch(/may be blocked/)
+    expect(authErrorMessage('Configuration')).toMatch(/server configuration/)
+    expect(authErrorMessage('Verification')).toMatch(/invalid or has expired/)
+    expect(authErrorMessage('CallbackRouteError')).toMatch(/try again/)
+  })
+
+  it('accepts an error code array and no error at all', () => {
+    expect(authErrorMessage(['OAuthAccountNotLinked'])).toMatch(/already linked to a different account/)
+    expect(authErrorMessage(undefined)).toBeNull()
+  })
+
+  it('falls back to a generic message for unknown codes', () => {
+    expect(authErrorMessage('SomeUnknownError')).toBe('Something went wrong. Please try again.')
   })
 })

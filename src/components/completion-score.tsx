@@ -58,51 +58,34 @@ export async function CompletionScore({ analyticsPromise }: CompletionScoreProps
     0,
   )
 
-  const getScoreColor = (score: number) => {
-    if (score >= 80) {
-      return 'text-green-600 dark:text-green-400'
-    }
-    if (score >= 60) {
-      return 'text-yellow-600 dark:text-yellow-400'
-    }
-    if (score >= 40) {
-      return 'text-orange-600 dark:text-orange-400'
-    }
-    return 'text-red-600 dark:text-red-400'
-  }
-
   return (
     <div className="group relative">
       <div className="flex items-center gap-3 rounded-lg px-4 py-2">
         <div className="relative">
-          <svg className="size-10" viewBox="0 0 40 40">
+          <svg className="size-10 -rotate-90" viewBox="0 0 40 40">
             <circle
               cx="20"
               cy="20"
               r="16"
               fill="none"
-              stroke="currentColor"
               strokeWidth="3"
-              className="text-muted"
-              opacity="0.2"
+              className="stroke-muted"
             />
             <circle
               cx="20"
               cy="20"
               r="16"
               fill="none"
-              stroke="currentColor"
               strokeWidth="3"
               strokeLinecap="round"
-              className={getScoreColor(completionScore)}
+              className="stroke-accent"
               strokeDasharray={`${(completionScore / 100) * 100.53} 100.53`}
               strokeDashoffset="0"
-              transform="rotate(-90 20 20)"
               style={{ transition: 'stroke-dasharray 0.6s ease' }}
             />
           </svg>
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className={`text-xs font-bold ${getScoreColor(completionScore)}`}>
+            <span className="text-xs font-semibold text-foreground tabular-nums">
               {completionScore}
             </span>
           </div>
@@ -121,7 +104,7 @@ export async function CompletionScore({ analyticsPromise }: CompletionScoreProps
       </div>
 
       <div className="pointer-events-none absolute top-full left-0 z-50 mt-2 w-80 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100">
-        <div className="rounded-lg border bg-popover p-4 text-popover-foreground shadow-lg">
+        <div className="rounded-lg border border-border bg-popover p-4 text-popover-foreground">
           <div className="mb-2 text-sm font-semibold">Score Breakdown:</div>
           <div className="space-y-2 text-xs">
             <div className="flex items-center justify-between">

@@ -11,6 +11,9 @@ export const MAX_CUSTOM_ENTITIES_PER_CORPUS = 5000
 export const MAX_PENDING_INVITES_PER_TEAM = 20
 export const MAX_PENDING_INVITES_PER_CORPUS = 20
 
+export const SIGNIN_LAST_USED_COOKIE = 'signin_last_used'
+export const SIGNIN_LAST_USED_COOKIE_MAX_AGE = 60 * 60 * 24 * 365
+
 export const TYPE_TO_COLOR: Record<AnnotationComponentRole, string> = {
   'subject': '#FFE4B5',
   'predicate': '#ADD8E6',

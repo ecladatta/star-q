@@ -3,6 +3,7 @@ import Credentials from 'next-auth/providers/credentials'
 import GitHub from 'next-auth/providers/github'
 import WikimediaProvider from 'next-auth/providers/wikimedia'
 import { NextResponse } from 'next/server'
+import { SIGNIN_LAST_USED_COOKIE, SIGNIN_LAST_USED_COOKIE_MAX_AGE } from '@/lib/constants'
 
 function isLocalCredentialsEnabled(): boolean {
   return process.env.LOCAL_CREDENTIALS_ENABLED === 'true'
@@ -33,19 +34,37 @@ export default {
   providers,
   pages: { signIn: '/sign-in' },
   callbacks: {
-    authorized({ auth, request: { method, nextUrl } }) {
+    async session({ session, token }) {
+      session.user.lastSignInProvider = (token.lastSignInProvider as string | null) ?? null
+      return session
+    },
+    authorized({ auth, request }) {
+      const method = request.method
+      const nextUrl = request.nextUrl
       const isAuthRoute = nextUrl.pathname.startsWith('/api/auth')
       const isPublicAccountRoute = nextUrl.pathname.startsWith('/sign-in')
         || nextUrl.pathname.startsWith('/sign-up')
         || nextUrl.pathname.startsWith('/setup')
 
+      // Device marker: intentionally not cleared on sign-out, so /sign-in can show the last-used method.
+      const response = NextResponse.next()
+      const lastUsed = auth?.user?.lastSignInProvider
+      if (lastUsed && lastUsed !== request.cookies.get(SIGNIN_LAST_USED_COOKIE)?.value) {
+        response.cookies.set(SIGNIN_LAST_USED_COOKIE, lastUsed, {
+          path: '/',
+          maxAge: SIGNIN_LAST_USED_COOKIE_MAX_AGE,
+          sameSite: 'lax',
+          secure: process.env.NODE_ENV === 'production',
+          httpOnly: true,
+        })
+      }
       if (isAuthRoute || isPublicAccountRoute) {
-        return true
+        return response
       }
       if (method !== 'GET' && !auth?.user) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
       }
-      return true
+      return response
     },
   },
   session: { strategy: 'jwt' },

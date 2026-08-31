@@ -77,8 +77,8 @@ function WikidataWarningsContent({ warnings, groupByDocument, compact }: { warni
           <CardHeader className={cn('group cursor-pointer select-none', compact && 'py-3')}>
             <CardTitle className={cn('flex items-center gap-2', compact && 'text-sm font-semibold')}>
               {warnings.unavailable || totalCount > 0
-                ? <AlertTriangleIcon className={compact ? 'size-4 text-amber-500' : 'size-5 text-amber-500'} />
-                : <CheckCircle2Icon className={compact ? 'size-4 text-green-600' : 'size-5 text-green-600'} />}
+                ? <AlertTriangleIcon className={compact ? 'size-4 text-warning-foreground' : 'size-5 text-warning-foreground'} />
+                : <CheckCircle2Icon className={compact ? 'size-4 text-success' : 'size-5 text-success'} />}
               Wikidata Constraints Warnings
               {totalCount > 0 && <Badge variant="secondary">{totalCount}</Badge>}
               <ChevronRightIcon className="ml-auto size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
@@ -102,7 +102,7 @@ function WikidataWarningsContent({ warnings, groupByDocument, compact }: { warni
               : totalCount === 0
                 ? (
                     <p className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <CheckCircle2Icon className="size-4 text-green-600" />
+                      <CheckCircle2Icon className="size-4 text-success" />
                       No constraint warnings detected across
                       {' '}
                       {warnings.checkedAnnotations}
@@ -155,14 +155,10 @@ export async function WikidataWarningsSection({ warningsPromise, groupByDocument
 export function WikidataWarningsSkeleton({ compact = false }: { compact?: boolean }) {
   if (compact) {
     return (
-      <Card className="mb-6">
-        <CardHeader className="py-3">
-          <CardTitle className="flex items-center gap-2 text-sm">
-            <Loader2Icon className="size-4 animate-spin" />
-            Checking for Wikidata constraint problems...
-          </CardTitle>
-        </CardHeader>
-      </Card>
+      <div className="mb-6 space-y-2">
+        <div className="h-4 w-48 animate-pulse rounded-sm bg-muted" />
+        <div className="h-9 w-full animate-pulse rounded-md border border-border bg-muted" />
+      </div>
     )
   }
 
@@ -170,7 +166,7 @@ export function WikidataWarningsSkeleton({ compact = false }: { compact?: boolea
     <Card className="mb-8">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <AlertTriangleIcon className="size-5 text-amber-500" />
+          <AlertTriangleIcon className="size-5 text-warning-foreground" />
           Wikidata Constraints Warnings
         </CardTitle>
         <CardDescription>

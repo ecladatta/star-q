@@ -1,8 +1,9 @@
 'use server'
 
 import type { UserRole } from '@/db/schema'
-import { and, count, desc, eq, inArray, ne, sql } from 'drizzle-orm'
+import { and, count, desc, eq, getTableColumns, inArray, ne, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
 import { db } from '@/db/drizzle'
 import { appSettings, auditLog, corpus, team, teamMembership, users } from '@/db/schema'
 import { APP_SETTINGS_ID, getAppSettings, isLocalCredentialsEnabled } from '@/lib/app-settings'
@@ -220,6 +221,7 @@ export async function deleteAdminManagedUser(userId: string) {
   revalidatePath('/admin/users')
   revalidatePath('/teams')
   revalidatePath('/')
+  redirect('/admin/users')
 }
 
 export async function getAdminAuditLog() {
@@ -232,7 +234,16 @@ export async function getAdminTeams() {
   return db.select().from(team).orderBy(desc(team.createdAt))
 }
 
-export async function getAdminCorpuses() {
+export async function getAdminCorpora() {
   await requireAdmin()
-  return db.select().from(corpus).orderBy(desc(corpus.createdAt))
+  return db
+    .select({
+      ...getTableColumns(corpus),
+      ownerName: sql<string | null>`COALESCE(${users.name}, ${team.name})`,
+      ownerIdentifier: sql<string | null>`COALESCE(${users.username}, ${team.slug})`,
+    })
+    .from(corpus)
+    .leftJoin(users, eq(users.id, corpus.ownerUserId))
+    .leftJoin(team, eq(team.id, corpus.ownerTeamId))
+    .orderBy(desc(corpus.createdAt))
 }

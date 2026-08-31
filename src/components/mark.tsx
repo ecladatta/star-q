@@ -1,4 +1,5 @@
 import type { KeyboardEvent, MouseEvent } from 'react'
+import type { AnnotationComponentRole } from '@/types/types'
 import { cn } from '@/lib/utils'
 
 export type MarkProps = {
@@ -6,10 +7,18 @@ export type MarkProps = {
   start: number
   end: number
   tag?: string
-  color?: string
+  role?: AnnotationComponentRole
   isCurrentAnnotation?: boolean
   className?: string
   onClick: (anchorRect?: DOMRect) => void
+}
+
+const ROLE_MARK: Record<AnnotationComponentRole, string> = {
+  'subject': 'bg-subject-soft ring-subject/25',
+  'predicate': 'bg-predicate-soft ring-predicate/25',
+  'object': 'bg-object-soft ring-object/25',
+  'qualifier-predicate': 'bg-qualifier-soft ring-qualifier/25',
+  'qualifier-value': 'bg-qualifier-soft ring-qualifier/25',
 }
 
 function Mark(props: MarkProps) {
@@ -39,17 +48,13 @@ function Mark(props: MarkProps) {
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions
     <span
       className={cn(
-        'cursor-pointer px-1 whitespace-pre-wrap transition-opacity duration-300 select-text',
+        'cursor-pointer rounded-sm px-1 whitespace-pre-wrap ring-1 transition-opacity duration-300 select-text ring-inset',
+        props.role ? ROLE_MARK[props.role] : 'bg-muted ring-border',
         props.isCurrentAnnotation
-          ? 'border-2 border-black/20 opacity-100 shadow-md'
+          ? 'opacity-100 ring-2 ring-accent/70'
           : 'opacity-70',
         props.className,
       )}
-      style={{
-        backgroundColor: props.isCurrentAnnotation
-          ? props.color || 'lightgrey'
-          : '#d1d5db',
-      }}
       data-start={props.start}
       data-end={props.end}
       onKeyUp={handleKeyUp}

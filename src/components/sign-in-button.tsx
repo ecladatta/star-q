@@ -13,7 +13,7 @@ export function SignInButton({ id, children, redirectTo = '/' }: SignInButtonPro
   return (
     <Button
       variant="outline"
-      className="w-full"
+      className="h-9 w-full"
       onClick={() => signIn(id, { redirectTo })}
     >
       {children}

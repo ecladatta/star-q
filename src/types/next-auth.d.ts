@@ -11,6 +11,7 @@ declare module 'next-auth/jwt' {
     sessionVersion?: number
     mustChangePassword?: boolean
     valid?: boolean
+    lastSignInProvider?: string
   }
 }
 
@@ -33,6 +34,7 @@ declare module 'next-auth' {
       sessionVersion: number
       mustChangePassword: boolean
       valid: boolean
+      lastSignInProvider: string | null
     }
   }
 }

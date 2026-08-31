@@ -26,7 +26,9 @@ import {
   ChevronsRightIcon,
   ChevronsUpDownIcon,
   FileUpIcon,
+  Globe,
   Loader2Icon,
+  MoreVerticalIcon,
   PlusCircleIcon,
 } from 'lucide-react'
 import Link from 'next/link'
@@ -35,6 +37,7 @@ import { useMemo, useRef, useState } from 'react'
 import { addCorpus } from '@/actions/corpus/corpusActions'
 import { createCorpusWithDocumentsImport } from '@/actions/imports/importActions'
 import { CorpusActions } from '@/components/corpus-actions'
+import { Page, PageHeader } from '@/components/page'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -56,9 +59,10 @@ import {
 } from '@/lib/imports/import-format'
 import { cn } from '@/lib/utils'
 
-export type CorpusesProps = {
-  corpuses: CorpusListItem[]
+export type CorporaProps = {
+  corpora: CorpusListItem[]
   canCreate: boolean
+  canCopy?: boolean
   ownedTeams: { id: string, name: string, slug: string }[]
   title?: string
   description?: string
@@ -111,19 +115,22 @@ function DataTable({
       <div className="mb-4 flex items-center gap-2">
         <Input
           type="text"
-          placeholder="Search corpuses..."
+          placeholder="Search corpora..."
           value={globalFilter ?? ''}
           onChange={e => setGlobalFilter(e.target.value)}
           className="w-1/2"
         />
       </div>
-      <div className="rounded-md border">
+      <div className="overflow-hidden rounded-lg border border-border">
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map(headerGroup => (
-              <TableRow key={headerGroup.id}>
+              <TableRow key={headerGroup.id} className="bg-muted/40 hover:bg-muted/40">
                 {headerGroup.headers.map(header => (
-                  <TableHead key={header.id}>
+                  <TableHead
+                    key={header.id}
+                    className="h-auto px-3 py-2 text-xs font-medium text-muted-foreground"
+                  >
                     {header.isPlaceholder
                       ? null
                       : flexRender(
@@ -139,9 +146,9 @@ function DataTable({
             {table.getRowModel().rows?.length
               ? (
                   table.getRowModel().rows.map(row => (
-                    <TableRow key={row.id} className="group hover:bg-muted/50">
+                    <TableRow key={row.id} className="hover:bg-muted/30">
                       {row.getVisibleCells().map(cell => (
-                        <TableCell key={cell.id}>
+                        <TableCell key={cell.id} className="px-3 py-2.5 text-[13px]">
                           {flexRender(
                             cell.column.columnDef.cell,
                             cell.getContext(),
@@ -157,7 +164,7 @@ function DataTable({
                       colSpan={columns.length}
                       className="h-24 text-center text-muted-foreground"
                     >
-                      No corpuses found.
+                      No corpora found.
                     </TableCell>
                   </TableRow>
                 )}
@@ -273,20 +280,19 @@ function DataTableColumnHeader<TData, TValue>({
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
-            size="sm"
-            className="-ml-3 h-8 data-[state=open]:bg-accent"
+            className="-ml-3 h-8 px-1.5 text-xs font-medium text-muted-foreground hover:text-foreground data-[state=open]:bg-accent"
           >
             <span>{title}</span>
             {column.getIsSorted() === 'desc'
               ? (
-                  <ArrowDownIcon />
+                  <ArrowDownIcon className="size-3" />
                 )
               : column.getIsSorted() === 'asc'
                 ? (
-                    <ArrowUpIcon />
+                    <ArrowUpIcon className="size-3" />
                   )
                 : (
-                    <ChevronsUpDownIcon />
+                    <ChevronsUpDownIcon className="size-3" />
                   )}
           </Button>
         </DropdownMenuTrigger>
@@ -305,7 +311,7 @@ function DataTableColumnHeader<TData, TValue>({
   )
 }
 
-function buildColumns(): ColumnDef<CorpusWithCounts, any>[] {
+function buildColumns(ownedTeams: { id: string, name: string, slug: string }[], canCopy: boolean): ColumnDef<CorpusWithCounts, any>[] {
   return [
     {
       accessorKey: 'title',
@@ -313,7 +319,10 @@ function buildColumns(): ColumnDef<CorpusWithCounts, any>[] {
         <DataTableColumnHeader column={column} title="Corpus Name" />
       ),
       cell: ({ row }) => (
-        <Link href={`/corpus/${row.original.id}`} className="block hover:underline">
+        <Link
+          href={`/corpus/${row.original.id}`}
+          className="block font-medium text-foreground hover:text-accent hover:underline"
+        >
           {row.original.title}
         </Link>
       ),
@@ -325,24 +334,12 @@ function buildColumns(): ColumnDef<CorpusWithCounts, any>[] {
         <DataTableColumnHeader column={column} title="Owner" />
       ),
       cell: ({ row }) => (
-        <div>
-          {row.original.ownerName ?? 'Setup pending'}
-          {row.original.ownerIdentifier && (
-            <span className="ml-1 text-xs text-muted-foreground">
-              (
-              {row.original.ownerIdentifier}
-              )
-            </span>
-          )}
+        <div className="text-muted-foreground">
+          {row.original.ownerIdentifier
+            ? `@${row.original.ownerIdentifier}`
+            : 'Setup pending'}
         </div>
       ),
-    },
-    {
-      accessorKey: 'access',
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} title="Your access" />
-      ),
-      cell: ({ row }) => <div className="capitalize">{row.original.access}</div>,
     },
     {
       accessorKey: 'documentsCount',
@@ -350,7 +347,7 @@ function buildColumns(): ColumnDef<CorpusWithCounts, any>[] {
         <DataTableColumnHeader column={column} title="Documents" />
       ),
       cell: ({ row }) => (
-        <div>{row.original.documentsCount}</div>
+        <div className="font-mono text-muted-foreground tabular-nums">{row.original.documentsCount}</div>
       ),
     },
     {
@@ -359,7 +356,7 @@ function buildColumns(): ColumnDef<CorpusWithCounts, any>[] {
         <DataTableColumnHeader column={column} title="Annotations" />
       ),
       cell: ({ row }) => (
-        <div>{row.original.annotationsCount}</div>
+        <div className="font-mono text-muted-foreground tabular-nums">{row.original.annotationsCount}</div>
       ),
     },
     {
@@ -368,13 +365,24 @@ function buildColumns(): ColumnDef<CorpusWithCounts, any>[] {
         <DataTableColumnHeader column={column} title="Actions" />
       ),
       cell: ({ row }) => (
-        <CorpusActions corpus={row.original} showOpenAction access={row.original.access} />
+        <CorpusActions
+          corpus={row.original}
+          showOpenAction
+          access={row.original.access}
+          ownedTeams={ownedTeams}
+          canCopy={canCopy}
+          triggerButton={(
+            <Button variant="ghost" size="icon" className="size-8">
+              <MoreVerticalIcon className="size-4" />
+            </Button>
+          )}
+        />
       ),
     },
   ]
 }
 
-export function Corpuses({ corpuses, canCreate, ownedTeams, title = 'Corpus Management', description = 'Create and manage your document collections' }: CorpusesProps) {
+export function Corpora({ corpora, canCreate, canCopy = true, ownedTeams, title = 'Corpus Management', description = 'Create and manage your document collections' }: CorporaProps) {
   const newCorpusFileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const [newCorpusName, setNewCorpusName] = useState('')
@@ -462,49 +470,52 @@ export function Corpuses({ corpuses, canCreate, ownedTeams, title = 'Corpus Mana
     }
   }
 
-  const tableColumns = useMemo(() => buildColumns(), [])
+  const tableColumns = useMemo(() => buildColumns(ownedTeams, canCopy), [ownedTeams, canCopy])
 
   return (
-    <main className="ml-0 min-w-0">
-      <div className="container mx-auto flex size-full min-h-screen max-w-6xl flex-col px-4 py-12 sm:px-6 lg:px-8">
-        <div className="mb-6 flex flex-col space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold">{title}</h1>
-              <p className="text-sm text-muted-foreground">
-                {description}
-              </p>
-            </div>
-            {canCreate && (
-              <Button onClick={() => setShowNewCorpusDialog(true)}>
-                <PlusCircleIcon className="mr-2 size-4" />
-                New Corpus
-              </Button>
-            )}
-          </div>
-        </div>
+    <Page>
+      <PageHeader title={title} description={description}>
+        {canCreate && (
+          <Button onClick={() => setShowNewCorpusDialog(true)}>
+            <PlusCircleIcon className="mr-2 size-4" />
+            New Corpus
+          </Button>
+        )}
+      </PageHeader>
 
-        {/* Data table */}
-        {corpuses.length > 0
-          ? (
-              <DataTable
-                columns={tableColumns}
-                data={corpuses}
-              />
-            )
-          : (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <p className="text-lg text-muted-foreground">
-                  No corpuses available.
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {canCreate
-                    ? 'Create your first corpus to get started.'
-                    : 'There are no public corpora to view yet.'}
-                </p>
-              </div>
-            )}
-      </div>
+      {corpora.length > 0
+        ? (
+            <DataTable
+              columns={tableColumns}
+              data={corpora}
+            />
+          )
+        : (
+            <div className="flex flex-col items-center justify-center gap-1 py-16 text-center">
+              <p className="text-sm text-muted-foreground">
+                No corpora available.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {canCreate
+                  ? 'Create your first corpus to get started, or explore corpora shared publicly.'
+                  : 'There are no public corpora to view yet.'}
+              </p>
+              {canCreate && (
+                <div className="mt-4 flex items-center gap-2">
+                  <Button onClick={() => setShowNewCorpusDialog(true)}>
+                    <PlusCircleIcon className="mr-2 size-4" />
+                    New Corpus
+                  </Button>
+                  <Button variant="outline" asChild>
+                    <Link href="/explore">
+                      <Globe className="mr-2 size-4" />
+                      Explore public corpora
+                    </Link>
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
 
       {/* New Corpus Dialog */}
       <Dialog open={showNewCorpusDialog} onOpenChange={setShowNewCorpusDialog}>
@@ -685,6 +696,6 @@ export function Corpuses({ corpuses, canCreate, ownedTeams, title = 'Corpus Mana
         accept={newCorpusFormat ? importFormatAccept(newCorpusFormat) : undefined}
         onChange={handleNewCorpusFileChange}
       />
-    </main>
+    </Page>
   )
 }
