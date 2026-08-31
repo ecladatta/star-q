@@ -1,6 +1,6 @@
 import type { CorpusCollaboratorRole } from '@/db/schema'
 import { getCorpusCollaborations, inviteTeamToCorpus, inviteUserToCorpus, revokeCorpusCollaboration } from '@/actions/collaboration/collaborationActions'
-import { getCorpus } from '@/actions/corpus/corpusActions'
+import { getCorpus, getCorpusOwner, transferCorpusOwnership } from '@/actions/corpus/corpusActions'
 import { CorpusCollaboratorRoleSelect } from '@/components/corpus-collaborator-role-select'
 import { Page, PageHeader } from '@/components/page'
 import { ServerActionForm } from '@/components/server-action-form'
@@ -15,7 +15,10 @@ export default async function CorpusAccessPage({ params }: { params: Promise<{ c
   const { corpusId } = await params
   const actor = await requirePageUser()
   const isAdmin = actor.role === 'admin'
-  const [resource, collaborations] = await Promise.all([getCorpus(corpusId), getCorpusCollaborations(corpusId)])
+  const [resource, owner, collaborations] = await Promise.all([getCorpus(corpusId), getCorpusOwner(corpusId), getCorpusCollaborations(corpusId)])
+  const ownerLabel = resource.ownerType === 'user' && owner.identifier
+    ? `@${owner.identifier}`
+    : owner.name ?? owner.identifier ?? 'Setup pending'
   return (
     <Page>
       <PageHeader
@@ -24,6 +27,41 @@ export default async function CorpusAccessPage({ params }: { params: Promise<{ c
           ? 'Add existing users or teams. Access is granted immediately.'
           : 'Invite existing users or teams. Access begins after acceptance.'}
       />
+      <section className="mb-5 rounded-lg border border-border bg-card p-4">
+        <h2 className="text-sm font-medium text-foreground">Ownership</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Current owner:
+          {' '}
+          <span className="font-medium text-foreground">{ownerLabel}</span>
+          .
+          {' '}
+          {isAdmin
+            ? 'Changing the owner takes effect immediately.'
+            : 'A transfer takes effect immediately, and you may lose access to this corpus.'}
+        </p>
+        <div className="mt-4 grid gap-5 md:grid-cols-2">
+          <OwnershipForm
+            title={isAdmin ? 'Change to a user' : 'Transfer to a user'}
+            label="Exact username"
+            field="username"
+            submitLabel={isAdmin ? 'Change owner' : 'Transfer ownership'}
+            action={async (value) => {
+              'use server'
+              await transferCorpusOwnership(corpusId, 'user', value)
+            }}
+          />
+          <OwnershipForm
+            title={isAdmin ? 'Change to a team' : 'Transfer to a team'}
+            label="Exact team slug"
+            field="slug"
+            submitLabel={isAdmin ? 'Change owner' : 'Transfer ownership'}
+            action={async (value) => {
+              'use server'
+              await transferCorpusOwnership(corpusId, 'team', value)
+            }}
+          />
+        </div>
+      </section>
       <div className="grid gap-5 md:grid-cols-2">
         <InviteForm
           title={isAdmin ? 'Add a user' : 'Invite a user'}
@@ -84,6 +122,27 @@ export default async function CorpusAccessPage({ params }: { params: Promise<{ c
         {!collaborations.length && <p className="text-sm text-muted-foreground">No collaborators yet.</p>}
       </section>
     </Page>
+  )
+}
+
+function OwnershipForm({ title, label, field, submitLabel, action }: { title: string, label: string, field: string, submitLabel: string, action: (value: string) => Promise<void> }) {
+  return (
+    <div className="rounded-lg border border-border bg-background p-4">
+      <h3 className="mb-4 text-sm font-medium text-foreground">{title}</h3>
+      <ServerActionForm
+        action={async (formData) => {
+          'use server'
+          await action(String(formData.get(field)))
+        }}
+        className="space-y-4"
+      >
+        <div className="space-y-2">
+          <Label htmlFor={`owner-${field}`}>{label}</Label>
+          <Input id={`owner-${field}`} name={field} required />
+        </div>
+        <Button type="submit" variant="outline">{submitLabel}</Button>
+      </ServerActionForm>
+    </div>
   )
 }
 

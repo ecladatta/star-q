@@ -6,13 +6,14 @@ import type { CorpusAccess } from '@/lib/corpus-access'
 import type { CorpusSettings } from '@/lib/corpus-settings'
 import { and, count, countDistinct, desc, eq, getTableColumns, inArray, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
 import { db } from '@/db/drizzle'
-import { annotation, annotationComponent, annotationQualifier, auditLog, corpus, corpusCustomEntity, document, team, teamMembership, users } from '@/db/schema'
-import { ForbiddenError, getRequestActor } from '@/lib/auth-utils'
+import { annotation, annotationComponent, annotationQualifier, auditLog, corpus, corpusCollaboration, corpusCustomEntity, document, team, teamMembership, users } from '@/db/schema'
+import { ForbiddenError, getRequestActor, NotFoundError } from '@/lib/auth-utils'
 import { MAX_CORPORA_PER_TEAM, MAX_CUSTOM_ENTITIES_PER_CORPUS, MAX_OWNED_CORPORA_PER_USER } from '@/lib/constants'
 import { getCorpusAccessForActor, requireEditCorpus, requireEditCustomEntity, requireManageCorpus, requireViewCorpus } from '@/lib/corpus-access'
 import { mergeCorpusSettings, sanitizeCorpusSettingsPatch } from '@/lib/corpus-settings'
-import { validateCorpusVisibility } from '@/lib/identity'
+import { normalizeTeamSlug, normalizeUsername, validateCorpusVisibility } from '@/lib/identity'
 
 type DbExecutor = typeof db | Parameters<Parameters<typeof db.transaction>[0]>[0]
 
@@ -105,6 +106,110 @@ async function assertWithinCorpusLimit(
       throw new Error(`This team can own at most ${MAX_CORPORA_PER_TEAM} corpora.`)
     }
   }
+}
+
+async function resolveTransferredCorpusOwner(executor: DbExecutor, targetType: string, identifierValue: string) {
+  if (targetType === 'user') {
+    const username = normalizeUsername(identifierValue)
+    const [targetUser] = await executor.select({ id: users.id, status: users.status })
+      .from(users)
+      .where(eq(users.username, username))
+      .limit(1)
+    if (!targetUser || targetUser.status !== 'active') {
+      throw new NotFoundError('No active user has that exact username.')
+    }
+    return { ownerType: 'user' as const, ownerUserId: targetUser.id, ownerTeamId: null }
+  }
+
+  if (targetType === 'team') {
+    const slug = normalizeTeamSlug(identifierValue)
+    const [targetTeam] = await executor.select({ id: team.id }).from(team).where(eq(team.slug, slug)).limit(1)
+    if (!targetTeam) {
+      throw new NotFoundError('No team has that exact slug.')
+    }
+    return { ownerType: 'team' as const, ownerUserId: null, ownerTeamId: targetTeam.id }
+  }
+
+  throw new Error('Invalid corpus owner type.')
+}
+
+export async function transferCorpusOwnership(corpusId: string, targetType: string, identifierValue: string) {
+  const actor = await getRequestActor()
+  if (actor.type !== 'user') {
+    throw new ForbiddenError()
+  }
+
+  await db.transaction(async (trx) => {
+    await trx.execute(sql`SELECT 1 FROM ${corpus} WHERE ${corpus.id} = ${corpusId} FOR UPDATE`)
+    const [resource] = await trx.select({
+      ownerType: corpus.ownerType,
+      ownerUserId: corpus.ownerUserId,
+      ownerTeamId: corpus.ownerTeamId,
+    }).from(corpus).where(eq(corpus.id, corpusId)).limit(1)
+    if (!resource) {
+      throw new NotFoundError('Corpus not found.')
+    }
+
+    if (actor.role !== 'admin') {
+      const isPersonalOwner = resource.ownerType === 'user' && resource.ownerUserId === actor.userId
+      let isOwningTeamOwner = false
+      if (resource.ownerType === 'team' && resource.ownerTeamId) {
+        const [membership] = await trx.select({ role: teamMembership.role })
+          .from(teamMembership)
+          .where(and(eq(teamMembership.teamId, resource.ownerTeamId), eq(teamMembership.userId, actor.userId)))
+          .limit(1)
+        isOwningTeamOwner = membership?.role === 'owner'
+      }
+      if (!isPersonalOwner && !isOwningTeamOwner) {
+        throw new ForbiddenError('Only an administrator or the current owner can transfer corpus ownership.')
+      }
+    }
+
+    const nextOwner = await resolveTransferredCorpusOwner(trx, targetType, identifierValue)
+    const alreadyOwnsCorpus = nextOwner.ownerType === resource.ownerType
+      && nextOwner.ownerUserId === resource.ownerUserId
+      && nextOwner.ownerTeamId === resource.ownerTeamId
+    if (alreadyOwnsCorpus) {
+      throw new Error('That user or team already owns this corpus.')
+    }
+
+    await assertWithinCorpusLimit(trx, actor, nextOwner)
+    await trx.update(corpus).set({ ...nextOwner, updatedAt: new Date() }).where(eq(corpus.id, corpusId))
+
+    if (nextOwner.ownerType === 'user') {
+      await trx.delete(corpusCollaboration).where(and(
+        eq(corpusCollaboration.corpusId, corpusId),
+        eq(corpusCollaboration.targetUserId, nextOwner.ownerUserId),
+      ))
+    } else {
+      await trx.delete(corpusCollaboration).where(and(
+        eq(corpusCollaboration.corpusId, corpusId),
+        eq(corpusCollaboration.targetTeamId, nextOwner.ownerTeamId),
+      ))
+    }
+
+    await trx.insert(auditLog).values({
+      actorUserId: actor.userId,
+      action: 'corpus.owner_changed',
+      targetType: 'corpus',
+      targetId: corpusId,
+      metadata: {
+        previousOwnerType: resource.ownerType,
+        previousOwnerUserId: resource.ownerUserId,
+        previousOwnerTeamId: resource.ownerTeamId,
+        ownerType: nextOwner.ownerType,
+        ownerUserId: nextOwner.ownerUserId,
+        ownerTeamId: nextOwner.ownerTeamId,
+      },
+    })
+  })
+
+  revalidatePath('/')
+  revalidatePath('/admin/corpora')
+  revalidatePath('/invitations')
+  revalidatePath(`/corpus/${corpusId}`)
+  revalidatePath(`/corpus/${corpusId}/access`)
+  redirect(actor.role === 'admin' ? '/admin/corpora' : '/')
 }
 
 export async function addCorpus(title: string, owner: CorpusOwnerInput) {
