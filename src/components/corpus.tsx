@@ -8,6 +8,7 @@ import type {
 } from '@tanstack/react-table'
 import type { ChangeEvent, HTMLAttributes } from 'react'
 import type { CorpusListItem, CorpusOwnerInput } from '@/actions/corpus/corpusActions'
+import type { CorpusImportFormat } from '@/lib/imports/import-format'
 import {
   flexRender,
   getCoreRowModel,
@@ -47,6 +48,12 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import {
+  CORPUS_IMPORT_FORMAT_IDS,
+  importFormatAccept,
+  importFormatLabel,
+  isCorpusImportFormat,
+} from '@/lib/imports/import-format'
 import { cn } from '@/lib/utils'
 
 export type CorpusesProps = {
@@ -374,6 +381,7 @@ export function Corpuses({ corpuses, canCreate, ownedTeams, title = 'Corpus Mana
   const [isAdding, setIsAdding] = useState(false)
   const [showNewCorpusDialog, setShowNewCorpusDialog] = useState(false)
   const [newCorpusFile, setNewCorpusFile] = useState<File | null>(null)
+  const [newCorpusFormat, setNewCorpusFormat] = useState<CorpusImportFormat | null>(null)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [uploadWarning, setUploadWarning] = useState<string | null>(null)
   const [isImporting, setIsImporting] = useState(false)
@@ -386,7 +394,7 @@ export function Corpuses({ corpuses, canCreate, ownedTeams, title = 'Corpus Mana
     ? { type: 'user' }
     : { type: 'team', teamId: ownerSelection }
 
-  const handleCreateCorpusWithFileImport = async (file: File) => {
+  const handleCreateCorpusWithFileImport = async (file: File, format: CorpusImportFormat) => {
     try {
       setUploadError(null)
       setUploadWarning(null)
@@ -395,7 +403,7 @@ export function Corpuses({ corpuses, canCreate, ownedTeams, title = 'Corpus Mana
       setNewCorpusId(null)
       const formData = new FormData()
       formData.append('file', file)
-      const { count, errors, warnings, corpusId } = await createCorpusWithDocumentsImport(newCorpusName, selectedOwner(), formData)
+      const { count, errors, warnings, corpusId } = await createCorpusWithDocumentsImport(newCorpusName, format, selectedOwner(), formData)
       setImportedCount(count)
       setNewCorpusId(corpusId)
       if (errors && errors.length > 0) {
@@ -418,8 +426,8 @@ export function Corpuses({ corpuses, canCreate, ownedTeams, title = 'Corpus Mana
     try {
       setIsAdding(true)
 
-      if (newCorpusFile) {
-        await handleCreateCorpusWithFileImport(newCorpusFile)
+      if (newCorpusFile && newCorpusFormat) {
+        await handleCreateCorpusWithFileImport(newCorpusFile, newCorpusFormat)
       } else {
         await addCorpus(newCorpusName, selectedOwner())
       }
@@ -546,6 +554,25 @@ export function Corpuses({ corpuses, canCreate, ownedTeams, title = 'Corpus Mana
             <div>
               <Label>Import documents (optional)</Label>
               <div className="mt-1 space-y-2">
+                <div>
+                  <Select
+                    value={newCorpusFormat ?? ''}
+                    onValueChange={(value) => {
+                      setNewCorpusFormat(isCorpusImportFormat(value) ? value : null)
+                    }}
+                  >
+                    <SelectTrigger id="new-corpus-import-format" className="mt-1 w-full">
+                      <SelectValue placeholder="Select a format" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CORPUS_IMPORT_FORMAT_IDS.map(format => (
+                        <SelectItem key={format} value={format}>
+                          {importFormatLabel(format)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 {newCorpusFile
                   ? (
                       <div className="flex items-center justify-between rounded-md border border-dashed border-gray-300 p-3">
@@ -568,15 +595,13 @@ export function Corpuses({ corpuses, canCreate, ownedTeams, title = 'Corpus Mana
                         type="button"
                         variant="outline"
                         className="w-full"
+                        disabled={!newCorpusFormat}
                         onClick={handleNewCorpusFileSelect}
                       >
                         <FileUpIcon className="mr-2 size-4" />
                         Select file to import
                       </Button>
                     )}
-                <p className="text-xs text-gray-500">
-                  Supported formats: JSON, JSONL, ZIP files
-                </p>
               </div>
             </div>
           </div>
@@ -657,7 +682,7 @@ export function Corpuses({ corpuses, canCreate, ownedTeams, title = 'Corpus Mana
         type="file"
         ref={newCorpusFileInputRef}
         style={{ display: 'none' }}
-        accept=".json,.jsonl,.zip"
+        accept={newCorpusFormat ? importFormatAccept(newCorpusFormat) : undefined}
         onChange={handleNewCorpusFileChange}
       />
     </main>

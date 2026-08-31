@@ -1,9 +1,11 @@
 'use server'
-import type { AnnotationComponentRole, ExportModel } from '@/types/types'
+import type { AnnotationComponentRole } from '@/types/types'
 import { db } from '@/db/drizzle'
 import { annotation, annotationComponent, annotationQualifier, corpusCustomEntity, document } from '@/db/schema'
 import { MAX_DOCUMENTS_PER_IMPORT } from '@/lib/constants'
 import { ENTITY_DATATYPES, normalizeDatatype } from '@/lib/datatypes'
+
+import { isFullCorpusExport } from './fullCorpusExport'
 
 const POSTGRES_INTEGER_MIN = -2_147_483_648
 const POSTGRES_INTEGER_MAX = 2_147_483_647
@@ -160,8 +162,16 @@ function isDocumentData(value: unknown): boolean {
  */
 export async function importFullCorpusExportDocuments(
   corpusId: string,
-  corpusData: ExportModel,
+  corpusData: unknown,
 ): Promise<{ ids: string[], errors: string[], warnings: string[] }> {
+  if (!isFullCorpusExport(corpusData)) {
+    return {
+      ids: [],
+      errors: ['Not a STAR-Q corpus export. Expected exportMeta.type "full-corpus-export" and a documents array.'],
+      warnings: [],
+    }
+  }
+
   const importedDocumentsIds: string[] = []
   const errors: string[] = []
   const warnings: string[] = []

@@ -581,7 +581,14 @@ export async function importIritDocuments(
   const importedDocumentIds: string[] = []
   const errors: string[] = []
   const warnings: string[] = []
-  const zip = await JSZip.loadAsync(zipBuffer)
+
+  let zip: JSZip
+  try {
+    zip = await JSZip.loadAsync(zipBuffer)
+  } catch (error) {
+    errors.push(`Not a valid ZIP archive: ${error}`)
+    return { ids: importedDocumentIds, errors, warnings }
+  }
 
   const totalUncompressedSize = Object.values(zip.files)
     .filter(entry => !entry.dir)
@@ -595,6 +602,11 @@ export async function importIritDocuments(
   }
 
   const { paragraphsFile, tablesFile: tablesMetadataFile, tablesArchive } = findRequiredFiles(zip)
+
+  if (!paragraphsFile && !tablesMetadataFile && !tablesArchive) {
+    errors.push('IRIT archive is missing the expected files (Annotation_paragraphes.csv, Annotation_tables.csv, Tables.tar.gz).')
+    return { ids: importedDocumentIds, errors, warnings }
+  }
 
   const extractedTableFiles: ExtractedTableFile[] = []
   if (tablesArchive) {

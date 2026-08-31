@@ -25,6 +25,11 @@ export async function importLabelStudioDocuments(
     return { ids: importedDocumentsIds, errors, warnings }
   }
 
+  if (!Array.isArray(parsedJson) || parsedJson.length === 0) {
+    errors.push('Not a Label Studio export. Expected a non-empty JSON array of tasks.')
+    return { ids: importedDocumentsIds, errors, warnings }
+  }
+
   for (const [index, item] of parsedJson.entries()) {
     if (importedDocumentsIds.length >= MAX_DOCUMENTS_PER_IMPORT) {
       warnings.push(`Import stopped at ${MAX_DOCUMENTS_PER_IMPORT} documents.`)
