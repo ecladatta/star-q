@@ -134,6 +134,13 @@
       "when": 1788164697998,
       "tag": "0018_majestic_pride",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1788166011203,
+      "tag": "0019_lumpy_roughhouse",
+      "breakpoints": true
     }
   ]
 }
