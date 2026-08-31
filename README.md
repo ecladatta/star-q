@@ -18,7 +18,6 @@ To deploy STAR-Q in production, follow these steps:
     - Set `BASE_URL` to the public HTTPS URL, for example `https://annotation.example.org`.
     - Set `POSTGRES_USER`, `POSTGRES_PASSWORD`, and `POSTGRES_DB` to deployment-specific values. Use a unique, strong `POSTGRES_PASSWORD`.
     - Configure at least one sign-in method and the corresponding secrets as described in [Authentication](#authentication).
-    - Optionally set `ADMIN_READ_API_KEY` for deployment-level, read-only API access. Generate one with `openssl rand -hex 32`. Treat it as a secret: it grants read access to every corpus, including non-public ones.
 
 2. Build and run the Docker containers:
     ```bash
@@ -122,6 +121,14 @@ pnpm test
 
 ## API
 
+In order to use the API, administrators must create an API key in the admin dashboard under **API keys**. The key can be used in the `x-api-key` like so:
+
+```bash
+curl \
+  -H "x-api-key: $API_KEY" \
+  https://annotation.example.org/api/corpus
+```
+
 ### Routes
 
 - `GET /api/corpus` - List the corpora visible to the caller.
@@ -129,20 +136,6 @@ pnpm test
 - `GET /api/corpus/[corpusId]/analytics` - Get analytics for a corpus.
 - `GET /api/corpus/[corpusId]/entities` - Get custom entities for a corpus.
 - `GET /api/corpus/[corpusId]/export` - Export a corpus. Defaults to JSON; use `?format=rdf&mode=truthy` or `?format=rdf&mode=full` for RDF 1.2 Turtle, or `?format=quickstatements` for QuickStatements 3.0 commands.
-
-### Authentication and permissions
-
-An optional `ADMIN_READ_API_KEY` sent in the `x-api-key` header grants read access to every corpus, including non-public ones:
-
-Example:
-
-```bash
-curl \
-  -H "x-api-key: $ADMIN_READ_API_KEY" \
-  https://annotation.example.org/api/corpus
-```
-
-Routes return `403` when the session is authenticated but lacks the permission required by the operation, and `404` when the corpus does not exist or is not visible to the caller.
 
 ## Export formats
 
