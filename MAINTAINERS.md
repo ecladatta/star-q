@@ -2,21 +2,8 @@
 
 ## Releases
 
-Releases require the `GITHUB_TOKEN` environment variable (a fine-grained personal access token with `contents: write` permission). Create one [here](https://github.com/settings/personal-access-tokens/new), then export it before releasing:
+Releases are automated with [release-please](https://github.com/googleapis/release-please) via the `release-please` GitHub Actions workflow. No local token or commands are required.
 
-```bash
-export GITHUB_TOKEN=your_token
-```
+On every push to `main`, release-please scans conventional commits since the last release tag and opens a release PR that bumps `package.json`, updates `CHANGELOG.md`, and previews the release notes. Review and merge it like any other PR. Merging the release PR creates tag `vX.Y.Z` and a GitHub release.
 
-Preview the release notes without publishing:
-```bash
-pnpm release:dry
-```
-
-Create a release (bumps the version, updates `CHANGELOG.md`, creates tag `vX.Y.Z`, and creates a GitHub release):
-```bash
-pnpm release:patch   # 0.2.0 → 0.2.1
-pnpm release:minor   # 0.2.0 → 0.3.0
-pnpm release:major   # 0.2.0 → 1.0.0
-pnpm release         # auto-detect the bump from conventional commits
-```
+To force a major bump, merge a commit marked as breaking (`BREAKING CHANGE` footer or `feat!`/`fix!` type) instead of a plain `feat`.
