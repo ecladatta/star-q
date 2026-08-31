@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import { BarChart3, Database, FileText, Globe, Inbox, ScrollText, Settings, Shield, UserRound, Users } from 'lucide-react'
+import { BarChart3, Database, FileText, Globe, Inbox, KeyRound, ScrollText, Settings, Shield, UserRound, Users } from 'lucide-react'
 
 export type NavItem = {
   href: string
@@ -42,6 +42,7 @@ export function adminNav(): NavItem[] {
     { href: '/admin/users', label: 'Users', icon: UserRound },
     { href: '/admin/teams', label: 'Teams', icon: Users },
     { href: '/admin/corpora', label: 'Corpora', icon: Database },
+    { href: '/admin/api-keys', label: 'API keys', icon: KeyRound },
     { href: '/admin/settings', label: 'Settings', icon: Settings },
     { href: '/admin/audit', label: 'Audit log', icon: ScrollText },
   ]
