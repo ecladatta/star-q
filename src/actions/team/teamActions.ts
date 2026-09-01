@@ -10,6 +10,7 @@ import { auditLog, team, teamInvitation, teamMembership, users } from '@/db/sche
 import { ForbiddenError, getRequestActor, NotFoundError } from '@/lib/auth-utils'
 import { MAX_OWNED_TEAMS_PER_USER, MAX_PENDING_INVITES_PER_TEAM } from '@/lib/constants'
 import { normalizeUsername, validateDisplayName, validateInvitationResponse, validateTeamRole, validateTeamSlug } from '@/lib/identity'
+import { ensurePersonalTeam } from '@/lib/personal-team'
 import { getTeamRole, hasOtherActiveTeamOwner } from '@/lib/team-access'
 
 async function requireUserActor() {
@@ -33,10 +34,12 @@ async function requireTeamOwner(teamId: string) {
 
 export async function getMyTeams() {
   const actor = await requireUserActor()
+  await ensurePersonalTeam(db, actor.userId)
   return db.select({
     id: team.id,
     name: team.name,
     slug: team.slug,
+    kind: team.kind,
     role: teamMembership.role,
     createdAt: team.createdAt,
   })
@@ -51,7 +54,7 @@ export async function getOwnedTeams() {
   return db.select({ id: team.id, name: team.name, slug: team.slug })
     .from(teamMembership)
     .innerJoin(team, eq(team.id, teamMembership.teamId))
-    .where(and(eq(teamMembership.userId, actor.userId), eq(teamMembership.role, 'owner')))
+    .where(and(eq(teamMembership.userId, actor.userId), eq(teamMembership.role, 'owner'), eq(team.kind, 'shared')))
     .orderBy(team.name)
 }
 
@@ -103,7 +106,8 @@ export async function createTeam(nameValue: string, slugValue: string) {
     if (actor.role !== 'admin') {
       const [owned] = await trx.select({ count: count() })
         .from(teamMembership)
-        .where(and(eq(teamMembership.userId, actor.userId), eq(teamMembership.role, 'owner')))
+        .innerJoin(team, eq(team.id, teamMembership.teamId))
+        .where(and(eq(teamMembership.userId, actor.userId), eq(teamMembership.role, 'owner'), eq(team.kind, 'shared')))
       if ((owned?.count ?? 0) >= MAX_OWNED_TEAMS_PER_USER) {
         throw new Error(`You can own at most ${MAX_OWNED_TEAMS_PER_USER} teams.`)
       }
@@ -129,6 +133,10 @@ export async function inviteTeamMember(teamId: string, usernameValue: string, ro
 
   await db.transaction(async (trx) => {
     await lockTeamAndRequireOwner(trx, teamId, actor)
+    const [lockedTeam] = await trx.select({ kind: team.kind }).from(team).where(eq(team.id, teamId)).limit(1)
+    if (lockedTeam?.kind === 'personal') {
+      throw new Error('Personal teams cannot have members.')
+    }
     const [invitee] = await trx.select({ id: users.id, status: users.status })
       .from(users)
       .where(eq(users.username, username))
@@ -278,9 +286,12 @@ export async function removeTeamMember(teamId: string, userId: string) {
 export async function leaveTeam(teamId: string) {
   const actor = await requireUserActor()
   await db.transaction(async (trx) => {
-    const [foundTeam] = await trx.select({ id: team.id }).from(team).where(eq(team.id, teamId)).for('update')
+    const [foundTeam] = await trx.select({ id: team.id, kind: team.kind }).from(team).where(eq(team.id, teamId)).for('update')
     if (!foundTeam) {
       throw new NotFoundError('Team not found.')
+    }
+    if (foundTeam.kind === 'personal') {
+      throw new Error('You cannot leave your personal team.')
     }
     const [membership] = await trx.select({ role: teamMembership.role })
       .from(teamMembership)
@@ -326,6 +337,10 @@ export async function deleteTeam(teamId: string) {
   const actor = await requireTeamOwner(teamId)
   await db.transaction(async (trx) => {
     await lockTeamAndRequireOwner(trx, teamId, actor)
+    const [lockedTeam] = await trx.select({ kind: team.kind }).from(team).where(eq(team.id, teamId)).limit(1)
+    if (lockedTeam?.kind === 'personal') {
+      throw new Error('You cannot delete your personal team.')
+    }
     const deleted = await trx.delete(team).where(eq(team.id, teamId)).returning({ id: team.id })
     if (!deleted.length) {
       throw new NotFoundError('Team not found.')

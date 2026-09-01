@@ -26,9 +26,20 @@ export default async function TeamPage({ params }: { params: Promise<{ slug: str
     <Page>
       <PageHeader
         title={data.team.name}
-        description={`${data.team.slug} · Your role: ${data.membershipRole ?? 'Administrator'}`}
+        description={(
+          <>
+            {data.team.slug}
+            {' '}
+            · Your role:
+            {' '}
+            {data.membershipRole ?? 'Administrator'}
+            {data.team.kind === 'personal' && (
+              <span className="ml-2 inline-flex rounded-full border border-border bg-secondary px-2 py-0.5 text-[11px] text-muted-foreground">Personal</span>
+            )}
+          </>
+        )}
       />
-      {canManage && (
+      {canManage && data.team.kind !== 'personal' && (
         <section className="mb-6 rounded-lg border border-border bg-card p-5">
           <h2 className="mb-4 text-sm font-medium">Invite an existing user</h2>
           <ServerActionForm

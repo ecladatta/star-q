@@ -17,6 +17,7 @@ export default async function AdminTeamsPage() {
             <tr>
               <th className="px-3 py-2 text-left font-medium">Team</th>
               <th className="px-3 py-2 text-left font-medium">Slug</th>
+              <th className="px-3 py-2 text-left font-medium">Kind</th>
               <th className="px-3 py-2 text-left font-medium">Created</th>
             </tr>
           </thead>
@@ -29,6 +30,11 @@ export default async function AdminTeamsPage() {
                   </Link>
                 </td>
                 <td className="px-3 py-2.5 font-mono text-[13px] text-muted-foreground">{team.slug}</td>
+                <td className="px-3 py-2.5 text-[13px]">
+                  {team.kind === 'personal'
+                    ? <span className="inline-flex rounded-full border border-border bg-secondary px-2 py-0.5 text-[11px] text-muted-foreground">Personal</span>
+                    : <span className="text-xs text-muted-foreground capitalize">{team.kind}</span>}
+                </td>
                 <td className="px-3 py-2.5 text-[13px] text-muted-foreground">{team.createdAt.toLocaleDateString()}</td>
               </tr>
             ))}

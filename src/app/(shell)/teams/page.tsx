@@ -33,7 +33,12 @@ export default async function TeamsPage() {
               {item.name.charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[13px] font-medium">{item.name}</p>
+              <div className="flex items-center gap-2">
+                <p className="truncate text-[13px] font-medium">{item.name}</p>
+                {item.kind === 'personal' && (
+                  <span className="inline-flex shrink-0 rounded-full border border-border bg-secondary px-2 py-0.5 text-[11px] text-muted-foreground">Personal</span>
+                )}
+              </div>
               <p className="truncate text-xs text-muted-foreground">
                 /
                 {item.slug}

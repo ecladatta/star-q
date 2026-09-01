@@ -11,6 +11,7 @@ import { ForbiddenError, getAuthenticatedUserForOnboarding } from '@/lib/auth-ut
 import { getRequiredString } from '@/lib/form-data'
 import { validateDisplayName, validateOAuthProvider, validatePassword, validateUsername } from '@/lib/identity'
 import { hashPassword, verifyPassword } from '@/lib/password-auth'
+import { ensurePersonalTeam } from '@/lib/personal-team'
 
 async function insertLocalUser(input: { username: string, name: string, password: string, mustChangePassword?: boolean }) {
   if (!isLocalCredentialsEnabled()) {
@@ -43,6 +44,7 @@ export async function signUpLocal(formData: FormData): Promise<void> {
   }
 
   const user = await insertLocalUser({ username, name, password })
+  await ensurePersonalTeam(db, user.id)
   await db.insert(auditLog).values({
     actorUserId: user.id,
     action: 'auth.sign_up',
@@ -79,6 +81,7 @@ export async function setupLocalAdministrator(formData: FormData): Promise<void>
       passwordHash,
       role: 'admin',
     }).returning()
+    await ensurePersonalTeam(trx, user.id)
     await trx.update(corpus).set({
       ownerType: 'user',
       ownerUserId: user.id,
@@ -148,6 +151,7 @@ export async function completeOnboarding(formData: FormData): Promise<void> {
   const name = validateDisplayName(getRequiredString(formData, 'name'))
   await db.transaction(async (trx) => {
     await trx.update(users).set({ username, name, updatedAt: new Date() }).where(eq(users.id, currentUser.id))
+    await ensurePersonalTeam(trx, currentUser.id)
     await trx.insert(auditLog).values({
       actorUserId: currentUser.id,
       action: 'auth.onboarding_completed',

@@ -11,6 +11,7 @@ import { APP_SETTINGS_ID, getAppSettings, isLocalCredentialsEnabled } from '@/li
 import { ForbiddenError, NotFoundError, requireAdmin } from '@/lib/auth-utils'
 import { validateDisplayName, validatePassword, validateUsername, validateUserRole } from '@/lib/identity'
 import { hashPassword } from '@/lib/password-auth'
+import { ensurePersonalTeam } from '@/lib/personal-team'
 import { getSoleOwnedTeamIds } from '@/lib/team-access'
 
 async function countOtherActiveAdmins(trx: DbTransaction, userId: string): Promise<number> {
@@ -96,6 +97,7 @@ export async function createAdminManagedUser(input: { username: string, name: st
       role,
     }).returning()
     await trx.insert(auditLog).values({ actorUserId: actor.userId, action: 'admin.user_created', targetType: 'user', targetId: created.id, metadata: { role } })
+    await ensurePersonalTeam(trx, created.id)
     return created
   })
   revalidatePath('/admin/users')
