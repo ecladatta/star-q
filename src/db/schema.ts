@@ -6,34 +6,45 @@ import { randomUUID } from 'node:crypto'
 import { sql } from 'drizzle-orm'
 import { boolean, check, index, integer, jsonb, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
 
+function sqlStringList(values: readonly string[]) {
+  return sql.raw(values.map(value => `'${value}'`).join(', '))
+}
+
 export const userRoleValues = ['user', 'admin'] as const
 export type UserRole = (typeof userRoleValues)[number]
 
 export const userStatusValues = ['active', 'blocked'] as const
 export type UserStatus = (typeof userStatusValues)[number]
 
-export const users = pgTable('user', {
-  id: text('id')
-    .primaryKey()
-    .$defaultFn(() => crypto.randomUUID()),
-  name: text('name'),
-  email: text('email').unique(),
-  emailVerified: timestamp('emailVerified', { mode: 'date' }),
-  image: text('image'),
-  username: text('username').unique(),
-  role: text('role').$type<UserRole>().notNull().default('user'),
-  status: text('status').$type<UserStatus>().notNull().default('active'),
-  passwordHash: text('password_hash'),
-  mustChangePassword: boolean('must_change_password').notNull().default(false),
-  sessionVersion: integer('session_version').notNull().default(0),
-  failedLoginAttempts: integer('failed_login_attempts').notNull().default(0),
-  lockedUntil: timestamp('locked_until', { mode: 'date' }),
-  blockedAt: timestamp('blocked_at', { mode: 'date' }),
-  blockedByUserId: text('blocked_by_user_id'),
-  lastSignedInAt: timestamp('last_signed_in_at', { mode: 'date' }),
-  createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
-})
+export const users = pgTable(
+  'user',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => crypto.randomUUID()),
+    name: text('name'),
+    email: text('email').unique(),
+    emailVerified: timestamp('emailVerified', { mode: 'date' }),
+    image: text('image'),
+    username: text('username').unique(),
+    role: text('role').$type<UserRole>().notNull().default('user'),
+    status: text('status').$type<UserStatus>().notNull().default('active'),
+    passwordHash: text('password_hash'),
+    mustChangePassword: boolean('must_change_password').notNull().default(false),
+    sessionVersion: integer('session_version').notNull().default(0),
+    failedLoginAttempts: integer('failed_login_attempts').notNull().default(0),
+    lockedUntil: timestamp('locked_until', { mode: 'date' }),
+    blockedAt: timestamp('blocked_at', { mode: 'date' }),
+    blockedByUserId: text('blocked_by_user_id'),
+    lastSignedInAt: timestamp('last_signed_in_at', { mode: 'date' }),
+    createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
+  },
+  table => [
+    check('user_role_check', sql`${table.role} IN (${sqlStringList(userRoleValues)})`),
+    check('user_status_check', sql`${table.status} IN (${sqlStringList(userStatusValues)})`),
+  ],
+)
 
 export const accounts = pgTable(
   'account',
@@ -141,7 +152,10 @@ export const teamMembership = pgTable(
     createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
   },
-  membership => [primaryKey({ columns: [membership.teamId, membership.userId] })],
+  membership => [
+    primaryKey({ columns: [membership.teamId, membership.userId] }),
+    check('team_membership_role_check', sql`${membership.role} IN (${sqlStringList(teamRoleValues)})`),
+  ],
 )
 
 export const teamInvitation = pgTable(
@@ -157,7 +171,11 @@ export const teamInvitation = pgTable(
     createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
   },
-  invitation => [uniqueIndex('team_invitation_team_invitee_idx').on(invitation.teamId, invitation.inviteeUserId)],
+  invitation => [
+    uniqueIndex('team_invitation_team_invitee_idx').on(invitation.teamId, invitation.inviteeUserId),
+    check('team_invitation_role_check', sql`${invitation.role} IN (${sqlStringList(teamRoleValues)})`),
+    check('team_invitation_status_check', sql`${invitation.status} IN (${sqlStringList(invitationStatusValues)})`),
+  ],
 )
 
 export const corpusVisibilityValues = ['private', 'public'] as const
@@ -182,6 +200,7 @@ export const corpus = pgTable(
   table => [
     index('corpus_owner_user_idx').on(table.ownerUserId),
     index('corpus_owner_team_idx').on(table.ownerTeamId),
+    check('corpus_visibility_check', sql`${table.visibility} IN (${sqlStringList(corpusVisibilityValues)})`),
     check(
       'corpus_owner_check',
       sql`(${table.ownerType} = 'bootstrap' AND ${table.ownerUserId} IS NULL AND ${table.ownerTeamId} IS NULL)
@@ -213,10 +232,35 @@ export const corpusCollaboration = pgTable(
   table => [
     uniqueIndex('corpus_collaboration_user_idx').on(table.corpusId, table.targetUserId),
     uniqueIndex('corpus_collaboration_team_idx').on(table.corpusId, table.targetTeamId),
+    check('corpus_collaboration_role_check', sql`${table.role} IN (${sqlStringList(corpusCollaboratorRoleValues)})`),
+    check('corpus_collaboration_status_check', sql`${table.status} IN (${sqlStringList(invitationStatusValues)})`),
     check(
       'corpus_collaboration_target_check',
       sql`num_nonnulls(${table.targetUserId}, ${table.targetTeamId}) = 1`,
     ),
+  ],
+)
+
+export const corpusOwnershipTransfer = pgTable(
+  'corpus_ownership_transfer',
+  {
+    id: uuid('id').primaryKey().$defaultFn(() => randomUUID()),
+    corpusId: uuid('corpus_id').references(() => corpus.id, { onDelete: 'cascade' }).notNull(),
+    targetUserId: text('target_user_id').references(() => users.id, { onDelete: 'cascade' }),
+    targetTeamId: uuid('target_team_id').references(() => team.id, { onDelete: 'cascade' }),
+    requestedByUserId: text('requested_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+    status: text('status').$type<InvitationStatus>().notNull().default('pending'),
+    respondedByUserId: text('responded_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+    respondedAt: timestamp('responded_at', { mode: 'date' }),
+    createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
+  },
+  table => [
+    uniqueIndex('corpus_ownership_transfer_corpus_idx').on(table.corpusId),
+    index('corpus_ownership_transfer_user_idx').on(table.targetUserId),
+    index('corpus_ownership_transfer_team_idx').on(table.targetTeamId),
+    check('corpus_ownership_transfer_status_check', sql`${table.status} IN (${sqlStringList(invitationStatusValues)})`),
+    check('corpus_ownership_transfer_target_check', sql`num_nonnulls(${table.targetUserId}, ${table.targetTeamId}) = 1`),
   ],
 )
 

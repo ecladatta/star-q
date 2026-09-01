@@ -141,6 +141,13 @@
       "when": 1788166011203,
       "tag": "0019_lumpy_roughhouse",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1788187400512,
+      "tag": "0020_furry_may_parker",
+      "breakpoints": true
     }
   ]
 }

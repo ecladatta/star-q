@@ -1,8 +1,10 @@
-import type { RequestActor } from '@/lib/auth-utils'
+import type { DbTransaction } from '@/db/drizzle'
+import type { Corpus } from '@/db/schema'
+import type { AuthenticatedActor, RequestActor } from '@/lib/auth-utils'
 import type { CorpusAccess } from '@/lib/corpus-access-policy'
 import { and, eq } from 'drizzle-orm'
 import { db } from '@/db/drizzle'
-import { annotation, corpus, corpusCollaboration, corpusCustomEntity, document, teamMembership } from '@/db/schema'
+import { annotation, corpus, corpusCollaboration, corpusCustomEntity, document, team, teamMembership } from '@/db/schema'
 import { ForbiddenError, getRequestActor, NotFoundError } from '@/lib/auth-utils'
 import { hasMinimumCorpusAccess, resolveCorpusAccess } from '@/lib/corpus-access-policy'
 
@@ -95,6 +97,27 @@ export async function requireEditCorpus(corpusId: string): Promise<void> {
 
 export async function requireManageCorpus(corpusId: string): Promise<void> {
   await requireCorpusAccess(corpusId, 'manager')
+}
+
+export async function lockCorpusAndRequireManager(trx: DbTransaction, corpusId: string, actor: AuthenticatedActor): Promise<Corpus> {
+  const [resource] = await trx.select().from(corpus).where(eq(corpus.id, corpusId)).for('update')
+  if (!resource) {
+    throw new NotFoundError('Corpus not found.')
+  }
+  if (actor.role === 'admin' || (resource.ownerType === 'user' && resource.ownerUserId === actor.userId)) {
+    return resource
+  }
+  if (resource.ownerType === 'team' && resource.ownerTeamId) {
+    await trx.select({ id: team.id }).from(team).where(eq(team.id, resource.ownerTeamId)).for('update')
+    const [membership] = await trx.select({ role: teamMembership.role })
+      .from(teamMembership)
+      .where(and(eq(teamMembership.teamId, resource.ownerTeamId), eq(teamMembership.userId, actor.userId)))
+      .limit(1)
+    if (membership?.role === 'owner') {
+      return resource
+    }
+  }
+  throw new ForbiddenError('Only an administrator or the current owner may manage this corpus.')
 }
 
 async function getDocumentCorpusId(documentId: string): Promise<string> {
