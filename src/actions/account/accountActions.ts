@@ -8,16 +8,9 @@ import { db } from '@/db/drizzle'
 import { accounts, appSettings, auditLog, corpus, users } from '@/db/schema'
 import { APP_SETTINGS_ID, getAppSettings, isLocalCredentialsEnabled } from '@/lib/app-settings'
 import { ForbiddenError, getAuthenticatedUserForOnboarding } from '@/lib/auth-utils'
+import { getRequiredString } from '@/lib/form-data'
 import { validateDisplayName, validateOAuthProvider, validatePassword, validateUsername } from '@/lib/identity'
 import { hashPassword, verifyPassword } from '@/lib/password-auth'
-
-function getRequiredString(formData: FormData, field: string): string {
-  const value = formData.get(field)
-  if (typeof value !== 'string') {
-    throw new TypeError(`${field} is required.`)
-  }
-  return value
-}
 
 async function insertLocalUser(input: { username: string, name: string, password: string, mustChangePassword?: boolean }) {
   if (!isLocalCredentialsEnabled()) {
