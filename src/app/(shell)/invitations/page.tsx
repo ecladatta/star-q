@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { getMyAcceptedCorpusCollaborations, getPendingInvitations, leaveCorpusCollaboration, respondToCorpusInvitation } from '@/actions/collaboration/collaborationActions'
+import { getMyPendingCorpusOwnershipTransfers, respondToCorpusOwnershipTransfer } from '@/actions/corpus/corpusActions'
 import { respondToTeamInvitation } from '@/actions/team/teamActions'
 import { Page, PageHeader } from '@/components/page'
 import { ServerActionForm } from '@/components/server-action-form'
@@ -14,8 +15,16 @@ export default async function InvitationsPage() {
     redirect('/setup')
   }
   await requirePageUser()
-  const [invitations, accepted] = await Promise.all([getPendingInvitations(), getMyAcceptedCorpusCollaborations()])
-  const total = invitations.teamInvitations.length + invitations.userCorpusInvitations.length + invitations.teamCorpusInvitations.length
+  const [invitations, ownershipTransfers, accepted] = await Promise.all([
+    getPendingInvitations(),
+    getMyPendingCorpusOwnershipTransfers(),
+    getMyAcceptedCorpusCollaborations(),
+  ])
+  const total = invitations.teamInvitations.length
+    + invitations.userCorpusInvitations.length
+    + invitations.teamCorpusInvitations.length
+    + ownershipTransfers.direct.length
+    + ownershipTransfers.forTeams.length
   return (
     <Page>
       <PageHeader title="Invitations" />
@@ -28,6 +37,12 @@ export default async function InvitationsPage() {
         ))}
         {invitations.teamCorpusInvitations.map(invitation => (
           <InvitationRow key={invitation.id} title={`${invitation.teamName} invited to ${invitation.corpusTitle}`} detail={`Corpus role: ${invitation.role}`} accept={respondToCorpusInvitation.bind(null, invitation.id, 'accepted')} decline={respondToCorpusInvitation.bind(null, invitation.id, 'declined')} />
+        ))}
+        {ownershipTransfers.direct.map(transfer => (
+          <InvitationRow key={transfer.id} title={`Take ownership of ${transfer.corpusTitle ?? 'Untitled corpus'}`} detail="Personal corpus ownership" accept={respondToCorpusOwnershipTransfer.bind(null, transfer.id, 'accepted')} decline={respondToCorpusOwnershipTransfer.bind(null, transfer.id, 'declined')} acceptMessage="Ownership transferred" />
+        ))}
+        {ownershipTransfers.forTeams.map(transfer => (
+          <InvitationRow key={transfer.id} title={`${transfer.teamName} can take ownership of ${transfer.corpusTitle ?? 'Untitled corpus'}`} detail="Team corpus ownership" accept={respondToCorpusOwnershipTransfer.bind(null, transfer.id, 'accepted')} decline={respondToCorpusOwnershipTransfer.bind(null, transfer.id, 'declined')} acceptMessage="Ownership transferred" />
         ))}
         {total === 0 && <p className="text-sm text-muted-foreground">No pending invitations.</p>}
       </section>
@@ -74,7 +89,7 @@ function AcceptedCollaborationRow({ title, detail, leave }: { title: string, det
   )
 }
 
-function InvitationRow({ title, detail, accept, decline }: { title: string, detail: string, accept: () => Promise<void>, decline: () => Promise<void> }) {
+function InvitationRow({ title, detail, accept, decline, acceptMessage = 'Invitation accepted' }: { title: string, detail: string, accept: () => Promise<void>, decline: () => Promise<void>, acceptMessage?: string }) {
   return (
     <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card p-3">
       <div className="min-w-0 flex-1">
@@ -84,7 +99,7 @@ function InvitationRow({ title, detail, accept, decline }: { title: string, deta
       <div className="flex shrink-0 items-center gap-2">
         <span className="inline-flex rounded-full border border-border bg-secondary px-2 py-0.5 text-[11px] text-muted-foreground">Pending</span>
         <ServerActionForm action={decline}><Button type="submit" variant="outline" size="sm" className="h-8">Decline</Button></ServerActionForm>
-        <ServerActionForm action={accept} successMessage="Invitation accepted"><Button type="submit" size="sm" className="h-8">Accept</Button></ServerActionForm>
+        <ServerActionForm action={accept} successMessage={acceptMessage}><Button type="submit" size="sm" className="h-8">Accept</Button></ServerActionForm>
       </div>
     </div>
   )

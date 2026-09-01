@@ -1,6 +1,6 @@
 import type { CorpusCollaboratorRole } from '@/db/schema'
 import { getCorpusCollaborations, inviteTeamToCorpus, inviteUserToCorpus, revokeCorpusCollaboration } from '@/actions/collaboration/collaborationActions'
-import { getCorpus, getCorpusOwner, transferCorpusOwnership } from '@/actions/corpus/corpusActions'
+import { cancelCorpusOwnershipTransfer, getCorpus, getCorpusOwner, getPendingCorpusOwnershipTransfer, transferCorpusOwnership } from '@/actions/corpus/corpusActions'
 import { CorpusCollaboratorRoleSelect } from '@/components/corpus-collaborator-role-select'
 import { Page, PageHeader } from '@/components/page'
 import { ServerActionForm } from '@/components/server-action-form'
@@ -8,6 +8,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { requirePageUser } from '@/lib/auth-utils'
+import { getRequiredString } from '@/lib/form-data'
+import { validateCorpusCollaboratorRole } from '@/lib/identity'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,7 +17,12 @@ export default async function CorpusAccessPage({ params }: { params: Promise<{ c
   const { corpusId } = await params
   const actor = await requirePageUser()
   const isAdmin = actor.role === 'admin'
-  const [resource, owner, collaborations] = await Promise.all([getCorpus(corpusId), getCorpusOwner(corpusId), getCorpusCollaborations(corpusId)])
+  const [resource, owner, pendingTransfer, collaborations] = await Promise.all([
+    getCorpus(corpusId),
+    getCorpusOwner(corpusId),
+    getPendingCorpusOwnershipTransfer(corpusId),
+    getCorpusCollaborations(corpusId),
+  ])
   const ownerLabel = resource.ownerType === 'user' && owner.identifier
     ? `@${owner.identifier}`
     : owner.name ?? owner.identifier ?? 'Setup pending'
@@ -37,14 +44,32 @@ export default async function CorpusAccessPage({ params }: { params: Promise<{ c
           {' '}
           {isAdmin
             ? 'Changing the owner takes effect immediately.'
-            : 'A transfer takes effect immediately, and you may lose access to this corpus.'}
+            : 'The target must accept the transfer before ownership changes.'}
         </p>
+        {pendingTransfer && (
+          <div className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-border bg-secondary/40 p-3">
+            <div>
+              <p className="text-[13px] font-medium">Transfer pending</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Waiting for
+                {' '}
+                {pendingTransfer.targetUserId ? `@${pendingTransfer.username}` : pendingTransfer.teamName ?? pendingTransfer.teamSlug}
+                {' '}
+                to accept.
+              </p>
+            </div>
+            <ServerActionForm action={cancelCorpusOwnershipTransfer.bind(null, pendingTransfer.id)}>
+              <Button type="submit" variant="outline" size="sm">Cancel</Button>
+            </ServerActionForm>
+          </div>
+        )}
         <div className="mt-4 grid gap-5 md:grid-cols-2">
           <OwnershipForm
             title={isAdmin ? 'Change to a user' : 'Transfer to a user'}
             label="Exact username"
             field="username"
-            submitLabel={isAdmin ? 'Change owner' : 'Transfer ownership'}
+            submitLabel={isAdmin ? 'Change owner' : 'Request transfer'}
+            successMessage={isAdmin ? undefined : 'Ownership transfer requested'}
             action={async (value) => {
               'use server'
               await transferCorpusOwnership(corpusId, 'user', value)
@@ -54,7 +79,8 @@ export default async function CorpusAccessPage({ params }: { params: Promise<{ c
             title={isAdmin ? 'Change to a team' : 'Transfer to a team'}
             label="Exact team slug"
             field="slug"
-            submitLabel={isAdmin ? 'Change owner' : 'Transfer ownership'}
+            submitLabel={isAdmin ? 'Change owner' : 'Request transfer'}
+            successMessage={isAdmin ? undefined : 'Ownership transfer requested'}
             action={async (value) => {
               'use server'
               await transferCorpusOwnership(corpusId, 'team', value)
@@ -125,16 +151,17 @@ export default async function CorpusAccessPage({ params }: { params: Promise<{ c
   )
 }
 
-function OwnershipForm({ title, label, field, submitLabel, action }: { title: string, label: string, field: string, submitLabel: string, action: (value: string) => Promise<void> }) {
+function OwnershipForm({ title, label, field, submitLabel, successMessage, action }: { title: string, label: string, field: string, submitLabel: string, successMessage?: string, action: (value: string) => Promise<void> }) {
   return (
     <div className="rounded-lg border border-border bg-background p-4">
       <h3 className="mb-4 text-sm font-medium text-foreground">{title}</h3>
       <ServerActionForm
         action={async (formData) => {
           'use server'
-          await action(String(formData.get(field)))
+          await action(getRequiredString(formData, field))
         }}
         className="space-y-4"
+        successMessage={successMessage}
       >
         <div className="space-y-2">
           <Label htmlFor={`owner-${field}`}>{label}</Label>
@@ -153,7 +180,7 @@ function InviteForm({ title, label, field, grantsImmediately, action }: { title:
       <ServerActionForm
         action={async (formData) => {
           'use server'
-          await action(String(formData.get(field)), String(formData.get('role')) as CorpusCollaboratorRole)
+          await action(getRequiredString(formData, field), validateCorpusCollaboratorRole(getRequiredString(formData, 'role')))
         }}
         className="space-y-4"
         successMessage={grantsImmediately ? 'Access granted' : 'Invitation sent'}
