@@ -247,7 +247,7 @@ export async function transferCorpusOwnership(corpusId: string, targetType: Tran
   })
 
   revalidatePath('/invitations')
-  revalidatePath(`/corpus/${corpusId}/access`)
+  revalidatePath(`/corpus/${corpusId}/settings`)
   if (changed) {
     revalidatePath('/')
     revalidatePath('/admin/corpora')
@@ -379,7 +379,7 @@ export async function respondToCorpusOwnershipTransfer(transferId: string, respo
   })
 
   revalidatePath('/invitations')
-  revalidatePath(`/corpus/${candidate.corpusId}/access`)
+  revalidatePath(`/corpus/${candidate.corpusId}/settings`)
   if (response === 'accepted') {
     revalidatePath('/')
     revalidatePath('/admin/corpora')
@@ -410,7 +410,7 @@ export async function cancelCorpusOwnershipTransfer(transferId: string) {
     await trx.insert(auditLog).values({ actorUserId: actor.userId, action: 'corpus.ownership_transfer_cancelled', targetType: 'corpus', targetId: transfer.corpusId, metadata: { transferId } })
   })
   revalidatePath('/invitations')
-  revalidatePath(`/corpus/${candidate.corpusId}/access`)
+  revalidatePath(`/corpus/${candidate.corpusId}/settings`)
 }
 
 export async function addCorpus(title: string, owner: CorpusOwnerInput) {
