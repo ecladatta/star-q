@@ -95,7 +95,7 @@ export default async function AdminUserPage({ params }: { params: Promise<{ user
         <ConfirmActionButton
           action={async () => {
             'use server'
-            await deleteAdminManagedUser(user.id)
+            await deleteAdminManagedUser(user.id, impact)
           }}
           title="Permanently delete user?"
           description="This will permanently delete the user and all dependent data. This action cannot be undone."

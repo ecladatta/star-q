@@ -1,5 +1,6 @@
 'use server'
 
+import type { DbExecutor, DbTransaction } from '@/db/drizzle'
 import type { UserRole } from '@/db/schema'
 import { and, count, desc, eq, getTableColumns, inArray, ne, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
@@ -10,8 +11,7 @@ import { APP_SETTINGS_ID, getAppSettings, isLocalCredentialsEnabled } from '@/li
 import { ForbiddenError, NotFoundError, requireAdmin } from '@/lib/auth-utils'
 import { validateDisplayName, validatePassword, validateUsername, validateUserRole } from '@/lib/identity'
 import { hashPassword } from '@/lib/password-auth'
-
-type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0]
+import { getSoleOwnedTeamIds } from '@/lib/team-access'
 
 async function countOtherActiveAdmins(trx: DbTransaction, userId: string): Promise<number> {
   const [row] = await trx.select({ count: count() }).from(users).where(and(
@@ -87,14 +87,17 @@ export async function createAdminManagedUser(input: { username: string, name: st
   const name = validateDisplayName(input.name)
   const role = validateUserRole(input.role)
   const passwordHash = await hashPassword(validatePassword(input.temporaryPassword))
-  const [createdUser] = await db.insert(users).values({
-    username,
-    name,
-    passwordHash,
-    mustChangePassword: true,
-    role,
-  }).returning()
-  await db.insert(auditLog).values({ actorUserId: actor.userId, action: 'admin.user_created', targetType: 'user', targetId: createdUser.id, metadata: { role } })
+  const createdUser = await db.transaction(async (trx) => {
+    const [created] = await trx.insert(users).values({
+      username,
+      name,
+      passwordHash,
+      mustChangePassword: true,
+      role,
+    }).returning()
+    await trx.insert(auditLog).values({ actorUserId: actor.userId, action: 'admin.user_created', targetType: 'user', targetId: created.id, metadata: { role } })
+    return created
+  })
   revalidatePath('/admin/users')
   return createdUser
 }
@@ -126,8 +129,12 @@ export async function setUserBlocked(userId: string, blocked: boolean) {
   }
   const changed = await db.transaction(async (trx) => {
     await lockAdminInvariant(trx)
+    await trx.select({ id: users.id }).from(users).where(eq(users.id, userId)).for('update')
     if (blocked) {
       await assertNotFinalActiveAdmin(trx, userId)
+      if ((await getSoleOwnedTeamIds(trx, userId)).length) {
+        throw new ForbiddenError('Appoint another active team owner before blocking this user.')
+      }
     }
     const updated = await trx.update(users).set({
       status: blocked ? 'blocked' : 'active',
@@ -171,46 +178,60 @@ export async function resetUserPassword(userId: string, temporaryPassword: strin
   return changed
 }
 
-export async function getUserDeletionImpact(userId: string) {
+export type DeletionImpact = {
+  personalCorpora: number
+  soleOwnedTeams: number
+  teamCorpora: number
+}
+
+async function calculateUserDeletionImpact(executor: DbExecutor, userId: string): Promise<{ impact: DeletionImpact, soleOwnedTeamIds: string[] }> {
+  const [personal] = await executor.select({ count: count() }).from(corpus).where(eq(corpus.ownerUserId, userId))
+  const soleOwnedTeamIds = await getSoleOwnedTeamIds(executor, userId)
+  const [teamCorpora] = soleOwnedTeamIds.length
+    ? await executor.select({ count: count() }).from(corpus).where(inArray(corpus.ownerTeamId, soleOwnedTeamIds))
+    : [{ count: 0 }]
+  return {
+    impact: { personalCorpora: personal?.count ?? 0, soleOwnedTeams: soleOwnedTeamIds.length, teamCorpora: teamCorpora?.count ?? 0 },
+    soleOwnedTeamIds,
+  }
+}
+
+export async function getUserDeletionImpact(userId: string): Promise<DeletionImpact> {
   await requireAdmin()
   const [target] = await db.select({ id: users.id }).from(users).where(eq(users.id, userId)).limit(1)
   if (!target) {
     throw new NotFoundError('User not found.')
   }
-  const [personal] = await db.select({ count: count() }).from(corpus).where(eq(corpus.ownerUserId, userId))
-  const ownerTeams = await db.select({ teamId: teamMembership.teamId }).from(teamMembership).where(and(eq(teamMembership.userId, userId), eq(teamMembership.role, 'owner')))
-  const soleOwnedTeamIds: string[] = []
-  for (const ownerTeam of ownerTeams) {
-    const [owners] = await db.select({ count: count() }).from(teamMembership).where(and(eq(teamMembership.teamId, ownerTeam.teamId), eq(teamMembership.role, 'owner')))
-    if ((owners?.count ?? 0) === 1) {
-      soleOwnedTeamIds.push(ownerTeam.teamId)
-    }
-  }
-  const [teamCorpora] = soleOwnedTeamIds.length
-    ? await db.select({ count: count() }).from(corpus).where(inArray(corpus.ownerTeamId, soleOwnedTeamIds))
-    : [{ count: 0 }]
-  return { personalCorpora: personal?.count ?? 0, soleOwnedTeams: soleOwnedTeamIds.length, teamCorpora: teamCorpora?.count ?? 0 }
+  return (await calculateUserDeletionImpact(db, userId)).impact
 }
 
-export async function deleteAdminManagedUser(userId: string) {
+export async function deleteAdminManagedUser(userId: string, expectedImpact: DeletionImpact) {
   const actor = await requireAdmin()
   if (actor.userId === userId) {
     throw new ForbiddenError('Administrators cannot delete their own current account.')
   }
-  const impact = await getUserDeletionImpact(userId)
-
   await db.transaction(async (trx) => {
     await lockAdminInvariant(trx)
-    await trx.execute(sql`SELECT 1 FROM ${users} WHERE ${users.id} = ${userId} FOR UPDATE`)
-    await assertNotFinalActiveAdmin(trx, userId)
     const ownerTeams = await trx.select({ teamId: teamMembership.teamId }).from(teamMembership).where(and(eq(teamMembership.userId, userId), eq(teamMembership.role, 'owner')))
-    ownerTeams.sort((left, right) => left.teamId.localeCompare(right.teamId))
-    for (const ownerTeam of ownerTeams) {
-      await trx.execute(sql`SELECT 1 FROM ${team} WHERE ${team.id} = ${ownerTeam.teamId} FOR UPDATE`)
-      const [owners] = await trx.select({ count: count() }).from(teamMembership).where(and(eq(teamMembership.teamId, ownerTeam.teamId), eq(teamMembership.role, 'owner')))
-      if ((owners?.count ?? 0) === 1) {
-        await trx.delete(team).where(eq(team.id, ownerTeam.teamId))
-      }
+    const ownerTeamIds = ownerTeams.map(ownerTeam => ownerTeam.teamId)
+    if (ownerTeamIds.length) {
+      await trx.select({ id: team.id }).from(team).where(inArray(team.id, ownerTeamIds)).orderBy(team.id).for('update')
+    }
+    await trx.select({ id: users.id }).from(users).where(eq(users.id, userId)).for('update')
+    await assertNotFinalActiveAdmin(trx, userId)
+    await trx.select({ id: corpus.id }).from(corpus).where(eq(corpus.ownerUserId, userId)).orderBy(corpus.id).for('update')
+    const currentOwnerTeams = await trx.select({ teamId: teamMembership.teamId }).from(teamMembership).where(and(eq(teamMembership.userId, userId), eq(teamMembership.role, 'owner')))
+    if (currentOwnerTeams.some(current => !ownerTeamIds.includes(current.teamId))) {
+      throw new ForbiddenError('Team ownership changed while deleting this user. Review the impact and try again.')
+    }
+    const { impact, soleOwnedTeamIds } = await calculateUserDeletionImpact(trx, userId)
+    if (impact.personalCorpora !== expectedImpact.personalCorpora
+      || impact.soleOwnedTeams !== expectedImpact.soleOwnedTeams
+      || impact.teamCorpora !== expectedImpact.teamCorpora) {
+      throw new ForbiddenError('Deletion impact changed. Review the updated impact before trying again.')
+    }
+    if (soleOwnedTeamIds.length) {
+      await trx.delete(team).where(inArray(team.id, soleOwnedTeamIds))
     }
     const deleted = await trx.delete(users).where(eq(users.id, userId)).returning({ id: users.id })
     if (!deleted.length) {

@@ -27,23 +27,28 @@ export async function createAdminApiKey(input: { name: string }): Promise<{ id: 
   const actor = await requireAdmin()
   const name = validateDisplayName(input.name)
   const rawKey = `sk_${randomBytes(32).toString('hex')}`
-  const [created] = await db.insert(apiKey).values({
-    name,
-    keyHash: hashApiKey(rawKey),
-    keyPrefix: rawKey.slice(0, 11),
-    createdByUserId: actor.userId,
-  }).returning({ id: apiKey.id })
-  await db.insert(auditLog).values({ actorUserId: actor.userId, action: 'admin.api_key_created', targetType: 'api_key', targetId: created.id, metadata: { name } })
+  const created = await db.transaction(async (trx) => {
+    const [result] = await trx.insert(apiKey).values({
+      name,
+      keyHash: hashApiKey(rawKey),
+      keyPrefix: rawKey.slice(0, 11),
+      createdByUserId: actor.userId,
+    }).returning({ id: apiKey.id })
+    await trx.insert(auditLog).values({ actorUserId: actor.userId, action: 'admin.api_key_created', targetType: 'api_key', targetId: result.id, metadata: { name } })
+    return result
+  })
   revalidatePath('/admin/api-keys')
   return { id: created.id, rawKey }
 }
 
 export async function deleteAdminApiKey(apiKeyId: string) {
   const actor = await requireAdmin()
-  const deleted = await db.delete(apiKey).where(eq(apiKey.id, apiKeyId)).returning({ id: apiKey.id })
-  if (!deleted.length) {
-    throw new NotFoundError('API key not found.')
-  }
-  await db.insert(auditLog).values({ actorUserId: actor.userId, action: 'admin.api_key_deleted', targetType: 'api_key', targetId: apiKeyId })
+  await db.transaction(async (trx) => {
+    const deleted = await trx.delete(apiKey).where(eq(apiKey.id, apiKeyId)).returning({ id: apiKey.id })
+    if (!deleted.length) {
+      throw new NotFoundError('API key not found.')
+    }
+    await trx.insert(auditLog).values({ actorUserId: actor.userId, action: 'admin.api_key_deleted', targetType: 'api_key', targetId: apiKeyId })
+  })
   revalidatePath('/admin/api-keys')
 }
