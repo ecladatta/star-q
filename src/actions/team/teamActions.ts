@@ -1,7 +1,8 @@
 'use server'
 
+import type { DbTransaction } from '@/db/drizzle'
 import type { TeamRole } from '@/db/schema'
-import { and, count, eq, sql } from 'drizzle-orm'
+import { and, count, eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { db } from '@/db/drizzle'
@@ -9,9 +10,7 @@ import { auditLog, team, teamInvitation, teamMembership, users } from '@/db/sche
 import { ForbiddenError, getRequestActor, NotFoundError } from '@/lib/auth-utils'
 import { MAX_OWNED_TEAMS_PER_USER, MAX_PENDING_INVITES_PER_TEAM } from '@/lib/constants'
 import { normalizeUsername, validateDisplayName, validateInvitationResponse, validateTeamRole, validateTeamSlug } from '@/lib/identity'
-import { getTeamRole } from '@/lib/team-access'
-
-type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0]
+import { getTeamRole, hasOtherActiveTeamOwner } from '@/lib/team-access'
 
 async function requireUserActor() {
   const actor = await getRequestActor()
@@ -92,7 +91,7 @@ export async function getTeamBySlug(slugValue: string) {
         .where(eq(teamInvitation.teamId, foundTeam.id))
     : []
 
-  return { team: foundTeam, membershipRole: actor.role === 'admin' ? 'owner' as const : membershipRole, members, invitations }
+  return { team: foundTeam, membershipRole, canManage: actor.role === 'admin' || membershipRole === 'owner', members, invitations }
 }
 
 export async function createTeam(nameValue: string, slugValue: string) {
@@ -100,6 +99,7 @@ export async function createTeam(nameValue: string, slugValue: string) {
   const name = validateDisplayName(nameValue)
   const slug = validateTeamSlug(slugValue)
   const createdTeam = await db.transaction(async (trx) => {
+    await trx.select({ id: users.id }).from(users).where(eq(users.id, actor.userId)).for('update')
     if (actor.role !== 'admin') {
       const [owned] = await trx.select({ count: count() })
         .from(teamMembership)
@@ -129,13 +129,11 @@ export async function inviteTeamMember(teamId: string, usernameValue: string, ro
 
   await db.transaction(async (trx) => {
     await lockTeamAndRequireOwner(trx, teamId, actor)
-    const [pending] = await trx.select({ count: count() })
-      .from(teamInvitation)
-      .where(and(eq(teamInvitation.teamId, teamId), eq(teamInvitation.status, 'pending')))
-    if ((pending?.count ?? 0) >= MAX_PENDING_INVITES_PER_TEAM) {
-      throw new Error(`This team can have at most ${MAX_PENDING_INVITES_PER_TEAM} pending invitations.`)
-    }
-    const [invitee] = await trx.select({ id: users.id, status: users.status }).from(users).where(eq(users.username, username)).limit(1)
+    const [invitee] = await trx.select({ id: users.id, status: users.status })
+      .from(users)
+      .where(eq(users.username, username))
+      .limit(1)
+      .for('update')
     if (!invitee || invitee.status !== 'active') {
       throw new NotFoundError('No active user has that exact username.')
     }
@@ -145,6 +143,18 @@ export async function inviteTeamMember(teamId: string, usernameValue: string, ro
       .limit(1)
     if (membership) {
       throw new Error('This user is already a team member.')
+    }
+    const [existingInvitation] = await trx.select({ status: teamInvitation.status })
+      .from(teamInvitation)
+      .where(and(eq(teamInvitation.teamId, teamId), eq(teamInvitation.inviteeUserId, invitee.id)))
+      .limit(1)
+    if (existingInvitation?.status !== 'pending') {
+      const [pending] = await trx.select({ count: count() })
+        .from(teamInvitation)
+        .where(and(eq(teamInvitation.teamId, teamId), eq(teamInvitation.status, 'pending')))
+      if ((pending?.count ?? 0) >= MAX_PENDING_INVITES_PER_TEAM) {
+        throw new Error(`This team can have at most ${MAX_PENDING_INVITES_PER_TEAM} pending invitations.`)
+      }
     }
     await trx.insert(teamInvitation).values({
       teamId,
@@ -172,12 +182,21 @@ export async function inviteTeamMember(teamId: string, usernameValue: string, ro
 export async function respondToTeamInvitation(invitationId: string, response: 'accepted' | 'declined') {
   const actor = await requireUserActor()
   response = validateInvitationResponse(response)
+  const [candidate] = await db.select({ teamId: teamInvitation.teamId }).from(teamInvitation).where(eq(teamInvitation.id, invitationId)).limit(1)
+  if (!candidate) {
+    throw new NotFoundError('Pending invitation not found.')
+  }
   await db.transaction(async (trx) => {
-    const [invitation] = await trx.select().from(teamInvitation).where(eq(teamInvitation.id, invitationId)).limit(1)
-    if (!invitation || invitation.inviteeUserId !== actor.userId || invitation.status !== 'pending') {
+    const [foundTeam] = await trx.select({ id: team.id }).from(team).where(eq(team.id, candidate.teamId)).for('update')
+    const [invitation] = await trx.select().from(teamInvitation).where(eq(teamInvitation.id, invitationId)).for('update')
+    if (!foundTeam || !invitation || invitation.inviteeUserId !== actor.userId || invitation.status !== 'pending') {
       throw new NotFoundError('Pending invitation not found.')
     }
     if (response === 'accepted') {
+      const [activeActor] = await trx.select({ status: users.status }).from(users).where(eq(users.id, actor.userId)).for('update')
+      if (activeActor?.status !== 'active') {
+        throw new NotFoundError('Pending invitation not found.')
+      }
       await trx.insert(teamMembership).values({ teamId: invitation.teamId, userId: actor.userId, role: invitation.role })
     }
     await trx.update(teamInvitation).set({ status: response, respondedAt: new Date(), updatedAt: new Date() }).where(eq(teamInvitation.id, invitationId))
@@ -194,8 +213,7 @@ export async function respondToTeamInvitation(invitationId: string, response: 'a
 }
 
 async function lockTeamAndRequireOwner(trx: DbTransaction, teamId: string, actor: Awaited<ReturnType<typeof requireUserActor>>) {
-  await trx.execute(sql`SELECT 1 FROM ${team} WHERE ${team.id} = ${teamId} FOR UPDATE`)
-  const [foundTeam] = await trx.select({ id: team.id }).from(team).where(eq(team.id, teamId)).limit(1)
+  const [foundTeam] = await trx.select({ id: team.id }).from(team).where(eq(team.id, teamId)).for('update')
   if (!foundTeam) {
     throw new NotFoundError('Team not found.')
   }
@@ -216,9 +234,8 @@ async function assertOwnerWillRemain(trx: DbTransaction, teamId: string, userId:
   if (membership?.role !== 'owner') {
     return
   }
-  const [owners] = await trx.select({ count: count() }).from(teamMembership).where(and(eq(teamMembership.teamId, teamId), eq(teamMembership.role, 'owner')))
-  if ((owners?.count ?? 0) <= 1) {
-    throw new ForbiddenError('A team must retain at least one owner.')
+  if (!await hasOtherActiveTeamOwner(trx, teamId, userId)) {
+    throw new ForbiddenError('A team must retain at least one active owner.')
   }
 }
 
@@ -229,6 +246,11 @@ export async function updateTeamMemberRole(teamId: string, userId: string, role:
     await lockTeamAndRequireOwner(trx, teamId, actor)
     if (role === 'member') {
       await assertOwnerWillRemain(trx, teamId, userId)
+    } else {
+      const [targetUser] = await trx.select({ status: users.status }).from(users).where(eq(users.id, userId)).for('update')
+      if (targetUser?.status !== 'active') {
+        throw new ForbiddenError('Only active users can be team owners.')
+      }
     }
     const result = await trx.update(teamMembership).set({ role, updatedAt: new Date() }).where(and(eq(teamMembership.teamId, teamId), eq(teamMembership.userId, userId))).returning()
     if (!result.length) {
@@ -256,7 +278,10 @@ export async function removeTeamMember(teamId: string, userId: string) {
 export async function leaveTeam(teamId: string) {
   const actor = await requireUserActor()
   await db.transaction(async (trx) => {
-    await trx.execute(sql`SELECT 1 FROM ${team} WHERE ${team.id} = ${teamId} FOR UPDATE`)
+    const [foundTeam] = await trx.select({ id: team.id }).from(team).where(eq(team.id, teamId)).for('update')
+    if (!foundTeam) {
+      throw new NotFoundError('Team not found.')
+    }
     const [membership] = await trx.select({ role: teamMembership.role })
       .from(teamMembership)
       .where(and(eq(teamMembership.teamId, teamId), eq(teamMembership.userId, actor.userId)))
@@ -275,7 +300,7 @@ export async function leaveTeam(teamId: string) {
 export async function cancelTeamInvitation(invitationId: string) {
   const actor = await requireUserActor()
   await db.transaction(async (trx) => {
-    const [invitation] = await trx.select({ teamId: teamInvitation.teamId, status: teamInvitation.status })
+    const [invitation] = await trx.select({ teamId: teamInvitation.teamId })
       .from(teamInvitation)
       .where(eq(teamInvitation.id, invitationId))
       .limit(1)
@@ -283,7 +308,11 @@ export async function cancelTeamInvitation(invitationId: string) {
       throw new NotFoundError('Team invitation not found.')
     }
     await lockTeamAndRequireOwner(trx, invitation.teamId, actor)
-    if (invitation.status !== 'pending') {
+    const [lockedInvitation] = await trx.select({ status: teamInvitation.status })
+      .from(teamInvitation)
+      .where(eq(teamInvitation.id, invitationId))
+      .for('update')
+    if (!lockedInvitation || lockedInvitation.status !== 'pending') {
       throw new ForbiddenError('Only pending invitations can be cancelled.')
     }
     await trx.update(teamInvitation).set({ status: 'revoked', respondedAt: new Date(), updatedAt: new Date() }).where(eq(teamInvitation.id, invitationId))

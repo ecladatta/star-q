@@ -1,4 +1,3 @@
-import type { TeamRole } from '@/db/schema'
 import { cancelTeamInvitation, deleteTeam, getTeamBySlug, inviteTeamMember, leaveTeam, removeTeamMember, updateTeamMemberRole } from '@/actions/team/teamActions'
 import { ConfirmActionButton } from '@/components/confirm-action-button'
 import { Page, PageHeader } from '@/components/page'
@@ -6,6 +5,8 @@ import { ServerActionForm } from '@/components/server-action-form'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { getRequiredString } from '@/lib/form-data'
+import { validateTeamRole } from '@/lib/identity'
 import { cn } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
@@ -20,12 +21,12 @@ function statusPillClass(status: string) {
 export default async function TeamPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   const data = await getTeamBySlug(slug)
-  const canManage = data.membershipRole === 'owner'
+  const canManage = data.canManage
   return (
     <Page>
       <PageHeader
         title={data.team.name}
-        description={`${data.team.slug} · Your role: ${data.membershipRole}`}
+        description={`${data.team.slug} · Your role: ${data.membershipRole ?? 'Administrator'}`}
       />
       {canManage && (
         <section className="mb-6 rounded-lg border border-border bg-card p-5">
@@ -33,7 +34,7 @@ export default async function TeamPage({ params }: { params: Promise<{ slug: str
           <ServerActionForm
             action={async (formData) => {
               'use server'
-              await inviteTeamMember(data.team.id, String(formData.get('username')), String(formData.get('role')) as TeamRole)
+              await inviteTeamMember(data.team.id, getRequiredString(formData, 'username'), validateTeamRole(getRequiredString(formData, 'role')))
             }}
             className="grid gap-4 sm:grid-cols-[1fr_auto_auto] sm:items-end"
           >
@@ -123,25 +124,27 @@ export default async function TeamPage({ params }: { params: Promise<{ slug: str
         </section>
       )}
       <section className="mt-8 flex justify-end gap-3 border-t border-border pt-6">
-        <ConfirmActionButton
-          action={async () => {
-            'use server'
-            await leaveTeam(data.team.id)
-          }}
-          title="Leave team?"
-          description={(
-            <>
-              You are about to leave
-              {' '}
-              <strong>{data.team.name}</strong>
-              . You will lose access to its corpora unless another member shares them with you.
-            </>
-          )}
-          confirmLabel="Leave team"
-          variant="outline"
-        >
-          Leave team
-        </ConfirmActionButton>
+        {data.membershipRole && (
+          <ConfirmActionButton
+            action={async () => {
+              'use server'
+              await leaveTeam(data.team.id)
+            }}
+            title="Leave team?"
+            description={(
+              <>
+                You are about to leave
+                {' '}
+                <strong>{data.team.name}</strong>
+                . You will lose access to its corpora unless another member shares them with you.
+              </>
+            )}
+            confirmLabel="Leave team"
+            variant="outline"
+          >
+            Leave team
+          </ConfirmActionButton>
+        )}
         {canManage && (
           <ConfirmActionButton
             action={async () => {
