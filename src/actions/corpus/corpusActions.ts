@@ -7,19 +7,17 @@ import type { CorpusAccess } from '@/lib/corpus-access'
 import type { CorpusSettings } from '@/lib/corpus-settings'
 import { and, count, countDistinct, desc, eq, getTableColumns, inArray, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
 import { db } from '@/db/drizzle'
-import { annotation, annotationComponent, annotationQualifier, auditLog, corpus, corpusCollaboration, corpusCustomEntity, corpusOwnershipTransfer, document, team, teamMembership, users } from '@/db/schema'
+import { annotation, annotationComponent, annotationQualifier, auditLog, corpus, corpusCollaboration, corpusCustomEntity, document, team, teamMembership, users } from '@/db/schema'
 import { ForbiddenError, getRequestActor, NotFoundError } from '@/lib/auth-utils'
 import { MAX_CORPORA_PER_TEAM, MAX_CUSTOM_ENTITIES_PER_CORPUS, MAX_OWNED_CORPORA_PER_USER } from '@/lib/constants'
-import { getCorpusAccessForActor, lockCorpusAndRequireManager, requireEditCorpus, requireEditCustomEntity, requireManageCorpus, requireViewCorpus } from '@/lib/corpus-access'
+import { getCorpusAccessForActor, lockCorpusAndRequireManager, requireEditCorpus, requireEditCustomEntity, requireViewCorpus } from '@/lib/corpus-access'
 import { mergeCorpusSettings, sanitizeCorpusSettingsPatch } from '@/lib/corpus-settings'
-import { validateCorpusVisibility, validateInvitationResponse, validateTeamSlug, validateUsername } from '@/lib/identity'
+import { validateCorpusVisibility } from '@/lib/identity'
 import { assertTeamHasActiveOwner } from '@/lib/team-access'
 
 export type DocumentMetadata = Omit<Document, 'raw'> & { annotationsCount: number }
 export type CorpusOwnerInput = { type: 'user' } | { type: 'team', teamId: string }
-type TransferTargetType = 'user' | 'team'
 type ResolvedCorpusOwner
   = | { ownerType: 'user', ownerUserId: string, ownerTeamId: null }
     | { ownerType: 'team', ownerUserId: null, ownerTeamId: string }
@@ -117,33 +115,6 @@ async function assertWithinCorpusLimit(
   }
 }
 
-async function resolveTransferredCorpusOwner(executor: DbExecutor, targetType: TransferTargetType, identifierValue: string): Promise<ResolvedCorpusOwner> {
-  if (targetType === 'user') {
-    const username = validateUsername(identifierValue)
-    const [targetUser] = await executor.select({ id: users.id, status: users.status })
-      .from(users)
-      .where(eq(users.username, username))
-      .limit(1)
-      .for('update')
-    if (!targetUser || targetUser.status !== 'active') {
-      throw new NotFoundError('No active user has that exact username.')
-    }
-    return { ownerType: 'user' as const, ownerUserId: targetUser.id, ownerTeamId: null }
-  }
-
-  if (targetType === 'team') {
-    const slug = validateTeamSlug(identifierValue)
-    const [targetTeam] = await executor.select({ id: team.id }).from(team).where(eq(team.slug, slug)).limit(1).for('update')
-    if (!targetTeam) {
-      throw new NotFoundError('No team has that exact slug.')
-    }
-    await assertTeamHasActiveOwner(executor, targetTeam.id)
-    return { ownerType: 'team' as const, ownerUserId: null, ownerTeamId: targetTeam.id }
-  }
-
-  throw new Error('Invalid corpus owner type.')
-}
-
 async function applyCorpusOwnershipChange(
   trx: DbTransaction,
   corpusId: string,
@@ -182,235 +153,62 @@ async function applyCorpusOwnershipChange(
   })
 }
 
-export async function transferCorpusOwnership(corpusId: string, targetType: TransferTargetType, identifierValue: string) {
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+export async function moveCorpusToTeam(corpusId: string, targetTeamId: string) {
   const actor = await getRequestActor()
   if (actor.type !== 'user') {
     throw new ForbiddenError()
   }
-
-  const changed = await db.transaction(async (trx): Promise<boolean> => {
-    const resource = await lockCorpusAndRequireManager(trx, corpusId, actor)
-    const nextOwner = await resolveTransferredCorpusOwner(trx, targetType, identifierValue)
-    const alreadyOwnsCorpus = nextOwner.ownerType === resource.ownerType
-      && nextOwner.ownerUserId === resource.ownerUserId
-      && nextOwner.ownerTeamId === resource.ownerTeamId
-    if (alreadyOwnsCorpus) {
-      throw new Error('That user or team already owns this corpus.')
-    }
-
-    if (actor.role === 'admin') {
-      await applyCorpusOwnershipChange(trx, corpusId, resource, nextOwner, actor)
-      await trx.update(corpusOwnershipTransfer).set({ status: 'revoked', updatedAt: new Date() }).where(and(
-        eq(corpusOwnershipTransfer.corpusId, corpusId),
-        eq(corpusOwnershipTransfer.status, 'pending'),
-      ))
-      return true
-    }
-
-    const [existingTransfer] = await trx.select({
-      targetUserId: corpusOwnershipTransfer.targetUserId,
-      targetTeamId: corpusOwnershipTransfer.targetTeamId,
-      status: corpusOwnershipTransfer.status,
-    }).from(corpusOwnershipTransfer).where(eq(corpusOwnershipTransfer.corpusId, corpusId)).limit(1)
-    if (existingTransfer?.status === 'pending'
-      && existingTransfer.targetUserId === nextOwner.ownerUserId
-      && existingTransfer.targetTeamId === nextOwner.ownerTeamId) {
-      return false
-    }
-
-    await trx.insert(corpusOwnershipTransfer).values({
-      corpusId,
-      targetUserId: nextOwner.ownerUserId,
-      targetTeamId: nextOwner.ownerTeamId,
-      requestedByUserId: actor.userId,
-      status: 'pending',
-    }).onConflictDoUpdate({
-      target: corpusOwnershipTransfer.corpusId,
-      set: {
-        targetUserId: nextOwner.ownerUserId,
-        targetTeamId: nextOwner.ownerTeamId,
-        requestedByUserId: actor.userId,
-        status: 'pending',
-        respondedByUserId: null,
-        respondedAt: null,
-        updatedAt: new Date(),
-      },
-    })
-    await trx.insert(auditLog).values({
-      actorUserId: actor.userId,
-      action: 'corpus.ownership_transfer_requested',
-      targetType: 'corpus',
-      targetId: corpusId,
-      metadata: { targetUserId: nextOwner.ownerUserId, targetTeamId: nextOwner.ownerTeamId },
-    })
-    return false
-  })
-
-  revalidatePath('/invitations')
-  revalidatePath(`/corpus/${corpusId}/settings`)
-  if (changed) {
-    revalidatePath('/')
-    revalidatePath('/admin/corpora')
-    revalidatePath(`/corpus/${corpusId}`)
-    redirect('/admin/corpora')
+  if (!UUID_PATTERN.test(targetTeamId)) {
+    throw new Error('Invalid team id.')
   }
-}
-
-export async function getPendingCorpusOwnershipTransfer(corpusId: string) {
-  await requireManageCorpus(corpusId)
-  const [pending] = await db.select({
-    id: corpusOwnershipTransfer.id,
-    targetUserId: corpusOwnershipTransfer.targetUserId,
-    targetTeamId: corpusOwnershipTransfer.targetTeamId,
-    username: users.username,
-    teamName: team.name,
-    teamSlug: team.slug,
-  })
-    .from(corpusOwnershipTransfer)
-    .leftJoin(users, eq(users.id, corpusOwnershipTransfer.targetUserId))
-    .leftJoin(team, eq(team.id, corpusOwnershipTransfer.targetTeamId))
-    .where(and(eq(corpusOwnershipTransfer.corpusId, corpusId), eq(corpusOwnershipTransfer.status, 'pending')))
-    .limit(1)
-  return pending ?? null
-}
-
-export async function getMyPendingCorpusOwnershipTransfers() {
-  const actor = await getRequestActor()
-  if (actor.type !== 'user') {
-    throw new ForbiddenError()
-  }
-  const [direct, forTeams] = await Promise.all([
-    db.select({
-      id: corpusOwnershipTransfer.id,
-      corpusId: corpus.id,
-      corpusTitle: corpus.title,
-      createdAt: corpusOwnershipTransfer.createdAt,
-    })
-      .from(corpusOwnershipTransfer)
-      .innerJoin(corpus, eq(corpus.id, corpusOwnershipTransfer.corpusId))
-      .where(and(
-        eq(corpusOwnershipTransfer.targetUserId, actor.userId),
-        eq(corpusOwnershipTransfer.status, 'pending'),
-      )),
-    db.select({
-      id: corpusOwnershipTransfer.id,
-      corpusId: corpus.id,
-      corpusTitle: corpus.title,
-      teamId: team.id,
-      teamName: team.name,
-      teamSlug: team.slug,
-      createdAt: corpusOwnershipTransfer.createdAt,
-    })
-      .from(corpusOwnershipTransfer)
-      .innerJoin(corpus, eq(corpus.id, corpusOwnershipTransfer.corpusId))
-      .innerJoin(team, eq(team.id, corpusOwnershipTransfer.targetTeamId))
-      .innerJoin(teamMembership, eq(teamMembership.teamId, team.id))
-      .where(and(
-        eq(teamMembership.userId, actor.userId),
-        eq(teamMembership.role, 'owner'),
-        eq(corpusOwnershipTransfer.status, 'pending'),
-      )),
-  ])
-  return { direct, forTeams }
-}
-
-export async function respondToCorpusOwnershipTransfer(transferId: string, responseValue: 'accepted' | 'declined') {
-  const actor = await getRequestActor()
-  if (actor.type !== 'user') {
-    throw new ForbiddenError()
-  }
-  const response = validateInvitationResponse(responseValue)
-  const [candidate] = await db.select({ corpusId: corpusOwnershipTransfer.corpusId })
-    .from(corpusOwnershipTransfer)
-    .where(eq(corpusOwnershipTransfer.id, transferId))
-    .limit(1)
-  if (!candidate) {
-    throw new NotFoundError('Pending ownership transfer not found.')
-  }
-
   await db.transaction(async (trx) => {
-    const [resource] = await trx.select().from(corpus).where(eq(corpus.id, candidate.corpusId)).for('update')
-    const [transfer] = await trx.select().from(corpusOwnershipTransfer).where(eq(corpusOwnershipTransfer.id, transferId)).for('update')
-    if (!resource || !transfer || transfer.status !== 'pending') {
-      throw new NotFoundError('Pending ownership transfer not found.')
+    const resource = await lockCorpusAndRequireManager(trx, corpusId, actor)
+    const [targetTeam] = await trx.select().from(team).where(eq(team.id, targetTeamId)).for('update')
+    if (!targetTeam) {
+      throw new NotFoundError('Team not found.')
     }
-
-    if (transfer.targetUserId) {
-      if (actor.role !== 'admin' && transfer.targetUserId !== actor.userId) {
-        throw new NotFoundError('Pending ownership transfer not found.')
-      }
-      if (response === 'accepted') {
-        const [targetUser] = await trx.select({ id: users.id, status: users.status }).from(users).where(eq(users.id, transfer.targetUserId)).for('update')
-        if (!targetUser || targetUser.status !== 'active') {
-          throw new NotFoundError('Pending ownership transfer not found.')
-        }
-        await applyCorpusOwnershipChange(trx, transfer.corpusId, resource, { ownerType: 'user', ownerUserId: targetUser.id, ownerTeamId: null }, actor)
-      }
-    } else if (transfer.targetTeamId) {
-      const [targetTeam] = await trx.select({ id: team.id }).from(team).where(eq(team.id, transfer.targetTeamId)).for('update')
+    if (actor.role !== 'admin') {
       const [membership] = await trx.select({ role: teamMembership.role })
         .from(teamMembership)
-        .where(and(eq(teamMembership.teamId, transfer.targetTeamId), eq(teamMembership.userId, actor.userId)))
+        .where(and(eq(teamMembership.teamId, targetTeamId), eq(teamMembership.userId, actor.userId)))
         .limit(1)
-      if (!targetTeam || (actor.role !== 'admin' && membership?.role !== 'owner')) {
-        throw new NotFoundError('Pending ownership transfer not found.')
+      if (membership?.role !== 'owner') {
+        throw new ForbiddenError('You can only move a corpus into a team you own.')
       }
-      if (response === 'accepted') {
-        await assertTeamHasActiveOwner(trx, targetTeam.id)
-        await applyCorpusOwnershipChange(trx, transfer.corpusId, resource, { ownerType: 'team', ownerUserId: null, ownerTeamId: targetTeam.id }, actor)
-      }
-    } else {
-      throw new NotFoundError('Pending ownership transfer not found.')
     }
-
-    await trx.update(corpusOwnershipTransfer).set({
-      status: response,
-      respondedByUserId: actor.userId,
-      respondedAt: new Date(),
-      updatedAt: new Date(),
-    }).where(eq(corpusOwnershipTransfer.id, transferId))
-    await trx.insert(auditLog).values({
-      actorUserId: actor.userId,
-      action: `corpus.ownership_transfer_${response}`,
-      targetType: 'corpus',
-      targetId: transfer.corpusId,
-      metadata: { transferId },
-    })
+    if (resource.ownerTeamId === targetTeamId) {
+      throw new Error('That team already owns this corpus.')
+    }
+    await assertTeamHasActiveOwner(trx, targetTeamId)
+    const [row] = await trx.select({ count: count() })
+      .from(corpus)
+      .where(and(eq(corpus.ownerType, 'team'), eq(corpus.ownerTeamId, targetTeamId)))
+    if ((row?.count ?? 0) >= MAX_CORPORA_PER_TEAM) {
+      throw new Error(`This team can own at most ${MAX_CORPORA_PER_TEAM} corpora.`)
+    }
+    await applyCorpusOwnershipChange(trx, corpusId, resource, { ownerType: 'team', ownerUserId: null, ownerTeamId: targetTeamId }, actor)
   })
-
-  revalidatePath('/invitations')
-  revalidatePath(`/corpus/${candidate.corpusId}/settings`)
-  if (response === 'accepted') {
-    revalidatePath('/')
-    revalidatePath('/admin/corpora')
-    revalidatePath(`/corpus/${candidate.corpusId}`)
-  }
+  revalidatePath('/')
+  revalidatePath('/admin/corpora')
+  revalidatePath(`/corpus/${corpusId}`)
+  revalidatePath(`/corpus/${corpusId}/settings`)
 }
 
-export async function cancelCorpusOwnershipTransfer(transferId: string) {
+export async function getMoveTargets(): Promise<Array<{ id: string, name: string, slug: string }>> {
   const actor = await getRequestActor()
   if (actor.type !== 'user') {
-    throw new ForbiddenError()
+    return []
   }
-  const [candidate] = await db.select({ corpusId: corpusOwnershipTransfer.corpusId })
-    .from(corpusOwnershipTransfer)
-    .where(eq(corpusOwnershipTransfer.id, transferId))
-    .limit(1)
-  if (!candidate) {
-    throw new NotFoundError('Pending ownership transfer not found.')
+  if (actor.role === 'admin') {
+    return db.select({ id: team.id, name: team.name, slug: team.slug }).from(team).orderBy(team.name)
   }
-
-  await db.transaction(async (trx) => {
-    await lockCorpusAndRequireManager(trx, candidate.corpusId, actor)
-    const [transfer] = await trx.select().from(corpusOwnershipTransfer).where(eq(corpusOwnershipTransfer.id, transferId)).for('update')
-    if (!transfer || transfer.status !== 'pending') {
-      throw new NotFoundError('Pending ownership transfer not found.')
-    }
-    await trx.update(corpusOwnershipTransfer).set({ status: 'revoked', respondedByUserId: actor.userId, respondedAt: new Date(), updatedAt: new Date() }).where(eq(corpusOwnershipTransfer.id, transferId))
-    await trx.insert(auditLog).values({ actorUserId: actor.userId, action: 'corpus.ownership_transfer_cancelled', targetType: 'corpus', targetId: transfer.corpusId, metadata: { transferId } })
-  })
-  revalidatePath('/invitations')
-  revalidatePath(`/corpus/${candidate.corpusId}/settings`)
+  return db.select({ id: team.id, name: team.name, slug: team.slug })
+    .from(team)
+    .innerJoin(teamMembership, eq(teamMembership.teamId, team.id))
+    .where(and(eq(teamMembership.userId, actor.userId), eq(teamMembership.role, 'owner')))
+    .orderBy(team.name)
 }
 
 export async function addCorpus(title: string, owner: CorpusOwnerInput) {

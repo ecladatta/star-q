@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation'
 import { getMyAcceptedCorpusCollaborations, getPendingInvitations, leaveCorpusCollaboration, respondToCorpusInvitation } from '@/actions/collaboration/collaborationActions'
-import { getMyPendingCorpusOwnershipTransfers, respondToCorpusOwnershipTransfer } from '@/actions/corpus/corpusActions'
 import { respondToTeamInvitation } from '@/actions/team/teamActions'
 import { Page, PageHeader } from '@/components/page'
 import { ServerActionForm } from '@/components/server-action-form'
@@ -15,16 +14,13 @@ export default async function InvitationsPage() {
     redirect('/setup')
   }
   await requirePageUser()
-  const [invitations, ownershipTransfers, accepted] = await Promise.all([
+  const [invitations, accepted] = await Promise.all([
     getPendingInvitations(),
-    getMyPendingCorpusOwnershipTransfers(),
     getMyAcceptedCorpusCollaborations(),
   ])
   const total = invitations.teamInvitations.length
     + invitations.userCorpusInvitations.length
     + invitations.teamCorpusInvitations.length
-    + ownershipTransfers.direct.length
-    + ownershipTransfers.forTeams.length
   return (
     <Page>
       <PageHeader title="Invitations" />
@@ -37,12 +33,6 @@ export default async function InvitationsPage() {
         ))}
         {invitations.teamCorpusInvitations.map(invitation => (
           <InvitationRow key={invitation.id} title={`${invitation.teamName} invited to ${invitation.corpusTitle}`} detail={`Corpus role: ${invitation.role}`} accept={respondToCorpusInvitation.bind(null, invitation.id, 'accepted')} decline={respondToCorpusInvitation.bind(null, invitation.id, 'declined')} />
-        ))}
-        {ownershipTransfers.direct.map(transfer => (
-          <InvitationRow key={transfer.id} title={`Take ownership of ${transfer.corpusTitle ?? 'Untitled corpus'}`} detail="Personal corpus ownership" accept={respondToCorpusOwnershipTransfer.bind(null, transfer.id, 'accepted')} decline={respondToCorpusOwnershipTransfer.bind(null, transfer.id, 'declined')} acceptMessage="Ownership transferred" />
-        ))}
-        {ownershipTransfers.forTeams.map(transfer => (
-          <InvitationRow key={transfer.id} title={`${transfer.teamName} can take ownership of ${transfer.corpusTitle ?? 'Untitled corpus'}`} detail="Team corpus ownership" accept={respondToCorpusOwnershipTransfer.bind(null, transfer.id, 'accepted')} decline={respondToCorpusOwnershipTransfer.bind(null, transfer.id, 'declined')} acceptMessage="Ownership transferred" />
         ))}
         {total === 0 && <p className="text-sm text-muted-foreground">No pending invitations.</p>}
       </section>

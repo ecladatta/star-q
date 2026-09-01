@@ -16,42 +16,39 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
-type CorpusTransferOwnershipDialogProps = {
+type CorpusMoveToTeamDialogProps = {
+  teams: Array<{ id: string, name: string, slug: string }>
   title: string
   description: ReactNode
   confirmLabel: string
-  inputLabel: string
-  placeholder: string
   triggerLabel: string
-  action: (identifier: string) => Promise<void>
+  action: (teamId: string) => Promise<void>
 }
 
-export function CorpusTransferOwnershipDialog({
+export function CorpusMoveToTeamDialog({
+  teams,
   title,
   description,
   confirmLabel,
-  inputLabel,
-  placeholder,
   triggerLabel,
   action,
-}: CorpusTransferOwnershipDialogProps) {
+}: CorpusMoveToTeamDialogProps) {
   const [open, setOpen] = useState(false)
-  const [identifier, setIdentifier] = useState('')
+  const [selectedTeamId, setSelectedTeamId] = useState(teams[0]?.id ?? '')
   const [isPending, startTransition] = useTransition()
-  const inputId = useId()
+  const selectId = useId()
 
   const confirm = () => {
-    const value = identifier.trim()
-    if (!value) {
+    if (!selectedTeamId) {
       return
     }
     startTransition(async () => {
       try {
-        await action(value)
-        toast.success('Ownership transfer requested')
+        await action(selectedTeamId)
+        toast.success('Corpus moved')
         setOpen(false)
       } catch (error) {
         unstable_rethrow(error)
@@ -66,12 +63,12 @@ export function CorpusTransferOwnershipDialog({
       onOpenChange={(nextOpen) => {
         setOpen(nextOpen)
         if (!nextOpen) {
-          setIdentifier('')
+          setSelectedTeamId(teams[0]?.id ?? '')
         }
       }}
     >
       <AlertDialogTrigger asChild>
-        <Button variant="destructive">{triggerLabel}</Button>
+        <Button variant="destructive" disabled={teams.length === 0}>{triggerLabel}</Button>
       </AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
@@ -79,19 +76,25 @@ export function CorpusTransferOwnershipDialog({
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <div className="space-y-2">
-          <Label htmlFor={inputId}>{inputLabel}</Label>
-          <Input
-            id={inputId}
-            value={identifier}
-            onChange={event => setIdentifier(event.target.value)}
-            placeholder={placeholder}
-          />
+          <Label htmlFor={selectId}>Target team</Label>
+          <Select value={selectedTeamId} onValueChange={setSelectedTeamId}>
+            <SelectTrigger id={selectId} className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {teams.map(team => (
+                <SelectItem key={team.id} value={team.id}>
+                  {`${team.name} (${team.slug})`}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
           <AlertDialogAction
             variant="destructive"
-            disabled={isPending || !identifier.trim()}
+            disabled={isPending || !selectedTeamId}
             onClick={(event) => {
               event.preventDefault()
               confirm()

@@ -5,7 +5,7 @@ import type { Corpus, CorpusCollaboratorRole } from '@/db/schema'
 import { and, count, eq } from 'drizzle-orm'
 import { revalidatePath, unstable_cache } from 'next/cache'
 import { db } from '@/db/drizzle'
-import { auditLog, corpus, corpusCollaboration, corpusOwnershipTransfer, team, teamInvitation, teamMembership, users } from '@/db/schema'
+import { auditLog, corpus, corpusCollaboration, team, teamInvitation, teamMembership, users } from '@/db/schema'
 import { ForbiddenError, getRequestActor, NotFoundError } from '@/lib/auth-utils'
 import { MAX_PENDING_INVITES_PER_CORPUS } from '@/lib/constants'
 import { lockCorpusAndRequireManager, requireManageCorpus } from '@/lib/corpus-access'
@@ -409,7 +409,7 @@ export async function getPendingInvitations() {
 
 const getCachedPendingInvitationCount = unstable_cache(
   async (userId: string) => {
-    const [[teamInvitations], [userCorpusInvitations], [teamCorpusInvitations], [userOwnershipTransfers], [teamOwnershipTransfers]] = await Promise.all([
+    const [[teamInvitations], [userCorpusInvitations], [teamCorpusInvitations]] = await Promise.all([
       db.select({ count: count() })
         .from(teamInvitation)
         .where(and(eq(teamInvitation.inviteeUserId, userId), eq(teamInvitation.status, 'pending'))),
@@ -424,26 +424,10 @@ const getCachedPendingInvitationCount = unstable_cache(
           eq(teamMembership.role, 'owner'),
           eq(corpusCollaboration.status, 'pending'),
         )),
-      db.select({ count: count() })
-        .from(corpusOwnershipTransfer)
-        .where(and(
-          eq(corpusOwnershipTransfer.targetUserId, userId),
-          eq(corpusOwnershipTransfer.status, 'pending'),
-        )),
-      db.select({ count: count() })
-        .from(corpusOwnershipTransfer)
-        .innerJoin(teamMembership, eq(teamMembership.teamId, corpusOwnershipTransfer.targetTeamId))
-        .where(and(
-          eq(teamMembership.userId, userId),
-          eq(teamMembership.role, 'owner'),
-          eq(corpusOwnershipTransfer.status, 'pending'),
-        )),
     ])
     return (teamInvitations?.count ?? 0)
       + (userCorpusInvitations?.count ?? 0)
       + (teamCorpusInvitations?.count ?? 0)
-      + (userOwnershipTransfers?.count ?? 0)
-      + (teamOwnershipTransfers?.count ?? 0)
   },
   ['pending-invitation-count'],
   { revalidate: 60 },
