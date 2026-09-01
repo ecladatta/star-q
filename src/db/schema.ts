@@ -130,17 +130,27 @@ export const appSettings = pgTable('app_settings', {
 export const teamRoleValues = ['owner', 'member'] as const
 export type TeamRole = (typeof teamRoleValues)[number]
 
+export const teamKindValues = ['personal', 'shared'] as const
+export type TeamKind = (typeof teamKindValues)[number]
+
 export const invitationStatusValues = ['pending', 'accepted', 'declined', 'revoked'] as const
 export type InvitationStatus = (typeof invitationStatusValues)[number]
 
-export const team = pgTable('team', {
-  id: uuid('id').primaryKey().$defaultFn(() => randomUUID()),
-  name: text('name').notNull(),
-  slug: text('slug').notNull().unique(),
-  createdByUserId: text('created_by_user_id').references(() => users.id, { onDelete: 'set null' }),
-  createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
-})
+export const team = pgTable(
+  'team',
+  {
+    id: uuid('id').primaryKey().$defaultFn(() => randomUUID()),
+    name: text('name').notNull(),
+    slug: text('slug').notNull().unique(),
+    kind: text('kind').$type<TeamKind>().notNull().default('shared'),
+    createdByUserId: text('created_by_user_id').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
+  },
+  table => [
+    check('team_kind_check', sql`${table.kind} IN (${sqlStringList(teamKindValues)})`),
+  ],
+)
 export type Team = InferSelectModel<typeof team>
 
 export const teamMembership = pgTable(
