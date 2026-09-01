@@ -8,9 +8,8 @@ describe('corpus access policy', () => {
     expect(resolveCorpusAccess({ actorType: 'admin-read-key', visibility: 'private' })).toBe('viewer')
   })
 
-  it('grants management to administrators and personal or team owners', () => {
+  it('grants management to administrators and team owners', () => {
     expect(resolveCorpusAccess({ actorType: 'user', visibility: 'private', isAdmin: true })).toBe('manager')
-    expect(resolveCorpusAccess({ actorType: 'user', visibility: 'private', isPersonalOwner: true })).toBe('manager')
     expect(resolveCorpusAccess({ actorType: 'user', visibility: 'private', owningTeamRole: 'owner' })).toBe('manager')
   })
 

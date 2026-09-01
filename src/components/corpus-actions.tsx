@@ -97,11 +97,9 @@ export function CorpusActions({ corpus, showOpenAction = true, access, triggerBu
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [uploadWarning, setUploadWarning] = useState<string | null>(null)
   const [importedCount, setImportedCount] = useState(0)
-  const [ownerSelection, setOwnerSelection] = useState('user')
+  const [ownerSelection, setOwnerSelection] = useState(ownedTeams[0]?.id ?? '')
 
-  const selectedOwner = (): CorpusOwnerInput => ownerSelection === 'user'
-    ? { type: 'user' }
-    : { type: 'team', teamId: ownerSelection }
+  const selectedOwner = (): CorpusOwnerInput => ({ teamId: ownerSelection })
 
   const handleImportClick = () => {
     setUploadError(null)
@@ -191,10 +189,10 @@ export function CorpusActions({ corpus, showOpenAction = true, access, triggerBu
 
   const handleDuplicateClick = () => {
     setNewDuplicateTitle(`${corpus.title} (copy)`)
-    if (corpus.ownerType === 'team' && corpus.ownerTeamId && ownedTeams.some(team => team.id === corpus.ownerTeamId)) {
+    if (corpus.ownerTeamId && ownedTeams.some(team => team.id === corpus.ownerTeamId)) {
       setOwnerSelection(corpus.ownerTeamId)
     } else {
-      setOwnerSelection('user')
+      setOwnerSelection(ownedTeams[0]?.id ?? '')
     }
     setShowDuplicateDialog(true)
   }
@@ -536,10 +534,8 @@ export function CorpusActions({ corpus, showOpenAction = true, access, triggerBu
               <Select value={ownerSelection} onValueChange={setOwnerSelection}>
                 <SelectTrigger id="duplicate-corpus-owner" className="mt-1 w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="user">Personal</SelectItem>
                   {ownedTeams.map(team => (
                     <SelectItem key={team.id} value={team.id}>
-                      Team:
                       {team.name}
                     </SelectItem>
                   ))}

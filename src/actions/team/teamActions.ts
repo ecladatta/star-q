@@ -54,7 +54,7 @@ export async function getOwnedTeams() {
   return db.select({ id: team.id, name: team.name, slug: team.slug })
     .from(teamMembership)
     .innerJoin(team, eq(team.id, teamMembership.teamId))
-    .where(and(eq(teamMembership.userId, actor.userId), eq(teamMembership.role, 'owner'), eq(team.kind, 'shared')))
+    .where(and(eq(teamMembership.userId, actor.userId), eq(teamMembership.role, 'owner')))
     .orderBy(team.name)
 }
 

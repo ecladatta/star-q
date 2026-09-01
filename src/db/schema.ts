@@ -191,32 +191,20 @@ export const teamInvitation = pgTable(
 export const corpusVisibilityValues = ['private', 'public'] as const
 export type CorpusVisibility = (typeof corpusVisibilityValues)[number]
 
-export const corpusOwnerTypeValues = ['bootstrap', 'user', 'team'] as const
-export type CorpusOwnerType = (typeof corpusOwnerTypeValues)[number]
-
 export const corpus = pgTable(
   'corpus',
   {
     id: uuid('id').primaryKey().$defaultFn(() => randomUUID()),
     title: text('title'),
     visibility: text('visibility').$type<CorpusVisibility>().notNull().default('private'),
-    ownerType: text('owner_type').$type<CorpusOwnerType>().notNull().default('bootstrap'),
-    ownerUserId: text('owner_user_id').references(() => users.id, { onDelete: 'cascade' }),
-    ownerTeamId: uuid('owner_team_id').references(() => team.id, { onDelete: 'cascade' }),
+    ownerTeamId: uuid('owner_team_id').references(() => team.id, { onDelete: 'cascade' }).notNull(),
     settings: jsonb('settings').$type<CorpusSettings>().notNull().default({}),
     createdAt: timestamp('created_at').defaultNow(),
     updatedAt: timestamp('updated_at').defaultNow(),
   },
   table => [
-    index('corpus_owner_user_idx').on(table.ownerUserId),
     index('corpus_owner_team_idx').on(table.ownerTeamId),
     check('corpus_visibility_check', sql`${table.visibility} IN (${sqlStringList(corpusVisibilityValues)})`),
-    check(
-      'corpus_owner_check',
-      sql`(${table.ownerType} = 'bootstrap' AND ${table.ownerUserId} IS NULL AND ${table.ownerTeamId} IS NULL)
-        OR (${table.ownerType} = 'user' AND ${table.ownerUserId} IS NOT NULL AND ${table.ownerTeamId} IS NULL)
-        OR (${table.ownerType} = 'team' AND ${table.ownerUserId} IS NULL AND ${table.ownerTeamId} IS NOT NULL)`,
-    ),
   ],
 )
 export type Corpus = InferSelectModel<typeof corpus>
@@ -248,29 +236,6 @@ export const corpusCollaboration = pgTable(
       'corpus_collaboration_target_check',
       sql`num_nonnulls(${table.targetUserId}, ${table.targetTeamId}) = 1`,
     ),
-  ],
-)
-
-export const corpusOwnershipTransfer = pgTable(
-  'corpus_ownership_transfer',
-  {
-    id: uuid('id').primaryKey().$defaultFn(() => randomUUID()),
-    corpusId: uuid('corpus_id').references(() => corpus.id, { onDelete: 'cascade' }).notNull(),
-    targetUserId: text('target_user_id').references(() => users.id, { onDelete: 'cascade' }),
-    targetTeamId: uuid('target_team_id').references(() => team.id, { onDelete: 'cascade' }),
-    requestedByUserId: text('requested_by_user_id').references(() => users.id, { onDelete: 'set null' }),
-    status: text('status').$type<InvitationStatus>().notNull().default('pending'),
-    respondedByUserId: text('responded_by_user_id').references(() => users.id, { onDelete: 'set null' }),
-    respondedAt: timestamp('responded_at', { mode: 'date' }),
-    createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
-    updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
-  },
-  table => [
-    uniqueIndex('corpus_ownership_transfer_corpus_idx').on(table.corpusId),
-    index('corpus_ownership_transfer_user_idx').on(table.targetUserId),
-    index('corpus_ownership_transfer_team_idx').on(table.targetTeamId),
-    check('corpus_ownership_transfer_status_check', sql`${table.status} IN (${sqlStringList(invitationStatusValues)})`),
-    check('corpus_ownership_transfer_target_check', sql`num_nonnulls(${table.targetUserId}, ${table.targetTeamId}) = 1`),
   ],
 )
 

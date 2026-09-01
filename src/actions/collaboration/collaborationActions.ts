@@ -113,11 +113,8 @@ async function inviteCorpusTarget(
     target: CollaborationTarget
   },
 ): Promise<void> {
-  if ((input.target.type === 'user' && input.resource.ownerUserId === input.target.id)
-    || (input.target.type === 'team' && input.resource.ownerTeamId === input.target.id)) {
-    throw new Error(input.target.type === 'user'
-      ? 'The corpus owner cannot be added as a collaborator.'
-      : 'The owning team cannot be added as a collaborator.')
+  if (input.target.type === 'team' && input.resource.ownerTeamId === input.target.id) {
+    throw new Error('The owning team cannot be added as a collaborator.')
   }
 
   const targetCondition = input.target.type === 'user'
@@ -187,9 +184,12 @@ export async function inviteTeamToCorpus(corpusId: string, slugValue: string, ro
   const slug = normalizeTeamSlug(slugValue)
   await db.transaction(async (trx) => {
     const resource = await lockCorpusAndRequireManager(trx, corpusId, actor)
-    const [targetTeam] = await trx.select({ id: team.id }).from(team).where(eq(team.slug, slug)).limit(1).for('update')
+    const [targetTeam] = await trx.select({ id: team.id, kind: team.kind }).from(team).where(eq(team.slug, slug)).limit(1).for('update')
     if (!targetTeam) {
       throw new NotFoundError('No team has that exact slug.')
+    }
+    if (targetTeam.kind === 'personal') {
+      throw new Error('Personal teams cannot be invited to corpora.')
     }
     await inviteCorpusTarget(trx, { corpusId, role, actor, resource, target: { type: 'team', id: targetTeam.id } })
   })

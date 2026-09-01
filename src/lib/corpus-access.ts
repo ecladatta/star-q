@@ -25,10 +25,9 @@ export async function getCorpusAccessForActor(corpusId: string, actor: RequestAc
     })
   }
 
-  const isPersonalOwner = resource.ownerType === 'user' && resource.ownerUserId === actor.userId
   let owningTeamRole: 'owner' | 'member' | null = null
 
-  if (resource.ownerType === 'team' && resource.ownerTeamId) {
+  if (resource.ownerTeamId) {
     const [membership] = await db
       .select({ role: teamMembership.role })
       .from(teamMembership)
@@ -62,7 +61,6 @@ export async function getCorpusAccessForActor(corpusId: string, actor: RequestAc
   return resolveCorpusAccess({
     actorType: actor.type,
     visibility: resource.visibility,
-    isPersonalOwner,
     owningTeamRole,
     directCollaborationRoles: directCollaborations.map(collaboration => collaboration.role),
     teamCollaborationRoles: teamCollaborations.map(collaboration => collaboration.role),
@@ -104,10 +102,10 @@ export async function lockCorpusAndRequireManager(trx: DbTransaction, corpusId: 
   if (!resource) {
     throw new NotFoundError('Corpus not found.')
   }
-  if (actor.role === 'admin' || (resource.ownerType === 'user' && resource.ownerUserId === actor.userId)) {
+  if (actor.role === 'admin') {
     return resource
   }
-  if (resource.ownerType === 'team' && resource.ownerTeamId) {
+  if (resource.ownerTeamId) {
     await trx.select({ id: team.id }).from(team).where(eq(team.id, resource.ownerTeamId)).for('update')
     const [membership] = await trx.select({ role: teamMembership.role })
       .from(teamMembership)

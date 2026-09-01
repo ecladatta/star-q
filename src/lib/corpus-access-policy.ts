@@ -11,7 +11,6 @@ export type CorpusAccessFacts = {
   actorType: 'user' | 'anonymous' | 'admin-read-key'
   visibility: 'private' | 'public'
   isAdmin?: boolean
-  isPersonalOwner?: boolean
   owningTeamRole?: 'owner' | 'member' | null
   directCollaborationRoles?: Array<'viewer' | 'editor'>
   teamCollaborationRoles?: Array<'viewer' | 'editor'>
@@ -43,7 +42,7 @@ export function resolveCorpusAccess(facts: CorpusAccessFacts): CorpusAccess | nu
   if (facts.actorType === 'anonymous') {
     return access
   }
-  if (facts.isPersonalOwner || facts.owningTeamRole === 'owner') {
+  if (facts.owningTeamRole === 'owner') {
     return 'manager'
   }
   if (facts.owningTeamRole === 'member') {

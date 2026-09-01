@@ -69,7 +69,7 @@ export default async function CorpusPage({ params }: { params: Promise<{ corpusI
             <br />
             Owner:
             {' '}
-            {owner.identifier ? `@${owner.identifier}` : 'Setup pending'}
+            {owner.name ?? owner.identifier ?? 'Setup pending'}
             <br />
             Total annotations:
             {' '}

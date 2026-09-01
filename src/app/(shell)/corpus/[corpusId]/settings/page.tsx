@@ -26,9 +26,7 @@ export default async function CorpusSettingsPage({ params }: { params: Promise<{
       getMoveTargets(),
     ])
     dangerZone = {
-      ownerLabel: corpus.ownerType === 'user' && owner.identifier
-        ? `@${owner.identifier}`
-        : owner.name ?? owner.identifier ?? 'Setup pending',
+      ownerLabel: owner.name ?? owner.identifier ?? 'Setup pending',
     }
     moveTargets = targets
   }

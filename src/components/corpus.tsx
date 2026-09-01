@@ -335,9 +335,7 @@ function buildColumns(ownedTeams: { id: string, name: string, slug: string }[], 
       ),
       cell: ({ row }) => (
         <div className="text-muted-foreground">
-          {row.original.ownerIdentifier
-            ? `@${row.original.ownerIdentifier}`
-            : 'Setup pending'}
+          {row.original.ownerName ?? row.original.ownerIdentifier ?? 'Setup pending'}
         </div>
       ),
     },
@@ -396,11 +394,9 @@ export function Corpora({ corpora, canCreate, canCopy = true, ownedTeams, title 
   const [showImportDialog, setShowImportDialog] = useState(false)
   const [importedCount, setImportedCount] = useState(0)
   const [newCorpusId, setNewCorpusId] = useState<string | null>(null)
-  const [ownerSelection, setOwnerSelection] = useState('user')
+  const [ownerSelection, setOwnerSelection] = useState(ownedTeams[0]?.id ?? '')
 
-  const selectedOwner = (): CorpusOwnerInput => ownerSelection === 'user'
-    ? { type: 'user' }
-    : { type: 'team', teamId: ownerSelection }
+  const selectedOwner = (): CorpusOwnerInput => ({ teamId: ownerSelection })
 
   const handleCreateCorpusWithFileImport = async (file: File, format: CorpusImportFormat) => {
     try {
@@ -532,10 +528,8 @@ export function Corpora({ corpora, canCreate, canCopy = true, ownedTeams, title 
               <Select value={ownerSelection} onValueChange={setOwnerSelection}>
                 <SelectTrigger id="new-corpus-owner" className="mt-1 w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="user">Personal</SelectItem>
                   {ownedTeams.map(team => (
                     <SelectItem key={team.id} value={team.id}>
-                      Team:
                       {team.name}
                     </SelectItem>
                   ))}

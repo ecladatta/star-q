@@ -1,11 +1,11 @@
 'use server'
 
-import { and, eq, isNull, sql } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { signIn, signOut } from '@/auth'
 import { db } from '@/db/drizzle'
-import { accounts, appSettings, auditLog, corpus, users } from '@/db/schema'
+import { accounts, appSettings, auditLog, users } from '@/db/schema'
 import { APP_SETTINGS_ID, getAppSettings, isLocalCredentialsEnabled } from '@/lib/app-settings'
 import { ForbiddenError, getAuthenticatedUserForOnboarding } from '@/lib/auth-utils'
 import { getRequiredString } from '@/lib/form-data'
@@ -82,11 +82,6 @@ export async function setupLocalAdministrator(formData: FormData): Promise<void>
       role: 'admin',
     }).returning()
     await ensurePersonalTeam(trx, user.id)
-    await trx.update(corpus).set({
-      ownerType: 'user',
-      ownerUserId: user.id,
-      ownerTeamId: null,
-    }).where(and(eq(corpus.ownerType, 'bootstrap'), isNull(corpus.ownerUserId), isNull(corpus.ownerTeamId)))
     await trx.update(appSettings).set({
       setupCompletedAt: new Date(),
       signupEnabled: true,
@@ -118,7 +113,7 @@ export async function completeSetupWithOAuth(formData: FormData): Promise<void> 
     }
 
     await trx.update(users).set({ username, name, role: 'admin', updatedAt: new Date() }).where(eq(users.id, currentUser.id))
-    await trx.update(corpus).set({ ownerType: 'user', ownerUserId: currentUser.id, ownerTeamId: null }).where(eq(corpus.ownerType, 'bootstrap'))
+    await ensurePersonalTeam(trx, currentUser.id)
     await trx.update(appSettings).set({
       setupCompletedAt: new Date(),
       signupEnabled: true,

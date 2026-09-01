@@ -187,7 +187,11 @@ export type DeletionImpact = {
 }
 
 async function calculateUserDeletionImpact(executor: DbExecutor, userId: string): Promise<{ impact: DeletionImpact, soleOwnedTeamIds: string[] }> {
-  const [personal] = await executor.select({ count: count() }).from(corpus).where(eq(corpus.ownerUserId, userId))
+  const [personal] = await executor.select({ count: count() })
+    .from(corpus)
+    .innerJoin(team, eq(team.id, corpus.ownerTeamId))
+    .innerJoin(teamMembership, eq(teamMembership.teamId, team.id))
+    .where(and(eq(teamMembership.userId, userId), eq(teamMembership.role, 'owner'), eq(team.kind, 'personal')))
   const soleOwnedTeamIds = await getSoleOwnedTeamIds(executor, userId)
   const [teamCorpora] = soleOwnedTeamIds.length
     ? await executor.select({ count: count() }).from(corpus).where(inArray(corpus.ownerTeamId, soleOwnedTeamIds))
@@ -221,7 +225,11 @@ export async function deleteAdminManagedUser(userId: string, expectedImpact: Del
     }
     await trx.select({ id: users.id }).from(users).where(eq(users.id, userId)).for('update')
     await assertNotFinalActiveAdmin(trx, userId)
-    await trx.select({ id: corpus.id }).from(corpus).where(eq(corpus.ownerUserId, userId)).orderBy(corpus.id).for('update')
+    const personalTeamRows = await trx.select({ teamId: team.id }).from(team).where(and(inArray(team.id, ownerTeamIds), eq(team.kind, 'personal')))
+    const personalTeamIds = personalTeamRows.map(row => row.teamId)
+    if (personalTeamIds.length) {
+      await trx.select({ id: corpus.id }).from(corpus).where(inArray(corpus.ownerTeamId, personalTeamIds)).orderBy(corpus.id).for('update')
+    }
     const currentOwnerTeams = await trx.select({ teamId: teamMembership.teamId }).from(teamMembership).where(and(eq(teamMembership.userId, userId), eq(teamMembership.role, 'owner')))
     if (currentOwnerTeams.some(current => !ownerTeamIds.includes(current.teamId))) {
       throw new ForbiddenError('Team ownership changed while deleting this user. Review the impact and try again.')
@@ -262,11 +270,10 @@ export async function getAdminCorpora() {
   return db
     .select({
       ...getTableColumns(corpus),
-      ownerName: sql<string | null>`COALESCE(${users.name}, ${team.name})`,
-      ownerIdentifier: sql<string | null>`COALESCE(${users.username}, ${team.slug})`,
+      ownerName: team.name,
+      ownerIdentifier: team.slug,
     })
     .from(corpus)
-    .leftJoin(users, eq(users.id, corpus.ownerUserId))
     .leftJoin(team, eq(team.id, corpus.ownerTeamId))
     .orderBy(desc(corpus.createdAt))
 }

@@ -29,22 +29,9 @@ export default async function AdminCorporaPage() {
                   </Link>
                 </td>
                 <td className="px-3 py-2.5 text-[13px]">
-                  {corpus.ownerType === 'user' && corpus.ownerUserId
-                    ? (
-                        <Link href={`/admin/users/${corpus.ownerUserId}`} className="text-muted-foreground hover:text-accent hover:underline">
-                          @
-                          {corpus.ownerIdentifier}
-                        </Link>
-                      )
-                    : corpus.ownerType === 'team' && corpus.ownerTeamId
-                      ? (
-                          <Link href={`/teams/${corpus.ownerIdentifier}`} className="text-muted-foreground hover:text-accent hover:underline">
-                            {corpus.ownerName}
-                          </Link>
-                        )
-                      : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
+                  <Link href={`/teams/${corpus.ownerIdentifier}`} className="text-muted-foreground hover:text-accent hover:underline">
+                    {corpus.ownerName}
+                  </Link>
                 </td>
                 <td className="px-3 py-2.5 text-[13px] text-muted-foreground capitalize">{corpus.visibility}</td>
               </tr>
