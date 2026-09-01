@@ -79,7 +79,7 @@ export default async function TeamPage({ params }: { params: Promise<{ slug: str
             </div>
             <div className="flex shrink-0 items-center gap-2">
               <span className="text-xs text-muted-foreground capitalize">{member.role}</span>
-              {canManage && (
+              {canManage && data.team.kind !== 'personal' && (
                 <>
                   <ServerActionForm action={async () => {
                     'use server'
@@ -135,7 +135,7 @@ export default async function TeamPage({ params }: { params: Promise<{ slug: str
         </section>
       )}
       <section className="mt-8 flex justify-end gap-3 border-t border-border pt-6">
-        {data.membershipRole && (
+        {data.membershipRole && data.team.kind !== 'personal' && (
           <ConfirmActionButton
             action={async () => {
               'use server'
@@ -156,7 +156,7 @@ export default async function TeamPage({ params }: { params: Promise<{ slug: str
             Leave team
           </ConfirmActionButton>
         )}
-        {canManage && (
+        {canManage && data.team.kind !== 'personal' && (
           <ConfirmActionButton
             action={async () => {
               'use server'
