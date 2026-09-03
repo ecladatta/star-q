@@ -25,6 +25,7 @@ import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { deleteCorpus, duplicateCorpus, renameCorpus } from '@/actions/corpus/corpusActions'
 import { importDocuments } from '@/actions/imports/importActions'
+import { ConfirmActionButton } from '@/components/confirm-action-button'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -79,7 +80,6 @@ export function CorpusActions({ corpus, showOpenAction = true, access, triggerBu
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const [isDeleting, setIsDeleting] = useState(false)
   const [isDuplicating, setIsDuplicating] = useState(false)
   const [isRenaming, setIsRenaming] = useState(false)
   const [isImporting, setIsImporting] = useState(false)
@@ -172,19 +172,6 @@ export function CorpusActions({ corpus, showOpenAction = true, access, triggerBu
         `${skipped} annotation${skipped === 1 ? '' : 's'} skipped. Only Wikidata-linked statements were exported.`,
       )
     }
-  }
-
-  const handleDeleteClick = () => {
-    setShowDeleteDialog(true)
-  }
-
-  const confirmDelete = async () => {
-    setIsDeleting(true)
-    await deleteCorpus(corpus.id)
-    setShowDeleteDialog(false)
-    setIsDeleting(false)
-    router.push('/')
-    router.refresh()
   }
 
   const handleDuplicateClick = () => {
@@ -315,17 +302,10 @@ export function CorpusActions({ corpus, showOpenAction = true, access, triggerBu
             <>
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                onClick={handleDeleteClick}
-                disabled={isDeleting}
+                onClick={() => setShowDeleteDialog(true)}
                 className="text-destructive focus:text-destructive"
               >
-                {isDeleting
-                  ? (
-                      <Loader2Icon className="mr-2 size-4 animate-spin" />
-                    )
-                  : (
-                      <Trash2Icon className="mr-2 size-4" />
-                    )}
+                <Trash2Icon className="mr-2 size-4" />
                 Delete...
               </DropdownMenuItem>
             </>
@@ -461,36 +441,27 @@ export function CorpusActions({ corpus, showOpenAction = true, access, triggerBu
       </Dialog>
 
       {/* Delete Dialog */}
-      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Confirm Deletion</DialogTitle>
-          </DialogHeader>
-          <div className="text-sm text-muted-foreground">
-            <p>
-              Are you sure you want to delete the corpus "
-              <strong>{corpus.title}</strong>
-              "?
-            </p>
-            <p>
-              This action cannot be undone and will also:
-            </p>
-            <ul className="ml-4 list-inside list-disc">
-              <li>Delete all documents attached to this corpus</li>
-              <li>Delete all annotations attached to this corpus</li>
-            </ul>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={confirmDelete} disabled={isDeleting}>
-              {isDeleting ? <Loader2Icon className="size-4 animate-spin" /> : <Trash2Icon className="size-4" />}
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmActionButton
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        action={async () => {
+          await deleteCorpus(corpus.id)
+          router.push('/')
+          router.refresh()
+        }}
+        title="Delete this corpus?"
+        description={(
+          <>
+            This will permanently delete
+            {' '}
+            <strong>{corpus.title}</strong>
+            , its documents, and its annotations. This action cannot be undone.
+          </>
+        )}
+        confirmText={corpus.title}
+        confirmLabel="Delete this corpus"
+        variant="destructive"
+      />
 
       {/* Duplicate Dialog */}
       <Dialog open={showDuplicateDialog} onOpenChange={setShowDuplicateDialog}>

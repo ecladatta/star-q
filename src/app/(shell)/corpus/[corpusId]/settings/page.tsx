@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
-import { getCorpus, getCorpusOwner, getMoveTargets, moveCorpusToTeam } from '@/actions/corpus/corpusActions'
+import { deleteCorpus, getCorpus, getCorpusOwner, getMoveTargets, moveCorpusToTeam } from '@/actions/corpus/corpusActions'
+import { ConfirmActionButton } from '@/components/confirm-action-button'
 import { CorpusMoveToTeamDialog } from '@/components/corpus-move-to-team-dialog'
 import { CorpusSettingsPanel } from '@/components/corpus-settings-panel'
 import { Page, PageHeader } from '@/components/page'
@@ -71,6 +72,35 @@ export default async function CorpusSettingsPage({ params }: { params: Promise<{
                 await moveCorpusToTeam(corpusId, teamId)
               }}
             />
+          </div>
+          <div className="flex items-center justify-between gap-4 border-t border-destructive/40 p-4">
+            <div className="space-y-1">
+              <p className="text-sm font-medium text-foreground">Delete this corpus</p>
+              <p className="text-xs text-muted-foreground">
+                This permanently deletes the corpus, all of its documents, and all of its annotations. This action cannot be undone.
+              </p>
+            </div>
+            <ConfirmActionButton
+              action={async () => {
+                'use server'
+                await deleteCorpus(corpusId)
+                redirect('/')
+              }}
+              title="Delete this corpus?"
+              description={(
+                <>
+                  This will permanently delete
+                  {' '}
+                  <strong>{corpus.title}</strong>
+                  , its documents, and its annotations. This action cannot be undone.
+                </>
+              )}
+              confirmText={corpus.title}
+              confirmLabel="Delete this corpus"
+              variant="destructive"
+            >
+              Delete this corpus
+            </ConfirmActionButton>
           </div>
         </section>
       )}

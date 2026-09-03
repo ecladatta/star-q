@@ -162,7 +162,7 @@ export default async function TeamPage({ params }: { params: Promise<{ slug: str
               'use server'
               await deleteTeam(data.team.id)
             }}
-            title="Delete team and its corpora?"
+            title="Delete this team?"
             description={(
               <>
                 This will permanently delete
@@ -172,6 +172,7 @@ export default async function TeamPage({ params }: { params: Promise<{ slug: str
                 and all of its corpora, documents, and annotations. This action cannot be undone.
               </>
             )}
+            confirmText={data.team.name}
             confirmLabel="Delete team"
             variant="destructive"
           >
