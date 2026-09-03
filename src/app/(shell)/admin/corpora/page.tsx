@@ -1,10 +1,15 @@
 import Link from 'next/link'
-import { getAdminCorpora } from '@/actions/admin/adminActions'
+import { getAdminCorpora, getAdminTeams } from '@/actions/admin/adminActions'
+import { AdminCorpusActions } from '@/components/admin-corpus-actions'
 import { Page, PageHeader } from '@/components/page'
 
 export const dynamic = 'force-dynamic'
 export default async function AdminCorporaPage() {
-  const corpora = await getAdminCorpora()
+  const [corpora, teams] = await Promise.all([
+    getAdminCorpora(),
+    getAdminTeams(),
+  ])
+  const teamOptions = teams.map(team => ({ id: team.id, name: team.name, slug: team.slug }))
   return (
     <Page>
       <PageHeader
@@ -18,6 +23,7 @@ export default async function AdminCorporaPage() {
               <th className="px-3 py-2 text-left font-medium">Corpus</th>
               <th className="px-3 py-2 text-left font-medium">Owner</th>
               <th className="px-3 py-2 text-left font-medium">Visibility</th>
+              <th className="w-14 px-3 py-2 text-right font-medium"><span className="sr-only">Actions</span></th>
             </tr>
           </thead>
           <tbody>
@@ -34,6 +40,11 @@ export default async function AdminCorporaPage() {
                   </Link>
                 </td>
                 <td className="px-3 py-2.5 text-[13px] text-muted-foreground capitalize">{corpus.visibility}</td>
+                <td className="px-3 py-1.5 text-right">
+                  <div className="flex justify-end">
+                    <AdminCorpusActions corpus={corpus} teams={teamOptions} />
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>
