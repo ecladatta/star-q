@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { getAdminTeams } from '@/actions/admin/adminActions'
+import { AdminTeamActions } from '@/components/admin-team-actions'
 import { Page, PageHeader } from '@/components/page'
 
 export const dynamic = 'force-dynamic'
@@ -19,6 +20,7 @@ export default async function AdminTeamsPage() {
               <th className="px-3 py-2 text-left font-medium">Slug</th>
               <th className="px-3 py-2 text-left font-medium">Kind</th>
               <th className="px-3 py-2 text-left font-medium">Created</th>
+              <th className="w-14 px-3 py-2 text-right font-medium"><span className="sr-only">Actions</span></th>
             </tr>
           </thead>
           <tbody>
@@ -36,6 +38,13 @@ export default async function AdminTeamsPage() {
                     : <span className="text-xs text-muted-foreground capitalize">{team.kind}</span>}
                 </td>
                 <td className="px-3 py-2.5 text-[13px] text-muted-foreground">{team.createdAt.toLocaleDateString()}</td>
+                <td className="px-3 py-1.5 text-right">
+                  {team.kind !== 'personal' && (
+                    <div className="flex justify-end">
+                      <AdminTeamActions team={team} />
+                    </div>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>

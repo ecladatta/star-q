@@ -260,6 +260,28 @@ export async function getAdminAuditLog() {
   return db.select().from(auditLog).orderBy(desc(auditLog.createdAt)).limit(500)
 }
 
+export async function deleteAdminTeam(teamId: string) {
+  const actor = await requireAdmin()
+  await db.transaction(async (trx) => {
+    const [foundTeam] = await trx.select({ id: team.id, kind: team.kind }).from(team).where(eq(team.id, teamId)).for('update')
+    if (!foundTeam) {
+      throw new NotFoundError('Team not found.')
+    }
+    if (foundTeam.kind === 'personal') {
+      throw new ForbiddenError('Personal teams cannot be deleted. Delete the user instead.')
+    }
+    const deleted = await trx.delete(team).where(eq(team.id, teamId)).returning({ id: team.id })
+    if (!deleted.length) {
+      throw new NotFoundError('Team not found.')
+    }
+    await trx.insert(auditLog).values({ actorUserId: actor.userId, action: 'team.deleted', targetType: 'team', targetId: teamId })
+  })
+  revalidatePath('/admin/teams')
+  revalidatePath('/admin/corpora')
+  revalidatePath('/teams')
+  revalidatePath('/')
+}
+
 export async function getAdminTeams() {
   await requireAdmin()
   return db.select().from(team).orderBy(desc(team.createdAt))
