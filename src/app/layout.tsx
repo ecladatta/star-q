@@ -32,6 +32,8 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        {/* The theme bootstrap must run before hydration to prevent a light-mode flash. */}
+        {/* eslint-disable-next-line react/dom-no-dangerously-set-innerhtml */}
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>

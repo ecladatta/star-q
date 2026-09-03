@@ -1,4 +1,20 @@
+import { useSyncExternalStore } from 'react'
+
 export const THEME_KEY = 'starq-theme'
+
+function subscribeRootTheme(onStoreChange: () => void) {
+  const observer = new MutationObserver(onStoreChange)
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+  return () => observer.disconnect()
+}
+
+export function useRootTheme(): 'light' | 'dark' {
+  return useSyncExternalStore(
+    subscribeRootTheme,
+    () => (document.documentElement.classList.contains('dark') ? 'dark' : 'light'),
+    () => 'light',
+  )
+}
 
 export function readTheme(): 'light' | 'dark' {
   return document.documentElement.classList.contains('dark') ? 'dark' : 'light'

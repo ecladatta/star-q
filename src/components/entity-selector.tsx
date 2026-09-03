@@ -336,6 +336,11 @@ export function EntitySelector({
   const [open, setOpen] = useState(false)
   const [searchResults, setSearchResults] = useState<Entity[]>([])
   const [searchTerm, setSearchTerm] = useState('')
+  const [prevSelectorText, setPrevSelectorText] = useState(text)
+  if (prevSelectorText !== text) {
+    setPrevSelectorText(text)
+    setSearchTerm('')
+  }
   const [isSearching, setIsSearching] = useState(false)
   const [classification, setClassification] = useState<EntityCandidateClassification | null>(null)
   const [classifiedCandidates, setClassifiedCandidates] = useState<string[]>([])
@@ -396,8 +401,10 @@ export function EntitySelector({
         clearTimeout(searchTimerRef.current)
       }
       const seq = ++searchSeqRef.current
-      setIsSearching(true)
-      runSearch(text, seq)
+      searchTimerRef.current = setTimeout(() => {
+        setIsSearching(true)
+        runSearch(text, seq)
+      }, SEARCH_DEBOUNCE_MS)
     }
   }, [text, entityType, value, corpusId, searchLimit, runSearch])
 
@@ -406,10 +413,6 @@ export function EntitySelector({
       clearTimeout(searchTimerRef.current)
     }
   }, [])
-
-  useEffect(() => {
-    setSearchTerm('')
-  }, [text])
 
   // Classify candidates against Wikidata domain/range constraints
   useEffect(() => {

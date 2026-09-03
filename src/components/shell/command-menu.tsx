@@ -2,7 +2,7 @@
 
 import { Database, Moon, Search, Sun } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Command,
@@ -14,7 +14,7 @@ import {
   CommandList,
   CommandSeparator,
 } from '@/components/ui/command'
-import { readTheme, toggleTheme } from '@/lib/theme'
+import { toggleTheme, useRootTheme } from '@/lib/theme'
 import { buildNav } from './nav-items'
 
 type CommandMenuProps = {
@@ -26,16 +26,14 @@ type CommandMenuProps = {
 export function CommandMenu({ isAdmin, invitationCount, corpora }: CommandMenuProps) {
   const groups = buildNav({ isAdmin, invitationCount })
   const [open, setOpen] = useState(false)
-  const [dark, setDark] = useState(false)
-  const [isMac, setIsMac] = useState(true)
+  const dark = useRootTheme() === 'dark'
+  const isMac = useSyncExternalStore(() => () => {}, () => /Mac/i.test(navigator.platform), () => true)
   const router = useRouter()
 
   useEffect(() => {
-    setIsMac(/Mac/i.test(navigator.platform))
     const onKeyDown = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault()
-        setDark(readTheme() === 'dark')
         setOpen(previous => !previous)
       }
     }
@@ -55,7 +53,6 @@ export function CommandMenu({ isAdmin, invitationCount, corpora }: CommandMenuPr
         size="sm"
         className="hidden h-8 gap-2 text-muted-foreground hover:bg-border hover:text-foreground sm:inline-flex dark:hover:bg-background"
         onClick={() => {
-          setDark(readTheme() === 'dark')
           setOpen(true)
         }}
       >
@@ -120,7 +117,6 @@ export function CommandMenu({ isAdmin, invitationCount, corpora }: CommandMenuPr
                 value="theme"
                 onSelect={() => {
                   toggleTheme()
-                  setDark(readTheme() === 'dark')
                 }}
               >
                 {dark ? <Sun /> : <Moon />}

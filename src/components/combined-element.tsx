@@ -308,13 +308,15 @@ function CombinedElement({
         >
           <Table>
             <TableHeader className="bg-muted/50">
-              {splits.slice(0, 1).map((row, rowIndex) => (
-                <TableRow key={rowIndex} className="hover:bg-muted/20">
+              {splits.slice(0, 1).map(row => (
+                <TableRow key="table-header-row" className="hover:bg-muted/20">
                   {row.map((cellSplits, cellIndex) => {
                     const isHovered = hoveredCell?.row === 0 && hoveredCell?.cell === cellIndex
 
                     return (
                       <TableHead
+                        // Grid cells are positional: hover, annotation, and data-cell state key off row/column indices, and cells have no stable identity across content edits.
+                        // eslint-disable-next-line react/no-array-index-key
                         key={cellIndex}
                         role="button"
                         tabIndex={0}
@@ -343,13 +345,20 @@ function CombinedElement({
             </TableHeader>
             <TableBody>
               {splits.slice(1).map((row, rowIndex) => (
-                <TableRow key={rowIndex} className="border-b hover:bg-muted/10">
+                <TableRow
+                  // Grid rows are positional and have no stable identity across content edits.
+                  // eslint-disable-next-line react/no-array-index-key
+                  key={rowIndex}
+                  className="border-b hover:bg-muted/10"
+                >
                   {row.map((cellSplits, cellIndex) => {
                     const actualRowIndex = rowIndex + 1
                     const isHovered = hoveredCell?.row === actualRowIndex && hoveredCell?.cell === cellIndex
 
                     return (
                       <TableCell
+                        // Grid cells are positional: hover, annotation, and data-cell state key off row/column indices, and cells have no stable identity across content edits.
+                        // eslint-disable-next-line react/no-array-index-key
                         key={cellIndex}
                         role="button"
                         tabIndex={0}

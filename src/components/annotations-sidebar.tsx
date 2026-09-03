@@ -145,7 +145,7 @@ export function AnnotationsSidebar({
   })
 
   const scrollAreaRef = useRef<HTMLDivElement>(null)
-  const annotationRefs = useRef<Map<string, HTMLLIElement>>(new Map())
+  const annotationRef = useRef<Map<string, HTMLLIElement>>(new Map())
 
   // Update URL when filters or sort changes
   useEffect(() => {
@@ -350,7 +350,7 @@ export function AnnotationsSidebar({
     if (!currentAnnotation?.id)
       return
 
-    const annotationElement = annotationRefs.current.get(currentAnnotation.id)
+    const annotationElement = annotationRef.current.get(currentAnnotation.id)
     const scrollArea = scrollAreaRef.current
 
     if (annotationElement && scrollArea) {
@@ -702,9 +702,9 @@ export function AnnotationsSidebar({
                             key={ann.id}
                             ref={(el) => {
                               if (el) {
-                                annotationRefs.current.set(ann.id, el)
+                                annotationRef.current.set(ann.id, el)
                               } else {
-                                annotationRefs.current.delete(ann.id)
+                                annotationRef.current.delete(ann.id)
                               }
                             }}
                           >
