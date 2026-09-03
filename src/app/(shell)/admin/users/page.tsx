@@ -1,12 +1,14 @@
 import type { UserRole } from '@/db/schema'
 import Link from 'next/link'
 import { createAdminManagedUser, getAdminUsers } from '@/actions/admin/adminActions'
+import { AdminUserActions } from '@/components/admin-user-actions'
 import { Page, PageHeader } from '@/components/page'
 import { ServerActionForm } from '@/components/server-action-form'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { isLocalCredentialsEnabled } from '@/lib/app-settings'
+import { requirePageUser } from '@/lib/auth-utils'
 import { cn } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
@@ -28,7 +30,7 @@ function StatusPill({ status }: { status: string }) {
 }
 
 export default async function AdminUsersPage() {
-  const users = await getAdminUsers()
+  const [users, actor] = await Promise.all([getAdminUsers(), requirePageUser()])
   return (
     <Page>
       <PageHeader
@@ -73,6 +75,7 @@ export default async function AdminUsersPage() {
               <th className="px-3 py-2 text-left font-medium">User</th>
               <th className="px-3 py-2 text-left font-medium">Role</th>
               <th className="px-3 py-2 text-left font-medium">Status</th>
+              <th className="w-14 px-3 py-2 text-right font-medium"><span className="sr-only">Actions</span></th>
             </tr>
           </thead>
           <tbody>
@@ -92,6 +95,15 @@ export default async function AdminUsersPage() {
                 </td>
                 <td className="px-3 py-2.5 text-[13px]">
                   <StatusPill status={user.status} />
+                </td>
+                <td className="px-3 py-1.5 text-right">
+                  <div className="flex justify-end">
+                    <AdminUserActions
+                      user={user}
+                      currentUserId={actor.userId}
+                      canResetPassword={isLocalCredentialsEnabled()}
+                    />
+                  </div>
                 </td>
               </tr>
             ))}
