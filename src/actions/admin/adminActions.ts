@@ -134,7 +134,7 @@ export async function setUserBlocked(userId: string, blocked: boolean) {
     await trx.select({ id: users.id }).from(users).where(eq(users.id, userId)).for('update')
     if (blocked) {
       await assertNotFinalActiveAdmin(trx, userId)
-      if ((await getSoleOwnedTeamIds(trx, userId)).length) {
+      if ((await getSoleOwnedTeamIds(trx, userId, 'shared')).length) {
         throw new ForbiddenError('Appoint another active team owner before blocking this user.')
       }
     }
