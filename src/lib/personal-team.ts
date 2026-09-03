@@ -18,7 +18,7 @@ export function personalTeamSlugCandidates(username: string | null, userId: stri
 }
 
 export function personalTeamDisplayName(name: string | null, username: string | null): string {
-  return `${name || username || 'Personal'} (personal)`.slice(0, 100)
+  return (name || username || 'Personal').slice(0, 100)
 }
 
 export async function ensurePersonalTeam(executor: DbExecutor, userId: string): Promise<Team> {

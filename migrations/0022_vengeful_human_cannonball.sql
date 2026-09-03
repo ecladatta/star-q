@@ -15,7 +15,7 @@ BEGIN
       CONTINUE;
     END IF;
     base := COALESCE(
-      (SELECT cleaned FROM (SELECT replace(u.username, '_', '-') AS cleaned) s
+      (SELECT cleaned FROM (SELECT replace(lower(u.username), '_', '-') AS cleaned) s
        WHERE cleaned ~ '^[a-z0-9]([a-z0-9-]{1,46}[a-z0-9])?$'),
       'personal-' || left(u.id, 8)
     );
@@ -29,7 +29,7 @@ BEGIN
       END;
       IF NOT EXISTS (SELECT 1 FROM team WHERE slug = candidate) THEN
         INSERT INTO team (id, name, slug, kind, created_by_user_id, created_at, updated_at)
-        VALUES (new_team_id, left(COALESCE(u.name, u.username, 'Personal'), 89) || ' (personal)', candidate, 'personal', u.id, now(), now());
+        VALUES (new_team_id, left(COALESCE(NULLIF(u.name, ''), NULLIF(u.username, ''), 'Personal'), 100), candidate, 'personal', u.id, now(), now());
         INSERT INTO team_membership (team_id, user_id, role, created_at, updated_at)
         VALUES (new_team_id, u.id, 'owner', now(), now());
         INSERT INTO audit_log (id, actor_user_id, action, target_type, target_id, metadata, created_at)

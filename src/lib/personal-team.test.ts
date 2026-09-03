@@ -38,19 +38,19 @@ describe('personalTeamSlugCandidates', () => {
 
 describe('personalTeamDisplayName', () => {
   it('prefers the display name', () => {
-    expect(personalTeamDisplayName('Alice', 'alice')).toBe('Alice (personal)')
+    expect(personalTeamDisplayName('Alice', 'alice')).toBe('Alice')
   })
 
   it('falls back to the username', () => {
-    expect(personalTeamDisplayName(null, 'alice')).toBe('alice (personal)')
+    expect(personalTeamDisplayName(null, 'alice')).toBe('alice')
   })
 
   it('falls back to Personal', () => {
-    expect(personalTeamDisplayName(null, null)).toBe('Personal (personal)')
+    expect(personalTeamDisplayName(null, null)).toBe('Personal')
   })
 
   it('truncates to 100 characters', () => {
     expect(personalTeamDisplayName('x'.repeat(100), 'alice')).toBe('x'.repeat(100))
-    expect(personalTeamDisplayName('y'.repeat(95), 'alice').length).toBe(100)
+    expect(personalTeamDisplayName('y'.repeat(95), 'alice').length).toBe(95)
   })
 })
