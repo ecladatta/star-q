@@ -3,6 +3,7 @@ import { deleteCorpus, getCorpus, getCorpusOwner, getMoveTargets, moveCorpusToTe
 import { ConfirmActionButton } from '@/components/confirm-action-button'
 import { CorpusMoveToTeamDialog } from '@/components/corpus-move-to-team-dialog'
 import { CorpusSettingsPanel } from '@/components/corpus-settings-panel'
+import { ForbiddenPage } from '@/components/forbidden-page'
 import { Page, PageHeader } from '@/components/page'
 import { requirePageUser } from '@/lib/auth-utils'
 import { getCorpusAccess } from '@/lib/corpus-access'
@@ -13,9 +14,8 @@ export default async function CorpusSettingsPage({ params }: { params: Promise<{
   const { corpusId } = await params
   await requirePageUser()
   const access = await getCorpusAccess(corpusId)
-  const canEdit = access === 'editor' || access === 'manager'
-  if (!canEdit) {
-    redirect(`/corpus/${corpusId}`)
+  if (access !== 'editor' && access !== 'manager') {
+    return <ForbiddenPage />
   }
   const corpus = await getCorpus(corpusId)
 

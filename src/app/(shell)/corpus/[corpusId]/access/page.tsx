@@ -2,12 +2,14 @@ import type { CorpusCollaboratorRole } from '@/db/schema'
 import { getCorpusCollaborations, inviteTeamToCorpus, inviteUserToCorpus, revokeCorpusCollaboration } from '@/actions/collaboration/collaborationActions'
 import { getCorpus } from '@/actions/corpus/corpusActions'
 import { CorpusCollaboratorRoleSelect } from '@/components/corpus-collaborator-role-select'
+import { ForbiddenPage } from '@/components/forbidden-page'
 import { Page, PageHeader } from '@/components/page'
 import { ServerActionForm } from '@/components/server-action-form'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { requirePageUser } from '@/lib/auth-utils'
+import { getCorpusAccess } from '@/lib/corpus-access'
 import { getRequiredString } from '@/lib/form-data'
 import { validateCorpusCollaboratorRole } from '@/lib/identity'
 
@@ -17,6 +19,10 @@ export default async function CorpusAccessPage({ params }: { params: Promise<{ c
   const { corpusId } = await params
   const actor = await requirePageUser()
   const isAdmin = actor.role === 'admin'
+  const access = await getCorpusAccess(corpusId)
+  if (access !== 'manager') {
+    return <ForbiddenPage />
+  }
   const [resource, collaborations] = await Promise.all([
     getCorpus(corpusId),
     getCorpusCollaborations(corpusId),
