@@ -47,6 +47,7 @@ export default async function TeamPage({ params }: { params: Promise<{ slug: str
               'use server'
               await inviteTeamMember(data.team.id, getRequiredString(formData, 'username'), validateTeamRole(getRequiredString(formData, 'role')))
             }}
+            successMessage="Invitation sent"
             className="grid gap-4 sm:grid-cols-[1fr_auto_auto] sm:items-end"
           >
             <div className="space-y-2">

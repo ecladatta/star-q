@@ -216,8 +216,10 @@ export function CorpusActions({ corpus, showOpenAction = true, access, triggerBu
       setShowRenameDialog(false)
       setNewRenameTitle('')
       router.refresh()
+      toast.success('Corpus renamed')
     } catch (error) {
       console.error('Rename failed:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to rename the corpus. Please try again.')
     } finally {
       setIsRenaming(false)
     }
