@@ -25,6 +25,7 @@ type ConfirmActionButtonProps = {
   description: ReactNode
   confirmLabel: string
   confirmText?: string | null
+  confirmDisabled?: boolean
   variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link'
   successMessage?: string
   children?: ReactNode
@@ -38,6 +39,7 @@ export function ConfirmActionButton({
   description,
   confirmLabel,
   confirmText,
+  confirmDisabled = false,
   variant = 'default',
   successMessage,
   children,
@@ -112,7 +114,7 @@ export function ConfirmActionButton({
           <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
           <AlertDialogAction
             variant={variant}
-            disabled={isPending || (confirmText !== undefined && typed !== confirmText)}
+            disabled={isPending || confirmDisabled || (confirmText !== undefined && typed !== confirmText)}
             onClick={(event) => {
               event.preventDefault()
               confirm()

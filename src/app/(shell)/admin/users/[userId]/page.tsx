@@ -6,6 +6,7 @@ import { ServerActionForm } from '@/components/server-action-form'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { formatDeletionImpact } from '@/lib/admin'
 import { isLocalCredentialsEnabled } from '@/lib/app-settings'
 import { cn } from '@/lib/utils'
 
@@ -90,7 +91,7 @@ export default async function AdminUserPage({ params }: { params: Promise<{ user
           {user.status === 'blocked' ? 'Unblock user' : 'Block and revoke sessions'}
         </ConfirmActionButton>
         <p className="text-xs text-muted-foreground">
-          {`Deletion removes ${impact.personalCorpora} personal corpus/corpora, ${impact.soleOwnedTeams} sole-owned team(s), and ${impact.teamCorpora} team corpus/corpora.`}
+          {formatDeletionImpact(impact)}
         </p>
         <ConfirmActionButton
           action={async () => {
@@ -98,7 +99,12 @@ export default async function AdminUserPage({ params }: { params: Promise<{ user
             await deleteAdminManagedUser(user.id, impact)
           }}
           title="Permanently delete user?"
-          description="This will permanently delete the user and all dependent data. This action cannot be undone."
+          description={(
+            <>
+              This will permanently delete the user and all dependent data. This action cannot be undone.
+              <span className="mt-2 block text-xs">{formatDeletionImpact(impact)}</span>
+            </>
+          )}
           confirmLabel="Delete user"
           variant="destructive"
         >

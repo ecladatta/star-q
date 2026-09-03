@@ -1,5 +1,6 @@
 'use client'
 
+import type { DeletionImpact } from '@/actions/admin/adminActions'
 import type { UserRole } from '@/db/schema'
 import { KeyRoundIcon, MoreVerticalIcon, ShieldBanIcon, Trash2Icon, UserPenIcon } from 'lucide-react'
 import { useRouter } from 'next/navigation'
@@ -13,6 +14,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { formatDeletionImpact } from '@/lib/admin'
 
 type AdminUserActionsProps = {
   user: {
@@ -42,6 +44,8 @@ export function AdminUserActions({ user, currentUserId, canResetPassword }: Admi
 
   const [isSavingUser, setIsSavingUser] = useState(false)
   const [isResettingPassword, setIsResettingPassword] = useState(false)
+  const [deleteImpact, setDeleteImpact] = useState<DeletionImpact | null>(null)
+  const [isLoadingImpact, setIsLoadingImpact] = useState(false)
 
   const isBlocked = user.status === 'blocked'
 
@@ -72,6 +76,20 @@ export function AdminUserActions({ user, currentUserId, canResetPassword }: Admi
   const handleResetPasswordClick = () => {
     setTemporaryPassword('')
     setShowResetPasswordDialog(true)
+  }
+
+  const handleDeleteClick = async () => {
+    setShowDeleteDialog(true)
+    setDeleteImpact(null)
+    setIsLoadingImpact(true)
+    try {
+      setDeleteImpact(await getUserDeletionImpact(user.id))
+    } catch (error) {
+      setShowDeleteDialog(false)
+      toast.error(error instanceof Error ? error.message : 'Failed to calculate the deletion impact.')
+    } finally {
+      setIsLoadingImpact(false)
+    }
   }
 
   const confirmResetPassword = async () => {
@@ -116,7 +134,7 @@ export function AdminUserActions({ user, currentUserId, canResetPassword }: Admi
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
-            onClick={() => setShowDeleteDialog(true)}
+            onClick={handleDeleteClick}
             disabled={isSelf}
             className="text-destructive focus:text-destructive"
           >
@@ -244,6 +262,7 @@ export function AdminUserActions({ user, currentUserId, canResetPassword }: Admi
         onOpenChange={setShowDeleteDialog}
         action={async () => {
           const impact = await getUserDeletionImpact(user.id)
+          setDeleteImpact(impact)
           await deleteAdminManagedUser(user.id, impact)
         }}
         title="Permanently delete user?"
@@ -254,9 +273,17 @@ export function AdminUserActions({ user, currentUserId, canResetPassword }: Admi
             <strong>{user.name ?? user.username}</strong>
             {' '}
             and all dependent data. This action cannot be undone.
+            <span className="mt-2 block text-xs">
+              {isLoadingImpact
+                ? 'Calculating deletion impact...'
+                : deleteImpact
+                  ? formatDeletionImpact(deleteImpact)
+                  : null}
+            </span>
           </>
         )}
         confirmLabel="Delete user"
+        confirmDisabled={isLoadingImpact || !deleteImpact}
         variant="destructive"
       />
     </>
