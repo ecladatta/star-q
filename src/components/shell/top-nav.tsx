@@ -1,6 +1,7 @@
 'use client'
 
 import { Menu } from 'lucide-react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -63,8 +64,9 @@ export function TopNav({ user }: { user: TopNavUser }) {
 
       <Link
         href="/"
-        className="shrink-0 text-[15px] font-semibold tracking-tight hover:opacity-75"
+        className="flex shrink-0 items-center gap-2 text-[15px] font-semibold tracking-tight hover:opacity-75"
       >
+        <Image src="/logo.svg" alt="" width={24} height={24} unoptimized />
         {APP_NAME}
       </Link>
 

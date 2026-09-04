@@ -1,5 +1,6 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -18,7 +19,8 @@ export function GuestBar({ setupCompleted, signupEnabled, signinEnabled }: Guest
 
   return (
     <header className={cn('flex h-14 shrink-0 items-center justify-between bg-muted px-4 sm:px-6', !hasCorpusNav && 'border-b')}>
-      <Link href="/" className="text-[15px] font-semibold tracking-tight hover:opacity-75">
+      <Link href="/" className="flex items-center gap-2 text-[15px] font-semibold tracking-tight hover:opacity-75">
+        <Image src="/logo.svg" alt="" width={24} height={24} unoptimized />
         {APP_NAME}
       </Link>
       {setupCompleted
