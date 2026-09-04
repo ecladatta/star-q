@@ -762,7 +762,7 @@ export function AnnotationForm({
     >
       <Card
         className={cn(
-          'mb-6 w-full rounded-lg border text-left transition-all',
+          'mb-0 w-full rounded-lg border text-left transition-all md:mb-6',
           currentAnnotation?.id
           && 'border-accent ring-1 ring-accent/20',
         )}
