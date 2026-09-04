@@ -5,6 +5,7 @@ import { Library } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { FadeNav } from './fade-nav'
 import { corpusNav, isActive } from './nav-items'
 
 type CorpusNavProps = {
@@ -23,9 +24,12 @@ export function CorpusNav({ corpusId, corpusTitle, canManage, canEdit, documentC
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <nav
-        className="flex h-10 shrink-0 items-center gap-4 overflow-x-auto border-b bg-muted pl-5 sm:pl-8"
-        aria-label="Corpus sections"
+      <FadeNav
+        ariaLabel="Corpus sections"
+        wrapperClassName="border-b"
+        navClassName="flex h-10 items-center gap-4 bg-muted pl-5 sm:pl-8"
+        leftFadeClassName="bg-linear-to-r from-muted to-transparent"
+        rightFadeClassName="bg-linear-to-l from-muted to-transparent"
       >
         <Link
           href={`/corpus/${corpusId}`}
@@ -35,7 +39,7 @@ export function CorpusNav({ corpusId, corpusTitle, canManage, canEdit, documentC
           <Library className="size-4 shrink-0" strokeWidth={1.75} />
           <span className="max-w-56 truncate">{title}</span>
         </Link>
-        <div className="-mb-px flex shrink-0 items-end">
+        <div className="flex shrink-0 items-end">
           {items.map((item) => {
             const active = isActive(pathname, item)
             const Icon = item.icon
@@ -45,7 +49,7 @@ export function CorpusNav({ corpusId, corpusTitle, canManage, canEdit, documentC
                 href={item.href}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
-                  '-mb-px flex h-10 shrink-0 items-center border-b-2 border-transparent text-[13px] text-muted-foreground transition-colors hover:text-foreground',
+                  'flex h-10 shrink-0 items-center border-b-2 border-transparent text-[13px] text-muted-foreground transition-colors hover:text-foreground',
                   active && 'border-foreground font-medium text-foreground',
                 )}
               >
@@ -61,7 +65,7 @@ export function CorpusNav({ corpusId, corpusTitle, canManage, canEdit, documentC
             )
           })}
         </div>
-      </nav>
+      </FadeNav>
       <div className="min-h-0 min-w-0 flex-1">{children}</div>
     </div>
   )

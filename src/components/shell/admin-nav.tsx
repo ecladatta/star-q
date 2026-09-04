@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { FadeNav } from './fade-nav'
 import { adminNav, isActive } from './nav-items'
 
 type AdminNavProps = {
@@ -57,9 +58,11 @@ export function AdminNav({ label, children }: AdminNavProps) {
         </nav>
       </aside>
 
-      <nav
-        className="flex shrink-0 items-center gap-1 overflow-x-auto border-b bg-background px-2 py-1.5 md:hidden"
-        aria-label={label}
+      <FadeNav
+        ariaLabel={label}
+        navClassName="flex items-center gap-1 border-b bg-background px-2 py-1.5 md:hidden"
+        leftFadeClassName="bg-linear-to-r from-background to-transparent"
+        rightFadeClassName="bg-linear-to-l from-background to-transparent"
       >
         {items.map((item) => {
           const active = isActive(pathname, item)
@@ -78,7 +81,7 @@ export function AdminNav({ label, children }: AdminNavProps) {
             </Link>
           )
         })}
-      </nav>
+      </FadeNav>
 
       <div className="min-h-0 min-w-0 flex-1">{children}</div>
     </div>
