@@ -1,5 +1,6 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import type { Corpus, CorpusCustomEntity, CorpusVisibility } from '@/db/schema'
 import type { CorpusSettings } from '@/lib/corpus-settings'
 import type { EntityDatatype } from '@/types/types'
@@ -21,9 +22,10 @@ type CorpusSettingsPanelProps = {
   corpus: Corpus
   onCorpusRenamed?: (newTitle: string) => void
   canManageVisibility?: boolean
+  dangerZone?: ReactNode
 }
 
-export function CorpusSettingsPanel({ corpus, onCorpusRenamed, canManageVisibility = false }: CorpusSettingsPanelProps) {
+export function CorpusSettingsPanel({ corpus, onCorpusRenamed, canManageVisibility = false, dangerZone }: CorpusSettingsPanelProps) {
   const [corpusTitle, setCorpusTitle] = useState(corpus.title)
   const [visibility, setVisibility] = useState<CorpusVisibility>(corpus.visibility ?? 'private')
   const [settings, setSettings] = useState<CorpusSettings>(corpus.settings ?? {})
@@ -268,6 +270,8 @@ export function CorpusSettingsPanel({ corpus, onCorpusRenamed, canManageVisibili
             />
           </div>
         </div>
+
+        {dangerZone}
       </TabsContent>
 
       <TabsContent value="entities" className="flex flex-1 flex-col space-y-4 overflow-hidden">
