@@ -117,6 +117,7 @@ export function CommandMenu({ isAdmin, invitationCount, corpora }: CommandMenuPr
                 value="theme"
                 onSelect={() => {
                   toggleTheme()
+                  setOpen(false)
                 }}
               >
                 {dark ? <Sun /> : <Moon />}
