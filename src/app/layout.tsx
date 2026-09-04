@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   description: 'A web-based tool for annotating texts and tables',
 }
 
-const themeScript = `(function(){try{var t=localStorage.getItem('starq-theme');var d=t?t==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;if(d){document.documentElement.classList.add('dark')}}catch(e){}})()`
+const themeScript = `(function(){try{var t=localStorage.getItem('starq-theme');var d=t?t==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;if(d){document.documentElement.classList.add('dark')}if(localStorage.getItem('starq-full-width')==='1'){document.documentElement.classList.add('doc-full-width')}}catch(e){}})()`
 
 export default function RootLayout({
   children,
@@ -32,7 +32,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* The theme bootstrap must run before hydration to prevent a light-mode flash. */}
+        {/* The theme and full-width display bootstrap must run before hydration to prevent a light-mode flash. */}
         {/* eslint-disable-next-line react/dom-no-dangerously-set-innerhtml */}
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>

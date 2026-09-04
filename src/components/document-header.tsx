@@ -1,17 +1,21 @@
 'use client'
 import type { Document } from '@/db/schema'
 import type { DocumentData } from '@/types/types'
-import { Check, Circle, CircleCheckBig, Copy, ListIcon } from 'lucide-react'
+import { Circle, CircleCheck, Download, FileText, ListIcon, MoreHorizontal, Type } from 'lucide-react'
 import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { markDocumentsAsCompleted } from '@/actions/document/documentActions'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { setFullWidth, useFullWidth } from '@/lib/display'
+import { downloadRawDocumentData } from '@/lib/download-document'
 import { ShortcutsDialog } from './shortcuts-dialog'
 
 type DocumentHeaderProps = {
@@ -20,7 +24,6 @@ type DocumentHeaderProps = {
   readOnly?: boolean
   annotationsCount: number
   onOpenAnnotations: () => void
-  copiedDocument: boolean
   onCopyText: () => void
   onCopyWholeDocument: () => void
 }
@@ -31,12 +34,12 @@ export function DocumentHeader({
   readOnly = false,
   annotationsCount,
   onOpenAnnotations,
-  copiedDocument,
   onCopyText,
   onCopyWholeDocument,
 }: DocumentHeaderProps) {
   const [isCompleted, setIsCompleted] = useState(!!document.completedAt)
   const [isPending, startTransition] = useTransition()
+  const fullWidth = useFullWidth()
 
   const toggleCompletion = () => {
     startTransition(async () => {
@@ -56,7 +59,7 @@ export function DocumentHeader({
 
   return (
     <div className="sticky top-0 z-30 border-b bg-background">
-      <div className="mx-auto flex h-11 w-full max-w-4xl items-center gap-2 px-5 lg:px-8">
+      <div className="document-container mx-auto flex h-11 w-full max-w-4xl items-center gap-2 px-5 lg:px-8">
         <h2 className="min-w-0 flex-1 truncate text-sm font-semibold" title={title}>
           {title}
         </h2>
@@ -80,38 +83,42 @@ export function DocumentHeader({
                 variant="ghost"
                 size="sm"
                 className="size-7 p-0"
-                aria-label="Copy document"
+                aria-label="Document actions"
               >
-                {copiedDocument
-                  ? (
-                      <Check className="size-3.5" />
-                    )
-                  : (
-                      <Copy className="size-3.5" />
-                    )}
+                <MoreHorizontal className="size-3.5" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuCheckboxItem
+                checked={fullWidth}
+                onCheckedChange={checked => setFullWidth(checked)}
+              >
+                Full width
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem onClick={onCopyText}>
+                <Type className="size-4" />
                 Copy Text Only
               </DropdownMenuItem>
               <DropdownMenuItem onClick={onCopyWholeDocument}>
+                <FileText className="size-4" />
                 Copy Whole Document
               </DropdownMenuItem>
+              {!readOnly && (
+                <>
+                  <DropdownMenuItem onClick={() => downloadRawDocumentData(document.id, document.title)}>
+                    <Download className="size-4" />
+                    Download Raw Data
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={toggleCompletion} disabled={isPending}>
+                    {isCompleted ? <Circle className="size-4" /> : <CircleCheck className="size-4" />}
+                    {isCompleted ? 'Mark as Not Completed' : 'Mark as Completed'}
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
-          {!readOnly && (
-            <Button
-              onClick={toggleCompletion}
-              disabled={isPending}
-              variant="ghost"
-              size="icon"
-              className="shrink-0 gap-2"
-              title={isCompleted ? 'Completed' : 'Mark as Complete'}
-            >
-              {isCompleted ? <CircleCheckBig className="size-4" /> : <Circle className="size-4" />}
-            </Button>
-          )}
         </div>
       </div>
     </div>

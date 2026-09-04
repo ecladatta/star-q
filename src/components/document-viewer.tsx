@@ -120,7 +120,6 @@ export function DocumentViewer({
   readOnly = false,
 }: DocumentViewerProps) {
   const [showAnnotations, setShowAnnotations] = useState(true)
-  const [copiedDocument, setCopiedDocument] = useState(false)
   const [mobileAnnotationsOpen, setMobileAnnotationsOpen] = useState(false)
   const [activeQualifierId, setActiveQualifierId] = useState<string | null>(
     null,
@@ -307,8 +306,6 @@ export function DocumentViewer({
     })
 
     navigator.clipboard.writeText(markdown).then(() => {
-      setCopiedDocument(true)
-      setTimeout(setCopiedDocument, 2000, false)
       toast.success('Text copied to clipboard as Markdown!')
     })
   }
@@ -354,8 +351,6 @@ export function DocumentViewer({
     })
 
     navigator.clipboard.writeText(markdown).then(() => {
-      setCopiedDocument(true)
-      setTimeout(setCopiedDocument, 2000, false)
       toast.success('Document copied to clipboard as Markdown!')
     })
   }
@@ -382,20 +377,19 @@ export function DocumentViewer({
             readOnly={readOnly}
             annotationsCount={documentAnnotations.length}
             onOpenAnnotations={() => setMobileAnnotationsOpen(true)}
-            copiedDocument={copiedDocument}
             onCopyText={copyTextOnly}
             onCopyWholeDocument={copyWholeDocument}
           />
         )}
 
-        <div className="mx-auto w-full max-w-4xl px-5 py-6 lg:px-8">
+        <div className="document-container mx-auto w-full max-w-4xl px-5 py-6 lg:px-8">
           {documentData && document && (
             <>
               <DocumentMeta documentData={documentData} />
 
               {warningsSlot}
 
-              <Card className="mb-6 min-w-0 overflow-clip border-none shadow-none">
+              <Card className="mb-6 min-w-0 overflow-clip rounded-none border-none shadow-none">
                 <CardContent className="min-w-0 p-0">
                   {combinedElements.map(element => (
                     <CombinedElement

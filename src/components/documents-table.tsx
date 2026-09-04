@@ -36,7 +36,6 @@ import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import {
   deleteDocuments,
-  getRawDocumentData,
   markDocumentsAsCompleted,
 } from '@/actions/document/documentActions'
 import { Button } from '@/components/ui/button'
@@ -71,6 +70,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { downloadRawDocumentData } from '@/lib/download-document'
 import { cn } from '@/lib/utils'
 import { Label } from './ui/label'
 
@@ -355,41 +355,6 @@ function DataTablePagination<TData>({
       </div>
     </div>
   )
-}
-
-// Add a function to handle downloads
-async function downloadRawDocumentData(id: string, title: string) {
-  try {
-    const rawData = await getRawDocumentData(id)
-    if (!rawData) {
-      toast.error('Couldn\'t fetch document data')
-      return
-    }
-
-    // Create a Blob with the JSON data
-    const blob = new Blob([JSON.stringify(rawData, null, 2)], {
-      type: 'application/json',
-    })
-
-    // Create a URL for the Blob
-    const url = URL.createObjectURL(blob)
-
-    // Create a temporary anchor element to trigger the download
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${title.replace(/\s+/g, '_')}_raw.json`
-    document.body.appendChild(a)
-    a.click()
-
-    // Clean up
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-
-    toast.success('Document data downloaded successfully')
-  } catch (error) {
-    console.error('Error downloading document data:', error)
-    toast.error('Failed to download document data')
-  }
 }
 
 const columns: ColumnDef<DocumentMetadata, any>[] = [

@@ -32,7 +32,7 @@ export default antfu(
       'better-tailwindcss/enforce-consistent-line-wrapping': 'warn',
       'better-tailwindcss/enforce-consistent-class-order': 'warn',
       'better-tailwindcss/no-unknown-classes': ['error', {
-        ignore: ['toaster', 'typography', 'typography-disabled'],
+        ignore: ['toaster', 'typography', 'typography-disabled', 'document-container'],
       }],
     },
     settings: {
