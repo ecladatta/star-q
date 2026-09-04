@@ -1,5 +1,40 @@
 # Changelog
 
+## [1.1.0](https://github.com/ecladatta/star-q/compare/v1.0.0...v1.1.0) (2026-09-04)
+
+
+### Features
+
+* add corpus ownership transfer table and locking helpers ([00ae8e1](https://github.com/ecladatta/star-q/commit/00ae8e197065eacf780cb92c3eeb9f87471c7703))
+* add corpus ownership transfers ([fb9faaa](https://github.com/ecladatta/star-q/commit/fb9faaa44b1ec68f2395162453c184be6c8b102a))
+* add personal team lifecycle with lazy provisioning ([bb7173c](https://github.com/ecladatta/star-q/commit/bb7173c67838ab70fcd86eba6a45791a0779571f))
+* add quick actions menu to admin corpora table ([1e29e12](https://github.com/ecladatta/star-q/commit/1e29e1242290898b9194a59c33a6ea79fb34d547))
+* add quick actions menu to admin teams table ([c52c0a9](https://github.com/ecladatta/star-q/commit/c52c0a9f4e15a32d619be29d2e771fc4563f3d34))
+* add quick actions menu to admin users table ([ed44df0](https://github.com/ecladatta/star-q/commit/ed44df007b12312dd25ae8e6c5b8a0e83e242d79))
+* add success toasts for corpus rename and team invitations ([08b9b00](https://github.com/ecladatta/star-q/commit/08b9b00e6702e17f92033cdc78f44a5c760f0532))
+* add team.kind column as ownership-collapse foundation ([cab0049](https://github.com/ecladatta/star-q/commit/cab0049dc0443e1482535307a57b97b5aa74a376))
+* add type-to-confirm deletion for corpora and teams ([fd62f6e](https://github.com/ecladatta/star-q/commit/fd62f6e74fee6d2b33b8623ff9fffad96e929cae))
+* collapse corpus ownership to teams-only with data migration ([bb8d359](https://github.com/ecladatta/star-q/commit/bb8d359efc7f148a63f42cdc3aa7e252f1df8663))
+* let admins directly manage corpus access ([5427eef](https://github.com/ecladatta/star-q/commit/5427eef94a21c5d9079ab83f7826f0b0a983d3c3))
+* move corpus ownership transfer to settings danger zone ([9aead7f](https://github.com/ecladatta/star-q/commit/9aead7fd31fe2cecd2bd334fb503b9c217c2d56f))
+* replace ownership transfer with immediate move to team ([421a71d](https://github.com/ecladatta/star-q/commit/421a71d1b5600d25e7c64169365ac3260ed30ab7))
+* require acceptance for corpus ownership transfers ([0925856](https://github.com/ecladatta/star-q/commit/0925856c968995d9f8901f3ebbc2f5d16b427034))
+* show deletion impact summary in the delete-user dialogs ([fba8fb5](https://github.com/ecladatta/star-q/commit/fba8fb58a7511478dbfdef53c871a904a3ec6221))
+* use dropdown for corpus collaborator roles ([4c19862](https://github.com/ecladatta/star-q/commit/4c198625dd56e97f35bb9be15c82aa30e7f9fbed))
+
+
+### Bug Fixes
+
+* add top margin to the analytics wikidata warnings section ([9c0ec1e](https://github.com/ecladatta/star-q/commit/9c0ec1e82439a2868689ea0554206c51c73e060d))
+* close command palette after applying a theme ([9e3a602](https://github.com/ecladatta/star-q/commit/9e3a6023f8be797c7203422a1885718ffcbe8817))
+* guard admin mutations against concurrent changes ([469d4e0](https://github.com/ecladatta/star-q/commit/469d4e0aa7c9d52f70c05569ef3def4812c9169b))
+* harden team mutations with row locks ([3855dd8](https://github.com/ecladatta/star-q/commit/3855dd8c4ad6d31426389f91a805b54c83a276ec))
+* hide member controls on personal team pages ([db3d1b4](https://github.com/ecladatta/star-q/commit/db3d1b4c805dceeb7c83f716310b2f9a8ae9076c))
+* make corpus collaboration mutations transactional ([f2d6470](https://github.com/ecladatta/star-q/commit/f2d6470be6a2eefd0b4118296cdaeca944efae45))
+* name personal teams without the (personal) suffix ([cdbfb9d](https://github.com/ecladatta/star-q/commit/cdbfb9df71ae1de991585d09df1b4228ea5611b2))
+* only shared-team sole ownership prevents blocking a user ([267080c](https://github.com/ecladatta/star-q/commit/267080c4beaa5e4fe5d7c5224f80544db882ef12))
+* render Forbidden page instead of 500 or silent redirect for corpus management URLs ([aa8b3a4](https://github.com/ecladatta/star-q/commit/aa8b3a4c5c32fc2a54e619a026e002b28249c1ab))
+
 ## [1.0.0](https://github.com/ecladatta/star-q/compare/v0.3.0...v1.0.0) (2026-08-31)
 
 
