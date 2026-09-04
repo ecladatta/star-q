@@ -1,5 +1,34 @@
 # Changelog
 
+## [1.2.0](https://github.com/ecladatta/star-q/compare/v1.1.0...v1.2.0) (2026-09-04)
+
+
+### Features
+
+* add document actions menu with full-width display toggle ([7eb2103](https://github.com/ecladatta/star-q/commit/7eb21030f0ad5d792c100246cdee10faae93627f))
+* add STAR-Q logo to headers and replace favicon ([4ae5fb7](https://github.com/ecladatta/star-q/commit/4ae5fb7da936a45233a767a18637cfc2ad744d05))
+* move document actions into compact sticky header with metadata row ([06eb3d8](https://github.com/ecladatta/star-q/commit/06eb3d801d929330bd949323915b6c083d85abdf))
+* show annotations sidebar with empty state instead of hiding it ([53246f5](https://github.com/ecladatta/star-q/commit/53246f5a2c2a750a3da8fa289dc517dd18439a0b))
+* slide annotation form in and out of view ([d73d646](https://github.com/ecladatta/star-q/commit/d73d6464005a0e41e4d540a5dac23b83d01696a8))
+
+
+### Bug Fixes
+
+* add scroll edge fades to mobile tab navigation ([3946466](https://github.com/ecladatta/star-q/commit/394646618a1283f43d0dfdd014c02d7266fd1bd7))
+* adopt official shadcn primitives so popover animations match Radix state attributes ([b815f5c](https://github.com/ecladatta/star-q/commit/b815f5c740c6c854bae2d9c8c9edef03b0ad129b))
+* anchor sr-only labels inside buttons to prevent page-level horizontal overflow ([ff06b6b](https://github.com/ecladatta/star-q/commit/ff06b6b01436af8ba244e360c80a466fa3d45eba))
+* enlarge documents table checkbox touch targets to 44px ([ec778f8](https://github.com/ecladatta/star-q/commit/ec778f8a711aba91412fad8f6314104d96db3343))
+* flush annotation form to viewport bottom on mobile ([b908bf0](https://github.com/ecladatta/star-q/commit/b908bf0104f6ee1b83ad205d2af97e4cbe762f2d))
+* keep auth redirects on the serving origin ([fa45c3b](https://github.com/ecladatta/star-q/commit/fa45c3b00e8eb9e029c2af03b5ae2c7f0e8aa3c6))
+* make annotations panel reachable on mobile via a slide-over sheet ([1e9eee7](https://github.com/ecladatta/star-q/commit/1e9eee7f27a635ee28dace749f4487a30305eb05))
+* prevent iOS zoom on native role selects ([74ffae0](https://github.com/ecladatta/star-q/commit/74ffae0b218cc24bb3a69717f59b5947b478c48b))
+* render corpus danger zone only in the General settings tab ([192566d](https://github.com/ecladatta/star-q/commit/192566daea118dab3ef90f59fa074309eaa692a1))
+* reuse Table scroll container on hand-rolled admin tables ([a45a128](https://github.com/ecladatta/star-q/commit/a45a1286300e1cd057abf1f4bc794e04de5b17dd))
+* soften wikidata degradation logs on upstream unavailability ([19c8dde](https://github.com/ecladatta/star-q/commit/19c8dde33da972cc169699d11badfaba9a2e7008))
+* stack PageHeader actions below the title on small screens ([11411ea](https://github.com/ecladatta/star-q/commit/11411ead4fdbe73f0637be033f27ffcdb0d8eeda))
+* stack table pagination footer on small screens ([67e6463](https://github.com/ecladatta/star-q/commit/67e6463784e196468b393c34a2762d44b0399193))
+* wrap destructive admin action label on small screens ([06047ac](https://github.com/ecladatta/star-q/commit/06047ac8d8b59e54934c0d7522e06b4290e2b356))
+
 ## [1.1.0](https://github.com/ecladatta/star-q/compare/v1.0.0...v1.1.0) (2026-09-04)
 
 
