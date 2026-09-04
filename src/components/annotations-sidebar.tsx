@@ -376,7 +376,7 @@ export function AnnotationsSidebar({
 
   return (
     <>
-      <aside className="hidden h-full w-[280px] shrink-0 border-l bg-background md:block">
+      <aside className="hidden w-[280px] shrink-0 border-l bg-background md:sticky md:top-0 md:block md:h-screen md:self-start">
         <SidebarContent {...contentProps} />
       </aside>
 

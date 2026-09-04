@@ -23,7 +23,7 @@ export function CorpusNav({ corpusId, corpusTitle, canManage, canEdit, documentC
   const title = corpusTitle ?? corpusId
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="flex flex-col">
       <FadeNav
         ariaLabel="Corpus sections"
         wrapperClassName="border-b"

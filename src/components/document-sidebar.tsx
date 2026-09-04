@@ -53,7 +53,7 @@ export function DocumentSidebar({ documents, currentDocument }: DocumentSidebarP
   }, [currentDocument?.id])
 
   return (
-    <aside className="hidden h-full w-[280px] shrink-0 overflow-hidden border-r bg-background lg:block">
+    <aside className="hidden w-[280px] shrink-0 overflow-hidden border-r bg-background lg:sticky lg:top-0 lg:block lg:h-screen lg:self-start">
       <div className="flex h-full min-w-0 flex-col">
         <div className="shrink-0 border-b p-3">
           <div className="relative">

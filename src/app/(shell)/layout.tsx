@@ -31,7 +31,7 @@ export default async function ShellLayout({ children }: { children: ReactNode })
   }
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden">
+    <div className="flex min-h-dvh flex-col">
       {user
         ? (
             <TopNav user={user} />
@@ -43,7 +43,7 @@ export default async function ShellLayout({ children }: { children: ReactNode })
               signinEnabled={settings.signinEnabled}
             />
           )}
-      <main className="min-h-0 min-w-0 flex-1">{children}</main>
+      <main>{children}</main>
     </div>
   )
 }

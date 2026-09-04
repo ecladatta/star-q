@@ -17,8 +17,8 @@ export function AdminNav({ label, children }: AdminNavProps) {
   const items = adminNav()
 
   return (
-    <div className="flex h-full min-h-0 flex-col md:flex-row">
-      <aside className="hidden w-52 shrink-0 flex-col border-r bg-muted/40 md:flex" aria-label={label}>
+    <div className="flex flex-col md:flex-row">
+      <aside className="hidden w-52 shrink-0 flex-col border-r bg-muted/40 md:sticky md:top-0 md:flex md:h-screen md:self-start" aria-label={label}>
         <nav className="flex-1 overflow-y-auto px-3 py-5">
           <ul className="space-y-0.5">
             {items.map((item) => {
@@ -83,7 +83,7 @@ export function AdminNav({ label, children }: AdminNavProps) {
         })}
       </FadeNav>
 
-      <div className="min-h-0 min-w-0 flex-1">{children}</div>
+      <div className="min-w-0 flex-1">{children}</div>
     </div>
   )
 }
