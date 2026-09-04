@@ -346,10 +346,6 @@ export function AnnotationsSidebar({
     onBatchDelete()
   }
 
-  if (annotations.length === 0) {
-    return null
-  }
-
   const contentProps: SidebarContentProps = {
     annotations,
     filteredAndSortedAnnotations,
@@ -536,7 +532,7 @@ function SidebarContent({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex h-10 shrink-0 items-center justify-between border-b px-3">
+      <div className="flex h-[45px] shrink-0 items-center justify-between border-b px-3">
         <h2 className="text-xs font-medium text-muted-foreground">
           Annotations
         </h2>
@@ -566,266 +562,268 @@ function SidebarContent({
         </div>
       </div>
 
-      <div className="shrink-0 space-y-3 border-b p-3">
-        {/* Highlight toggle */}
-        <div className="flex items-center gap-2 rounded-md bg-background">
-          <Checkbox
-            id={`${panelId}-show-annotations`}
-            checked={showAnnotations}
-            onCheckedChange={checked =>
-              onShowAnnotationsChange(checked === true)}
-          />
-          <Label
-            htmlFor={`${panelId}-show-annotations`}
-            className="cursor-pointer text-sm font-medium"
-          >
-            <span>
-              <u>H</u>
-              ighlight in document
-            </span>
-          </Label>
-        </div>
-
-        {/* Sort and Filter controls */}
-        <div className="flex items-center gap-2">
-          <Label className="shrink-0 text-xs font-medium text-muted-foreground">
-            Sort by
-          </Label>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="outline"
-                className="flex-1 justify-between truncate"
-                size="sm"
-                style={{ minWidth: 0 }}
-              >
-                <span className="truncate text-sm">
-                  {sortOption === 'creation' && 'Creation order'}
-                  {sortOption === 'alphabetical' && 'Alphabetical'}
-                  {sortOption === 'position' && 'Position in document'}
-                </span>
-                <ChevronDownIcon className="ml-2 size-4 shrink-0 opacity-50" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-50">
-              <DropdownMenuItem onClick={() => setSortOption('creation')}>
-                Creation order
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => setSortOption('alphabetical')}
-              >
-                Alphabetical
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSortOption('position')}>
-                Position in document
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className={hasActiveFilters ? 'border-accent bg-accent/10' : ''}
-              >
-                <FilterIcon className="size-4" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[280px]" align="end">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-semibold">Filters</h4>
-                  {hasActiveFilters && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={resetFilters}
-                      className="h-auto p-1 text-xs"
-                    >
-                      Reset
-                    </Button>
-                  )}
-                </div>
-
-                <div className="space-y-3">
-                  <div>
-                    <Label className="mb-2 block text-xs font-medium text-muted-foreground">
-                      Annotation Type
-                    </Label>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Checkbox
-                          id={`${panelId}-filter-text`}
-                          checked={filters.types.text}
-                          onCheckedChange={checked =>
-                            handleTypeFilterChange('text', checked === true)}
-                        />
-                        <Label
-                          htmlFor={`${panelId}-filter-text`}
-                          className="flex cursor-pointer items-center gap-1 text-sm font-normal"
-                        >
-                          <TextIcon className="size-3" />
-                          Text
-                        </Label>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Checkbox
-                          id={`${panelId}-filter-table`}
-                          checked={filters.types.table}
-                          onCheckedChange={checked =>
-                            handleTypeFilterChange('table', checked === true)}
-                        />
-                        <Label
-                          htmlFor={`${panelId}-filter-table`}
-                          className="flex cursor-pointer items-center gap-1 text-sm font-normal"
-                        >
-                          <TableIcon className="size-3" />
-                          Table
-                        </Label>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Checkbox
-                          id={`${panelId}-filter-joint`}
-                          checked={filters.types.joint}
-                          onCheckedChange={checked =>
-                            handleTypeFilterChange('joint', checked === true)}
-                        />
-                        <Label
-                          htmlFor={`${panelId}-filter-joint`}
-                          className="flex cursor-pointer items-center gap-1 text-sm font-normal"
-                        >
-                          <TextIcon className="size-3" />
-                          <span className="text-xs">+</span>
-                          <TableIcon className="size-3" />
-                          Joint
-                        </Label>
-                      </div>
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  <div>
-                    <Label className="mb-2 block text-xs font-medium text-muted-foreground">
-                      Entity Assignment
-                    </Label>
-                    <div className="space-y-3">
-                      <div className="space-y-1.5">
-                        <Label htmlFor={`${panelId}-filter-subject`} className="text-xs text-muted-foreground">
-                          Subject
-                        </Label>
-                        <Select
-                          value={filters.entities.subject}
-                          onValueChange={value =>
-                            handleEntityFilterChange('subject', value as EntityFilterState)}
-                        >
-                          <SelectTrigger id={`${panelId}-filter-subject`} className="h-8 text-xs">
-                            <SelectValue placeholder="Select filter..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="any">Any (show all)</SelectItem>
-                            <SelectItem value="with">Must have entity</SelectItem>
-                            <SelectItem value="without">Must not have entity</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <Label htmlFor={`${panelId}-filter-predicate`} className="text-xs text-muted-foreground">
-                          Predicate
-                        </Label>
-                        <Select
-                          value={filters.entities.predicate}
-                          onValueChange={value =>
-                            handleEntityFilterChange('predicate', value as EntityFilterState)}
-                        >
-                          <SelectTrigger id={`${panelId}-filter-predicate`} className="h-8 text-xs">
-                            <SelectValue placeholder="Select filter..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="any">Any (show all)</SelectItem>
-                            <SelectItem value="with">Must have entity</SelectItem>
-                            <SelectItem value="without">Must not have entity</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <Label htmlFor={`${panelId}-filter-object`} className="text-xs text-muted-foreground">
-                          Object
-                        </Label>
-                        <Select
-                          value={filters.entities.object}
-                          onValueChange={value =>
-                            handleEntityFilterChange('object', value as EntityFilterState)}
-                        >
-                          <SelectTrigger id={`${panelId}-filter-object`} className="h-8 text-xs">
-                            <SelectValue placeholder="Select filter..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="any">Any (show all)</SelectItem>
-                            <SelectItem value="with">Must have entity</SelectItem>
-                            <SelectItem value="without">Must not have entity</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
-        </div>
-
-        {/* Selection controls */}
-        {!readOnly && (
+      {annotations.length > 0 && (
+        <div className="shrink-0 space-y-3 border-b p-3">
+          {/* Highlight toggle */}
           <div className="flex items-center gap-2 rounded-md bg-background">
             <Checkbox
-              id={`${panelId}-select-all`}
-              checked={allSelected}
-              onCheckedChange={handleSelectAll}
-              {...(someSelected && !allSelected
-                ? { 'data-state': 'indeterminate' }
-                : {})}
+              id={`${panelId}-show-annotations`}
+              checked={showAnnotations}
+              onCheckedChange={checked =>
+                onShowAnnotationsChange(checked === true)}
             />
             <Label
-              htmlFor={`${panelId}-select-all`}
+              htmlFor={`${panelId}-show-annotations`}
               className="cursor-pointer text-sm font-medium"
             >
-              Select all
+              <span>
+                <u>H</u>
+                ighlight in document
+              </span>
             </Label>
           </div>
-        )}
 
-        {/* Delete button */}
-        {!readOnly && someSelected && (
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={handleDeleteClick}
-            disabled={isBatchDeleting}
-            className="w-full"
-          >
-            {isBatchDeleting
-              ? (
-                  <Loader2Icon className="mr-2 size-4 animate-spin" />
-                )
-              : (
-                  <Trash2Icon className="mr-2 size-4" />
-                )}
-            Delete
-            {' '}
-            {selectedAnnotations.size}
-            {' '}
-            annotation
-            {selectedAnnotations.size > 1 ? 's' : ''}
-          </Button>
-        )}
-      </div>
+          {/* Sort and Filter controls */}
+          <div className="flex items-center gap-2">
+            <Label className="shrink-0 text-xs font-medium text-muted-foreground">
+              Sort by
+            </Label>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="flex-1 justify-between truncate"
+                  size="sm"
+                  style={{ minWidth: 0 }}
+                >
+                  <span className="truncate text-sm">
+                    {sortOption === 'creation' && 'Creation order'}
+                    {sortOption === 'alphabetical' && 'Alphabetical'}
+                    {sortOption === 'position' && 'Position in document'}
+                  </span>
+                  <ChevronDownIcon className="ml-2 size-4 shrink-0 opacity-50" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-50">
+                <DropdownMenuItem onClick={() => setSortOption('creation')}>
+                  Creation order
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setSortOption('alphabetical')}
+                >
+                  Alphabetical
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSortOption('position')}>
+                  Position in document
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-      <div className={`relative min-h-0 flex-1 overflow-visible ${hasActiveFilters ? 'border border-accent/30' : ''}`}>
-        {hasActiveFilters && (
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={hasActiveFilters ? 'border-accent bg-accent/10' : ''}
+                >
+                  <FilterIcon className="size-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[280px]" align="end">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-semibold">Filters</h4>
+                    {hasActiveFilters && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={resetFilters}
+                        className="h-auto p-1 text-xs"
+                      >
+                        Reset
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="space-y-3">
+                    <div>
+                      <Label className="mb-2 block text-xs font-medium text-muted-foreground">
+                        Annotation Type
+                      </Label>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id={`${panelId}-filter-text`}
+                            checked={filters.types.text}
+                            onCheckedChange={checked =>
+                              handleTypeFilterChange('text', checked === true)}
+                          />
+                          <Label
+                            htmlFor={`${panelId}-filter-text`}
+                            className="flex cursor-pointer items-center gap-1 text-sm font-normal"
+                          >
+                            <TextIcon className="size-3" />
+                            Text
+                          </Label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id={`${panelId}-filter-table`}
+                            checked={filters.types.table}
+                            onCheckedChange={checked =>
+                              handleTypeFilterChange('table', checked === true)}
+                          />
+                          <Label
+                            htmlFor={`${panelId}-filter-table`}
+                            className="flex cursor-pointer items-center gap-1 text-sm font-normal"
+                          >
+                            <TableIcon className="size-3" />
+                            Table
+                          </Label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            id={`${panelId}-filter-joint`}
+                            checked={filters.types.joint}
+                            onCheckedChange={checked =>
+                              handleTypeFilterChange('joint', checked === true)}
+                          />
+                          <Label
+                            htmlFor={`${panelId}-filter-joint`}
+                            className="flex cursor-pointer items-center gap-1 text-sm font-normal"
+                          >
+                            <TextIcon className="size-3" />
+                            <span className="text-xs">+</span>
+                            <TableIcon className="size-3" />
+                            Joint
+                          </Label>
+                        </div>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    <div>
+                      <Label className="mb-2 block text-xs font-medium text-muted-foreground">
+                        Entity Assignment
+                      </Label>
+                      <div className="space-y-3">
+                        <div className="space-y-1.5">
+                          <Label htmlFor={`${panelId}-filter-subject`} className="text-xs text-muted-foreground">
+                            Subject
+                          </Label>
+                          <Select
+                            value={filters.entities.subject}
+                            onValueChange={value =>
+                              handleEntityFilterChange('subject', value as EntityFilterState)}
+                          >
+                            <SelectTrigger id={`${panelId}-filter-subject`} className="h-8 text-xs">
+                              <SelectValue placeholder="Select filter..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="any">Any (show all)</SelectItem>
+                              <SelectItem value="with">Must have entity</SelectItem>
+                              <SelectItem value="without">Must not have entity</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label htmlFor={`${panelId}-filter-predicate`} className="text-xs text-muted-foreground">
+                            Predicate
+                          </Label>
+                          <Select
+                            value={filters.entities.predicate}
+                            onValueChange={value =>
+                              handleEntityFilterChange('predicate', value as EntityFilterState)}
+                          >
+                            <SelectTrigger id={`${panelId}-filter-predicate`} className="h-8 text-xs">
+                              <SelectValue placeholder="Select filter..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="any">Any (show all)</SelectItem>
+                              <SelectItem value="with">Must have entity</SelectItem>
+                              <SelectItem value="without">Must not have entity</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label htmlFor={`${panelId}-filter-object`} className="text-xs text-muted-foreground">
+                            Object
+                          </Label>
+                          <Select
+                            value={filters.entities.object}
+                            onValueChange={value =>
+                              handleEntityFilterChange('object', value as EntityFilterState)}
+                          >
+                            <SelectTrigger id={`${panelId}-filter-object`} className="h-8 text-xs">
+                              <SelectValue placeholder="Select filter..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="any">Any (show all)</SelectItem>
+                              <SelectItem value="with">Must have entity</SelectItem>
+                              <SelectItem value="without">Must not have entity</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
+
+          {/* Selection controls */}
+          {!readOnly && (
+            <div className="flex items-center gap-2 rounded-md bg-background">
+              <Checkbox
+                id={`${panelId}-select-all`}
+                checked={allSelected}
+                onCheckedChange={handleSelectAll}
+                {...(someSelected && !allSelected
+                  ? { 'data-state': 'indeterminate' }
+                  : {})}
+              />
+              <Label
+                htmlFor={`${panelId}-select-all`}
+                className="cursor-pointer text-sm font-medium"
+              >
+                Select all
+              </Label>
+            </div>
+          )}
+
+          {/* Delete button */}
+          {!readOnly && someSelected && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleDeleteClick}
+              disabled={isBatchDeleting}
+              className="w-full"
+            >
+              {isBatchDeleting
+                ? (
+                    <Loader2Icon className="mr-2 size-4 animate-spin" />
+                  )
+                : (
+                    <Trash2Icon className="mr-2 size-4" />
+                  )}
+              Delete
+              {' '}
+              {selectedAnnotations.size}
+              {' '}
+              annotation
+              {selectedAnnotations.size > 1 ? 's' : ''}
+            </Button>
+          )}
+        </div>
+      )}
+
+      <div className={`relative min-h-0 flex-1 overflow-visible ${hasActiveFilters && annotations.length > 0 ? 'border border-accent/30' : ''}`}>
+        {hasActiveFilters && annotations.length > 0 && (
           <div className="absolute top-0 left-1/2 z-20 -translate-x-1/2 -translate-y-4">
             <span className="rounded-sm border border-accent/30 bg-accent/10 px-2 py-[2px] text-[10px] font-medium text-accent">
               Filtered
@@ -836,7 +834,9 @@ function SidebarContent({
           {filteredAndSortedAnnotations.length === 0
             ? (
                 <div className="flex h-32 items-center justify-center p-4 text-center text-sm text-muted-foreground">
-                  No annotations match the current filters
+                  {annotations.length === 0
+                    ? 'Select text or table cells to start annotating'
+                    : 'No annotations match the current filters'}
                 </div>
               )
             : (
