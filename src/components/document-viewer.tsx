@@ -8,7 +8,7 @@ import type {
   DocumentAnnotationComponent,
   DocumentData,
 } from '@/types/types'
-import { Check, Copy, InfoIcon } from 'lucide-react'
+import { Check, Copy, InfoIcon, ListIcon } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -78,6 +78,7 @@ export function DocumentViewer({
 }: DocumentViewerProps) {
   const [showAnnotations, setShowAnnotations] = useState(true)
   const [copiedDocument, setCopiedDocument] = useState(false)
+  const [mobileAnnotationsOpen, setMobileAnnotationsOpen] = useState(false)
   const [activeQualifierId, setActiveQualifierId] = useState<string | null>(
     null,
   )
@@ -344,12 +345,24 @@ export function DocumentViewer({
 
               {warningsSlot}
 
-              <Card className="mb-6 min-w-0 overflow-hidden">
-                <CardHeader className="flex h-10 min-w-0 flex-row items-center justify-between gap-2 border-b px-3 py-0">
+              <Card className="mb-6 min-w-0 overflow-clip">
+                <CardHeader className="flex h-10 min-w-0 flex-row items-center justify-between gap-2 border-b px-3 py-0 max-md:sticky max-md:top-0 max-md:z-10 max-md:bg-card">
                   <CardDescription className="mb-0 min-w-0 flex-1 truncate text-xs font-medium text-muted-foreground">
                     Select text or table cells to start annotating
                   </CardDescription>
                   <div className="flex shrink-0 items-center gap-1">
+                    {documentAnnotations.length > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 gap-1 px-2 md:hidden"
+                        onClick={() => setMobileAnnotationsOpen(true)}
+                      >
+                        <ListIcon className="size-3.5" />
+                        <span className="text-xs">{documentAnnotations.length}</span>
+                        <span className="sr-only">Open annotations panel</span>
+                      </Button>
+                    )}
                     <Dialog>
                       <DialogTrigger asChild>
                         <Button
@@ -580,6 +593,7 @@ export function DocumentViewer({
         onBatchDelete={handleBatchDelete}
         isBatchDeleting={isBatchDeleting}
         readOnly={readOnly}
+        mobileSheet={{ open: mobileAnnotationsOpen, onOpenChange: setMobileAnnotationsOpen }}
       />
     </div>
   )
