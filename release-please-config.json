@@ -3,7 +3,9 @@
     ".": {
       "release-type": "node",
       "package-name": "star-q",
-      "include-component-in-tag": false
+      "include-v-in-tag": true,
+      "include-component-in-tag": false,
+      "pull-request-header": "Automated Release PR"
     }
   }
 }
