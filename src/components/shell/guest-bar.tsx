@@ -1,11 +1,9 @@
 'use client'
 
-import Image from 'next/image'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { APP_NAME } from '@/lib/config'
-import { cn } from '@/lib/utils'
+import { HeaderShell, MainNav } from './header-shell'
+import { guestNav } from './nav-items'
 
 type GuestBarProps = {
   setupCompleted: boolean
@@ -14,19 +12,15 @@ type GuestBarProps = {
 }
 
 export function GuestBar({ setupCompleted, signupEnabled, signinEnabled }: GuestBarProps) {
-  const pathname = usePathname()
-  const hasCorpusNav = pathname.startsWith('/corpus/') || pathname.startsWith('/document/')
+  const items = guestNav()
 
   return (
-    <header className={cn('flex h-14 shrink-0 items-center justify-between bg-muted px-4 sm:px-6', !hasCorpusNav && 'border-b')}>
-      <Link href="/" className="flex items-center gap-2 text-[15px] font-semibold tracking-tight hover:opacity-75">
-        <Image src="/logo.svg" alt="" width={24} height={24} unoptimized />
-        {APP_NAME}
-      </Link>
+    <HeaderShell>
+      {setupCompleted && <MainNav items={items} />}
       {setupCompleted
         ? (
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" className="hover:bg-border dark:hover:bg-background" asChild>
+            <div className="ml-auto flex items-center gap-2">
+              <Button variant="ghost" size="sm" className="hover:bg-border md:hidden dark:hover:bg-background" asChild>
                 <Link href="/explore">Explore</Link>
               </Button>
               {signupEnabled && signinEnabled && (
@@ -40,10 +34,10 @@ export function GuestBar({ setupCompleted, signupEnabled, signinEnabled }: Guest
             </div>
           )
         : (
-            <Button size="sm" asChild>
+            <Button size="sm" className="ml-auto" asChild>
               <Link href="/setup">Set up</Link>
             </Button>
           )}
-    </header>
+    </HeaderShell>
   )
 }

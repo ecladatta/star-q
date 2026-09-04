@@ -4,14 +4,16 @@ import { BarChart3, Database, FileText, Globe, Inbox, KeyRound, ScrollText, Sett
 export type NavItem = {
   href: string
   label: string
-  icon: LucideIcon
+  icon?: LucideIcon
   badge?: number
   exact?: boolean
 }
 
+export type NavItemWithIcon = NavItem & { icon: LucideIcon }
+
 export type NavGroup = {
   label: string
-  items: NavItem[]
+  items: NavItemWithIcon[]
 }
 
 export function isActive(pathname: string, item: Pick<NavItem, 'href' | 'exact'>): boolean {
@@ -23,8 +25,14 @@ export function isActive(pathname: string, item: Pick<NavItem, 'href' | 'exact'>
   return pathname === href || pathname.startsWith(`${href}/`)
 }
 
-export function topNav({ isAdmin, invitationCount }: { isAdmin: boolean, invitationCount: number }): NavItem[] {
-  const items: NavItem[] = [
+export function guestNav(): NavItem[] {
+  return [
+    { href: '/explore', label: 'Explore' },
+  ]
+}
+
+export function topNav({ isAdmin, invitationCount }: { isAdmin: boolean, invitationCount: number }): NavItemWithIcon[] {
+  const items: NavItemWithIcon[] = [
     { href: '/', label: 'Corpora', icon: Database },
     { href: '/explore', label: 'Explore', icon: Globe },
     { href: '/teams', label: 'Teams', icon: Users },
@@ -36,7 +44,7 @@ export function topNav({ isAdmin, invitationCount }: { isAdmin: boolean, invitat
   return items
 }
 
-export function adminNav(): NavItem[] {
+export function adminNav(): NavItemWithIcon[] {
   return [
     { href: '/admin', label: 'Overview', icon: Shield, exact: true },
     { href: '/admin/users', label: 'Users', icon: UserRound },
@@ -48,8 +56,8 @@ export function adminNav(): NavItem[] {
   ]
 }
 
-export function corpusNav(corpusId: string, permissions: { canManage: boolean, canEdit: boolean }, documentCount: number): NavItem[] {
-  const items: NavItem[] = [
+export function corpusNav(corpusId: string, permissions: { canManage: boolean, canEdit: boolean }, documentCount: number): NavItemWithIcon[] {
+  const items: NavItemWithIcon[] = [
     { href: `/corpus/${corpusId}`, label: `Documents (${documentCount})`, icon: FileText, exact: true },
   ]
   if (permissions.canManage) {
