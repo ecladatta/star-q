@@ -6,7 +6,6 @@ STAR-Q is a web-based application designed to facilitate the annotation of texts
 ## Prerequisites
 
 - Docker
-- `openssl` to generate secrets
 - Node.js and pnpm to develop on the host
 
 ## Deployment in Production
