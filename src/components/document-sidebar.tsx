@@ -55,7 +55,7 @@ export function DocumentSidebar({ documents, currentDocument }: DocumentSidebarP
   return (
     <aside className="hidden w-[280px] shrink-0 overflow-hidden border-r bg-background lg:sticky lg:top-0 lg:block lg:h-screen lg:self-start">
       <div className="flex h-full min-w-0 flex-col">
-        <div className="shrink-0 border-b p-3">
+        <div className="shrink-0 border-b px-3 py-1.5">
           <div className="relative">
             <Search className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input

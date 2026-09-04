@@ -8,37 +8,18 @@ import type {
   DocumentAnnotationComponent,
   DocumentData,
 } from '@/types/types'
-import { Check, Copy, InfoIcon, ListIcon } from 'lucide-react'
+import { CalendarDays } from 'lucide-react'
+import Link from 'next/link'
 import { useCallback, useMemo, useState } from 'react'
 import { toast } from 'sonner'
-import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-} from '@/components/ui/card'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import { Card, CardContent } from '@/components/ui/card'
 import { useAnnotationState } from '@/hooks/useAnnotationState'
 import { useAnnotationUrlSync } from '@/hooks/useAnnotationUrlSync'
 import { useDocumentElements } from '@/hooks/useDocumentElements'
 import { useSelectionHandlers } from '@/hooks/useSelectionState'
 import { getAnnotationComponents } from '@/lib/annotation-roles'
 import { isConstraintWarningsEnabled, isPredicateFilteringEnabled } from '@/lib/corpus-settings'
-import { annotationComponentsShareSegment, cn, isMac } from '@/lib/utils'
+import { annotationComponentsShareSegment, cn } from '@/lib/utils'
 import { AnnotationForm } from './annotation-form'
 import { AnnotationListPopover } from './annotation-list-popover'
 import { AnnotationsSidebar } from './annotations-sidebar'
@@ -66,6 +47,68 @@ type DocumentViewerProps = {
   annotations?: DocumentAnnotation[]
   warningsSlot?: ReactNode
   readOnly?: boolean
+}
+
+function formatVersionDate(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime()))
+    return value
+  return new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeZone: 'UTC' }).format(date)
+}
+
+function getUrlLabel(url: string) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '')
+  } catch {
+    return url
+  }
+}
+
+function DocumentMeta({ documentData }: { documentData: DocumentData }) {
+  const { versionDate, wikidata, url } = documentData._source.identificationMetadata
+  const urls = Array.isArray(url) ? url : url ? [url] : []
+
+  return (
+    <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+      {versionDate && (
+        <span className="flex items-center gap-1.5" title={versionDate}>
+          <CalendarDays className="size-3.5 shrink-0" />
+          {formatVersionDate(versionDate)}
+        </span>
+      )}
+      {wikidata && (
+        <span className="flex items-center gap-1.5">
+          <span>Wikidata</span>
+          <Link
+            href={`https://www.wikidata.org/wiki/${wikidata}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="View on Wikidata"
+            className="text-accent hover:underline"
+          >
+            {wikidata}
+          </Link>
+        </span>
+      )}
+      {urls.length > 0 && (
+        <span className="flex flex-wrap items-center gap-1.5">
+          <span>{urls.length > 1 ? 'Sources' : 'Source'}</span>
+          {urls.map(url => (
+            <Link
+              key={url}
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={url}
+              className="text-accent hover:underline"
+            >
+              {getUrlLabel(url)}
+            </Link>
+          ))}
+        </span>
+      )}
+    </div>
+  )
 }
 
 export function DocumentViewer({
@@ -317,8 +360,6 @@ export function DocumentViewer({
     })
   }
 
-  const ctrlKey = isMac() ? '⌘' : 'Ctrl'
-
   return (
     <div className="flex h-full min-h-0">
       {documentData && (
@@ -334,167 +375,28 @@ export function DocumentViewer({
           currentAnnotation && 'pb-80 sm:pb-48',
         )}
       >
+        {documentData && document && (
+          <DocumentHeader
+            document={document}
+            documentData={documentData}
+            readOnly={readOnly}
+            annotationsCount={documentAnnotations.length}
+            onOpenAnnotations={() => setMobileAnnotationsOpen(true)}
+            copiedDocument={copiedDocument}
+            onCopyText={copyTextOnly}
+            onCopyWholeDocument={copyWholeDocument}
+          />
+        )}
+
         <div className="mx-auto w-full max-w-4xl px-5 py-6 lg:px-8">
           {documentData && document && (
             <>
-              <DocumentHeader
-                document={document}
-                documentData={documentData}
-                readOnly={readOnly}
-              />
+              <DocumentMeta documentData={documentData} />
 
               {warningsSlot}
 
-              <Card className="mb-6 min-w-0 overflow-clip">
-                <CardHeader className="flex h-10 min-w-0 flex-row items-center justify-between gap-2 border-b px-3 py-0 max-md:sticky max-md:top-0 max-md:z-10 max-md:bg-card">
-                  <CardDescription className="mb-0 min-w-0 flex-1 truncate text-xs font-medium text-muted-foreground">
-                    Select text or table cells to start annotating
-                  </CardDescription>
-                  <div className="flex shrink-0 items-center gap-1">
-                    {documentAnnotations.length > 0 && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 gap-1 px-2 md:hidden"
-                        onClick={() => setMobileAnnotationsOpen(true)}
-                      >
-                        <ListIcon className="size-3.5" />
-                        <span className="text-xs">{documentAnnotations.length}</span>
-                        <span className="sr-only">Open annotations panel</span>
-                      </Button>
-                    )}
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="size-7 p-0"
-                          aria-label="Keyboard shortcuts"
-                        >
-                          <InfoIcon className="size-3.5" />
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="sm:max-w-md">
-                        <DialogHeader>
-                          <DialogTitle>Keyboard Shortcuts</DialogTitle>
-                          <DialogDescription>
-                            Use these shortcuts to speed up your annotation
-                            workflow
-                          </DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-4">
-                          <div>
-                            <h4 className="mb-2 text-sm font-medium">
-                              Annotation Actions
-                            </h4>
-                            <div className="space-y-2 text-sm">
-                              <div className="flex justify-between">
-                                <span>Mark as Subject</span>
-                                <kbd className="rounded-sm bg-muted px-2 py-1 text-xs">
-                                  S
-                                </kbd>
-                              </div>
-                              <div className="flex justify-between">
-                                <span>Mark as Predicate</span>
-                                <kbd className="rounded-sm bg-muted px-2 py-1 text-xs">
-                                  P
-                                </kbd>
-                              </div>
-                              <div className="flex justify-between">
-                                <span>Mark as Object</span>
-                                <kbd className="rounded-sm bg-muted px-2 py-1 text-xs">
-                                  O
-                                </kbd>
-                              </div>
-                            </div>
-                          </div>
-                          <div>
-                            <h4 className="mb-2 text-sm font-medium">
-                              Navigation
-                            </h4>
-                            <div className="space-y-2 text-sm">
-                              <div className="flex justify-between">
-                                <span>
-                                  Edit annotation (when popover visible)
-                                </span>
-                                <kbd className="rounded-sm bg-muted px-2 py-1 text-xs">
-                                  E
-                                </kbd>
-                              </div>
-                              <div className="flex justify-between">
-                                <span>
-                                  Clone annotation (when popover visible)
-                                </span>
-                                <kbd className="rounded-sm bg-muted px-2 py-1 text-xs">
-                                  C
-                                </kbd>
-                              </div>
-                              <div className="flex justify-between">
-                                <span>Toggle annotations visibility</span>
-                                <kbd className="rounded-sm bg-muted px-2 py-1 text-xs">
-                                  H
-                                </kbd>
-                              </div>
-                              <div className="flex justify-between">
-                                <span>Clear/Cancel</span>
-                                <kbd className="rounded-sm bg-muted px-2 py-1 text-xs">
-                                  Esc
-                                </kbd>
-                              </div>
-                            </div>
-                          </div>
-                          <div>
-                            <h4 className="mb-2 text-sm font-medium">
-                              Form Actions
-                            </h4>
-                            <div className="space-y-2 text-sm">
-                              <div className="flex justify-between">
-                                <span>Clone annotation</span>
-                                <kbd className="rounded-sm bg-muted px-2 py-1 text-xs">
-                                  C
-                                </kbd>
-                              </div>
-                              <div className="flex justify-between">
-                                <span>Save annotation</span>
-                                <kbd className="rounded-sm bg-muted px-2 py-1 text-xs">
-                                  {ctrlKey}
-                                  +S
-                                </kbd>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="size-7 p-0"
-                          aria-label="Copy document"
-                        >
-                          {copiedDocument
-                            ? (
-                                <Check className="size-3.5" />
-                              )
-                            : (
-                                <Copy className="size-3.5" />
-                              )}
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-48">
-                        <DropdownMenuItem onClick={copyTextOnly}>
-                          Copy Text Only
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={copyWholeDocument}>
-                          Copy Whole Document
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </CardHeader>
-                <CardContent className="min-w-0">
+              <Card className="mb-6 min-w-0 overflow-clip border-none shadow-none">
+                <CardContent className="min-w-0 p-0">
                   {combinedElements.map(element => (
                     <CombinedElement
                       key={`element-${element.elementIndex}`}
