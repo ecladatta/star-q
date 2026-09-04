@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { getAdminTeams } from '@/actions/admin/adminActions'
 import { AdminTeamActions } from '@/components/admin-team-actions'
 import { Page, PageHeader } from '@/components/page'
+import { Table } from '@/components/ui/table'
 
 export const dynamic = 'force-dynamic'
 export default async function AdminTeamsPage() {
@@ -13,7 +14,7 @@ export default async function AdminTeamsPage() {
         description={`${teams.length} teams on this instance`}
       />
       <section className="w-full overflow-hidden rounded-lg border border-border">
-        <table className="w-full">
+        <Table>
           <thead className="bg-muted/40 text-xs font-medium text-muted-foreground">
             <tr>
               <th className="px-3 py-2 text-left font-medium">Team</th>
@@ -48,7 +49,7 @@ export default async function AdminTeamsPage() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </Table>
       </section>
     </Page>
   )

@@ -7,6 +7,7 @@ import { ServerActionForm } from '@/components/server-action-form'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Table } from '@/components/ui/table'
 import { isLocalCredentialsEnabled } from '@/lib/app-settings'
 import { requirePageUser } from '@/lib/auth-utils'
 import { cn } from '@/lib/utils'
@@ -69,7 +70,7 @@ export default async function AdminUsersPage() {
         </section>
       )}
       <section className="w-full overflow-hidden rounded-lg border border-border">
-        <table className="w-full">
+        <Table>
           <thead className="bg-muted/40 text-xs font-medium text-muted-foreground">
             <tr>
               <th className="px-3 py-2 text-left font-medium">User</th>
@@ -108,7 +109,7 @@ export default async function AdminUsersPage() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </Table>
       </section>
     </Page>
   )

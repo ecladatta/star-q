@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { getAdminCorpora, getAdminTeams } from '@/actions/admin/adminActions'
 import { AdminCorpusActions } from '@/components/admin-corpus-actions'
 import { Page, PageHeader } from '@/components/page'
+import { Table } from '@/components/ui/table'
 
 export const dynamic = 'force-dynamic'
 export default async function AdminCorporaPage() {
@@ -17,7 +18,7 @@ export default async function AdminCorporaPage() {
         description={`${corpora.length} corpora on this instance`}
       />
       <section className="w-full overflow-hidden rounded-lg border border-border">
-        <table className="w-full">
+        <Table>
           <thead className="bg-muted/40 text-xs font-medium text-muted-foreground">
             <tr>
               <th className="px-3 py-2 text-left font-medium">Corpus</th>
@@ -48,7 +49,7 @@ export default async function AdminCorporaPage() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </Table>
       </section>
     </Page>
   )

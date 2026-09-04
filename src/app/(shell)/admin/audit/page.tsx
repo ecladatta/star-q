@@ -1,5 +1,6 @@
 import { getAdminAuditLog } from '@/actions/admin/adminActions'
 import { Page, PageHeader } from '@/components/page'
+import { Table } from '@/components/ui/table'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,7 +13,7 @@ export default async function AuditPage() {
         description="Latest 500 security and access events."
       />
       <section className="w-full overflow-hidden rounded-lg border border-border">
-        <table className="w-full">
+        <Table>
           <thead className="bg-muted/40 text-xs font-medium text-muted-foreground">
             <tr>
               <th className="px-3 py-2 text-left font-medium">Time</th>
@@ -34,7 +35,7 @@ export default async function AuditPage() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </Table>
       </section>
     </Page>
   )
