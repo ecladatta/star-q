@@ -27,6 +27,7 @@ type ConfirmActionButtonProps = {
   confirmText?: string | null
   confirmDisabled?: boolean
   variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link'
+  triggerClassName?: string
   successMessage?: string
   children?: ReactNode
   open?: boolean
@@ -41,6 +42,7 @@ export function ConfirmActionButton({
   confirmText,
   confirmDisabled = false,
   variant = 'default',
+  triggerClassName,
   successMessage,
   children,
   open: openProp,
@@ -86,7 +88,7 @@ export function ConfirmActionButton({
     >
       {openProp === undefined && (
         <AlertDialogTrigger asChild>
-          <Button variant={variant}>{children}</Button>
+          <Button variant={variant} className={triggerClassName}>{children}</Button>
         </AlertDialogTrigger>
       )}
       <AlertDialogContent>

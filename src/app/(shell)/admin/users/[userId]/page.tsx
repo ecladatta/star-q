@@ -107,6 +107,7 @@ export default async function AdminUserPage({ params }: { params: Promise<{ user
           )}
           confirmLabel="Delete user"
           variant="destructive"
+          triggerClassName="max-sm:h-auto max-sm:min-h-8 max-sm:whitespace-normal max-sm:py-1.5"
         >
           Permanently delete user and dependent data
         </ConfirmActionButton>
