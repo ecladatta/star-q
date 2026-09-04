@@ -114,7 +114,7 @@ function InviteForm({ title, label, field, grantsImmediately, action }: { title:
           <Label htmlFor={field}>{label}</Label>
           <Input id={field} name={field} required />
         </div>
-        <select name="role" className="h-8 w-full rounded-md border border-border bg-background px-3 text-sm">
+        <select name="role" className="h-8 w-full rounded-md border border-border bg-background px-3 text-base md:text-sm">
           <option value="viewer">Viewer</option>
           <option value="editor">Editor</option>
         </select>

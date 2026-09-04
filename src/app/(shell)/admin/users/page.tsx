@@ -61,7 +61,7 @@ export default async function AdminUsersPage() {
               <Label htmlFor="temporaryPassword">Temporary password</Label>
               <Input id="temporaryPassword" name="temporaryPassword" type="password" minLength={4} required />
             </div>
-            <select name="role" className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm">
+            <select name="role" className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-base md:text-sm">
               <option value="user">User</option>
               <option value="admin">Admin</option>
             </select>
