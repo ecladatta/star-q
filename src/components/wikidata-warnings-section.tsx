@@ -72,7 +72,7 @@ function WikidataWarningsContent({ warnings, groupByDocument, compact }: { warni
 
   return (
     <Collapsible defaultOpen={false}>
-      <Card className={compact ? 'mb-6' : 'mb-8'}>
+      <Card className={compact ? 'mb-6' : 'my-8'}>
         <CollapsibleTrigger asChild>
           <CardHeader className={cn('group cursor-pointer select-none', compact && 'py-3')}>
             <CardTitle className={cn('flex items-center gap-2', compact && 'text-sm font-semibold')}>
@@ -163,7 +163,7 @@ export function WikidataWarningsSkeleton({ compact = false }: { compact?: boolea
   }
 
   return (
-    <Card className="mb-8">
+    <Card className="my-8">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <AlertTriangleIcon className="size-5 text-warning-foreground" />
