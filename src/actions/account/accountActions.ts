@@ -52,7 +52,8 @@ export async function signUpLocal(formData: FormData): Promise<void> {
     targetId: user.id,
     metadata: { provider: 'credentials' },
   })
-  await signIn('credentials', { username: user.username!, password, redirectTo: '/' })
+  await signIn('credentials', { username: user.username!, password, redirect: false })
+  redirect('/')
 }
 
 export async function setupLocalAdministrator(formData: FormData): Promise<void> {
@@ -97,7 +98,8 @@ export async function setupLocalAdministrator(formData: FormData): Promise<void>
     })
   })
 
-  await signIn('credentials', { username, password, redirectTo: '/' })
+  await signIn('credentials', { username, password, redirect: false })
+  redirect('/')
 }
 
 export async function completeSetupWithOAuth(formData: FormData): Promise<void> {
@@ -129,7 +131,8 @@ export async function completeSetupWithOAuth(formData: FormData): Promise<void> 
     })
   })
 
-  await signOut({ redirectTo: '/sign-in?setup=complete' })
+  await signOut({ redirectTo: '/sign-in?setup=complete', redirect: false })
+  redirect('/sign-in?setup=complete')
 }
 
 export async function completeOnboarding(formData: FormData): Promise<void> {
@@ -203,7 +206,8 @@ export async function changeOwnPassword(formData: FormData): Promise<void> {
       targetId: currentUser.id,
     })
   })
-  await signOut({ redirectTo: '/sign-in?password=changed' })
+  await signOut({ redirectTo: '/sign-in?password=changed', redirect: false })
+  redirect('/sign-in?password=changed')
 }
 
 export async function linkOAuthProvider(provider: 'github' | 'wikimedia'): Promise<void> {
@@ -236,5 +240,6 @@ export async function unlinkOAuthProvider(provider: 'github' | 'wikimedia'): Pro
 }
 
 export async function signOutCurrentUser() {
-  await signOut({ redirectTo: '/' })
+  await signOut({ redirectTo: '/', redirect: false })
+  redirect('/')
 }
