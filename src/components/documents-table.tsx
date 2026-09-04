@@ -402,6 +402,7 @@ const columns: ColumnDef<DocumentMetadata, any>[] = [
       }
       return (
         <Checkbox
+          className="after:inset-[-15px]"
           checked={table.getIsAllRowsSelected()}
           aria-checked={table.getIsSomeRowsSelected() ? 'mixed' : undefined}
           onCheckedChange={checked => table.toggleAllRowsSelected(!!checked)}
@@ -415,6 +416,7 @@ const columns: ColumnDef<DocumentMetadata, any>[] = [
       }
       return (
         <Checkbox
+          className="after:inset-[-15px]"
           checked={row.getIsSelected()}
           disabled={!row.getCanSelect()}
           onCheckedChange={checked => row.toggleSelected(!!checked)}
@@ -468,7 +470,7 @@ const columns: ColumnDef<DocumentMetadata, any>[] = [
                     <Checkbox
                       checked={completed}
                       onCheckedChange={toggle}
-                      className="shrink-0 rounded-full"
+                      className="shrink-0 rounded-full after:inset-[-15px]"
                       disabled={isLoading}
                     />
                   )}
