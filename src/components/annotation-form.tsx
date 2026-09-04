@@ -750,11 +750,9 @@ export function AnnotationForm({
     handleCloneAnnotation,
   ])
 
-  if (!hasAnyTags)
-    return null
-
   return (
     <div
+      inert={!hasAnyTags}
       className={cn(
         'fixed bottom-0 left-1/2 z-10 w-full max-w-(--breakpoint-md) -translate-x-1/2 transition-transform duration-300 md:w-3/4 lg:w-2/3',
         hasAnyTags ? 'translate-y-0' : 'translate-y-full',
