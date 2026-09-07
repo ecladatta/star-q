@@ -2,7 +2,7 @@
 
 import type { WikibaseInstance } from '@/db/schema'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { startTransition, useOptimistic, useState } from 'react'
 import { toast } from 'sonner'
 import { createWikibaseInstance, deleteWikibaseInstance, setWikibaseInstanceDefault, setWikibaseInstanceEnabled, updateWikibaseInstance } from '@/actions/wikibase/wikibaseAdminActions'
 import { ConfirmActionButton } from '@/components/confirm-action-button'
@@ -36,8 +36,12 @@ export function WikibaseInstanceManager({ instances }: { instances: WikibaseInst
   const [editing, setEditing] = useState<WikibaseInstance | null>(null)
   const [editDraft, setEditDraft] = useState<InstanceDraft>(EMPTY_DRAFT)
   const [isSaving, setIsSaving] = useState(false)
-  const [pendingEnabled, setPendingEnabled] = useState<Record<string, boolean>>({})
   const [toggling, setToggling] = useState<Record<string, boolean>>({})
+  const [displayedInstances, applyEnabledOverride] = useOptimistic(
+    instances,
+    (current, update: { id: string, enabled: boolean }) =>
+      current.map(instance => (instance.id === update.id ? { ...instance, enabled: update.enabled } : instance)),
+  )
 
   const handleCreate = async () => {
     if (!draftComplete(newInstance)) {
@@ -73,31 +77,23 @@ export function WikibaseInstanceManager({ instances }: { instances: WikibaseInst
     }
   }
 
-  const handleToggleEnabled = async (instance: WikibaseInstance, checked: boolean) => {
-    setPendingEnabled(prev => ({ ...prev, [instance.id]: checked }))
+  const handleToggleEnabled = (instance: WikibaseInstance, checked: boolean) => {
     setToggling(prev => ({ ...prev, [instance.id]: true }))
-    try {
-      await setWikibaseInstanceEnabled(instance.id, checked)
-      setPendingEnabled((prev) => {
-        const next = { ...prev }
-        delete next[instance.id]
-        return next
-      })
-      router.refresh()
-    } catch (error) {
-      setPendingEnabled((prev) => {
-        const next = { ...prev }
-        delete next[instance.id]
-        return next
-      })
-      toast.error(error instanceof Error ? error.message : 'Failed to update the Wikibase instance.')
-    } finally {
-      setToggling((prev) => {
-        const next = { ...prev }
-        delete next[instance.id]
-        return next
-      })
-    }
+    startTransition(async () => {
+      applyEnabledOverride({ id: instance.id, enabled: checked })
+      try {
+        await setWikibaseInstanceEnabled(instance.id, checked)
+        router.refresh()
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : 'Failed to update the Wikibase instance.')
+      } finally {
+        setToggling((prev) => {
+          const next = { ...prev }
+          delete next[instance.id]
+          return next
+        })
+      }
+    })
   }
 
   const handleSetDefault = async (instance: WikibaseInstance) => {
@@ -149,7 +145,7 @@ export function WikibaseInstanceManager({ instances }: { instances: WikibaseInst
       </section>
 
       <section className="w-full overflow-hidden rounded-lg border border-border">
-        {instances.map(instance => (
+        {displayedInstances.map(instance => (
           <div key={instance.id} className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-4 border-b border-border p-4 last:border-0">
             <div>
               <p className="text-sm font-medium">
@@ -166,7 +162,7 @@ export function WikibaseInstanceManager({ instances }: { instances: WikibaseInst
               </p>
             </div>
             <Switch
-              checked={pendingEnabled[instance.id] ?? instance.enabled}
+              checked={instance.enabled}
               disabled={Boolean(toggling[instance.id])}
               onCheckedChange={checked => handleToggleEnabled(instance, checked)}
               aria-label={`${instance.label} enabled`}
