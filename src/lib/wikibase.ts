@@ -1,5 +1,6 @@
 import type { CorpusSettings } from './corpus-settings'
 import type { WikibaseInstance } from '@/db/schema'
+import { WIKIBASE_INSTANCE_NONE } from './corpus-settings'
 
 export type WikibaseConfig = {
   instance: string
@@ -10,6 +11,9 @@ export function resolveWikibase(
   settings: CorpusSettings | undefined | null,
   entry: Pick<WikibaseInstance, 'instanceUrl' | 'sparqlEndpoint' | 'enabled'> | null | undefined,
 ): WikibaseConfig | null {
+  if (settings?.wikibaseInstanceId === WIKIBASE_INSTANCE_NONE) {
+    return null
+  }
   if (settings?.wikibaseInstanceId && entry?.enabled) {
     return { instance: entry.instanceUrl, sparqlEndpoint: entry.sparqlEndpoint }
   }

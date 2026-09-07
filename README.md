@@ -29,7 +29,7 @@ STAR-Q reads entities from a Wikibase instance for entity search, candidate clas
 
 Fresh deployments automatically contain a seeded "Wikidata" registry row (`https://www.wikidata.org` with `https://query.wikidata.org/sparql`) marked as the server default. Corpora that have not selected a specific instance use the server default. All requests are made server-side, so the instance needs no CORS configuration. RDF export prefixes and entity links are derived from the resolved instance.
 
-To point the server default at a different Wikibase deployment, register it at `/admin/wikibase` and use its "Make default" action. A corpus can also select one specific registered instance in its settings; that selection then overrides the server default for that corpus.
+To point the server default at a different Wikibase deployment, register it at `/admin/wikibase` and use its "Make default" action. A corpus can also select one specific registered instance in its settings; that selection then overrides the server default for that corpus. Selecting None opts a corpus out entirely: no entity suggestions, classification, or constraint checks for it.
 
 Disabling an instance in the registry turns it off everywhere at once: corpora using it resolve to no configuration, and the UI degrades gracefully instead of silently rerouting to Wikidata. This applies to the server default as well; while no enabled instance is marked as default, corpora without an explicit selection report constraint features as unavailable.
 

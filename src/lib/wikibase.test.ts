@@ -27,6 +27,12 @@ describe('resolveWikibase', () => {
     })
   })
 
+  it('returns null when the id is the none sentinel even if an entry is given', async () => {
+    const { resolveWikibase } = await import('./wikibase')
+
+    expect(resolveWikibase({ wikibaseInstanceId: 'none' }, entry)).toBeNull()
+  })
+
   it('returns null when the entry is disabled', async () => {
     const { resolveWikibase } = await import('./wikibase')
 

@@ -4,6 +4,7 @@ import {
   isPredicateFilteringEnabled,
   mergeCorpusSettings,
   sanitizeCorpusSettingsPatch,
+  WIKIBASE_INSTANCE_NONE,
 } from './corpus-settings'
 
 it('merges a partial patch without clobbering other settings', () => {
@@ -57,16 +58,21 @@ it('accepts a UUID for wikibaseInstanceId', () => {
     .toEqual({ wikibaseInstanceId: '123e4567-e89b-12d3-a456-426614174000' })
 })
 
+it('accepts the none sentinel for wikibaseInstanceId', () => {
+  expect(sanitizeCorpusSettingsPatch({ wikibaseInstanceId: WIKIBASE_INSTANCE_NONE }))
+    .toEqual({ wikibaseInstanceId: 'none' })
+})
+
 it('rejects a non-UUID string for wikibaseInstanceId', () => {
   expect(() => sanitizeCorpusSettingsPatch({ wikibaseInstanceId: 'not-a-uuid' }))
-    .toThrow('Invalid corpus setting "wikibaseInstanceId": expected a UUID string or null')
+    .toThrow('Invalid corpus setting "wikibaseInstanceId": expected \'none\', a UUID string, or null')
   expect(() => sanitizeCorpusSettingsPatch({ wikibaseInstanceId: '' }))
-    .toThrow('Invalid corpus setting "wikibaseInstanceId": expected a UUID string or null')
+    .toThrow('Invalid corpus setting "wikibaseInstanceId": expected \'none\', a UUID string, or null')
 })
 
 it('rejects a number for wikibaseInstanceId', () => {
   expect(() => sanitizeCorpusSettingsPatch({ wikibaseInstanceId: 42 as unknown as string }))
-    .toThrow('Invalid corpus setting "wikibaseInstanceId": expected a UUID string or null')
+    .toThrow('Invalid corpus setting "wikibaseInstanceId": expected \'none\', a UUID string, or null')
 })
 
 it('passes null through as an explicit clear', () => {
@@ -86,6 +92,15 @@ it('removes wikibaseInstanceId from the merged settings on a null patch value', 
   )
   expect(merged).toEqual({ wikidataConstraintWarnings: true })
   expect(merged).not.toHaveProperty('wikibaseInstanceId')
+})
+
+it('overwrites a previous uuid selection with the none sentinel', () => {
+  expect(
+    mergeCorpusSettings(
+      { wikibaseInstanceId: '123e4567-e89b-12d3-a456-426614174000' },
+      { wikibaseInstanceId: WIKIBASE_INSTANCE_NONE },
+    ),
+  ).toEqual({ wikibaseInstanceId: 'none' })
 })
 
 it('keeps wikibaseInstanceId when the patch does not mention it', () => {

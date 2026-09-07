@@ -8,6 +8,8 @@ export type CorpusSettingsPatch = Partial<Omit<CorpusSettings, 'wikibaseInstance
   wikibaseInstanceId?: string | null
 }
 
+export const WIKIBASE_INSTANCE_NONE = 'none'
+
 const allowedKeys = ['wikidataConstraintWarnings', 'wikidataPredicateFiltering', 'wikibaseInstanceId'] as const
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -23,11 +25,11 @@ export function sanitizeCorpusSettingsPatch(patch: CorpusSettingsPatch): CorpusS
       if (value === undefined) {
         continue
       }
-      if (value === null || (typeof value === 'string' && UUID_PATTERN.test(value))) {
+      if (value === null || value === WIKIBASE_INSTANCE_NONE || (typeof value === 'string' && UUID_PATTERN.test(value))) {
         result.wikibaseInstanceId = value
         continue
       }
-      throw new TypeError('Invalid corpus setting "wikibaseInstanceId": expected a UUID string or null')
+      throw new TypeError('Invalid corpus setting "wikibaseInstanceId": expected \'none\', a UUID string, or null')
     }
     if (typeof value !== 'boolean') {
       throw new TypeError(`Invalid corpus setting "${key}": expected boolean`)

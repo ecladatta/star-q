@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { WIKIBASE_INSTANCE_NONE } from '@/lib/corpus-settings'
 import { ENTITY_DATATYPE_GROUPS, ENTITY_DATATYPE_LABELS } from '@/lib/datatypes'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu'
 import { Label } from './ui/label'
@@ -110,7 +111,13 @@ export function CorpusSettingsPanel({ corpus, wikibaseInstances, onCorpusRenamed
     try {
       setIsSavingSettings(true)
       await updateCorpusSettings(corpus.id, { wikibaseInstanceId: id })
-      toast.success(id ? 'Wikibase instance updated' : 'Using the server default Wikibase')
+      if (value === WIKIBASE_INSTANCE_NONE) {
+        toast.success('This corpus will not use a Wikibase instance')
+      } else if (value === SERVER_DEFAULT_WIKIBASE) {
+        toast.success('Using the server default Wikibase')
+      } else {
+        toast.success('Wikibase instance updated')
+      }
     } catch {
       setSettings((prev) => {
         const next = { ...prev }
@@ -281,7 +288,7 @@ export function CorpusSettingsPanel({ corpus, wikibaseInstances, onCorpusRenamed
                 Wikibase instance
               </Label>
               <p className="text-xs text-muted-foreground">
-                Used for entity links, constraint checks, and suggestions. Server default resolves to this deployment's Wikidata configuration.
+                Used for entity links, constraint checks, and suggestions. Server default resolves to this deployment's Wikidata configuration. Select None to disable entity suggestions and constraint checks for this corpus.
               </p>
             </div>
             <Select
@@ -293,6 +300,7 @@ export function CorpusSettingsPanel({ corpus, wikibaseInstances, onCorpusRenamed
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value={WIKIBASE_INSTANCE_NONE}>None</SelectItem>
                 <SelectItem value={SERVER_DEFAULT_WIKIBASE}>Server default</SelectItem>
                 {selectableInstances.map(instance => (
                   <SelectItem key={instance.id} value={instance.id}>
