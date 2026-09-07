@@ -137,15 +137,15 @@ export async function setWikibaseInstanceDefault(id: string) {
 
 export async function deleteWikibaseInstance(id: string) {
   const actor = await requireAdmin()
-  const [referencing] = await db
-    .select({ count: count() })
-    .from(corpus)
-    .where(sql`${corpus.settings}->>'wikibaseInstanceId' = ${id}`)
-  const references = referencing?.count ?? 0
-  if (references > 0) {
-    throw new Error(`Cannot delete this Wikibase instance: ${references} ${references === 1 ? 'corpus references' : 'corpora reference'} it. Detach ${references === 1 ? 'it' : 'them'} first.`)
-  }
   await db.transaction(async (trx) => {
+    const [referencing] = await trx
+      .select({ count: count() })
+      .from(corpus)
+      .where(sql`${corpus.settings}->>'wikibaseInstanceId' = ${id}`)
+    const references = referencing?.count ?? 0
+    if (references > 0) {
+      throw new Error(`Cannot delete this Wikibase instance: ${references} ${references === 1 ? 'corpus references' : 'corpora reference'} it. Detach ${references === 1 ? 'it' : 'them'} first.`)
+    }
     const [deleted] = await trx
       .delete(wikibaseInstances)
       .where(eq(wikibaseInstances.id, id))
