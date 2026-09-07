@@ -10,6 +10,7 @@ import { DocumentViewer } from '@/components/document-viewer'
 import { WikidataWarningsSection, WikidataWarningsSkeleton } from '@/components/wikidata-warnings-section'
 import { getAppSettings } from '@/lib/app-settings'
 import { getCorpusAccess } from '@/lib/corpus-access'
+import { isConstraintWarningsEnabled } from '@/lib/corpus-settings'
 import { loadCorpusWikibaseConfig } from '@/lib/wikibase-server'
 
 export default async function DocumentPage({ params }: { params: Promise<{ documentId: string }> }) {
@@ -46,6 +47,7 @@ export default async function DocumentPage({ params }: { params: Promise<{ docum
   const documentsList = await getDocumentsMetadata(document.corpusId)
   const annotations = await getAnnotations(documentId)
   const wikibase = await loadCorpusWikibaseConfig(document.corpusId)
+  const showWarnings = isConstraintWarningsEnabled(corpus?.settings) && wikibase !== null
 
   return (
     <DocumentViewer
@@ -54,16 +56,18 @@ export default async function DocumentPage({ params }: { params: Promise<{ docum
       document={document}
       annotations={annotations}
       readOnly={!edit}
-      warningsSlot={(
-        <Suspense key={documentId} fallback={<WikidataWarningsSkeleton compact />}>
-          <WikidataWarningsSection
-            warningsPromise={getDocumentWarnings(documentId)}
-            instanceName={wikibase?.instance ?? null}
-            groupByDocument={false}
-            compact
-          />
-        </Suspense>
-      )}
+      warningsSlot={showWarnings
+        ? (
+            <Suspense key={documentId} fallback={<WikidataWarningsSkeleton compact />}>
+              <WikidataWarningsSection
+                warningsPromise={getDocumentWarnings(documentId)}
+                instanceName={wikibase?.instance ?? null}
+                groupByDocument={false}
+                compact
+              />
+            </Suspense>
+          )
+        : null}
     />
   )
 }
