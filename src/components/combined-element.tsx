@@ -320,7 +320,7 @@ function CombinedElement({
                         key={cellIndex}
                         role="button"
                         tabIndex={0}
-                        className={cn('relative p-3 font-medium transition-colors duration-200 select-text', isHovered ? 'bg-accent/10! ring-1! ring-inset! ring-accent/40!' : 'hover:bg-accent/10! hover:ring-1! hover:ring-inset! hover:ring-accent/40!')}
+                        className={cn('relative p-3 font-medium transition-colors duration-200 select-text first:rounded-tl-[11px] last:rounded-tr-[11px]', isHovered ? 'bg-accent/10! ring-1! ring-inset! ring-accent/40!' : 'hover:bg-accent/10! hover:ring-1! hover:ring-inset! hover:ring-accent/40!')}
                         onMouseEnter={() => setHoveredCell({ row: 0, cell: cellIndex })}
                         onMouseLeave={() => setHoveredCell(null)}
                         {...(!readOnly && { onMouseUp: () => handleCellMouseUp(0, cellIndex) })}
@@ -343,7 +343,7 @@ function CombinedElement({
                 </TableRow>
               ))}
             </TableHeader>
-            <TableBody>
+            <TableBody className="[&>tr:last-child>td:first-child]:rounded-bl-[11px] [&>tr:last-child>td:last-child]:rounded-br-[11px]">
               {splits.slice(1).map((row, rowIndex) => (
                 <TableRow
                   // Grid rows are positional and have no stable identity across content edits.
