@@ -72,7 +72,7 @@ const constraintModelSupportCache = createTtlCache<ConstraintModelSupport>(CACHE
 type WbEntityIds = Parameters<ReturnType<typeof WBK>['getManyEntities']>[0]['ids']
 
 function cacheKey(config: WikibaseConfig, id: string): string {
-  return `${config.instance}|${id}`
+  return `${config.instance}|${config.sparqlEndpoint}|${id}`
 }
 
 type WbGetEntitiesResponse = {
