@@ -1,4 +1,5 @@
 import { RDF_NAMESPACE_BASE } from '@/lib/config'
+import { WIKIBASE_RDF_NAMESPACES } from '@/lib/wikibase'
 
 const base = RDF_NAMESPACE_BASE
 
@@ -13,13 +14,13 @@ export const NAMESPACES = {
   foaf: 'http://xmlns.com/foaf/0.1/',
   nif: 'http://persistence.uni-leipzig.org/nlp2rdf/ontologies/nif-core#',
   oa: 'http://www.w3.org/ns/oa#',
-  pq: 'http://www.wikidata.org/prop/qualifier/',
+  pq: WIKIBASE_RDF_NAMESPACES.pq,
   prov: 'http://www.w3.org/ns/prov#',
   rdf: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
   rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
   statement: `${base}/statement/`,
-  wd: 'http://www.wikidata.org/entity/',
-  wdt: 'http://www.wikidata.org/prop/direct/',
+  wd: WIKIBASE_RDF_NAMESPACES.wd,
+  wdt: WIKIBASE_RDF_NAMESPACES.wdt,
   xsd: 'http://www.w3.org/2001/XMLSchema#',
 } as const
 

@@ -10,6 +10,7 @@ import type {
 } from './wikidata-constraints'
 import WBK from 'wikibase-sdk'
 import pkg from '../../package.json'
+import { WIKIBASE } from './wikibase'
 import {
   classifyCandidates,
   collectPairs,
@@ -19,13 +20,9 @@ import {
   WIKIDATA_PROPERTY_PATTERN,
 } from './wikidata-constraints'
 
-const SPARQL_ENDPOINT = 'https://query.wikidata.org/sparql'
 const USER_AGENT = `star-q/${pkg.version} (https://github.com/ecladatta/star-q)`
 
-const wdk = WBK({
-  instance: 'https://www.wikidata.org',
-  sparqlEndpoint: SPARQL_ENDPOINT,
-})
+const wdk = WBK(WIKIBASE)
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000
 const FETCH_TIMEOUT_MS = 10_000
@@ -85,12 +82,12 @@ function fetchJson(url: string): Promise<WbGetEntitiesResponse | null> {
     fetch(url, { headers: { 'User-Agent': USER_AGENT }, signal })
       .then(async (res) => {
         if (!res.ok) {
-          throw new Error(`Wikidata API request failed: ${res.status}`)
+          throw new Error(`Wikibase API request failed: ${res.status}`)
         }
         return res.json()
       }),
   ).catch((error: unknown) => {
-    console.error(`Wikidata API fetch failed: ${url}`, error)
+    console.error(`Wikibase API fetch failed: ${url}`, error)
     return null
   })
 }
@@ -102,7 +99,7 @@ function entityIdFromValue(value: string): string | null {
 
 async function runSparql(query: string): Promise<Array<Record<string, { value: string }>>> {
   return withRequestTimeout(async (signal) => {
-    const response = await fetch(SPARQL_ENDPOINT, {
+    const response = await fetch(WIKIBASE.sparqlEndpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -113,7 +110,7 @@ async function runSparql(query: string): Promise<Array<Record<string, { value: s
       signal,
     })
     if (!response.ok) {
-      throw new Error(`Wikidata SPARQL request failed: ${response.status}`)
+      throw new Error(`Wikibase SPARQL request failed: ${response.status}`)
     }
     const data = await response.json()
     return data.results?.bindings ?? []
@@ -282,7 +279,7 @@ export async function fetchPropertyConstraints(propertyIds: string[]): Promise<P
     for (let index = 0; index < responses.length; index++) {
       const data = responses[index]
       if (!data?.entities) {
-        console.error(`Wikidata constraint fetch returned no entity data: ${urls[index]}`)
+        console.error(`Wikibase constraint fetch returned no entity data: ${urls[index]}`)
         unavailable = true
         continue
       }
