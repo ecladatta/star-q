@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { getAppSettings } from '@/lib/app-settings'
 import { getCorpusAccess } from '@/lib/corpus-access'
+import { loadCorpusWikibaseConfig } from '@/lib/wikibase-server'
 
 export default async function CorpusPage({ params }: { params: Promise<{ corpusId: string }> }) {
   const corpusId = (await params).corpusId
@@ -35,6 +36,7 @@ export default async function CorpusPage({ params }: { params: Promise<{ corpusI
   const owner = await getCorpusOwner(corpusId)
   const totalAnnotations = await getCorpusAnnotationsCount(corpusId)
   const analyticsPromise = getCorpusAnalytics(corpusId)
+  const rdfAvailable = await loadCorpusWikibaseConfig(corpusId).then(config => config !== null)
 
   if (!corpus) {
     return (
@@ -88,6 +90,7 @@ export default async function CorpusPage({ params }: { params: Promise<{ corpusI
           showOpenAction={false}
           ownedTeams={ownedTeams}
           canCopy={signedIn}
+          rdfAvailable={rdfAvailable}
           triggerButton={(
             <Button variant="outline" size="sm">
               <MoreVerticalIcon className="mr-2 size-4" />

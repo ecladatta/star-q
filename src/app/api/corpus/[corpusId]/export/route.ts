@@ -6,6 +6,7 @@ import {
   getCorpusExportFilename,
   resolveCorpusExportFormat,
 } from '@/lib/exports/corpus-export'
+import { CORPUS_EXPORT_FORMATS } from '@/lib/exports/export-format'
 import { serializeCorpusExport } from '@/lib/exports/serialize-corpus-export'
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ corpusId: string }> }) {
@@ -25,6 +26,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     const corpusData = await buildCorpusExportModel(corpusId)
+
+    if (CORPUS_EXPORT_FORMATS[format].kind === 'rdf' && !corpusData.wikibase) {
+      return Response.json(
+        { error: 'RDF export requires a Wikibase instance, and none is available for this corpus.' },
+        { status: 400 },
+      )
+    }
+
     const serializedExport = serializeCorpusExport(corpusData, format)
     const filename = getCorpusExportFilename(corpusData, serializedExport.extension)
 
