@@ -396,7 +396,7 @@ export function DocumentViewer({
 
               {warningsSlot}
 
-              <Card className="mb-6 min-w-0 overflow-clip rounded-none border-none shadow-none">
+              <Card className="mb-6 min-w-0 rounded-none border-none shadow-none">
                 <CardContent className="min-w-0 p-0">
                   {combinedElements.map(element => (
                     <CombinedElement
