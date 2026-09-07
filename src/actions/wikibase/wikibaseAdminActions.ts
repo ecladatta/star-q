@@ -55,20 +55,25 @@ export async function updateWikibaseInstance(id: string, input: WikibaseInstance
   const parsed = parseWikibaseInstanceInput(input)
   try {
     const updated = await db.transaction(async (trx) => {
+      const [previous] = await trx
+        .select({ label: wikibaseInstances.label, instanceUrl: wikibaseInstances.instanceUrl, sparqlEndpoint: wikibaseInstances.sparqlEndpoint })
+        .from(wikibaseInstances)
+        .where(eq(wikibaseInstances.id, id))
+        .limit(1)
+      if (!previous) {
+        throw new NotFoundError('Wikibase instance not found.')
+      }
       const [row] = await trx
         .update(wikibaseInstances)
         .set({ ...parsed, updatedAt: new Date() })
         .where(eq(wikibaseInstances.id, id))
         .returning()
-      if (!row) {
-        throw new NotFoundError('Wikibase instance not found.')
-      }
       await trx.insert(auditLog).values({
         actorUserId: actor.userId,
         action: 'admin.wikibase_instance_updated',
         targetType: 'wikibase_instance',
         targetId: id,
-        metadata: parsed,
+        metadata: { previous, ...parsed },
       })
       return row
     })
