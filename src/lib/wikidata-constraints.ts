@@ -160,6 +160,7 @@ export type CorpusWarnings = {
   checkedProperties: number
   checkedAnnotations: number
   unavailable: boolean
+  unavailableReason?: 'fetch-failed' | 'not-supported'
 }
 
 export function buildConstraintChecks(

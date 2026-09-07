@@ -14,6 +14,8 @@ import { WIKIBASE } from './wikibase'
 import {
   classifyCandidates,
   collectPairs,
+  CONSTRAINT_SUBJECT_TYPE,
+  CONSTRAINT_VALUE_TYPE,
   membershipKey,
   parsePropertyConstraints,
   WIKIDATA_ITEM_PATTERN,
@@ -67,11 +69,13 @@ const propertyConstraintsCache = createTtlCache<PropertyConstraints>(CACHE_TTL_M
 const membershipCache = createTtlCache<boolean>(CACHE_TTL_MS)
 const typeDataCache = createTtlCache<boolean>(CACHE_TTL_MS)
 const labelsCache = createTtlCache<string | null>(CACHE_TTL_MS)
+const constraintModelSupportCache = createTtlCache<ConstraintModelSupport>(CACHE_TTL_MS)
 
 type WbEntityIds = Parameters<typeof wdk.getManyEntities>[0]['ids']
 
 type WbGetEntitiesResponse = {
   entities?: Record<string, {
+    missing?: string
     claims?: WikidataClaims
     labels?: Record<string, { value?: string }>
   }>
@@ -95,6 +99,38 @@ function fetchJson(url: string): Promise<WbGetEntitiesResponse | null> {
 function entityIdFromValue(value: string): string | null {
   const match = /entity\/([QP]\d+)$/.exec(value)
   return match ? match[1] : null
+}
+
+export type WikibaseSearchResult = {
+  id: string
+  label: string
+  description: string | null
+}
+
+type WbSearchResponse = {
+  search?: Array<{ id: string, label: string, description?: string }>
+}
+
+export async function searchWikibaseEntities(
+  search: string,
+  type: 'item' | 'property',
+  limit: number,
+): Promise<WikibaseSearchResult[]> {
+  const url = wdk.searchEntities({ search, language: 'en', limit, type })
+  try {
+    const data = await withRequestTimeout(async (signal) => {
+      const response = await fetch(url, { headers: { 'User-Agent': USER_AGENT }, signal })
+      return response.json() as Promise<WbSearchResponse>
+    })
+    return (data.search ?? []).map(result => ({
+      id: result.id,
+      label: result.label,
+      description: result.description || null,
+    }))
+  } catch (error) {
+    console.error('Wikibase search error:', error)
+    return []
+  }
 }
 
 async function runSparql(query: string): Promise<Array<Record<string, { value: string }>>> {
@@ -372,4 +408,34 @@ export async function classifyPredicateCandidatesViaWikidata(
     fetchItemsWithTypeData(checks.map(check => check.entityId)),
   ])
   return classifyCandidates(memberships, memberPairs, itemsWithTypeData)
+}
+
+export type ConstraintModelSupport
+  = | { status: 'supported' }
+    | { status: 'unavailable', reason: 'missing-items' | 'fetch-failed' }
+
+export async function fetchConstraintModelSupport(): Promise<ConstraintModelSupport> {
+  const cached = constraintModelSupportCache.get('model-support')
+  if (cached) {
+    return cached
+  }
+
+  const [url] = wdk.getManyEntities({
+    ids: [CONSTRAINT_SUBJECT_TYPE, CONSTRAINT_VALUE_TYPE] as unknown as WbEntityIds,
+    format: 'json',
+  })
+  const data = await fetchJson(url)
+
+  let support: ConstraintModelSupport
+  if (!data) {
+    support = { status: 'unavailable', reason: 'fetch-failed' }
+  } else {
+    const subject = data.entities?.[CONSTRAINT_SUBJECT_TYPE]
+    const value = data.entities?.[CONSTRAINT_VALUE_TYPE]
+    support = subject && value && subject.missing === undefined && value.missing === undefined
+      ? { status: 'supported' }
+      : { status: 'unavailable', reason: 'missing-items' }
+  }
+  constraintModelSupportCache.set('model-support', support)
+  return support
 }

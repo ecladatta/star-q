@@ -5,6 +5,7 @@ import type {
   EntityCandidateClassification,
   PropertyConstraints,
 } from '@/lib/wikidata-constraints'
+import type { ConstraintModelSupport } from '@/lib/wikidata-sparql'
 import type {
   AnnotationComponentRole,
   Entity,
@@ -42,11 +43,15 @@ import {
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import WBK from 'wikibase-sdk'
 import {
   addCorpusCustomEntity,
   searchCorpusCustomEntities,
 } from '@/actions/corpus/corpusActions'
+import {
+  classifyWikibaseEntityCandidates,
+  classifyWikibasePredicateCandidates,
+  searchWikibaseEntities,
+} from '@/actions/wikibase/wikibaseActions'
 import {
   Command,
   CommandEmpty,
@@ -60,7 +65,6 @@ import { entityTypeForComponentRole } from '@/lib/annotation-roles'
 import { ENTITY_DATATYPE_GROUPS, ENTITY_DATATYPE_LABELS } from '@/lib/datatypes'
 import { cn } from '@/lib/utils'
 import { WIKIDATA_ITEM_PATTERN, WIKIDATA_PROPERTY_PATTERN } from '@/lib/wikidata-constraints'
-import { classifyEntityCandidatesViaWikidata, classifyPredicateCandidatesViaWikidata, withRequestTimeout } from '@/lib/wikidata-sparql'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
@@ -75,11 +79,6 @@ import {
 } from './ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 
-const wdk = WBK({
-  instance: 'https://www.wikidata.org',
-  sparqlEndpoint: 'https://query.wikidata.org/sparql',
-})
-
 const SEARCH_DEBOUNCE_MS = 200
 
 async function searchEntities(
@@ -88,39 +87,32 @@ async function searchEntities(
   corpusId?: string,
   limit = 5,
 ): Promise<Entity[]> {
-  // Search both Wikidata and custom entities in parallel
+  // Search the configured Wikibase and custom entities in parallel
   const promises: Promise<Entity[]>[] = []
 
-  // Wikidata search
-  const wikidataPromise = (async () => {
+  const wikibasePromise = (async () => {
     try {
-      const url = wdk.searchEntities({
-        search: searchTerm,
-        language: 'en',
+      const results = await searchWikibaseEntities(
+        searchTerm,
+        type === 'predicate' ? 'property' : 'item',
         limit,
-        type: type === 'predicate' ? 'property' : 'item',
-      })
-
-      const data = await withRequestTimeout(async (signal) => {
-        const response = await fetch(url, { signal })
-        return response.json()
-      })
-      return data.search.map((result: any) => ({
+      )
+      return results.map(result => ({
         label: result.label,
         value: result.id,
         custom: false,
         customId: null,
         datatype: null,
         type,
-        description: result.description || null,
+        description: result.description,
       }))
     } catch (error) {
-      console.error('Wikidata search error:', error)
+      console.error('Wikibase search error:', error)
       return []
     }
   })()
 
-  promises.push(wikidataPromise)
+  promises.push(wikibasePromise)
 
   // Custom entities search
   if (corpusId) {
@@ -343,10 +335,12 @@ export function EntitySelector({
   }
   const [isSearching, setIsSearching] = useState(false)
   const [classification, setClassification] = useState<EntityCandidateClassification | null>(null)
+  const [classificationSupport, setClassificationSupport] = useState<ConstraintModelSupport | null>(null)
   const [classifiedCandidates, setClassifiedCandidates] = useState<string[]>([])
   const [showAllResults, setShowAllResults] = useState(false)
 
   const searchSeqRef = useRef(0)
+  const classificationSeqRef = useRef(0)
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const candidatePattern = entityType === 'predicate' ? WIKIDATA_PROPERTY_PATTERN : WIKIDATA_ITEM_PATTERN
@@ -420,29 +414,27 @@ export function EntitySelector({
       return
     }
 
-    let cancelled = false
+    const seq = ++classificationSeqRef.current
     const promise = hasEntityChecks
-      ? classifyPredicateCandidatesViaWikidata(currentCandidates, constraintEntityChecks!)
-      : classifyEntityCandidatesViaWikidata(currentCandidates, constraints!, constraintSide!)
+      ? classifyWikibasePredicateCandidates(currentCandidates, constraintEntityChecks!)
+      : classifyWikibaseEntityCandidates(currentCandidates, constraints!, constraintSide!)
     promise
       .then((result) => {
-        if (!cancelled) {
-          setClassification(result)
+        if (seq === classificationSeqRef.current) {
+          setClassification(result.classification)
+          setClassificationSupport(result.support)
           setClassifiedCandidates(currentCandidates)
           setShowAllResults(false)
         }
       })
       .catch(() => {
-        if (!cancelled) {
+        if (seq === classificationSeqRef.current) {
           setClassification(null)
+          setClassificationSupport(null)
           setClassifiedCandidates([])
           setShowAllResults(false)
         }
       })
-
-    return () => {
-      cancelled = true
-    }
   }, [currentCandidates, constraints, constraintSide, constraintEntityChecks, classificationEligible, hasEntityChecks])
 
   const handleSearch = (term: string) => {
@@ -609,6 +601,11 @@ export function EntitySelector({
                     : 'No entities match the property constraints. Use "Show all results" to see everything.')
                 : 'No entities found.'}
             </CommandEmpty>
+            {classificationSupport?.status === 'unavailable' && (
+              <div className="border-b px-3 py-2 text-[11px] text-muted-foreground">
+                Constraint filtering is unavailable on this Wikibase instance. All candidates are shown.
+              </div>
+            )}
             {filteringActive && !showAllResults && (
               <div className="border-b px-3 py-2 text-[11px] text-muted-foreground">
                 <>

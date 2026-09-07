@@ -292,3 +292,49 @@ describe('classifyPredicateCandidatesViaWikidata', () => {
     expect(result).toEqual({ members: [], unverifiable: [], filteredOut: [{ id: 'P102', sides: ['domain'] }] })
   })
 })
+
+describe('fetchConstraintModelSupport', () => {
+  it('reports supported when both constraint model entities exist and caches the result', async () => {
+    vi.resetModules()
+    const { fetchConstraintModelSupport } = await import('./wikidata-sparql')
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        entities: {
+          Q21503250: { claims: {} },
+          Q21510865: { claims: {} },
+        },
+      }),
+    })
+
+    expect(await fetchConstraintModelSupport()).toEqual({ status: 'supported' })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+
+    expect(await fetchConstraintModelSupport()).toEqual({ status: 'supported' })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('reports missing-items when a constraint model entity is absent', async () => {
+    vi.resetModules()
+    const { fetchConstraintModelSupport } = await import('./wikidata-sparql')
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        entities: {
+          Q21503250: { claims: {} },
+          Q21510865: { missing: '' },
+        },
+      }),
+    })
+
+    expect(await fetchConstraintModelSupport()).toEqual({ status: 'unavailable', reason: 'missing-items' })
+  })
+
+  it('reports fetch-failed when the constraint model entities cannot be fetched', async () => {
+    vi.resetModules()
+    const { fetchConstraintModelSupport } = await import('./wikidata-sparql')
+    fetchMock.mockResolvedValue({ ok: false })
+
+    expect(await fetchConstraintModelSupport()).toEqual({ status: 'unavailable', reason: 'fetch-failed' })
+  })
+})

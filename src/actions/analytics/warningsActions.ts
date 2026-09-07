@@ -8,13 +8,14 @@ import { annotation, annotationComponent, annotationQualifier, corpus, document 
 import { requireViewCorpus, requireViewDocument } from '@/lib/corpus-access'
 import { isConstraintWarningsEnabled } from '@/lib/corpus-settings'
 import { buildConstraintChecks, buildQualifierRangeChecks, collectPairs, evaluateConstraintChecks, WIKIDATA_PROPERTY_PATTERN } from '@/lib/wikidata-constraints'
-import { fetchEntityLabels, fetchItemsWithTypeData, fetchMembership, fetchPropertyConstraints } from '@/lib/wikidata-sparql'
+import { fetchConstraintModelSupport, fetchEntityLabels, fetchItemsWithTypeData, fetchMembership, fetchPropertyConstraints } from '@/lib/wikidata-sparql'
 
 type WarningsComputation = {
   violations: ConstraintCheck[]
   unverifiable: ConstraintCheck[]
   checkedProperties: number
   unavailable: boolean
+  unavailableReason?: 'fetch-failed' | 'not-supported'
 }
 
 function emptyWarnings(checkedAnnotations: number): CorpusWarnings {
@@ -27,12 +28,13 @@ function emptyWarnings(checkedAnnotations: number): CorpusWarnings {
   }
 }
 
-function unavailableWarnings(checkedProperties: number): WarningsComputation {
+function unavailableWarnings(checkedProperties: number, unavailableReason?: 'fetch-failed' | 'not-supported'): WarningsComputation {
   return {
     violations: [],
     unverifiable: [],
     checkedProperties,
     unavailable: true,
+    unavailableReason,
   }
 }
 
@@ -51,6 +53,14 @@ async function computeWarningsForRows(
 
   if (predicates.length === 0) {
     return { violations: [], unverifiable: [], checkedProperties: 0, unavailable: false }
+  }
+
+  const support = await fetchConstraintModelSupport()
+  if (support.status === 'unavailable') {
+    return unavailableWarnings(
+      predicates.length,
+      support.reason === 'missing-items' ? 'not-supported' : 'fetch-failed',
+    )
   }
 
   let fetchUnavailable: boolean
@@ -184,7 +194,7 @@ export async function getCorpusWarnings(corpusId: string): Promise<CorpusWarning
 
   const rows = await getWarningRows(eq(document.corpusId, corpusId))
   const qualifierRows = await getQualifierWarningRows(eq(document.corpusId, corpusId))
-  const { violations, unverifiable, checkedProperties, unavailable } = await computeWarningsForRows(rows, qualifierRows)
+  const { violations, unverifiable, checkedProperties, unavailable, unavailableReason } = await computeWarningsForRows(rows, qualifierRows)
 
   return {
     violations,
@@ -192,6 +202,7 @@ export async function getCorpusWarnings(corpusId: string): Promise<CorpusWarning
     checkedProperties,
     checkedAnnotations: rows.length,
     unavailable,
+    unavailableReason,
   }
 }
 
@@ -217,7 +228,7 @@ export async function getDocumentWarnings(documentId: string): Promise<CorpusWar
 
   const rows = await getWarningRows(eq(annotation.documentId, documentId))
   const qualifierRows = await getQualifierWarningRows(eq(annotation.documentId, documentId))
-  const { violations, unverifiable, checkedProperties, unavailable } = await computeWarningsForRows(rows, qualifierRows)
+  const { violations, unverifiable, checkedProperties, unavailable, unavailableReason } = await computeWarningsForRows(rows, qualifierRows)
 
   return {
     violations,
@@ -225,5 +236,6 @@ export async function getDocumentWarnings(documentId: string): Promise<CorpusWar
     checkedProperties,
     checkedAnnotations: rows.length,
     unavailable,
+    unavailableReason,
   }
 }
