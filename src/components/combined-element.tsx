@@ -13,11 +13,11 @@ import { cn, splitWithOffsets } from '@/lib/utils'
 import Split from './split'
 
 const ROLE_COLOR_VAR: Record<AnnotationComponentRole, string> = {
-  'subject': 'var(--subject)',
-  'predicate': 'var(--predicate)',
-  'object': 'var(--object)',
-  'qualifier-predicate': 'var(--qualifier)',
-  'qualifier-value': 'var(--qualifier)',
+  'subject': 'var(--subject-soft)',
+  'predicate': 'var(--predicate-soft)',
+  'object': 'var(--object-soft)',
+  'qualifier-predicate': 'var(--qualifier-soft)',
+  'qualifier-value': 'var(--qualifier-soft)',
 }
 
 export type CombinedElementProps = {
