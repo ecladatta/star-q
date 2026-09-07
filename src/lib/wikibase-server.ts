@@ -2,10 +2,11 @@ import type { WikibaseConfig } from './wikibase'
 import { and, eq } from 'drizzle-orm'
 import { db } from '@/db/drizzle'
 import { corpus, wikibaseInstances } from '@/db/schema'
+import { cache } from 'react'
 import { WIKIBASE_INSTANCE_NONE } from './corpus-settings'
 import { resolveWikibase } from './wikibase'
 
-export async function loadCorpusWikibaseConfig(corpusId: string): Promise<WikibaseConfig | null> {
+export const loadCorpusWikibaseConfig = cache(async (corpusId: string): Promise<WikibaseConfig | null> => {
   const [row] = await db
     .select({ settings: corpus.settings })
     .from(corpus)
@@ -32,4 +33,4 @@ export async function loadCorpusWikibaseConfig(corpusId: string): Promise<Wikiba
     return null
   }
   return { instance: entry.instanceUrl, sparqlEndpoint: entry.sparqlEndpoint }
-}
+})
