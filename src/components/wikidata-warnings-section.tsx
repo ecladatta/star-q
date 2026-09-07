@@ -1,6 +1,5 @@
 import type { ConstraintCheck, CorpusWarnings } from '@/lib/wikidata-constraints'
 import { AlertTriangleIcon, CheckCircle2Icon, ChevronRightIcon, Loader2Icon } from 'lucide-react'
-import { getWikibaseInstanceName } from '@/actions/wikibase/wikibaseActions'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
@@ -9,6 +8,7 @@ import { WikidataWarningRow } from './wikidata-warning-row'
 
 type WikidataWarningsSectionProps = {
   warningsPromise: Promise<CorpusWarnings>
+  instanceName: string
   groupByDocument?: boolean
   compact?: boolean
 }
@@ -149,8 +149,8 @@ function WikidataWarningsContent({ warnings, groupByDocument, compact, instanceN
   )
 }
 
-export async function WikidataWarningsSection({ warningsPromise, groupByDocument = true, compact = false }: WikidataWarningsSectionProps) {
-  const [warnings, instanceName] = await Promise.all([warningsPromise, getWikibaseInstanceName()])
+export async function WikidataWarningsSection({ warningsPromise, instanceName, groupByDocument = true, compact = false }: WikidataWarningsSectionProps) {
+  const warnings = await warningsPromise
   return <WikidataWarningsContent warnings={warnings} groupByDocument={groupByDocument} compact={compact} instanceName={instanceName} />
 }
 

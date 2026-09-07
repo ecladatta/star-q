@@ -4,7 +4,7 @@ import type { DbExecutor, DbTransaction } from '@/db/drizzle'
 import type { Corpus, CorpusCustomEntity, CorpusVisibility, Document } from '@/db/schema'
 import type { AuthenticatedActor, RequestActor } from '@/lib/auth-utils'
 import type { CorpusAccess } from '@/lib/corpus-access'
-import type { CorpusSettings } from '@/lib/corpus-settings'
+import type { CorpusSettingsPatch } from '@/lib/corpus-settings'
 import { and, count, countDistinct, desc, eq, getTableColumns, inArray, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { db } from '@/db/drizzle'
@@ -469,7 +469,7 @@ export async function renameCorpus(id: string, newTitle: string) {
   revalidatePath('/')
 }
 
-export async function updateCorpusSettings(corpusId: string, patch: Partial<CorpusSettings>) {
+export async function updateCorpusSettings(corpusId: string, patch: CorpusSettingsPatch) {
   await requireEditCorpus(corpusId)
 
   const [existing] = await db

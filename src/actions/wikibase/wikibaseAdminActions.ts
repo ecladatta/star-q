@@ -2,10 +2,13 @@
 
 import type { WikibaseInstanceInput } from '@/lib/wikibase'
 import { count, eq, sql } from 'drizzle-orm'
+import { revalidatePath } from 'next/cache'
 import { db } from '@/db/drizzle'
 import { auditLog, corpus, wikibaseInstances } from '@/db/schema'
 import { NotFoundError, requireAdmin } from '@/lib/auth-utils'
 import { parseWikibaseInstanceInput } from '@/lib/wikibase'
+
+const WIKIBASE_ADMIN_PATH = '/admin/wikibase'
 
 const UNIQUE_VIOLATION_CODE = '23505'
 
@@ -29,17 +32,19 @@ export async function createWikibaseInstance(input: WikibaseInstanceInput) {
   const actor = await requireAdmin()
   const parsed = parseWikibaseInstanceInput(input)
   try {
-    return await db.transaction(async (trx) => {
-      const [created] = await trx.insert(wikibaseInstances).values(parsed).returning()
+    const created = await db.transaction(async (trx) => {
+      const [row] = await trx.insert(wikibaseInstances).values(parsed).returning()
       await trx.insert(auditLog).values({
         actorUserId: actor.userId,
         action: 'admin.wikibase_instance_created',
         targetType: 'wikibase_instance',
-        targetId: created.id,
+        targetId: row.id,
         metadata: parsed,
       })
-      return created
+      return row
     })
+    revalidatePath(WIKIBASE_ADMIN_PATH)
+    return created
   } catch (error) {
     throw translateUniqueViolation(error)
   }
@@ -49,13 +54,13 @@ export async function updateWikibaseInstance(id: string, input: WikibaseInstance
   const actor = await requireAdmin()
   const parsed = parseWikibaseInstanceInput(input)
   try {
-    return await db.transaction(async (trx) => {
-      const [updated] = await trx
+    const updated = await db.transaction(async (trx) => {
+      const [row] = await trx
         .update(wikibaseInstances)
         .set({ ...parsed, updatedAt: new Date() })
         .where(eq(wikibaseInstances.id, id))
         .returning()
-      if (!updated) {
+      if (!row) {
         throw new NotFoundError('Wikibase instance not found.')
       }
       await trx.insert(auditLog).values({
@@ -65,8 +70,10 @@ export async function updateWikibaseInstance(id: string, input: WikibaseInstance
         targetId: id,
         metadata: parsed,
       })
-      return updated
+      return row
     })
+    revalidatePath(WIKIBASE_ADMIN_PATH)
+    return updated
   } catch (error) {
     if (error instanceof NotFoundError) {
       throw error
@@ -100,4 +107,5 @@ export async function deleteWikibaseInstance(id: string) {
       targetId: id,
     })
   })
+  revalidatePath(WIKIBASE_ADMIN_PATH)
 }

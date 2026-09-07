@@ -9,6 +9,7 @@ const sections = [
   ['/admin/teams', 'Teams', 'Inspect and manage every team.'],
   ['/admin/corpora', 'Corpora', 'Open any corpus with support access.'],
   ['/admin/api-keys', 'API keys', 'Create and delete read-only API keys.'],
+  ['/admin/wikibase', 'Wikibase instances', 'Register the instances corpora may target.'],
   ['/admin/settings', 'Settings', 'Control signup and sign-in.'],
   ['/admin/audit', 'Audit log', 'Review security and access events.'],
 ] as const

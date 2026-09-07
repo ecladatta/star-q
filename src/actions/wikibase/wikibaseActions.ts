@@ -1,8 +1,9 @@
 'use server'
 import type { ConstraintEntityCheck, ConstraintSide, EntityCandidateClassification, PropertyConstraints } from '@/lib/wikidata-constraints'
 import type { ConstraintModelSupport } from '@/lib/wikidata-sparql'
+import { db } from '@/db/drizzle'
+import { wikibaseInstances } from '@/db/schema'
 import { requireViewCorpus } from '@/lib/corpus-access'
-import { DEFAULT_WIKIBASE } from '@/lib/wikibase'
 import { loadCorpusWikibaseConfig } from '@/lib/wikibase-server'
 import {
   classifyEntityCandidatesViaWikidata,
@@ -56,6 +57,7 @@ export async function classifyWikibasePredicateCandidates(
   return { classification, support }
 }
 
-export async function getWikibaseInstanceName() {
-  return DEFAULT_WIKIBASE.instance
+export async function listWikibaseInstancesForCorpus(corpusId: string) {
+  await requireViewCorpus(corpusId)
+  return db.select().from(wikibaseInstances).orderBy(wikibaseInstances.label)
 }

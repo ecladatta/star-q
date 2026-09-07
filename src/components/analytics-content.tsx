@@ -6,16 +6,19 @@ import { Suspense } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { wikibaseWikiUrl } from '@/lib/wikibase'
+import { wikiUrl } from '@/lib/wikibase'
+import { loadCorpusWikibaseConfig } from '@/lib/wikibase-server'
 import { WikidataWarningsSection, WikidataWarningsSkeleton } from './wikidata-warnings-section'
 
 type AnalyticsContentProps = {
+  corpusId: string
   analyticsPromise: Promise<CorpusAnalytics>
   warningsPromise: Promise<CorpusWarnings>
 }
 
-export async function AnalyticsContent({ analyticsPromise, warningsPromise }: AnalyticsContentProps) {
-  const analytics = await analyticsPromise
+export async function AnalyticsContent({ corpusId, analyticsPromise, warningsPromise }: AnalyticsContentProps) {
+  const [analytics, wikibase] = await Promise.all([analyticsPromise, loadCorpusWikibaseConfig(corpusId)])
+  const wikiUrlFor = (id: string) => wikiUrl(wikibase.instance, id)
 
   return (
     <>
@@ -333,7 +336,7 @@ export async function AnalyticsContent({ analyticsPromise, warningsPromise }: An
 
       {/* Warnings */}
       <Suspense fallback={<WikidataWarningsSkeleton />}>
-        <WikidataWarningsSection warningsPromise={warningsPromise} />
+        <WikidataWarningsSection warningsPromise={warningsPromise} instanceName={wikibase.instance} />
       </Suspense>
 
       {/* Property Statistics */}
@@ -378,7 +381,7 @@ export async function AnalyticsContent({ analyticsPromise, warningsPromise }: An
                                       ? stat.value
                                       : (
                                           <Link
-                                            href={wikibaseWikiUrl(stat.value)}
+                                            href={wikiUrlFor(stat.value)}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="text-accent underline hover:opacity-80"
@@ -446,7 +449,7 @@ export async function AnalyticsContent({ analyticsPromise, warningsPromise }: An
                                       ? stat.value
                                       : (
                                           <Link
-                                            href={wikibaseWikiUrl(stat.value)}
+                                            href={wikiUrlFor(stat.value)}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="text-accent underline hover:opacity-80"

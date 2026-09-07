@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type { Corpus, CorpusCustomEntity, CorpusVisibility } from '@/db/schema'
+import type { Corpus, CorpusCustomEntity, CorpusVisibility, WikibaseInstance } from '@/db/schema'
 import type { CorpusSettings } from '@/lib/corpus-settings'
 import type { EntityDatatype } from '@/types/types'
 import { EditIcon, FilterIcon, Loader2Icon, PlusIcon, SearchIcon, Trash2Icon } from 'lucide-react'
@@ -20,12 +20,15 @@ import { Label } from './ui/label'
 
 type CorpusSettingsPanelProps = {
   corpus: Corpus
+  wikibaseInstances: WikibaseInstance[]
   onCorpusRenamed?: (newTitle: string) => void
   canManageVisibility?: boolean
   dangerZone?: ReactNode
 }
 
-export function CorpusSettingsPanel({ corpus, onCorpusRenamed, canManageVisibility = false, dangerZone }: CorpusSettingsPanelProps) {
+const SERVER_DEFAULT_WIKIBASE = 'server-default'
+
+export function CorpusSettingsPanel({ corpus, wikibaseInstances, onCorpusRenamed, canManageVisibility = false, dangerZone }: CorpusSettingsPanelProps) {
   const [corpusTitle, setCorpusTitle] = useState(corpus.title)
   const [visibility, setVisibility] = useState<CorpusVisibility>(corpus.visibility ?? 'private')
   const [settings, setSettings] = useState<CorpusSettings>(corpus.settings ?? {})
@@ -86,6 +89,38 @@ export function CorpusSettingsPanel({ corpus, onCorpusRenamed, canManageVisibili
       toast.success(checked ? 'Wikidata setting enabled' : 'Wikidata setting disabled')
     } catch {
       setSettings(prev => ({ ...prev, [key]: previous }))
+      toast.error('Failed to update corpus settings')
+    } finally {
+      setIsSavingSettings(false)
+    }
+  }
+
+  const handleSelectWikibaseInstance = async (value: string) => {
+    const id = value === SERVER_DEFAULT_WIKIBASE ? null : value
+    const previous = settings.wikibaseInstanceId ?? null
+    setSettings((prev) => {
+      const next = { ...prev }
+      if (id === null) {
+        delete next.wikibaseInstanceId
+      } else {
+        next.wikibaseInstanceId = id
+      }
+      return next
+    })
+    try {
+      setIsSavingSettings(true)
+      await updateCorpusSettings(corpus.id, { wikibaseInstanceId: id })
+      toast.success(id ? 'Wikibase instance updated' : 'Using the server default Wikibase')
+    } catch {
+      setSettings((prev) => {
+        const next = { ...prev }
+        if (previous === null) {
+          delete next.wikibaseInstanceId
+        } else {
+          next.wikibaseInstanceId = previous
+        }
+        return next
+      })
       toast.error('Failed to update corpus settings')
     } finally {
       setIsSavingSettings(false)
@@ -237,6 +272,33 @@ export function CorpusSettingsPanel({ corpus, onCorpusRenamed, canManageVisibili
 
         <div className="space-y-3">
           <h3 className="text-sm font-medium text-foreground">Wikidata</h3>
+          <div className="flex items-start justify-between gap-4 rounded-lg border border-border bg-card p-4">
+            <div className="space-y-1">
+              <Label htmlFor="wikibase-instance">
+                Wikibase instance
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Used for entity links, constraint checks, and suggestions. Server default resolves to this deployment's Wikidata configuration.
+              </p>
+            </div>
+            <Select
+              value={settings.wikibaseInstanceId ?? SERVER_DEFAULT_WIKIBASE}
+              onValueChange={handleSelectWikibaseInstance}
+              disabled={isSavingSettings}
+            >
+              <SelectTrigger id="wikibase-instance" className="w-56">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={SERVER_DEFAULT_WIKIBASE}>Server default</SelectItem>
+                {wikibaseInstances.map(instance => (
+                  <SelectItem key={instance.id} value={instance.id}>
+                    {`${instance.label} (${new URL(instance.instanceUrl).hostname})`}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="flex items-start justify-between gap-4 rounded-lg border border-border bg-card p-4">
             <div className="space-y-1">
               <Label htmlFor="wikidata-constraint-warnings">

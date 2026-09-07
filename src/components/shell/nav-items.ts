@@ -51,6 +51,7 @@ export function adminNav(): NavItemWithIcon[] {
     { href: '/admin/teams', label: 'Teams', icon: Users },
     { href: '/admin/corpora', label: 'Corpora', icon: Database },
     { href: '/admin/api-keys', label: 'API keys', icon: KeyRound },
+    { href: '/admin/wikibase', label: 'Wikibase', icon: Globe },
     { href: '/admin/settings', label: 'Settings', icon: Settings },
     { href: '/admin/audit', label: 'Audit log', icon: ScrollText },
   ]

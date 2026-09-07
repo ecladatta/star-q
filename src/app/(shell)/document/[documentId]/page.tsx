@@ -10,6 +10,7 @@ import { DocumentViewer } from '@/components/document-viewer'
 import { WikidataWarningsSection, WikidataWarningsSkeleton } from '@/components/wikidata-warnings-section'
 import { getAppSettings } from '@/lib/app-settings'
 import { getCorpusAccess } from '@/lib/corpus-access'
+import { loadCorpusWikibaseConfig } from '@/lib/wikibase-server'
 
 export default async function DocumentPage({ params }: { params: Promise<{ documentId: string }> }) {
   const { documentId } = await params
@@ -44,6 +45,7 @@ export default async function DocumentPage({ params }: { params: Promise<{ docum
   const edit = access === 'editor' || access === 'manager'
   const documentsList = await getDocumentsMetadata(document.corpusId)
   const annotations = await getAnnotations(documentId)
+  const wikibase = await loadCorpusWikibaseConfig(document.corpusId)
 
   return (
     <DocumentViewer
@@ -56,6 +58,7 @@ export default async function DocumentPage({ params }: { params: Promise<{ docum
         <Suspense key={documentId} fallback={<WikidataWarningsSkeleton compact />}>
           <WikidataWarningsSection
             warningsPromise={getDocumentWarnings(documentId)}
+            instanceName={wikibase.instance}
             groupByDocument={false}
             compact
           />

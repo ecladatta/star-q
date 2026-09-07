@@ -3,8 +3,10 @@ import { notFound } from 'next/navigation'
 import { getCorpus } from '@/actions/corpus/corpusActions'
 import { getDocumentsMetadata } from '@/actions/document/documentActions'
 import { CorpusNav } from '@/components/shell/corpus-nav'
+import { WikibaseInstanceProvider } from '@/components/wikibase-instance-provider'
 import { NotFoundError } from '@/lib/auth-utils'
 import { getCorpusAccess } from '@/lib/corpus-access'
+import { loadCorpusWikibaseConfig } from '@/lib/wikibase-server'
 
 export default async function CorpusLayout({
   children,
@@ -29,10 +31,13 @@ export default async function CorpusLayout({
   const canManage = access === 'manager'
   const canEdit = access === 'editor' || access === 'manager'
   const documentCount = (await getDocumentsMetadata(corpusId)).length
+  const wikibase = await loadCorpusWikibaseConfig(corpusId)
 
   return (
-    <CorpusNav corpusId={corpusId} corpusTitle={corpus.title} canManage={canManage} canEdit={canEdit} documentCount={documentCount}>
-      {children}
-    </CorpusNav>
+    <WikibaseInstanceProvider instance={wikibase.instance}>
+      <CorpusNav corpusId={corpusId} corpusTitle={corpus.title} canManage={canManage} canEdit={canEdit} documentCount={documentCount}>
+        {children}
+      </CorpusNav>
+    </WikibaseInstanceProvider>
   )
 }
