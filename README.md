@@ -23,14 +23,6 @@ To deploy STAR-Q in production, follow these steps:
     docker compose -f compose.prod.yaml up -d --build
     ```
 
-## Wikibase instance
-
-Instances are managed at `/admin/wikibase`. Fresh deployments come with Wikidata registered and set as the server default.
-
-Each corpus picks one of three options in its settings: **Server default** (follows the deployment-wide default), a specific registered instance, or **None** (entity suggestions, classification, and constraint checks are disabled for that corpus).
-
-Instances can be disabled in the registry to turn them off everywhere without deleting them. Constraint checks only work against instances that replicate Wikidata's constraint model; otherwise they report as unavailable.
-
 ## Authentication
 
 A production deployment must provide a unique `AUTH_SECRET`. Generate one with:
