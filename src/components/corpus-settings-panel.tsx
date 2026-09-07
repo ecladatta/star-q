@@ -213,6 +213,9 @@ export function CorpusSettingsPanel({ corpus, wikibaseInstances, onCorpusRenamed
     return matchesKeyword && matchesType
   })
 
+  const currentInstanceId = settings.wikibaseInstanceId
+  const selectableInstances = wikibaseInstances.filter(instance => instance.enabled || instance.id === currentInstanceId)
+
   return (
     <Tabs defaultValue="general" className="flex flex-1 flex-col gap-4 overflow-hidden">
       <TabsList className="grid w-full max-w-md grid-cols-2">
@@ -291,9 +294,9 @@ export function CorpusSettingsPanel({ corpus, wikibaseInstances, onCorpusRenamed
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={SERVER_DEFAULT_WIKIBASE}>Server default</SelectItem>
-                {wikibaseInstances.map(instance => (
+                {selectableInstances.map(instance => (
                   <SelectItem key={instance.id} value={instance.id}>
-                    {`${instance.label} (${new URL(instance.instanceUrl).hostname})`}
+                    {`${instance.label}${instance.enabled ? '' : ' (disabled)'} (${new URL(instance.instanceUrl).hostname})`}
                   </SelectItem>
                 ))}
               </SelectContent>

@@ -82,6 +82,27 @@ export async function updateWikibaseInstance(id: string, input: WikibaseInstance
   }
 }
 
+export async function setWikibaseInstanceEnabled(id: string, enabled: boolean) {
+  const actor = await requireAdmin()
+  await db.transaction(async (trx) => {
+    const [updated] = await trx
+      .update(wikibaseInstances)
+      .set({ enabled, updatedAt: new Date() })
+      .where(eq(wikibaseInstances.id, id))
+      .returning({ id: wikibaseInstances.id, enabled: wikibaseInstances.enabled })
+    if (!updated) {
+      throw new NotFoundError('Wikibase instance not found.')
+    }
+    await trx.insert(auditLog).values({
+      actorUserId: actor.userId,
+      action: enabled ? 'admin.wikibase_instance_enabled' : 'admin.wikibase_instance_disabled',
+      targetType: 'wikibase_instance',
+      targetId: id,
+    })
+  })
+  revalidatePath(WIKIBASE_ADMIN_PATH)
+}
+
 export async function deleteWikibaseInstance(id: string) {
   const actor = await requireAdmin()
   const [referencing] = await db

@@ -4,12 +4,13 @@ import type { WikibaseInstance } from '@/db/schema'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { createWikibaseInstance, deleteWikibaseInstance, updateWikibaseInstance } from '@/actions/wikibase/wikibaseAdminActions'
+import { createWikibaseInstance, deleteWikibaseInstance, setWikibaseInstanceEnabled, updateWikibaseInstance } from '@/actions/wikibase/wikibaseAdminActions'
 import { ConfirmActionButton } from '@/components/confirm-action-button'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 
 type InstanceDraft = {
   label: string
@@ -34,6 +35,8 @@ export function WikibaseInstanceManager({ instances }: { instances: WikibaseInst
   const [editing, setEditing] = useState<WikibaseInstance | null>(null)
   const [editDraft, setEditDraft] = useState<InstanceDraft>(EMPTY_DRAFT)
   const [isSaving, setIsSaving] = useState(false)
+  const [pendingEnabled, setPendingEnabled] = useState<Record<string, boolean>>({})
+  const [toggling, setToggling] = useState<Record<string, boolean>>({})
 
   const handleCreate = async () => {
     if (!draftComplete(newInstance)) {
@@ -66,6 +69,33 @@ export function WikibaseInstanceManager({ instances }: { instances: WikibaseInst
       toast.error(error instanceof Error ? error.message : 'Failed to update the Wikibase instance.')
     } finally {
       setIsSaving(false)
+    }
+  }
+
+  const handleToggleEnabled = async (instance: WikibaseInstance, checked: boolean) => {
+    setPendingEnabled(prev => ({ ...prev, [instance.id]: checked }))
+    setToggling(prev => ({ ...prev, [instance.id]: true }))
+    try {
+      await setWikibaseInstanceEnabled(instance.id, checked)
+      setPendingEnabled((prev) => {
+        const next = { ...prev }
+        delete next[instance.id]
+        return next
+      })
+      router.refresh()
+    } catch (error) {
+      setPendingEnabled((prev) => {
+        const next = { ...prev }
+        delete next[instance.id]
+        return next
+      })
+      toast.error(error instanceof Error ? error.message : 'Failed to update the Wikibase instance.')
+    } finally {
+      setToggling((prev) => {
+        const next = { ...prev }
+        delete next[instance.id]
+        return next
+      })
     }
   }
 
@@ -109,7 +139,7 @@ export function WikibaseInstanceManager({ instances }: { instances: WikibaseInst
 
       <section className="w-full overflow-hidden rounded-lg border border-border">
         {instances.map(instance => (
-          <div key={instance.id} className="grid grid-cols-[1fr_auto_auto] items-center gap-4 border-b border-border p-4 last:border-0">
+          <div key={instance.id} className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 border-b border-border p-4 last:border-0">
             <div>
               <p className="text-sm font-medium">{instance.label}</p>
               <p className="mt-0.5 text-sm text-muted-foreground">
@@ -121,6 +151,12 @@ export function WikibaseInstanceManager({ instances }: { instances: WikibaseInst
                 <code className="rounded-sm bg-muted px-1 py-0.5 text-xs">{instance.sparqlEndpoint}</code>
               </p>
             </div>
+            <Switch
+              checked={pendingEnabled[instance.id] ?? instance.enabled}
+              disabled={Boolean(toggling[instance.id])}
+              onCheckedChange={checked => handleToggleEnabled(instance, checked)}
+              aria-label={`${instance.label} enabled`}
+            />
             <Button
               type="button"
               variant="outline"

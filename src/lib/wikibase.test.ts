@@ -90,6 +90,7 @@ describe('resolveWikibase', () => {
   const entry = {
     instanceUrl: 'https://wikibase.example',
     sparqlEndpoint: 'https://wikibase.example/query/sparql',
+    enabled: true,
   }
   const instanceId = '123e4567-e89b-12d3-a456-426614174000'
 
@@ -114,6 +115,12 @@ describe('resolveWikibase', () => {
       instance: 'https://wikibase.example',
       sparqlEndpoint: 'https://wikibase.example/query/sparql',
     })
+  })
+
+  it('resolves to the default when the entry is disabled', async () => {
+    const { DEFAULT_WIKIBASE, resolveWikibase } = await import('./wikibase')
+
+    expect(resolveWikibase({ wikibaseInstanceId: instanceId }, { ...entry, enabled: false })).toEqual(DEFAULT_WIKIBASE)
   })
 
   it('resolves to the default when no id is selected even if an entry is given', async () => {

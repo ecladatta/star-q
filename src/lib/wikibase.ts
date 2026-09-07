@@ -13,9 +13,9 @@ export const DEFAULT_WIKIBASE: WikibaseConfig = {
 
 export function resolveWikibase(
   settings: CorpusSettings | undefined | null,
-  entry: Pick<WikibaseInstance, 'instanceUrl' | 'sparqlEndpoint'> | null | undefined,
+  entry: Pick<WikibaseInstance, 'instanceUrl' | 'sparqlEndpoint' | 'enabled'> | null | undefined,
 ): WikibaseConfig {
-  if (settings?.wikibaseInstanceId && entry) {
+  if (settings?.wikibaseInstanceId && entry?.enabled) {
     return { instance: entry.instanceUrl, sparqlEndpoint: entry.sparqlEndpoint }
   }
   return DEFAULT_WIKIBASE
