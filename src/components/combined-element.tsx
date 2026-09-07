@@ -276,7 +276,7 @@ function CombinedElement({
 
     return (
       <div key={elementIndex} className="group mb-6 min-w-0" id={`element-${elementIndex}`}>
-        <div className="mb-2 flex min-w-0 items-center justify-between">
+        <div className="relative z-10 mb-2 flex min-w-0 items-center justify-between">
           {data.title && <div className="min-w-0 text-sm font-semibold wrap-break-word">{normalizeRenderedWhitespace(data.title)}</div>}
           <div
             className="group relative ml-auto shrink-0"
