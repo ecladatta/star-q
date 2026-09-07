@@ -360,11 +360,23 @@ describe('fetchConstraintModelSupport', () => {
     expect(await fetchConstraintModelSupport(config)).toEqual({ status: 'unavailable', reason: 'missing-items' })
   })
 
-  it('reports fetch-failed when the constraint model entities cannot be fetched', async () => {
+  it('reports fetch-failed when the constraint model entities cannot be fetched and retries later', async () => {
     vi.resetModules()
     const { fetchConstraintModelSupport } = await import('./wikidata-sparql')
     fetchMock.mockResolvedValue({ ok: false })
 
     expect(await fetchConstraintModelSupport(config)).toEqual({ status: 'unavailable', reason: 'fetch-failed' })
+
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        entities: {
+          Q21503250: { claims: {} },
+          Q21510865: { claims: {} },
+        },
+      }),
+    })
+    expect(await fetchConstraintModelSupport(config)).toEqual({ status: 'supported' })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 })

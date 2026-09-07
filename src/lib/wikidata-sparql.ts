@@ -446,6 +446,9 @@ export async function fetchConstraintModelSupport(config: WikibaseConfig): Promi
       ? { status: 'supported' }
       : { status: 'unavailable', reason: 'missing-items' }
   }
+  if (support.status === 'unavailable' && support.reason === 'fetch-failed') {
+    return support
+  }
   constraintModelSupportCache.set(key, support)
   return support
 }
