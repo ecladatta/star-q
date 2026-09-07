@@ -12,6 +12,7 @@ describe('wikibase config', () => {
 
 describe('resolveWikibase', () => {
   const entry = {
+    label: 'Example',
     instanceUrl: 'https://wikibase.example',
     sparqlEndpoint: 'https://wikibase.example/query/sparql',
     enabled: true,
@@ -22,6 +23,7 @@ describe('resolveWikibase', () => {
     const { resolveWikibase } = await import('./wikibase')
 
     expect(resolveWikibase({ wikibaseInstanceId: instanceId }, entry)).toEqual({
+      label: 'Example',
       instance: 'https://wikibase.example',
       sparqlEndpoint: 'https://wikibase.example/query/sparql',
     })

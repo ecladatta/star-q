@@ -7,15 +7,17 @@ export type WikibaseConfig = {
   sparqlEndpoint: string
 }
 
+export type ResolvedWikibase = WikibaseConfig & { label: string }
+
 export function resolveWikibase(
   settings: CorpusSettings | undefined | null,
-  entry: Pick<WikibaseInstance, 'instanceUrl' | 'sparqlEndpoint' | 'enabled'> | null | undefined,
-): WikibaseConfig | null {
+  entry: Pick<WikibaseInstance, 'label' | 'instanceUrl' | 'sparqlEndpoint' | 'enabled'> | null | undefined,
+): ResolvedWikibase | null {
   if (settings?.wikibaseInstanceId === WIKIBASE_INSTANCE_NONE) {
     return null
   }
   if (settings?.wikibaseInstanceId && entry?.enabled) {
-    return { instance: entry.instanceUrl, sparqlEndpoint: entry.sparqlEndpoint }
+    return { label: entry.label, instance: entry.instanceUrl, sparqlEndpoint: entry.sparqlEndpoint }
   }
   return null
 }

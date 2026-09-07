@@ -22,7 +22,9 @@ export async function buildCorpusExportModel(corpusId: string): Promise<ExportMo
     title: corpus.title,
     createdAt: corpus.createdAt ? corpus.createdAt.toISOString() : null,
     updatedAt: corpus.updatedAt ? corpus.updatedAt.toISOString() : null,
-    wikibase,
+    wikibase: wikibase
+      ? { instance: wikibase.instance, sparqlEndpoint: wikibase.sparqlEndpoint }
+      : null,
     documents: await Promise.all(documents.map(async (document) => {
       const [docAnnotations, rawContent] = await Promise.all([
         getAnnotations(document.id),

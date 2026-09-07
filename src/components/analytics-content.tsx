@@ -336,7 +336,7 @@ export async function AnalyticsContent({ corpusId, analyticsPromise, warningsPro
 
       {/* Warnings */}
       <Suspense fallback={<WikidataWarningsSkeleton />}>
-        <WikidataWarningsSection warningsPromise={warningsPromise} instanceName={wikibase?.instance ?? null} />
+        <WikidataWarningsSection warningsPromise={warningsPromise} instanceName={wikibase?.label ?? null} />
       </Suspense>
 
       {/* Property Statistics */}
