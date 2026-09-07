@@ -196,7 +196,7 @@ export function WikibaseInstanceManager({ instances }: { instances: WikibaseInst
                   {' '}
                   <strong>{instance.label}</strong>
                   {' '}
-                  from the registry. Removal fails while any corpus still selects it.
+                  from the registry. Corpora selecting it switch to None.
                 </span>
               )}
               confirmLabel="Remove instance"

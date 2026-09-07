@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { db } from '@/db/drizzle'
 import { auditLog, corpus, wikibaseInstances } from '@/db/schema'
 import { NotFoundError, requireAdmin } from '@/lib/auth-utils'
+import { WIKIBASE_INSTANCE_NONE } from '@/lib/corpus-settings'
 import { parseWikibaseInstanceInput } from '@/lib/wikibase'
 
 const WIKIBASE_ADMIN_PATH = '/admin/wikibase'
@@ -148,9 +149,13 @@ export async function deleteWikibaseInstance(id: string) {
       .from(corpus)
       .where(sql`${corpus.settings}->>'wikibaseInstanceId' = ${id}`)
     const references = referencing?.count ?? 0
-    if (references > 0) {
-      throw new Error(`Cannot delete this Wikibase instance: ${references} ${references === 1 ? 'corpus references' : 'corpora reference'} it. Detach ${references === 1 ? 'it' : 'them'} first.`)
-    }
+    await trx
+      .update(corpus)
+      .set({
+        settings: sql`jsonb_set(coalesce(${corpus.settings}, '{}'::jsonb), '{wikibaseInstanceId}', to_jsonb(${WIKIBASE_INSTANCE_NONE}::text))`,
+        updatedAt: new Date(),
+      })
+      .where(sql`${corpus.settings}->>'wikibaseInstanceId' = ${id}`)
     const [deleted] = await trx
       .delete(wikibaseInstances)
       .where(eq(wikibaseInstances.id, id))
@@ -163,6 +168,7 @@ export async function deleteWikibaseInstance(id: string) {
       action: 'admin.wikibase_instance_deleted',
       targetType: 'wikibase_instance',
       targetId: id,
+      metadata: { detachedCorpora: references },
     })
   })
   revalidatePath(WIKIBASE_ADMIN_PATH)
