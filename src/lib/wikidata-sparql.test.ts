@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { DEFAULT_WIKIBASE } from './wikibase'
 import { membershipKey } from './wikidata-constraints'
 import {
   classifyPredicateCandidatesViaWikidata,
@@ -18,6 +19,7 @@ beforeEach(() => {
 afterEach(() => {
   fetchMock.mockReset()
   vi.unstubAllGlobals()
+  vi.unstubAllEnvs()
 })
 
 function sparqlResponse(bindings: Array<Record<string, { value: string }>>) {
@@ -33,14 +35,14 @@ describe('wikidata sparql caching', () => {
       ]),
     })
 
-    const first = await fetchMembership([
+    const first = await fetchMembership(DEFAULT_WIKIBASE, [
       ['Q1', 'Q5', 'instance-or-subclass'],
       ['Q2', 'Q5', 'instance-or-subclass'],
     ])
     expect(first).toEqual(new Set([membershipKey('Q1', 'Q5', 'instance-or-subclass')]))
     expect(fetchMock).toHaveBeenCalledTimes(1)
 
-    const second = await fetchMembership([
+    const second = await fetchMembership(DEFAULT_WIKIBASE, [
       ['Q1', 'Q5', 'instance-or-subclass'],
       ['Q2', 'Q5', 'instance-or-subclass'],
     ])
@@ -63,7 +65,7 @@ describe('wikidata sparql caching', () => {
         ]),
       })
 
-    const result = await fetchMembership([
+    const result = await fetchMembership(DEFAULT_WIKIBASE, [
       ['Q1', 'Q5', 'instance'],
       ['Q2', 'Q9', 'subclass'],
     ])
@@ -83,11 +85,11 @@ describe('wikidata sparql caching', () => {
       ]),
     })
 
-    const first = await fetchItemsWithTypeData(['Q1', 'Q2'])
+    const first = await fetchItemsWithTypeData(DEFAULT_WIKIBASE, ['Q1', 'Q2'])
     expect(first).toEqual(new Set(['Q1']))
     expect(fetchMock).toHaveBeenCalledTimes(1)
 
-    const second = await fetchItemsWithTypeData(['Q1', 'Q2'])
+    const second = await fetchItemsWithTypeData(DEFAULT_WIKIBASE, ['Q1', 'Q2'])
     expect(second).toEqual(new Set(['Q1']))
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
@@ -103,13 +105,47 @@ describe('wikidata sparql caching', () => {
       }),
     })
 
-    const first = await fetchEntityLabels(['Q5', 'Q9'])
+    const first = await fetchEntityLabels(DEFAULT_WIKIBASE, ['Q5', 'Q9'])
     expect(first).toEqual(new Map([['Q5', 'human'], ['Q9', 'woman']]))
     expect(fetchMock).toHaveBeenCalledTimes(1)
 
-    const second = await fetchEntityLabels(['Q5', 'Q9'])
+    const second = await fetchEntityLabels(DEFAULT_WIKIBASE, ['Q5', 'Q9'])
     expect(second).toEqual(new Map([['Q5', 'human'], ['Q9', 'woman']]))
     expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('cache keying', () => {
+  it('does not share the label cache between instances', async () => {
+    vi.resetModules()
+    vi.stubEnv('WIKIBASE_INSTANCE', 'https://a.example')
+    vi.stubEnv('WIKIBASE_SPARQL_ENDPOINT', 'https://a.example/query/sparql')
+    const labelsForInstanceA = (await import('./wikidata-sparql')).fetchEntityLabels
+    const wikibaseA = (await import('./wikibase')).DEFAULT_WIKIBASE
+    expect(wikibaseA.instance).toBe('https://a.example')
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        entities: {
+          Q5: { labels: { en: { value: 'human' } } },
+        },
+      }),
+    })
+
+    await labelsForInstanceA(wikibaseA, ['Q5'])
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+
+    await labelsForInstanceA({ instance: 'https://b.example', sparqlEndpoint: 'https://b.example/query/sparql' }, ['Q5'])
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+
+    vi.resetModules()
+    vi.stubEnv('WIKIBASE_INSTANCE', 'https://b.example')
+    vi.stubEnv('WIKIBASE_SPARQL_ENDPOINT', 'https://b.example/query/sparql')
+    const labelsForInstanceB = (await import('./wikidata-sparql')).fetchEntityLabels
+    const wikibaseB = (await import('./wikibase')).DEFAULT_WIKIBASE
+    expect(wikibaseB.instance).toBe('https://b.example')
+    await labelsForInstanceB(wikibaseB, ['Q5'])
+    expect(fetchMock).toHaveBeenCalledTimes(3)
   })
 })
 
@@ -134,7 +170,7 @@ describe('fetchPropertyConstraints', () => {
       }),
     })
 
-    const result = await fetchPropertyConstraints(['P69'])
+    const result = await fetchPropertyConstraints(DEFAULT_WIKIBASE, ['P69'])
 
     expect(result.unavailable).toBe(false)
     expect(result.constraints.get('P69')).toEqual({
@@ -146,7 +182,7 @@ describe('fetchPropertyConstraints', () => {
   it('marks the result unavailable when entity data cannot be fetched', async () => {
     fetchMock.mockResolvedValue({ ok: false })
 
-    const result = await fetchPropertyConstraints(['P70'])
+    const result = await fetchPropertyConstraints(DEFAULT_WIKIBASE, ['P70'])
 
     expect(result.unavailable).toBe(true)
     expect(result.constraints.size).toBe(0)
@@ -159,7 +195,7 @@ describe('fetchPropertyConstraints', () => {
       .mockResolvedValueOnce({ ok: true, json: async () => ({ entities }) })
       .mockResolvedValueOnce({ ok: false })
 
-    const result = await fetchPropertyConstraints(ids)
+    const result = await fetchPropertyConstraints(DEFAULT_WIKIBASE, ids)
 
     expect(result.unavailable).toBe(true)
     expect(result.constraints.size).toBe(50)
@@ -168,7 +204,7 @@ describe('fetchPropertyConstraints', () => {
   it('marks the result unavailable when the API returns an error body without entities', async () => {
     fetchMock.mockResolvedValue({ ok: true, json: async () => ({ error: { code: 'rate-limited' } }) })
 
-    const result = await fetchPropertyConstraints(['P71'])
+    const result = await fetchPropertyConstraints(DEFAULT_WIKIBASE, ['P71'])
 
     expect(result.unavailable).toBe(true)
     expect(result.constraints.size).toBe(0)
@@ -179,8 +215,8 @@ describe('request timeouts', () => {
   it('passes an AbortSignal to every fetch so requests can be aborted', async () => {
     fetchMock.mockResolvedValue({ ok: true, json: async () => sparqlResponse([]) })
 
-    await fetchMembership([['Q998877', 'Q998876', 'subclass']])
-    await fetchEntityLabels(['P123456'])
+    await fetchMembership(DEFAULT_WIKIBASE, [['Q998877', 'Q998876', 'subclass']])
+    await fetchEntityLabels(DEFAULT_WIKIBASE, ['P123456'])
 
     expect(fetchMock).toHaveBeenCalled()
     for (const [, init] of fetchMock.mock.calls) {
@@ -205,7 +241,7 @@ describe('bounded sparql concurrency', () => {
       { length: 1000 },
       (_, i) => [`Q${5000 + i}`, 'Q9999', 'instance'] as [string, string, 'instance'],
     )
-    await fetchMembership(pairs)
+    await fetchMembership(DEFAULT_WIKIBASE, pairs)
 
     expect(maxInFlight).toBeGreaterThan(1)
     expect(maxInFlight).toBeLessThanOrEqual(SPARQL_CONCURRENCY)
@@ -249,6 +285,7 @@ describe('classifyPredicateCandidatesViaWikidata', () => {
       })
 
     const result = await classifyPredicateCandidatesViaWikidata(
+      DEFAULT_WIKIBASE,
       ['P100', 'P101'],
       [{ entityId: 'Q7001', side: 'domain' }],
     )
@@ -285,6 +322,7 @@ describe('classifyPredicateCandidatesViaWikidata', () => {
       })
 
     const result = await classifyPredicateCandidatesViaWikidata(
+      DEFAULT_WIKIBASE,
       ['P102'],
       [{ entityId: 'Q7001', side: 'domain' }],
     )
@@ -307,10 +345,10 @@ describe('fetchConstraintModelSupport', () => {
       }),
     })
 
-    expect(await fetchConstraintModelSupport()).toEqual({ status: 'supported' })
+    expect(await fetchConstraintModelSupport(DEFAULT_WIKIBASE)).toEqual({ status: 'supported' })
     expect(fetchMock).toHaveBeenCalledTimes(1)
 
-    expect(await fetchConstraintModelSupport()).toEqual({ status: 'supported' })
+    expect(await fetchConstraintModelSupport(DEFAULT_WIKIBASE)).toEqual({ status: 'supported' })
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
 
@@ -327,7 +365,7 @@ describe('fetchConstraintModelSupport', () => {
       }),
     })
 
-    expect(await fetchConstraintModelSupport()).toEqual({ status: 'unavailable', reason: 'missing-items' })
+    expect(await fetchConstraintModelSupport(DEFAULT_WIKIBASE)).toEqual({ status: 'unavailable', reason: 'missing-items' })
   })
 
   it('reports fetch-failed when the constraint model entities cannot be fetched', async () => {
@@ -335,6 +373,6 @@ describe('fetchConstraintModelSupport', () => {
     const { fetchConstraintModelSupport } = await import('./wikidata-sparql')
     fetchMock.mockResolvedValue({ ok: false })
 
-    expect(await fetchConstraintModelSupport()).toEqual({ status: 'unavailable', reason: 'fetch-failed' })
+    expect(await fetchConstraintModelSupport(DEFAULT_WIKIBASE)).toEqual({ status: 'unavailable', reason: 'fetch-failed' })
   })
 })

@@ -185,7 +185,7 @@ export function AnnotationForm({
     }
 
     let cancelled = false
-    fetchWikibasePropertyConstraints([predicateEntityValue!])
+    fetchWikibasePropertyConstraints(corpusId, [predicateEntityValue!])
       .then(({ constraints }) => {
         if (!cancelled) {
           setPredicateConstraints(constraints[predicateEntityValue!] ?? null)
@@ -200,7 +200,7 @@ export function AnnotationForm({
     return () => {
       cancelled = true
     }
-  }, [predicateEntityValue, constraintsActive, predicateConstraintsEligible])
+  }, [corpusId, predicateEntityValue, constraintsActive, predicateConstraintsEligible])
 
   const effectivePredicateConstraints = predicateConstraintsEligible ? predicateConstraints : null
   const subjectConstraintSide = effectivePredicateConstraints && effectivePredicateConstraints.domain.length > 0
@@ -254,7 +254,7 @@ export function AnnotationForm({
     }
 
     let cancelled = false
-    fetchWikibasePropertyConstraints(qualifierPredicates)
+    fetchWikibasePropertyConstraints(corpusId, qualifierPredicates)
       .then(({ constraints }) => {
         if (!cancelled) {
           setQualifierPredicateConstraints(constraints)
@@ -269,7 +269,7 @@ export function AnnotationForm({
     return () => {
       cancelled = true
     }
-  }, [qualifierPredicates, wikidataPredicateFiltering, qualifierPredicatesEligible])
+  }, [corpusId, qualifierPredicates, wikidataPredicateFiltering, qualifierPredicatesEligible])
 
   const effectiveQualifierPredicateConstraints = qualifierPredicatesEligible
     ? (qualifierPredicateConstraints ?? {})

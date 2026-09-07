@@ -52,14 +52,20 @@ describe('wikibase config', () => {
     const { DEFAULT_WIKIBASE } = await import('./wikibase')
 
     expect(DEFAULT_WIKIBASE.instance).toBe('https://www.wikidata.org')
-    expect(DEFAULT_WIKIBASE.sparqlEndpoint).toBe('https://wikibase.example/query/sparql')
+    expect(DEFAULT_WIKIBASE).toEqual({
+      instance: 'https://www.wikidata.org',
+      sparqlEndpoint: 'https://wikibase.example/query/sparql',
+    })
   })
 
   it('keeps the default SPARQL endpoint when only the instance is overridden', async () => {
     vi.stubEnv('WIKIBASE_INSTANCE', 'https://wikibase.example')
     const { DEFAULT_WIKIBASE, WIKIBASE_RDF_NAMESPACES } = await import('./wikibase')
 
-    expect(DEFAULT_WIKIBASE.sparqlEndpoint).toBe('https://query.wikidata.org/sparql')
+    expect(DEFAULT_WIKIBASE).toEqual({
+      instance: 'https://wikibase.example',
+      sparqlEndpoint: 'https://query.wikidata.org/sparql',
+    })
     expect(WIKIBASE_RDF_NAMESPACES.wd).toBe('https://wikibase.example/entity/')
   })
 

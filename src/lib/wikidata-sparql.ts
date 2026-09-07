@@ -1,3 +1,4 @@
+import type { WikibaseConfig } from './wikibase'
 import type {
   CandidateMembership,
   ConstraintEntityCheck,
@@ -10,7 +11,6 @@ import type {
 } from './wikidata-constraints'
 import WBK from 'wikibase-sdk'
 import pkg from '../../package.json'
-import { DEFAULT_WIKIBASE } from './wikibase'
 import {
   classifyCandidates,
   collectPairs,
@@ -23,8 +23,6 @@ import {
 } from './wikidata-constraints'
 
 const USER_AGENT = `star-q/${pkg.version} (https://github.com/ecladatta/star-q)`
-
-const wdk = WBK(DEFAULT_WIKIBASE)
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000
 const FETCH_TIMEOUT_MS = 10_000
@@ -71,7 +69,11 @@ const typeDataCache = createTtlCache<boolean>(CACHE_TTL_MS)
 const labelsCache = createTtlCache<string | null>(CACHE_TTL_MS)
 const constraintModelSupportCache = createTtlCache<ConstraintModelSupport>(CACHE_TTL_MS)
 
-type WbEntityIds = Parameters<typeof wdk.getManyEntities>[0]['ids']
+type WbEntityIds = Parameters<ReturnType<typeof WBK>['getManyEntities']>[0]['ids']
+
+function cacheKey(config: WikibaseConfig, id: string): string {
+  return `${config.instance}|${id}`
+}
 
 type WbGetEntitiesResponse = {
   entities?: Record<string, {
@@ -112,11 +114,12 @@ type WbSearchResponse = {
 }
 
 export async function searchWikibaseEntities(
+  config: WikibaseConfig,
   search: string,
   type: 'item' | 'property',
   limit: number,
 ): Promise<WikibaseSearchResult[]> {
-  const url = wdk.searchEntities({ search, language: 'en', limit, type })
+  const url = WBK(config).searchEntities({ search, language: 'en', limit, type })
   try {
     const data = await withRequestTimeout(async (signal) => {
       const response = await fetch(url, { headers: { 'User-Agent': USER_AGENT }, signal })
@@ -133,9 +136,9 @@ export async function searchWikibaseEntities(
   }
 }
 
-async function runSparql(query: string): Promise<Array<Record<string, { value: string }>>> {
+async function runSparql(config: WikibaseConfig, query: string): Promise<Array<Record<string, { value: string }>>> {
   return withRequestTimeout(async (signal) => {
-    const response = await fetch(DEFAULT_WIKIBASE.sparqlEndpoint, {
+    const response = await fetch(config.sparqlEndpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -183,13 +186,13 @@ const RELATION_QUERY: Record<ConstraintRelation, string> = {
   'instance-or-subclass': '{ ?item wdt:P31/wdt:P279* ?class } UNION { ?item wdt:P279* ?class }',
 }
 
-export async function fetchMembership(pairs: MembershipTriple[]): Promise<Set<string>> {
+export async function fetchMembership(config: WikibaseConfig, pairs: MembershipTriple[]): Promise<Set<string>> {
   const members = new Set<string>()
 
   const byRelation = new Map<ConstraintRelation, Array<[string, string]>>()
   for (const [item, cls, relation] of pairs) {
     const key = membershipKey(item, cls, relation)
-    const cached = membershipCache.get(key)
+    const cached = membershipCache.get(cacheKey(config, key))
     if (cached === true) {
       members.add(key)
     } else if (cached === undefined) {
@@ -214,7 +217,7 @@ export async function fetchMembership(pairs: MembershipTriple[]): Promise<Set<st
       RELATION_QUERY[relation],
       '}',
     ].join(' ')
-    return runSparql(query)
+    return runSparql(config, query)
   })
 
   for (let index = 0; index < queries.length; index++) {
@@ -225,24 +228,24 @@ export async function fetchMembership(pairs: MembershipTriple[]): Promise<Set<st
       if (item && cls) {
         const key = membershipKey(item, cls, relation)
         members.add(key)
-        membershipCache.set(key, true)
+        membershipCache.set(cacheKey(config, key), true)
       }
     }
     for (const [item, cls] of chunk) {
       const key = membershipKey(item, cls, relation)
-      membershipCache.set(key, members.has(key))
+      membershipCache.set(cacheKey(config, key), members.has(key))
     }
   }
 
   return members
 }
 
-export async function fetchItemsWithTypeData(items: string[]): Promise<Set<string>> {
+export async function fetchItemsWithTypeData(config: WikibaseConfig, items: string[]): Promise<Set<string>> {
   const typed = new Set<string>()
 
   const missing: string[] = []
   for (const id of items) {
-    const cached = typeDataCache.get(id)
+    const cached = typeDataCache.get(cacheKey(config, id))
     if (cached === true) {
       typed.add(id)
     } else if (cached === undefined) {
@@ -269,7 +272,7 @@ export async function fetchItemsWithTypeData(items: string[]): Promise<Set<strin
       '{ ?item wdt:P279 ?x }',
       '}',
     ].join(' ')
-    return runSparql(query)
+    return runSparql(config, query)
   })
 
   for (let index = 0; index < chunks.length; index++) {
@@ -280,7 +283,7 @@ export async function fetchItemsWithTypeData(items: string[]): Promise<Set<strin
       }
     }
     for (const id of chunks[index]) {
-      typeDataCache.set(id, typed.has(id))
+      typeDataCache.set(cacheKey(config, id), typed.has(id))
     }
   }
 
@@ -292,7 +295,8 @@ export type PropertyConstraintsResult = {
   unavailable: boolean
 }
 
-export async function fetchPropertyConstraints(propertyIds: string[]): Promise<PropertyConstraintsResult> {
+export async function fetchPropertyConstraints(config: WikibaseConfig, propertyIds: string[]): Promise<PropertyConstraintsResult> {
+  const wdk = WBK(config)
   const constraints = new Map<string, PropertyConstraints>()
   const uncached: string[] = []
   let unavailable = false
@@ -301,7 +305,7 @@ export async function fetchPropertyConstraints(propertyIds: string[]): Promise<P
     if (!WIKIDATA_PROPERTY_PATTERN.test(id)) {
       continue
     }
-    const cached = propertyConstraintsCache.get(id)
+    const cached = propertyConstraintsCache.get(cacheKey(config, id))
     if (cached) {
       constraints.set(id, cached)
     } else {
@@ -324,7 +328,7 @@ export async function fetchPropertyConstraints(propertyIds: string[]): Promise<P
           continue
         }
         const parsed = parsePropertyConstraints(entity.claims)
-        propertyConstraintsCache.set(id, parsed)
+        propertyConstraintsCache.set(cacheKey(config, id), parsed)
         constraints.set(id, parsed)
       }
     }
@@ -333,15 +337,17 @@ export async function fetchPropertyConstraints(propertyIds: string[]): Promise<P
   return { constraints, unavailable }
 }
 
-export async function fetchEntityLabels(ids: string[]): Promise<Map<string, string>> {
+export async function fetchEntityLabels(config: WikibaseConfig, ids: string[]): Promise<Map<string, string>> {
+  const wdk = WBK(config)
   const labels = new Map<string, string>()
   const validIds = ids.filter(id =>
     WIKIDATA_ITEM_PATTERN.test(id) || WIKIDATA_PROPERTY_PATTERN.test(id))
 
   const missing: string[] = []
   for (const id of validIds) {
-    if (labelsCache.has(id)) {
-      const cached = labelsCache.get(id)
+    const key = cacheKey(config, id)
+    if (labelsCache.has(key)) {
+      const cached = labelsCache.get(key)
       if (cached != null) {
         labels.set(id, cached)
       }
@@ -362,7 +368,7 @@ export async function fetchEntityLabels(ids: string[]): Promise<Map<string, stri
     }
     for (const [id, entity] of Object.entries(data.entities)) {
       const label = entity.labels?.en?.value
-      labelsCache.set(id, label ?? null)
+      labelsCache.set(cacheKey(config, id), label ?? null)
       if (label) {
         labels.set(id, label)
       }
@@ -373,6 +379,7 @@ export async function fetchEntityLabels(ids: string[]): Promise<Map<string, stri
 }
 
 export async function classifyEntityCandidatesViaWikidata(
+  config: WikibaseConfig,
   candidates: string[],
   constraints: PropertyConstraints,
   side: ConstraintSide,
@@ -383,17 +390,18 @@ export async function classifyEntityCandidatesViaWikidata(
   }))
   const pairs = collectPairs(memberships.flatMap(membership => membership.subjects))
   const [memberPairs, itemsWithTypeData] = await Promise.all([
-    fetchMembership(pairs),
-    fetchItemsWithTypeData(candidates),
+    fetchMembership(config, pairs),
+    fetchItemsWithTypeData(config, candidates),
   ])
   return classifyCandidates(memberships, memberPairs, itemsWithTypeData)
 }
 
 export async function classifyPredicateCandidatesViaWikidata(
+  config: WikibaseConfig,
   candidates: string[],
   checks: ConstraintEntityCheck[],
 ): Promise<EntityCandidateClassification> {
-  const { constraints } = await fetchPropertyConstraints(candidates)
+  const { constraints } = await fetchPropertyConstraints(config, candidates)
   const memberships: CandidateMembership[] = candidates.map(candidate => ({
     candidate,
     subjects: checks.map(check => ({
@@ -404,8 +412,8 @@ export async function classifyPredicateCandidatesViaWikidata(
   }))
   const pairs = collectPairs(memberships.flatMap(membership => membership.subjects))
   const [memberPairs, itemsWithTypeData] = await Promise.all([
-    fetchMembership(pairs),
-    fetchItemsWithTypeData(checks.map(check => check.entityId)),
+    fetchMembership(config, pairs),
+    fetchItemsWithTypeData(config, checks.map(check => check.entityId)),
   ])
   return classifyCandidates(memberships, memberPairs, itemsWithTypeData)
 }
@@ -414,8 +422,10 @@ export type ConstraintModelSupport
   = | { status: 'supported' }
     | { status: 'unavailable', reason: 'missing-items' | 'fetch-failed' }
 
-export async function fetchConstraintModelSupport(): Promise<ConstraintModelSupport> {
-  const cached = constraintModelSupportCache.get('model-support')
+export async function fetchConstraintModelSupport(config: WikibaseConfig): Promise<ConstraintModelSupport> {
+  const wdk = WBK(config)
+  const key = cacheKey(config, 'model-support')
+  const cached = constraintModelSupportCache.get(key)
   if (cached) {
     return cached
   }
@@ -436,6 +446,6 @@ export async function fetchConstraintModelSupport(): Promise<ConstraintModelSupp
       ? { status: 'supported' }
       : { status: 'unavailable', reason: 'missing-items' }
   }
-  constraintModelSupportCache.set('model-support', support)
+  constraintModelSupportCache.set(key, support)
   return support
 }

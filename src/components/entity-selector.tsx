@@ -85,7 +85,7 @@ const SEARCH_DEBOUNCE_MS = 200
 async function searchEntities(
   type: EntityType,
   searchTerm: string,
-  corpusId?: string,
+  corpusId: string,
   limit = 5,
 ): Promise<Entity[]> {
   // Search the configured Wikibase and custom entities in parallel
@@ -94,6 +94,7 @@ async function searchEntities(
   const wikibasePromise = (async () => {
     try {
       const results = await searchWikibaseEntities(
+        corpusId,
         searchTerm,
         type === 'predicate' ? 'property' : 'item',
         limit,
@@ -318,7 +319,7 @@ export function EntitySelector({
   value: Entity | null
   onValueChange: (arg0: Entity | null) => any
   text?: string
-  corpusId?: string
+  corpusId: string
   constraints?: PropertyConstraints | null
   constraintSide?: ConstraintSide | null
   constraintPropertyLabel?: string | null
@@ -418,8 +419,8 @@ export function EntitySelector({
 
     const seq = ++classificationSeqRef.current
     const promise = hasEntityChecks
-      ? classifyWikibasePredicateCandidates(currentCandidates, constraintEntityChecks!)
-      : classifyWikibaseEntityCandidates(currentCandidates, constraints!, constraintSide!)
+      ? classifyWikibasePredicateCandidates(corpusId, currentCandidates, constraintEntityChecks!)
+      : classifyWikibaseEntityCandidates(corpusId, currentCandidates, constraints!, constraintSide!)
     promise
       .then((result) => {
         if (seq === classificationSeqRef.current) {
@@ -437,7 +438,7 @@ export function EntitySelector({
           setShowAllResults(false)
         }
       })
-  }, [currentCandidates, constraints, constraintSide, constraintEntityChecks, classificationEligible, hasEntityChecks])
+  }, [corpusId, currentCandidates, constraints, constraintSide, constraintEntityChecks, classificationEligible, hasEntityChecks])
 
   const handleSearch = (term: string) => {
     if (searchTimerRef.current) {

@@ -1,5 +1,6 @@
 'use server'
 import type { SQL } from 'drizzle-orm'
+import type { WikibaseConfig } from '@/lib/wikibase'
 import type { AnnotationCheck, ConstraintCheck, CorpusWarnings, PropertyConstraints, WarningAnnotationRow, WarningQualifierRow } from '@/lib/wikidata-constraints'
 import { and, eq, sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
@@ -7,6 +8,7 @@ import { db } from '@/db/drizzle'
 import { annotation, annotationComponent, annotationQualifier, corpus, document } from '@/db/schema'
 import { requireViewCorpus, requireViewDocument } from '@/lib/corpus-access'
 import { isConstraintWarningsEnabled } from '@/lib/corpus-settings'
+import { loadCorpusWikibaseConfig } from '@/lib/wikibase-server'
 import { buildConstraintChecks, buildQualifierRangeChecks, collectPairs, evaluateConstraintChecks, WIKIDATA_PROPERTY_PATTERN } from '@/lib/wikidata-constraints'
 import { fetchConstraintModelSupport, fetchEntityLabels, fetchItemsWithTypeData, fetchMembership, fetchPropertyConstraints } from '@/lib/wikidata-sparql'
 
@@ -41,6 +43,7 @@ function unavailableWarnings(checkedProperties: number, unavailableReason?: 'fet
 async function computeWarningsForRows(
   rows: WarningAnnotationRow[],
   qualifierRows: WarningQualifierRow[],
+  config: WikibaseConfig,
 ): Promise<WarningsComputation> {
   const predicates = Array.from(new Set([
     ...rows
@@ -55,7 +58,7 @@ async function computeWarningsForRows(
     return { violations: [], unverifiable: [], checkedProperties: 0, unavailable: false }
   }
 
-  const support = await fetchConstraintModelSupport()
+  const support = await fetchConstraintModelSupport(config)
   if (support.status === 'unavailable') {
     return unavailableWarnings(
       predicates.length,
@@ -66,7 +69,7 @@ async function computeWarningsForRows(
   let fetchUnavailable: boolean
   let constraintsByProperty: Map<string, PropertyConstraints>
   try {
-    const result = await fetchPropertyConstraints(predicates)
+    const result = await fetchPropertyConstraints(config, predicates)
     fetchUnavailable = result.unavailable
     constraintsByProperty = result.constraints
   } catch (error) {
@@ -85,8 +88,8 @@ async function computeWarningsForRows(
   let itemsWithTypeData: Set<string>
   try {
     [memberPairs, itemsWithTypeData] = await Promise.all([
-      fetchMembership(pairs),
-      fetchItemsWithTypeData(items),
+      fetchMembership(config, pairs),
+      fetchItemsWithTypeData(config, items),
     ])
   } catch (error) {
     console.warn('Wikidata constraint check unavailable while checking membership or type data:', error)
@@ -98,7 +101,7 @@ async function computeWarningsForRows(
   const classIds = Array.from(new Set(
     checks.flatMap(check => check.expectedClasses.map(constraint => constraint.class)),
   ))
-  const classLabels = await fetchEntityLabels(classIds)
+  const classLabels = await fetchEntityLabels(config, classIds)
 
   const resolveClasses = (check: AnnotationCheck): ConstraintCheck => ({
     ...check,
@@ -194,7 +197,8 @@ export async function getCorpusWarnings(corpusId: string): Promise<CorpusWarning
 
   const rows = await getWarningRows(eq(document.corpusId, corpusId))
   const qualifierRows = await getQualifierWarningRows(eq(document.corpusId, corpusId))
-  const { violations, unverifiable, checkedProperties, unavailable, unavailableReason } = await computeWarningsForRows(rows, qualifierRows)
+  const config = await loadCorpusWikibaseConfig(corpusId)
+  const { violations, unverifiable, checkedProperties, unavailable, unavailableReason } = await computeWarningsForRows(rows, qualifierRows, config)
 
   return {
     violations,
@@ -226,9 +230,10 @@ export async function getDocumentWarnings(documentId: string): Promise<CorpusWar
     return emptyWarnings(0)
   }
 
+  const config = await loadCorpusWikibaseConfig(documentData.corpusId)
   const rows = await getWarningRows(eq(annotation.documentId, documentId))
   const qualifierRows = await getQualifierWarningRows(eq(annotation.documentId, documentId))
-  const { violations, unverifiable, checkedProperties, unavailable, unavailableReason } = await computeWarningsForRows(rows, qualifierRows)
+  const { violations, unverifiable, checkedProperties, unavailable, unavailableReason } = await computeWarningsForRows(rows, qualifierRows, config)
 
   return {
     violations,
