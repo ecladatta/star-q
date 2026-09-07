@@ -24,10 +24,11 @@ export async function classifyWikibaseEntityCandidates(
   constraints: PropertyConstraints,
   side: ConstraintSide,
 ): Promise<{ classification: EntityCandidateClassification, support: ConstraintModelSupport }> {
-  const [classification, support] = await Promise.all([
-    classifyEntityCandidatesViaWikidata(candidates, constraints, side),
-    fetchConstraintModelSupport(),
-  ])
+  const support = await fetchConstraintModelSupport()
+  if (support.status === 'unavailable') {
+    return { classification: { members: candidates, unverifiable: [], filteredOut: [] }, support }
+  }
+  const classification = await classifyEntityCandidatesViaWikidata(candidates, constraints, side)
   return { classification, support }
 }
 
@@ -35,10 +36,11 @@ export async function classifyWikibasePredicateCandidates(
   candidates: string[],
   checks: ConstraintEntityCheck[],
 ): Promise<{ classification: EntityCandidateClassification, support: ConstraintModelSupport }> {
-  const [classification, support] = await Promise.all([
-    classifyPredicateCandidatesViaWikidata(candidates, checks),
-    fetchConstraintModelSupport(),
-  ])
+  const support = await fetchConstraintModelSupport()
+  if (support.status === 'unavailable') {
+    return { classification: { members: candidates, unverifiable: [], filteredOut: [] }, support }
+  }
+  const classification = await classifyPredicateCandidatesViaWikidata(candidates, checks)
   return { classification, support }
 }
 
