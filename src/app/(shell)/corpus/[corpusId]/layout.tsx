@@ -34,7 +34,7 @@ export default async function CorpusLayout({
   const wikibase = await loadCorpusWikibaseConfig(corpusId)
 
   return (
-    <WikibaseInstanceProvider instance={wikibase.instance}>
+    <WikibaseInstanceProvider instance={wikibase?.instance ?? null}>
       <CorpusNav corpusId={corpusId} corpusTitle={corpus.title} canManage={canManage} canEdit={canEdit} documentCount={documentCount}>
         {children}
       </CorpusNav>

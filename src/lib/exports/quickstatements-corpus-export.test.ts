@@ -5,7 +5,6 @@ import type {
   ExportModel,
 } from '@/types/types'
 import { expect, it } from 'vitest'
-import { DEFAULT_WIKIBASE } from '@/lib/wikibase'
 import { serializeQuickStatementsCorpusExport } from './quickstatements-corpus-export'
 
 function component(overrides: Partial<DocumentAnnotationComponent>): DocumentAnnotationComponent {
@@ -59,7 +58,7 @@ function model(annotations: AnnotationExport[]): ExportModel {
     createdAt: null,
     updatedAt: null,
     customEntities: [],
-    wikibase: DEFAULT_WIKIBASE,
+    wikibase: { instance: 'https://wikibase.example', sparqlEndpoint: 'https://wikibase.example/query/sparql' },
     documents: [
       {
         id: 'doc-1',

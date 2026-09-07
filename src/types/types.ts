@@ -221,5 +221,5 @@ export type ExportModel = {
   updatedAt: string | null
   documents: DocumentExport[]
   customEntities: CorpusCustomEntity[]
-  wikibase: WikibaseConfig
+  wikibase: WikibaseConfig | null
 }

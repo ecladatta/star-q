@@ -296,7 +296,7 @@ export function CorpusSettingsPanel({ corpus, wikibaseInstances, onCorpusRenamed
                 <SelectItem value={SERVER_DEFAULT_WIKIBASE}>Server default</SelectItem>
                 {selectableInstances.map(instance => (
                   <SelectItem key={instance.id} value={instance.id}>
-                    {`${instance.label}${instance.enabled ? '' : ' (disabled)'} (${new URL(instance.instanceUrl).hostname})`}
+                    {`${instance.label}${instance.isDefault ? ' (default)' : ''}${instance.enabled ? '' : ' (disabled)'} (${new URL(instance.instanceUrl).hostname})`}
                   </SelectItem>
                 ))}
               </SelectContent>

@@ -303,6 +303,25 @@ function formatFilteredSides(sides: ConstraintSide[]): string {
   return 'domain or range'
 }
 
+function EntityViewLink({ value }: { value: string }) {
+  const { wikiUrl } = useWikibaseInstance()
+  const url = wikiUrl(value)
+  if (!url) {
+    return null
+  }
+  return (
+    <Link
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="ml-auto shrink-0 self-center text-xs text-accent hover:underline"
+      onClick={e => e.stopPropagation()}
+    >
+      View
+    </Link>
+  )
+}
+
 export function EntitySelector({
   type,
   value,
@@ -347,7 +366,6 @@ export function EntitySelector({
 
   const candidatePattern = entityType === 'predicate' ? WIKIDATA_PROPERTY_PATTERN : WIKIDATA_ITEM_PATTERN
   const searchLimit = constraintEntityChecks?.length ? 20 : 5
-  const { wikiUrl } = useWikibaseInstance()
 
   const runSearch = useCallback(async (term: string, seq: number) => {
     try {
@@ -703,15 +721,7 @@ export function EntitySelector({
                         </span>
                       )
                     : (
-                        <Link
-                          href={wikiUrl(value.value)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="ml-auto shrink-0 self-center text-xs text-accent hover:underline"
-                          onClick={e => e.stopPropagation()}
-                        >
-                          View
-                        </Link>
+                        <EntityViewLink value={value.value} />
                       )}
                 </CommandItem>
               </CommandGroup>
@@ -806,15 +816,7 @@ export function EntitySelector({
                         </Badge>
                       )}
                     </div>
-                    <Link
-                      href={wikiUrl(entity.value)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="ml-auto shrink-0 self-center text-xs text-accent hover:underline"
-                      onClick={e => e.stopPropagation()}
-                    >
-                      View
-                    </Link>
+                    <EntityViewLink value={entity.value} />
                   </CommandItem>
                 ))}
               </CommandGroup>

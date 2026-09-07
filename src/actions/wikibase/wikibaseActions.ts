@@ -16,12 +16,18 @@ import {
 export async function searchWikibaseEntities(corpusId: string, search: string, type: 'item' | 'property', limit: number) {
   await requireViewCorpus(corpusId)
   const config = await loadCorpusWikibaseConfig(corpusId)
+  if (!config) {
+    return []
+  }
   return searchWikibaseEntitiesLib(config, search, type, limit)
 }
 
 export async function fetchWikibasePropertyConstraints(corpusId: string, propertyIds: string[]) {
   await requireViewCorpus(corpusId)
   const config = await loadCorpusWikibaseConfig(corpusId)
+  if (!config) {
+    return { constraints: {}, unavailable: true }
+  }
   const { constraints, unavailable } = await fetchPropertyConstraints(config, propertyIds)
   return { constraints: Object.fromEntries(constraints), unavailable }
 }
@@ -34,6 +40,9 @@ export async function classifyWikibaseEntityCandidates(
 ): Promise<{ classification: EntityCandidateClassification, support: ConstraintModelSupport }> {
   await requireViewCorpus(corpusId)
   const config = await loadCorpusWikibaseConfig(corpusId)
+  if (!config) {
+    return { classification: { members: candidates, unverifiable: [], filteredOut: [] }, support: { status: 'unavailable', reason: 'fetch-failed' } }
+  }
   const support = await fetchConstraintModelSupport(config)
   if (support.status === 'unavailable') {
     return { classification: { members: candidates, unverifiable: [], filteredOut: [] }, support }
@@ -49,6 +58,9 @@ export async function classifyWikibasePredicateCandidates(
 ): Promise<{ classification: EntityCandidateClassification, support: ConstraintModelSupport }> {
   await requireViewCorpus(corpusId)
   const config = await loadCorpusWikibaseConfig(corpusId)
+  if (!config) {
+    return { classification: { members: candidates, unverifiable: [], filteredOut: [] }, support: { status: 'unavailable', reason: 'fetch-failed' } }
+  }
   const support = await fetchConstraintModelSupport(config)
   if (support.status === 'unavailable') {
     return { classification: { members: candidates, unverifiable: [], filteredOut: [] }, support }

@@ -329,6 +329,7 @@ export const wikibaseInstances = pgTable('wikibase_instance', {
   instanceUrl: text('instance_url').notNull().unique(),
   sparqlEndpoint: text('sparql_endpoint').notNull(),
   enabled: boolean('enabled').notNull().default(true),
+  isDefault: boolean('is_default').notNull().default(false),
   createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
 })

@@ -4,8 +4,9 @@ import type {
   ExportModel,
 } from '@/types/types'
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_WIKIBASE } from '@/lib/wikibase'
 import { serializeRdfCorpusExport } from './rdf-corpus-export'
+
+const wikibaseConfig = { instance: 'https://wikibase.example', sparqlEndpoint: 'https://wikibase.example/sparql' }
 
 function component(overrides: Partial<DocumentAnnotationComponent> = {}): DocumentAnnotationComponent {
   return {
@@ -83,7 +84,7 @@ function model(annotations: AnnotationExport[], raw: ExportModel['documents'][nu
     createdAt: null,
     updatedAt: null,
     customEntities: [],
-    wikibase: DEFAULT_WIKIBASE,
+    wikibase: wikibaseConfig,
     documents: [{
       id: 'doc-1',
       title: 'D',
@@ -152,13 +153,20 @@ describe('serializeRdfCorpusExport (truthy)', () => {
   it('resolves entity IRIs against the corpus wikibase instance', () => {
     const output = serializeRdfCorpusExport(
       withWikibase(model([annotation()], rawText()), {
-        instance: 'https://wikibase.example',
-        sparqlEndpoint: 'https://wikibase.example/sparql',
+        instance: 'https://other.example',
+        sparqlEndpoint: 'https://other.example/sparql',
       }),
       'truthy',
     )
-    expect(output).toContain('@prefix wd: <https://wikibase.example/entity/>')
+    expect(output).toContain('@prefix wd: <https://other.example/entity/>')
     expect(output).toContain('wd:Q1 wdt:P1 wd:Q2.')
+  })
+
+  it('throws when the corpus has no wikibase instance', () => {
+    expect(() => serializeRdfCorpusExport(withWikibase(model([annotation()], rawText()), null), 'truthy'))
+      .toThrow('No Wikibase instance is available for this corpus; RDF export requires one.')
+    expect(() => serializeRdfCorpusExport(withWikibase(model([annotation()], rawText()), null), 'full'))
+      .toThrow('No Wikibase instance is available for this corpus; RDF export requires one.')
   })
 })
 

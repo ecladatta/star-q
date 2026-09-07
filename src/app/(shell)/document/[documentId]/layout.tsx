@@ -50,7 +50,7 @@ export default async function DocumentLayout({
   const wikibase = await loadCorpusWikibaseConfig(document.corpusId)
 
   return (
-    <WikibaseInstanceProvider instance={wikibase.instance}>
+    <WikibaseInstanceProvider instance={wikibase?.instance ?? null}>
       <CorpusNav
         corpusId={document.corpusId}
         corpusTitle={corpus.title}

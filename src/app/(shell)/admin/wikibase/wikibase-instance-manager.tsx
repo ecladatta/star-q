@@ -4,8 +4,9 @@ import type { WikibaseInstance } from '@/db/schema'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { createWikibaseInstance, deleteWikibaseInstance, setWikibaseInstanceEnabled, updateWikibaseInstance } from '@/actions/wikibase/wikibaseAdminActions'
+import { createWikibaseInstance, deleteWikibaseInstance, setWikibaseInstanceDefault, setWikibaseInstanceEnabled, updateWikibaseInstance } from '@/actions/wikibase/wikibaseAdminActions'
 import { ConfirmActionButton } from '@/components/confirm-action-button'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -99,6 +100,16 @@ export function WikibaseInstanceManager({ instances }: { instances: WikibaseInst
     }
   }
 
+  const handleSetDefault = async (instance: WikibaseInstance) => {
+    try {
+      await setWikibaseInstanceDefault(instance.id)
+      toast.success(`${instance.label} is now the server default`)
+      router.refresh()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to update the Wikibase instance.')
+    }
+  }
+
   return (
     <div className="space-y-8">
       <section className="rounded-md border p-5">
@@ -139,9 +150,12 @@ export function WikibaseInstanceManager({ instances }: { instances: WikibaseInst
 
       <section className="w-full overflow-hidden rounded-lg border border-border">
         {instances.map(instance => (
-          <div key={instance.id} className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-4 border-b border-border p-4 last:border-0">
+          <div key={instance.id} className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-4 border-b border-border p-4 last:border-0">
             <div>
-              <p className="text-sm font-medium">{instance.label}</p>
+              <p className="text-sm font-medium">
+                {instance.label}
+                {instance.isDefault && <Badge variant="secondary" className="ml-2">Default</Badge>}
+              </p>
               <p className="mt-0.5 text-sm text-muted-foreground">
                 <code className="rounded-sm bg-muted px-1 py-0.5 text-xs">{instance.instanceUrl}</code>
               </p>
@@ -167,6 +181,13 @@ export function WikibaseInstanceManager({ instances }: { instances: WikibaseInst
             >
               Edit
             </Button>
+            {instance.isDefault
+              ? <span />
+              : (
+                  <Button type="button" variant="outline" onClick={() => handleSetDefault(instance)}>
+                    Make default
+                  </Button>
+                )}
             <ConfirmActionButton
               action={async () => {
                 await deleteWikibaseInstance(instance.id)

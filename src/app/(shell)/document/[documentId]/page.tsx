@@ -58,7 +58,7 @@ export default async function DocumentPage({ params }: { params: Promise<{ docum
         <Suspense key={documentId} fallback={<WikidataWarningsSkeleton compact />}>
           <WikidataWarningsSection
             warningsPromise={getDocumentWarnings(documentId)}
-            instanceName={wikibase.instance}
+            instanceName={wikibase?.instance ?? null}
             groupByDocument={false}
             compact
           />

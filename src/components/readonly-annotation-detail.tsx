@@ -33,10 +33,11 @@ function EntityId({ component }: { component: DocumentAnnotationComponent }) {
   if (!entityValue || entityValue === entityLabel) {
     return null
   }
-  if (isWikidataId(entityValue) && !entityCustom) {
+  const url = isWikidataId(entityValue) && !entityCustom ? wikiUrl(entityValue) : null
+  if (url) {
     return (
       <a
-        href={wikiUrl(entityValue)}
+        href={url}
         target="_blank"
         rel="noopener noreferrer"
         className="inline-flex items-center gap-0.5 font-medium text-accent hover:underline"

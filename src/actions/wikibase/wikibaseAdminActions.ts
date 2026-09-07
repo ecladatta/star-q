@@ -103,6 +103,38 @@ export async function setWikibaseInstanceEnabled(id: string, enabled: boolean) {
   revalidatePath(WIKIBASE_ADMIN_PATH)
 }
 
+export async function setWikibaseInstanceDefault(id: string) {
+  const actor = await requireAdmin()
+  await db.transaction(async (trx) => {
+    const [row] = await trx
+      .select({ enabled: wikibaseInstances.enabled })
+      .from(wikibaseInstances)
+      .where(eq(wikibaseInstances.id, id))
+      .limit(1)
+    if (!row) {
+      throw new NotFoundError('Wikibase instance not found.')
+    }
+    if (!row.enabled) {
+      throw new Error('Enable this instance before making it the server default.')
+    }
+    await trx
+      .update(wikibaseInstances)
+      .set({ isDefault: false, updatedAt: new Date() })
+      .where(eq(wikibaseInstances.isDefault, true))
+    await trx
+      .update(wikibaseInstances)
+      .set({ isDefault: true, updatedAt: new Date() })
+      .where(eq(wikibaseInstances.id, id))
+    await trx.insert(auditLog).values({
+      actorUserId: actor.userId,
+      action: 'admin.wikibase_instance_default_set',
+      targetType: 'wikibase_instance',
+      targetId: id,
+    })
+  })
+  revalidatePath(WIKIBASE_ADMIN_PATH)
+}
+
 export async function deleteWikibaseInstance(id: string) {
   const actor = await requireAdmin()
   const [referencing] = await db

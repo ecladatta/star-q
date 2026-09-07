@@ -6,19 +6,14 @@ export type WikibaseConfig = {
   sparqlEndpoint: string
 }
 
-export const DEFAULT_WIKIBASE: WikibaseConfig = {
-  instance: process.env.WIKIBASE_INSTANCE || 'https://www.wikidata.org',
-  sparqlEndpoint: process.env.WIKIBASE_SPARQL_ENDPOINT || 'https://query.wikidata.org/sparql',
-}
-
 export function resolveWikibase(
   settings: CorpusSettings | undefined | null,
   entry: Pick<WikibaseInstance, 'instanceUrl' | 'sparqlEndpoint' | 'enabled'> | null | undefined,
-): WikibaseConfig {
+): WikibaseConfig | null {
   if (settings?.wikibaseInstanceId && entry?.enabled) {
     return { instance: entry.instanceUrl, sparqlEndpoint: entry.sparqlEndpoint }
   }
-  return DEFAULT_WIKIBASE
+  return null
 }
 
 export type WikibaseInstanceInput = {
@@ -71,17 +66,9 @@ export function parseWikibaseInstanceInput(input: WikibaseInstanceInput): Wikiba
   }
 }
 
-export function wikibaseApiUrl(): string {
-  return `${DEFAULT_WIKIBASE.instance}/w/api.php`
-}
-
 export function wikiUrl(instance: string, id: string): string {
   const prefix = id.startsWith('P') ? 'Property:' : ''
   return `${instance}/wiki/${prefix}${id}`
-}
-
-export function wikibaseWikiUrl(id: string): string {
-  return wikiUrl(DEFAULT_WIKIBASE.instance, id)
 }
 
 export type WikibaseRdfNamespaces = {
@@ -97,5 +84,3 @@ export function wikibaseRdfNamespaces(instance: string): WikibaseRdfNamespaces {
     pq: `${instance}/prop/qualifier/`,
   }
 }
-
-export const WIKIBASE_RDF_NAMESPACES = wikibaseRdfNamespaces(DEFAULT_WIKIBASE.instance)

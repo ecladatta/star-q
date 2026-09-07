@@ -17,7 +17,7 @@ type WarningsComputation = {
   unverifiable: ConstraintCheck[]
   checkedProperties: number
   unavailable: boolean
-  unavailableReason?: 'fetch-failed' | 'not-supported'
+  unavailableReason?: 'fetch-failed' | 'not-supported' | 'no-instance'
 }
 
 function emptyWarnings(checkedAnnotations: number): CorpusWarnings {
@@ -30,7 +30,7 @@ function emptyWarnings(checkedAnnotations: number): CorpusWarnings {
   }
 }
 
-function unavailableWarnings(checkedProperties: number, unavailableReason?: 'fetch-failed' | 'not-supported'): WarningsComputation {
+function unavailableWarnings(checkedProperties: number, unavailableReason?: 'fetch-failed' | 'not-supported' | 'no-instance'): WarningsComputation {
   return {
     violations: [],
     unverifiable: [],
@@ -198,6 +198,9 @@ export async function getCorpusWarnings(corpusId: string): Promise<CorpusWarning
   const rows = await getWarningRows(eq(document.corpusId, corpusId))
   const qualifierRows = await getQualifierWarningRows(eq(document.corpusId, corpusId))
   const config = await loadCorpusWikibaseConfig(corpusId)
+  if (!config) {
+    return { ...unavailableWarnings(0, 'no-instance'), checkedAnnotations: rows.length }
+  }
   const { violations, unverifiable, checkedProperties, unavailable, unavailableReason } = await computeWarningsForRows(rows, qualifierRows, config)
 
   return {
@@ -231,6 +234,9 @@ export async function getDocumentWarnings(documentId: string): Promise<CorpusWar
   }
 
   const config = await loadCorpusWikibaseConfig(documentData.corpusId)
+  if (!config) {
+    return { ...unavailableWarnings(0, 'no-instance'), checkedAnnotations: 0 }
+  }
   const rows = await getWarningRows(eq(annotation.documentId, documentId))
   const qualifierRows = await getQualifierWarningRows(eq(annotation.documentId, documentId))
   const { violations, unverifiable, checkedProperties, unavailable, unavailableReason } = await computeWarningsForRows(rows, qualifierRows, config)

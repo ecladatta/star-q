@@ -18,7 +18,7 @@ type AnalyticsContentProps = {
 
 export async function AnalyticsContent({ corpusId, analyticsPromise, warningsPromise }: AnalyticsContentProps) {
   const [analytics, wikibase] = await Promise.all([analyticsPromise, loadCorpusWikibaseConfig(corpusId)])
-  const wikiUrlFor = (id: string) => wikiUrl(wikibase.instance, id)
+  const wikiUrlFor = (id: string) => (wikibase ? wikiUrl(wikibase.instance, id) : null)
 
   return (
     <>
@@ -336,7 +336,7 @@ export async function AnalyticsContent({ corpusId, analyticsPromise, warningsPro
 
       {/* Warnings */}
       <Suspense fallback={<WikidataWarningsSkeleton />}>
-        <WikidataWarningsSection warningsPromise={warningsPromise} instanceName={wikibase.instance} />
+        <WikidataWarningsSection warningsPromise={warningsPromise} instanceName={wikibase?.instance ?? null} />
       </Suspense>
 
       {/* Property Statistics */}
@@ -369,6 +369,7 @@ export async function AnalyticsContent({ corpusId, analyticsPromise, warningsPro
                         <TableBody>
                           {analytics.propertyStats.map((stat) => {
                             const propertyKey = `${stat.label || 'null'}:${stat.value || 'null'}`
+                            const propertyUrl = stat.value && !stat.isCustom ? wikiUrlFor(stat.value) : null
 
                             return (
                               <TableRow key={propertyKey} className="border-t border-border hover:bg-muted/30">
@@ -377,11 +378,10 @@ export async function AnalyticsContent({ corpusId, analyticsPromise, warningsPro
                                 </TableCell>
                                 <TableCell className="px-3 py-2.5 text-[13px]">
                                   {stat.value
-                                    ? stat.isCustom
-                                      ? stat.value
-                                      : (
+                                    ? propertyUrl
+                                      ? (
                                           <Link
-                                            href={wikiUrlFor(stat.value)}
+                                            href={propertyUrl}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="text-accent underline hover:opacity-80"
@@ -389,6 +389,7 @@ export async function AnalyticsContent({ corpusId, analyticsPromise, warningsPro
                                             {stat.value}
                                           </Link>
                                         )
+                                      : stat.value
                                     : <span className="text-muted-foreground">—</span>}
                                 </TableCell>
                                 <TableCell className="px-3 py-2.5 text-right font-mono text-[13px] text-muted-foreground tabular-nums">{stat.count}</TableCell>
@@ -437,6 +438,7 @@ export async function AnalyticsContent({ corpusId, analyticsPromise, warningsPro
                         <TableBody>
                           {analytics.entityStats.map((stat) => {
                             const entityKey = `${stat.label || 'null'}:${stat.value || 'null'}`
+                            const entityUrl = stat.value && !stat.isCustom ? wikiUrlFor(stat.value) : null
 
                             return (
                               <TableRow key={entityKey} className="border-t border-border hover:bg-muted/30">
@@ -445,11 +447,10 @@ export async function AnalyticsContent({ corpusId, analyticsPromise, warningsPro
                                 </TableCell>
                                 <TableCell className="px-3 py-2.5 text-[13px]">
                                   {stat.value
-                                    ? stat.isCustom
-                                      ? stat.value
-                                      : (
+                                    ? entityUrl
+                                      ? (
                                           <Link
-                                            href={wikiUrlFor(stat.value)}
+                                            href={entityUrl}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="text-accent underline hover:opacity-80"
@@ -457,6 +458,7 @@ export async function AnalyticsContent({ corpusId, analyticsPromise, warningsPro
                                             {stat.value}
                                           </Link>
                                         )
+                                      : stat.value
                                     : <span className="text-muted-foreground">—</span>}
                                 </TableCell>
                                 <TableCell className="px-3 py-2.5 text-right font-mono text-[13px] text-muted-foreground tabular-nums">{stat.count}</TableCell>

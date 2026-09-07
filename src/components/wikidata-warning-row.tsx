@@ -27,12 +27,13 @@ function visibleGroupsUpTo(groups: ConstraintGroup[], limit: number): Constraint
 
 function WikidataLink({ id, label }: { id: string, label: string }) {
   const { wikiUrl } = useWikibaseInstance()
-  if (!WIKIDATA_ITEM_PATTERN.test(id) && !WIKIDATA_PROPERTY_PATTERN.test(id)) {
+  const url = wikiUrl(id)
+  if (!url || (!WIKIDATA_ITEM_PATTERN.test(id) && !WIKIDATA_PROPERTY_PATTERN.test(id))) {
     return <span>{label}</span>
   }
   return (
     <Link
-      href={wikiUrl(id)}
+      href={url}
       target="_blank"
       rel="noopener noreferrer"
       className="text-accent hover:underline"

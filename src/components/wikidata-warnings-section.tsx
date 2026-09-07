@@ -8,7 +8,7 @@ import { WikidataWarningRow } from './wikidata-warning-row'
 
 type WikidataWarningsSectionProps = {
   warningsPromise: Promise<CorpusWarnings>
-  instanceName: string
+  instanceName: string | null
   groupByDocument?: boolean
   compact?: boolean
 }
@@ -62,7 +62,7 @@ function WarningsRows({ violations, unverifiable }: { violations: ConstraintChec
   )
 }
 
-function WikidataWarningsContent({ warnings, groupByDocument, compact, instanceName }: { warnings: CorpusWarnings, groupByDocument: boolean, compact: boolean, instanceName: string }) {
+function WikidataWarningsContent({ warnings, groupByDocument, compact, instanceName }: { warnings: CorpusWarnings, groupByDocument: boolean, compact: boolean, instanceName: string | null }) {
   const totalCount = warnings.violations.length + warnings.unverifiable.length
 
   if (totalCount === 0 && !warnings.unavailable) {
@@ -96,9 +96,11 @@ function WikidataWarningsContent({ warnings, groupByDocument, compact, instanceN
             {warnings.unavailable
               ? (
                   <p className="text-sm text-muted-foreground">
-                    {warnings.unavailableReason === 'not-supported'
-                      ? `Constraint checking is unavailable: the configured Wikibase instance ${instanceName} does not provide the Wikidata constraint model, so annotations were not verified.`
-                      : 'Wikidata constraint check could not be completed, so annotations were not verified.'}
+                    {warnings.unavailableReason === 'no-instance'
+                      ? 'No Wikibase instance is available for this corpus.'
+                      : warnings.unavailableReason === 'not-supported'
+                        ? `Constraint checking is unavailable: the configured Wikibase instance ${instanceName} does not provide the Wikidata constraint model, so annotations were not verified.`
+                        : 'Wikidata constraint check could not be completed, so annotations were not verified.'}
                   </p>
                 )
               : totalCount === 0

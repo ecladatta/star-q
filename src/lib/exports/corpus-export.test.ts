@@ -1,6 +1,5 @@
 import type { ExportModel } from '@/types/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { DEFAULT_WIKIBASE } from '@/lib/wikibase'
 import { getCorpusExportFilename, resolveCorpusExportFormat } from './corpus-export'
 
 vi.mock('@/actions/annotation/annotationActions', () => ({ getAnnotations: vi.fn() }))
@@ -84,7 +83,7 @@ describe('getCorpusExportFilename', () => {
       createdAt: null,
       updatedAt: null,
       customEntities: [],
-      wikibase: DEFAULT_WIKIBASE,
+      wikibase: { instance: 'https://wikibase.example', sparqlEndpoint: 'https://wikibase.example/query/sparql' },
       documents: [],
     }
   }

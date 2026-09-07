@@ -176,6 +176,13 @@
       "when": 1788783883457,
       "tag": "0024_perpetual_layla_miller",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1788785269223,
+      "tag": "0025_stiff_banshee",
+      "breakpoints": true
     }
   ]
 }
