@@ -44,12 +44,18 @@ export function DocumentSidebar({ documents, currentDocument }: DocumentSidebarP
   }, [currentDocument?.id, optimisticDocId])
 
   useEffect(() => {
-    if (currentDocumentRef.current) {
-      currentDocumentRef.current.scrollIntoView({
-        behavior: 'instant',
-        block: 'center',
-      })
+    const item = currentDocumentRef.current
+    if (!item) {
+      return
     }
+    const viewport = item.closest('[data-radix-scroll-area-viewport]')
+    if (!viewport) {
+      return
+    }
+    const itemRect = item.getBoundingClientRect()
+    const viewportRect = viewport.getBoundingClientRect()
+    const delta = itemRect.top + itemRect.height / 2 - (viewportRect.top + viewportRect.height / 2)
+    viewport.scrollTo({ top: viewport.scrollTop + delta, behavior: 'instant' })
   }, [currentDocument?.id])
 
   return (
