@@ -5,6 +5,7 @@ import { AlertTriangleIcon } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
+import { useWikibaseInstance } from '@/hooks/useWikibaseInstance'
 import { cn } from '@/lib/utils'
 import { CONSTRAINT_RELATION_LABELS, groupByRelation, WIKIDATA_ITEM_PATTERN, WIKIDATA_PROPERTY_PATTERN } from '@/lib/wikidata-constraints'
 
@@ -25,13 +26,13 @@ function visibleGroupsUpTo(groups: ConstraintGroup[], limit: number): Constraint
 }
 
 function WikidataLink({ id, label }: { id: string, label: string }) {
+  const { wikiUrl } = useWikibaseInstance()
   if (!WIKIDATA_ITEM_PATTERN.test(id) && !WIKIDATA_PROPERTY_PATTERN.test(id)) {
     return <span>{label}</span>
   }
-  const isProperty = id.startsWith('P')
   return (
     <Link
-      href={`https://www.wikidata.org/wiki/${isProperty ? 'Property:' : ''}${id}`}
+      href={wikiUrl(id)}
       target="_blank"
       rel="noopener noreferrer"
       className="text-accent hover:underline"

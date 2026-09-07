@@ -61,6 +61,7 @@ import {
   CommandList,
   CommandSeparator,
 } from '@/components/ui/command'
+import { useWikibaseInstance } from '@/hooks/useWikibaseInstance'
 import { entityTypeForComponentRole } from '@/lib/annotation-roles'
 import { ENTITY_DATATYPE_GROUPS, ENTITY_DATATYPE_LABELS } from '@/lib/datatypes'
 import { cn } from '@/lib/utils'
@@ -345,6 +346,7 @@ export function EntitySelector({
 
   const candidatePattern = entityType === 'predicate' ? WIKIDATA_PROPERTY_PATTERN : WIKIDATA_ITEM_PATTERN
   const searchLimit = constraintEntityChecks?.length ? 20 : 5
+  const { wikiUrl } = useWikibaseInstance()
 
   const runSearch = useCallback(async (term: string, seq: number) => {
     try {
@@ -701,7 +703,7 @@ export function EntitySelector({
                       )
                     : (
                         <Link
-                          href={`https://www.wikidata.org/wiki/${value.value?.startsWith('P') ? 'Property:' : ''}${value.value}`}
+                          href={wikiUrl(value.value)}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="ml-auto shrink-0 self-center text-xs text-accent hover:underline"
@@ -804,7 +806,7 @@ export function EntitySelector({
                       )}
                     </div>
                     <Link
-                      href={`https://www.wikidata.org/wiki/${entity.value.startsWith('P') ? 'Property:' : ''}${entity.value}`}
+                      href={wikiUrl(entity.value)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="ml-auto shrink-0 self-center text-xs text-accent hover:underline"

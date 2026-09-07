@@ -70,4 +70,12 @@ describe('wikibase config', () => {
     expect(wikibaseWikiUrl('P31')).toBe('https://www.wikidata.org/wiki/Property:P31')
     expect(wikibaseWikiUrl('Qx')).toBe('https://www.wikidata.org/wiki/Qx')
   })
+
+  it('builds wiki urls from an explicit instance without reading env', async () => {
+    const { wikiUrl } = await import('./wikibase')
+
+    expect(wikiUrl('https://wikibase.example', 'Q1')).toBe('https://wikibase.example/wiki/Q1')
+    expect(wikiUrl('https://wikibase.example', 'P31')).toBe('https://wikibase.example/wiki/Property:P31')
+    expect(wikiUrl('https://wikibase.example', 'Qx')).toBe('https://wikibase.example/wiki/Qx')
+  })
 })

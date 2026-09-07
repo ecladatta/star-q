@@ -7,9 +7,13 @@ export function wikibaseApiUrl(): string {
   return `${WIKIBASE.instance}/w/api.php`
 }
 
-export function wikibaseWikiUrl(id: string): string {
+export function wikiUrl(instance: string, id: string): string {
   const prefix = id.startsWith('P') ? 'Property:' : ''
-  return `${WIKIBASE.instance}/wiki/${prefix}${id}`
+  return `${instance}/wiki/${prefix}${id}`
+}
+
+export function wikibaseWikiUrl(id: string): string {
+  return wikiUrl(WIKIBASE.instance, id)
 }
 
 export const WIKIBASE_RDF_NAMESPACES = {

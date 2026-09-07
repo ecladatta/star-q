@@ -6,6 +6,7 @@ import { Suspense } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { wikibaseWikiUrl } from '@/lib/wikibase'
 import { WikidataWarningsSection, WikidataWarningsSkeleton } from './wikidata-warnings-section'
 
 type AnalyticsContentProps = {
@@ -377,7 +378,7 @@ export async function AnalyticsContent({ analyticsPromise, warningsPromise }: An
                                       ? stat.value
                                       : (
                                           <Link
-                                            href={`https://www.wikidata.org/wiki/${stat.value.startsWith('P') ? 'Property:' : ''}${stat.value}`}
+                                            href={wikibaseWikiUrl(stat.value)}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="text-accent underline hover:opacity-80"
@@ -445,7 +446,7 @@ export async function AnalyticsContent({ analyticsPromise, warningsPromise }: An
                                       ? stat.value
                                       : (
                                           <Link
-                                            href={`https://www.wikidata.org/wiki/${stat.value.startsWith('P') ? 'Property:' : ''}${stat.value}`}
+                                            href={wikibaseWikiUrl(stat.value)}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="text-accent underline hover:opacity-80"
