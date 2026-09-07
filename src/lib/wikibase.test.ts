@@ -12,9 +12,9 @@ afterEach(() => {
 
 describe('wikibase config', () => {
   it('defaults to Wikidata when env vars are unset', async () => {
-    const { WIKIBASE, WIKIBASE_RDF_NAMESPACES, wikibaseApiUrl, wikibaseWikiUrl } = await import('./wikibase')
+    const { DEFAULT_WIKIBASE, WIKIBASE_RDF_NAMESPACES, wikibaseApiUrl, wikibaseWikiUrl } = await import('./wikibase')
 
-    expect(WIKIBASE).toEqual({
+    expect(DEFAULT_WIKIBASE).toEqual({
       instance: 'https://www.wikidata.org',
       sparqlEndpoint: 'https://query.wikidata.org/sparql',
     })
@@ -31,9 +31,9 @@ describe('wikibase config', () => {
   it('derives every value from the env overrides', async () => {
     vi.stubEnv('WIKIBASE_INSTANCE', 'https://wikibase.example')
     vi.stubEnv('WIKIBASE_SPARQL_ENDPOINT', 'https://wikibase.example/query/sparql')
-    const { WIKIBASE, WIKIBASE_RDF_NAMESPACES, wikibaseApiUrl, wikibaseWikiUrl } = await import('./wikibase')
+    const { DEFAULT_WIKIBASE, WIKIBASE_RDF_NAMESPACES, wikibaseApiUrl, wikibaseWikiUrl } = await import('./wikibase')
 
-    expect(WIKIBASE).toEqual({
+    expect(DEFAULT_WIKIBASE).toEqual({
       instance: 'https://wikibase.example',
       sparqlEndpoint: 'https://wikibase.example/query/sparql',
     })
@@ -49,17 +49,17 @@ describe('wikibase config', () => {
 
   it('keeps the default instance when only the SPARQL endpoint is overridden', async () => {
     vi.stubEnv('WIKIBASE_SPARQL_ENDPOINT', 'https://wikibase.example/query/sparql')
-    const { WIKIBASE } = await import('./wikibase')
+    const { DEFAULT_WIKIBASE } = await import('./wikibase')
 
-    expect(WIKIBASE.instance).toBe('https://www.wikidata.org')
-    expect(WIKIBASE.sparqlEndpoint).toBe('https://wikibase.example/query/sparql')
+    expect(DEFAULT_WIKIBASE.instance).toBe('https://www.wikidata.org')
+    expect(DEFAULT_WIKIBASE.sparqlEndpoint).toBe('https://wikibase.example/query/sparql')
   })
 
   it('keeps the default SPARQL endpoint when only the instance is overridden', async () => {
     vi.stubEnv('WIKIBASE_INSTANCE', 'https://wikibase.example')
-    const { WIKIBASE, WIKIBASE_RDF_NAMESPACES } = await import('./wikibase')
+    const { DEFAULT_WIKIBASE, WIKIBASE_RDF_NAMESPACES } = await import('./wikibase')
 
-    expect(WIKIBASE.sparqlEndpoint).toBe('https://query.wikidata.org/sparql')
+    expect(DEFAULT_WIKIBASE.sparqlEndpoint).toBe('https://query.wikidata.org/sparql')
     expect(WIKIBASE_RDF_NAMESPACES.wd).toBe('https://wikibase.example/entity/')
   })
 
@@ -77,5 +77,42 @@ describe('wikibase config', () => {
     expect(wikiUrl('https://wikibase.example', 'Q1')).toBe('https://wikibase.example/wiki/Q1')
     expect(wikiUrl('https://wikibase.example', 'P31')).toBe('https://wikibase.example/wiki/Property:P31')
     expect(wikiUrl('https://wikibase.example', 'Qx')).toBe('https://wikibase.example/wiki/Qx')
+  })
+})
+
+describe('resolveWikibase', () => {
+  const entry = {
+    instanceUrl: 'https://wikibase.example',
+    sparqlEndpoint: 'https://wikibase.example/query/sparql',
+  }
+  const instanceId = '123e4567-e89b-12d3-a456-426614174000'
+
+  it('resolves to the default when settings are undefined or null', async () => {
+    const { DEFAULT_WIKIBASE, resolveWikibase } = await import('./wikibase')
+
+    expect(resolveWikibase(undefined, entry)).toEqual(DEFAULT_WIKIBASE)
+    expect(resolveWikibase(null, entry)).toEqual(DEFAULT_WIKIBASE)
+  })
+
+  it('resolves to the default when the id is set but no registry entry exists', async () => {
+    const { DEFAULT_WIKIBASE, resolveWikibase } = await import('./wikibase')
+
+    expect(resolveWikibase({ wikibaseInstanceId: instanceId }, null)).toEqual(DEFAULT_WIKIBASE)
+    expect(resolveWikibase({ wikibaseInstanceId: instanceId }, undefined)).toEqual(DEFAULT_WIKIBASE)
+  })
+
+  it('resolves to the entry urls when the id and entry are both present', async () => {
+    const { resolveWikibase } = await import('./wikibase')
+
+    expect(resolveWikibase({ wikibaseInstanceId: instanceId }, entry)).toEqual({
+      instance: 'https://wikibase.example',
+      sparqlEndpoint: 'https://wikibase.example/query/sparql',
+    })
+  })
+
+  it('resolves to the default when no id is selected even if an entry is given', async () => {
+    const { DEFAULT_WIKIBASE, resolveWikibase } = await import('./wikibase')
+
+    expect(resolveWikibase({}, entry)).toEqual(DEFAULT_WIKIBASE)
   })
 })

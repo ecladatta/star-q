@@ -10,7 +10,7 @@ import type {
 } from './wikidata-constraints'
 import WBK from 'wikibase-sdk'
 import pkg from '../../package.json'
-import { WIKIBASE } from './wikibase'
+import { DEFAULT_WIKIBASE } from './wikibase'
 import {
   classifyCandidates,
   collectPairs,
@@ -24,7 +24,7 @@ import {
 
 const USER_AGENT = `star-q/${pkg.version} (https://github.com/ecladatta/star-q)`
 
-const wdk = WBK(WIKIBASE)
+const wdk = WBK(DEFAULT_WIKIBASE)
 
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000
 const FETCH_TIMEOUT_MS = 10_000
@@ -135,7 +135,7 @@ export async function searchWikibaseEntities(
 
 async function runSparql(query: string): Promise<Array<Record<string, { value: string }>>> {
   return withRequestTimeout(async (signal) => {
-    const response = await fetch(WIKIBASE.sparqlEndpoint, {
+    const response = await fetch(DEFAULT_WIKIBASE.sparqlEndpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',

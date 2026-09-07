@@ -162,6 +162,13 @@
       "when": 1788265993995,
       "tag": "0022_vengeful_human_cannonball",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1788780188408,
+      "tag": "0023_cute_red_ghost",
+      "breakpoints": true
     }
   ]
 }

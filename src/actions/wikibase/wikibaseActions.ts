@@ -1,7 +1,7 @@
 'use server'
 import type { ConstraintEntityCheck, ConstraintSide, EntityCandidateClassification, PropertyConstraints } from '@/lib/wikidata-constraints'
 import type { ConstraintModelSupport } from '@/lib/wikidata-sparql'
-import { WIKIBASE } from '@/lib/wikibase'
+import { DEFAULT_WIKIBASE } from '@/lib/wikibase'
 import {
   classifyEntityCandidatesViaWikidata,
   classifyPredicateCandidatesViaWikidata,
@@ -45,5 +45,5 @@ export async function classifyWikibasePredicateCandidates(
 }
 
 export async function getWikibaseInstanceName() {
-  return WIKIBASE.instance
+  return DEFAULT_WIKIBASE.instance
 }

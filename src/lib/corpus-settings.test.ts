@@ -51,3 +51,48 @@ it('drops unknown keys that are not in the whitelist', () => {
   } as unknown as Parameters<typeof sanitizeCorpusSettingsPatch>[0])
   expect(result).toEqual({ wikidataConstraintWarnings: true })
 })
+
+it('accepts a UUID for wikibaseInstanceId', () => {
+  expect(sanitizeCorpusSettingsPatch({ wikibaseInstanceId: '123e4567-e89b-12d3-a456-426614174000' }))
+    .toEqual({ wikibaseInstanceId: '123e4567-e89b-12d3-a456-426614174000' })
+})
+
+it('rejects a non-UUID string for wikibaseInstanceId', () => {
+  expect(() => sanitizeCorpusSettingsPatch({ wikibaseInstanceId: 'not-a-uuid' }))
+    .toThrow('Invalid corpus setting "wikibaseInstanceId": expected a UUID string or null')
+  expect(() => sanitizeCorpusSettingsPatch({ wikibaseInstanceId: '' }))
+    .toThrow('Invalid corpus setting "wikibaseInstanceId": expected a UUID string or null')
+})
+
+it('rejects a number for wikibaseInstanceId', () => {
+  expect(() => sanitizeCorpusSettingsPatch({ wikibaseInstanceId: 42 as unknown as string }))
+    .toThrow('Invalid corpus setting "wikibaseInstanceId": expected a UUID string or null')
+})
+
+it('passes null through as an explicit clear', () => {
+  expect(sanitizeCorpusSettingsPatch({ wikibaseInstanceId: null }))
+    .toEqual({ wikibaseInstanceId: null })
+})
+
+it('treats an explicit undefined for wikibaseInstanceId as no change', () => {
+  expect(sanitizeCorpusSettingsPatch({ wikibaseInstanceId: undefined }))
+    .toEqual({})
+})
+
+it('removes wikibaseInstanceId from the merged settings on a null patch value', () => {
+  const merged = mergeCorpusSettings(
+    { wikibaseInstanceId: '123e4567-e89b-12d3-a456-426614174000', wikidataConstraintWarnings: true },
+    { wikibaseInstanceId: null },
+  )
+  expect(merged).toEqual({ wikidataConstraintWarnings: true })
+  expect(merged).not.toHaveProperty('wikibaseInstanceId')
+})
+
+it('keeps wikibaseInstanceId when the patch does not mention it', () => {
+  expect(
+    mergeCorpusSettings(
+      { wikibaseInstanceId: '123e4567-e89b-12d3-a456-426614174000' },
+      { wikidataConstraintWarnings: true },
+    ),
+  ).toEqual({ wikibaseInstanceId: '123e4567-e89b-12d3-a456-426614174000', wikidataConstraintWarnings: true })
+})

@@ -6,7 +6,7 @@ import { GuestBar } from '@/components/shell/guest-bar'
 import { TopNav } from '@/components/shell/top-nav'
 import { WikibaseInstanceProvider } from '@/components/wikibase-instance-provider'
 import { getAppSettings } from '@/lib/app-settings'
-import { WIKIBASE } from '@/lib/wikibase'
+import { DEFAULT_WIKIBASE } from '@/lib/wikibase'
 
 export default async function ShellLayout({ children }: { children: ReactNode }) {
   const [session, settings] = await Promise.all([auth(), getAppSettings()])
@@ -33,7 +33,7 @@ export default async function ShellLayout({ children }: { children: ReactNode })
   }
 
   return (
-    <WikibaseInstanceProvider instance={WIKIBASE.instance}>
+    <WikibaseInstanceProvider instance={DEFAULT_WIKIBASE.instance}>
       <div className="flex min-h-dvh flex-col">
         {user
           ? (
