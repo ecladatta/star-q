@@ -1,8 +1,8 @@
 import type { ResolvedWikibase } from './wikibase'
 import { and, eq } from 'drizzle-orm'
+import { cache } from 'react'
 import { db } from '@/db/drizzle'
 import { corpus, wikibaseInstances } from '@/db/schema'
-import { cache } from 'react'
 import { WIKIBASE_INSTANCE_NONE } from './corpus-settings'
 import { resolveWikibase } from './wikibase'
 
