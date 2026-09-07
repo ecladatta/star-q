@@ -25,14 +25,15 @@ To deploy STAR-Q in production, follow these steps:
 
 ## Wikibase instance
 
-STAR-Q reads entities from a Wikibase instance for entity search, candidate classification, constraint warnings, RDF export, and entity links. Both settings are optional and default to Wikidata:
+STAR-Q reads entities from a Wikibase instance for entity search, candidate classification, constraint warnings, RDF export, and entity links. Instances are configured in the registry at `/admin/wikibase`, not through environment variables.
 
-```bash
-WIKIBASE_INSTANCE=https://www.wikidata.org
-WIKIBASE_SPARQL_ENDPOINT=https://query.wikidata.org/sparql
-```
+Fresh deployments automatically contain a seeded "Wikidata" registry row (`https://www.wikidata.org` with `https://query.wikidata.org/sparql`) marked as the server default. Corpora that have not selected a specific instance use the server default. All requests are made server-side, so the instance needs no CORS configuration. RDF export prefixes and entity links are derived from the resolved instance.
 
-Point `WIKIBASE_INSTANCE` at the base URL of any Wikibase deployment (for example `https://wikibase.example`) and `WIKIBASE_SPARQL_ENDPOINT` at its SPARQL query service. All requests are made server-side, so the instance needs no CORS configuration. RDF export prefixes and entity links are derived from `WIKIBASE_INSTANCE`.
+To point the server default at a different Wikibase deployment, register it at `/admin/wikibase` and use its "Make default" action. A corpus can also select one specific registered instance in its settings; that selection then overrides the server default for that corpus.
+
+Disabling an instance in the registry turns it off everywhere at once: corpora using it resolve to no configuration, and the UI degrades gracefully instead of silently rerouting to Wikidata. This applies to the server default as well; while no enabled instance is marked as default, corpora without an explicit selection report constraint features as unavailable.
+
+The `WIKIBASE_INSTANCE` and `WIKIBASE_SPARQL_ENDPOINT` environment variables are no longer used. Deployments that relied on them must register their instance at `/admin/wikibase` and make it the default.
 
 The constraint-warning and predicate-filtering features rely on Wikidata's constraint model (instance-of, subclass-of, and property constraints such as P2302). They work against instances that replicate that model. Against an instance that does not, the UI reports constraint checking as unavailable instead of failing.
 
