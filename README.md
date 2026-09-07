@@ -23,6 +23,19 @@ To deploy STAR-Q in production, follow these steps:
     docker compose -f compose.prod.yaml up -d --build
     ```
 
+## Wikibase instance
+
+STAR-Q reads entities from a Wikibase instance for entity search, candidate classification, constraint warnings, RDF export, and entity links. Both settings are optional and default to Wikidata:
+
+```bash
+WIKIBASE_INSTANCE=https://www.wikidata.org
+WIKIBASE_SPARQL_ENDPOINT=https://query.wikidata.org/sparql
+```
+
+Point `WIKIBASE_INSTANCE` at the base URL of any Wikibase deployment (for example `https://wikibase.example`) and `WIKIBASE_SPARQL_ENDPOINT` at its SPARQL query service. All requests are made server-side, so the instance needs no CORS configuration. RDF export prefixes and entity links are derived from `WIKIBASE_INSTANCE`.
+
+The constraint-warning and predicate-filtering features rely on Wikidata's constraint model (instance-of, subclass-of, and property constraints such as P2302). They work against instances that replicate that model. Against an instance that does not, the UI reports constraint checking as unavailable instead of failing.
+
 ## Authentication
 
 A production deployment must provide a unique `AUTH_SECRET`. Generate one with:
