@@ -17,6 +17,7 @@ import { useAnnotationState } from '@/hooks/useAnnotationState'
 import { useAnnotationUrlSync } from '@/hooks/useAnnotationUrlSync'
 import { useDocumentElements } from '@/hooks/useDocumentElements'
 import { useSelectionHandlers } from '@/hooks/useSelectionState'
+import { useWikibaseInstance } from '@/hooks/useWikibaseInstance'
 import { getAnnotationComponents } from '@/lib/annotation-roles'
 import { isConstraintWarningsEnabled, isPredicateFilteringEnabled } from '@/lib/corpus-settings'
 import { annotationComponentsShareSegment, cn } from '@/lib/utils'
@@ -65,8 +66,10 @@ function getUrlLabel(url: string) {
 }
 
 function DocumentMeta({ documentData }: { documentData: DocumentData }) {
+  const { wikiUrl } = useWikibaseInstance()
   const { versionDate, wikidata, url } = documentData._source.identificationMetadata
   const urls = Array.isArray(url) ? url : url ? [url] : []
+  const wikidataUrl = wikidata ? wikiUrl(wikidata) : null
 
   return (
     <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
@@ -79,15 +82,19 @@ function DocumentMeta({ documentData }: { documentData: DocumentData }) {
       {wikidata && (
         <span className="flex items-center gap-1.5">
           <span>Wikidata</span>
-          <Link
-            href={`https://www.wikidata.org/wiki/${wikidata}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            title="View on Wikidata"
-            className="text-accent hover:underline"
-          >
-            {wikidata}
-          </Link>
+          {wikidataUrl
+            ? (
+                <Link
+                  href={wikidataUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="View on Wikidata"
+                  className="text-accent hover:underline"
+                >
+                  {wikidata}
+                </Link>
+              )
+            : <span>{wikidata}</span>}
         </span>
       )}
       {urls.length > 0 && (

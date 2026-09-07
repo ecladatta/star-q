@@ -3,12 +3,14 @@ import type { AnnotationExport, ExportModel } from '@/types/types'
 import { getAnnotations } from '@/actions/annotation/annotationActions'
 import { getCorpus, getCorpusCustomEntities } from '@/actions/corpus/corpusActions'
 import { getDocumentsMetadata, getRawDocumentData } from '@/actions/document/documentActions'
+import { loadCorpusWikibaseConfig } from '@/lib/wikibase-server'
 
 export async function buildCorpusExportModel(corpusId: string): Promise<ExportModel> {
-  const [corpus, documents, customEntities] = await Promise.all([
+  const [corpus, documents, customEntities, wikibase] = await Promise.all([
     getCorpus(corpusId),
     getDocumentsMetadata(corpusId),
     getCorpusCustomEntities(corpusId),
+    loadCorpusWikibaseConfig(corpusId),
   ])
 
   return {
@@ -20,6 +22,9 @@ export async function buildCorpusExportModel(corpusId: string): Promise<ExportMo
     title: corpus.title,
     createdAt: corpus.createdAt ? corpus.createdAt.toISOString() : null,
     updatedAt: corpus.updatedAt ? corpus.updatedAt.toISOString() : null,
+    wikibase: wikibase
+      ? { instance: wikibase.instance, sparqlEndpoint: wikibase.sparqlEndpoint }
+      : null,
     documents: await Promise.all(documents.map(async (document) => {
       const [docAnnotations, rawContent] = await Promise.all([
         getAnnotations(document.id),

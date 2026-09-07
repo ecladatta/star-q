@@ -6,6 +6,8 @@ import type {
 import { describe, expect, it } from 'vitest'
 import { serializeRdfCorpusExport } from './rdf-corpus-export'
 
+const wikibaseConfig = { instance: 'https://wikibase.example', sparqlEndpoint: 'https://wikibase.example/sparql' }
+
 function component(overrides: Partial<DocumentAnnotationComponent> = {}): DocumentAnnotationComponent {
   return {
     id: 'c1',
@@ -82,6 +84,7 @@ function model(annotations: AnnotationExport[], raw: ExportModel['documents'][nu
     createdAt: null,
     updatedAt: null,
     customEntities: [],
+    wikibase: wikibaseConfig,
     documents: [{
       id: 'doc-1',
       title: 'D',
@@ -93,6 +96,10 @@ function model(annotations: AnnotationExport[], raw: ExportModel['documents'][nu
       annotations,
     }],
   }
+}
+
+function withWikibase(corpusData: ExportModel, wikibase: ExportModel['wikibase']): ExportModel {
+  return { ...corpusData, wikibase }
 }
 
 function truthy(annotations: AnnotationExport[]): string {
@@ -141,6 +148,25 @@ describe('serializeRdfCorpusExport (truthy)', () => {
       subject: component({ entityValue: 'Not an ID' }),
     })])
     expect(output).not.toContain('wdt:P1')
+  })
+
+  it('resolves entity IRIs against the corpus wikibase instance', () => {
+    const output = serializeRdfCorpusExport(
+      withWikibase(model([annotation()], rawText()), {
+        instance: 'https://other.example',
+        sparqlEndpoint: 'https://other.example/sparql',
+      }),
+      'truthy',
+    )
+    expect(output).toContain('@prefix wd: <https://other.example/entity/>')
+    expect(output).toContain('wd:Q1 wdt:P1 wd:Q2.')
+  })
+
+  it('throws when the corpus has no wikibase instance', () => {
+    expect(() => serializeRdfCorpusExport(withWikibase(model([annotation()], rawText()), null), 'truthy'))
+      .toThrow('No Wikibase instance is available for this corpus; RDF export requires one.')
+    expect(() => serializeRdfCorpusExport(withWikibase(model([annotation()], rawText()), null), 'full'))
+      .toThrow('No Wikibase instance is available for this corpus; RDF export requires one.')
   })
 })
 

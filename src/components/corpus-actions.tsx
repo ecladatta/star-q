@@ -72,13 +72,17 @@ type CorpusActionsProps = {
   triggerButton?: ReactNode
   ownedTeams?: { id: string, name: string, slug: string }[]
   canCopy?: boolean
+  rdfAvailable: boolean
 }
 
-export function CorpusActions({ corpus, showOpenAction = true, access, triggerButton, ownedTeams = [], canCopy = true }: CorpusActionsProps) {
+export function CorpusActions({ corpus, showOpenAction = true, access, triggerButton, ownedTeams = [], canCopy = true, rdfAvailable }: CorpusActionsProps) {
   const canEdit = access === 'editor' || access === 'manager'
   const canManage = access === 'manager'
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const exportFormatIds = CORPUS_EXPORT_FORMAT_IDS
+    .filter(id => rdfAvailable || CORPUS_EXPORT_FORMATS[id].kind !== 'rdf')
 
   const [isDuplicating, setIsDuplicating] = useState(false)
   const [isRenaming, setIsRenaming] = useState(false)
@@ -150,7 +154,11 @@ export function CorpusActions({ corpus, showOpenAction = true, access, triggerBu
     const url = `/api/corpus/${corpus.id}/export?${CORPUS_EXPORT_FORMATS[format].query}`
     const response = await fetch(url)
     if (!response.ok) {
-      toast.error('Export failed. Please try again.')
+      const message = await response
+        .json()
+        .then((body: { error?: string }) => body.error ?? null)
+        .catch(() => null)
+      toast.error(message ?? 'Export failed. Please try again.')
       return
     }
 
@@ -290,7 +298,7 @@ export function CorpusActions({ corpus, showOpenAction = true, access, triggerBu
               Export
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent>
-              {CORPUS_EXPORT_FORMAT_IDS.map(format => (
+              {exportFormatIds.map(format => (
                 <DropdownMenuItem
                   key={format}
                   onClick={() => handleExportClick(format)}

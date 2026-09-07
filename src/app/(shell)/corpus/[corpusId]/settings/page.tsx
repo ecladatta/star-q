@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { deleteCorpus, getCorpus, getCorpusOwner, getMoveTargets, moveCorpusToTeam } from '@/actions/corpus/corpusActions'
+import { listWikibaseInstancesForCorpus } from '@/actions/wikibase/wikibaseActions'
 import { ConfirmActionButton } from '@/components/confirm-action-button'
 import { CorpusMoveToTeamDialog } from '@/components/corpus-move-to-team-dialog'
 import { CorpusSettingsPanel } from '@/components/corpus-settings-panel'
@@ -18,6 +19,7 @@ export default async function CorpusSettingsPage({ params }: { params: Promise<{
     return <ForbiddenPage />
   }
   const corpus = await getCorpus(corpusId)
+  const wikibaseInstances = await listWikibaseInstancesForCorpus(corpusId)
 
   let dangerZone: { ownerLabel: string } | null = null
   let moveTargets: Awaited<ReturnType<typeof getMoveTargets>> = []
@@ -40,6 +42,7 @@ export default async function CorpusSettingsPage({ params }: { params: Promise<{
       />
       <CorpusSettingsPanel
         corpus={corpus}
+        wikibaseInstances={wikibaseInstances}
         canManageVisibility={access === 'manager'}
         dangerZone={dangerZone && (
           <section className="rounded-lg border border-destructive/40 bg-card">

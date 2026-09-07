@@ -1,0 +1,1 @@
+ALTER TABLE "wikibase_instance" ADD COLUMN "enabled" boolean DEFAULT true NOT NULL;

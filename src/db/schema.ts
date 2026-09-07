@@ -323,6 +323,18 @@ export const annotation = pgTable('annotation', {
 })
 export type Annotation = InferSelectModel<typeof annotation>
 
+export const wikibaseInstances = pgTable('wikibase_instance', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  label: text('label').notNull(),
+  instanceUrl: text('instance_url').notNull().unique(),
+  sparqlEndpoint: text('sparql_endpoint').notNull(),
+  enabled: boolean('enabled').notNull().default(true),
+  isDefault: boolean('is_default').notNull().default(false),
+  createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
+})
+export type WikibaseInstance = InferSelectModel<typeof wikibaseInstances>
+
 export const annotationQualifier = pgTable(
   'annotation_qualifier',
   {

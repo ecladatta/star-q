@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type { Corpus, CorpusCustomEntity, CorpusVisibility } from '@/db/schema'
+import type { Corpus, CorpusCustomEntity, CorpusVisibility, WikibaseInstance } from '@/db/schema'
 import type { CorpusSettings } from '@/lib/corpus-settings'
 import type { EntityDatatype } from '@/types/types'
 import { EditIcon, FilterIcon, Loader2Icon, PlusIcon, SearchIcon, Trash2Icon } from 'lucide-react'
@@ -14,18 +14,22 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { WIKIBASE_INSTANCE_NONE } from '@/lib/corpus-settings'
 import { ENTITY_DATATYPE_GROUPS, ENTITY_DATATYPE_LABELS } from '@/lib/datatypes'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu'
 import { Label } from './ui/label'
 
 type CorpusSettingsPanelProps = {
   corpus: Corpus
+  wikibaseInstances: WikibaseInstance[]
   onCorpusRenamed?: (newTitle: string) => void
   canManageVisibility?: boolean
   dangerZone?: ReactNode
 }
 
-export function CorpusSettingsPanel({ corpus, onCorpusRenamed, canManageVisibility = false, dangerZone }: CorpusSettingsPanelProps) {
+const SERVER_DEFAULT_WIKIBASE = 'server-default'
+
+export function CorpusSettingsPanel({ corpus, wikibaseInstances, onCorpusRenamed, canManageVisibility = false, dangerZone }: CorpusSettingsPanelProps) {
   const [corpusTitle, setCorpusTitle] = useState(corpus.title)
   const [visibility, setVisibility] = useState<CorpusVisibility>(corpus.visibility ?? 'private')
   const [settings, setSettings] = useState<CorpusSettings>(corpus.settings ?? {})
@@ -86,6 +90,44 @@ export function CorpusSettingsPanel({ corpus, onCorpusRenamed, canManageVisibili
       toast.success(checked ? 'Wikidata setting enabled' : 'Wikidata setting disabled')
     } catch {
       setSettings(prev => ({ ...prev, [key]: previous }))
+      toast.error('Failed to update corpus settings')
+    } finally {
+      setIsSavingSettings(false)
+    }
+  }
+
+  const handleSelectWikibaseInstance = async (value: string) => {
+    const id = value === SERVER_DEFAULT_WIKIBASE ? null : value
+    const previous = settings.wikibaseInstanceId ?? null
+    setSettings((prev) => {
+      const next = { ...prev }
+      if (id === null) {
+        delete next.wikibaseInstanceId
+      } else {
+        next.wikibaseInstanceId = id
+      }
+      return next
+    })
+    try {
+      setIsSavingSettings(true)
+      await updateCorpusSettings(corpus.id, { wikibaseInstanceId: id })
+      if (value === WIKIBASE_INSTANCE_NONE) {
+        toast.success('This corpus will not use a Wikibase instance')
+      } else if (value === SERVER_DEFAULT_WIKIBASE) {
+        toast.success('Using the server default Wikibase')
+      } else {
+        toast.success('Wikibase instance updated')
+      }
+    } catch {
+      setSettings((prev) => {
+        const next = { ...prev }
+        if (previous === null) {
+          delete next.wikibaseInstanceId
+        } else {
+          next.wikibaseInstanceId = previous
+        }
+        return next
+      })
       toast.error('Failed to update corpus settings')
     } finally {
       setIsSavingSettings(false)
@@ -178,6 +220,11 @@ export function CorpusSettingsPanel({ corpus, onCorpusRenamed, canManageVisibili
     return matchesKeyword && matchesType
   })
 
+  const currentInstanceId = settings.wikibaseInstanceId
+  const selectableInstances = wikibaseInstances.filter(instance => instance.enabled || instance.id === currentInstanceId)
+  const defaultInstance = wikibaseInstances.find(instance => instance.isDefault)
+  const serverDefaultLabel = `Server default${defaultInstance ? ` (${defaultInstance.label})` : ''}`
+
   return (
     <Tabs defaultValue="general" className="flex flex-1 flex-col gap-4 overflow-hidden">
       <TabsList className="grid w-full max-w-md grid-cols-2">
@@ -237,6 +284,34 @@ export function CorpusSettingsPanel({ corpus, onCorpusRenamed, canManageVisibili
 
         <div className="space-y-3">
           <h3 className="text-sm font-medium text-foreground">Wikidata</h3>
+          <div className="flex items-start justify-between gap-4 rounded-lg border border-border bg-card p-4">
+            <div className="space-y-1">
+              <Label htmlFor="wikibase-instance">
+                Wikibase instance
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Used for entity links, constraint checks, and suggestions. Server default resolves to this deployment's Wikidata configuration. Select None to disable entity suggestions and constraint checks for this corpus.
+              </p>
+            </div>
+            <Select
+              value={settings.wikibaseInstanceId ?? SERVER_DEFAULT_WIKIBASE}
+              onValueChange={handleSelectWikibaseInstance}
+              disabled={isSavingSettings}
+            >
+              <SelectTrigger id="wikibase-instance" className="w-56">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={WIKIBASE_INSTANCE_NONE}>None</SelectItem>
+                <SelectItem value={SERVER_DEFAULT_WIKIBASE}>{serverDefaultLabel}</SelectItem>
+                {selectableInstances.map(instance => (
+                  <SelectItem key={instance.id} value={instance.id}>
+                    {`${instance.label}${instance.isDefault ? ' (default)' : ''}${instance.enabled ? '' : ' (disabled)'} (${new URL(instance.instanceUrl).hostname})`}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="flex items-start justify-between gap-4 rounded-lg border border-border bg-card p-4">
             <div className="space-y-1">
               <Label htmlFor="wikidata-constraint-warnings">

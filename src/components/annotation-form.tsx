@@ -22,6 +22,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { v4 as uuidv4 } from 'uuid'
+import { fetchWikibasePropertyConstraints } from '@/actions/wikibase/wikibaseActions'
 import { EntitySelector } from '@/components/entity-selector'
 import {
   AlertDialog,
@@ -57,7 +58,6 @@ import { entityTypeForComponentRole } from '@/lib/annotation-roles'
 import { validateAnnotationQualifiers } from '@/lib/annotation-validation'
 import { cn, isMac } from '@/lib/utils'
 import { WIKIDATA_ITEM_PATTERN, WIKIDATA_PROPERTY_PATTERN } from '@/lib/wikidata-constraints'
-import { fetchPropertyConstraints } from '@/lib/wikidata-sparql'
 
 type QualifierSide = 'predicate' | 'value'
 
@@ -169,7 +169,7 @@ export function AnnotationForm({
   const predicateEntityValue = currentAnnotation?.predicate?.entityValue
   const predicateEntityLabel = currentAnnotation?.predicate?.entityLabel
   const [predicateConstraints, setPredicateConstraints] = useState<PropertyConstraints | null>(null)
-  const [qualifierPredicateConstraints, setQualifierPredicateConstraints] = useState<Map<string, PropertyConstraints> | null>(null)
+  const [qualifierPredicateConstraints, setQualifierPredicateConstraints] = useState<Record<string, PropertyConstraints> | null>(null)
 
   const constraintsActive = wikidataPredicateFiltering || wikidataConstraintWarnings
 
@@ -185,10 +185,10 @@ export function AnnotationForm({
     }
 
     let cancelled = false
-    fetchPropertyConstraints([predicateEntityValue!])
+    fetchWikibasePropertyConstraints(corpusId, [predicateEntityValue!])
       .then(({ constraints }) => {
         if (!cancelled) {
-          setPredicateConstraints(constraints.get(predicateEntityValue!) ?? null)
+          setPredicateConstraints(constraints[predicateEntityValue!] ?? null)
         }
       })
       .catch(() => {
@@ -200,7 +200,7 @@ export function AnnotationForm({
     return () => {
       cancelled = true
     }
-  }, [predicateEntityValue, constraintsActive, predicateConstraintsEligible])
+  }, [corpusId, predicateEntityValue, constraintsActive, predicateConstraintsEligible])
 
   const effectivePredicateConstraints = predicateConstraintsEligible ? predicateConstraints : null
   const subjectConstraintSide = effectivePredicateConstraints && effectivePredicateConstraints.domain.length > 0
@@ -254,7 +254,7 @@ export function AnnotationForm({
     }
 
     let cancelled = false
-    fetchPropertyConstraints(qualifierPredicates)
+    fetchWikibasePropertyConstraints(corpusId, qualifierPredicates)
       .then(({ constraints }) => {
         if (!cancelled) {
           setQualifierPredicateConstraints(constraints)
@@ -262,17 +262,17 @@ export function AnnotationForm({
       })
       .catch(() => {
         if (!cancelled) {
-          setQualifierPredicateConstraints(new Map())
+          setQualifierPredicateConstraints({})
         }
       })
 
     return () => {
       cancelled = true
     }
-  }, [qualifierPredicates, wikidataPredicateFiltering, qualifierPredicatesEligible])
+  }, [corpusId, qualifierPredicates, wikidataPredicateFiltering, qualifierPredicatesEligible])
 
   const effectiveQualifierPredicateConstraints = qualifierPredicatesEligible
-    ? (qualifierPredicateConstraints ?? new Map())
+    ? (qualifierPredicateConstraints ?? {})
     : null
   // undefined auto-opens the first useful row; null means the user collapsed all qualifier editors.
   const [expandedQualifierId, setExpandedQualifierId] = useState<string | null | undefined
@@ -455,7 +455,7 @@ export function AnnotationForm({
     const qualifier = qualifiers.find(item => item.id === qualifierId)
     const qualifierPredicateValue = qualifier?.predicate?.entityValue
     const qualifierConstraints = qualifierPredicateValue
-      ? (effectiveQualifierPredicateConstraints?.get(qualifierPredicateValue) ?? null)
+      ? (effectiveQualifierPredicateConstraints?.[qualifierPredicateValue] ?? null)
       : null
     const qualifierValueConstraintSide = side === 'value' && qualifierConstraints && qualifierConstraints.range.length > 0
       ? 'range' as const

@@ -369,6 +369,7 @@ function buildColumns(ownedTeams: { id: string, name: string, slug: string }[], 
           access={row.original.access}
           ownedTeams={ownedTeams}
           canCopy={canCopy}
+          rdfAvailable={row.original.settings?.wikibaseInstanceId !== 'none'}
           triggerButton={(
             <Button variant="ghost" size="icon" className="size-8">
               <MoreVerticalIcon className="size-4" />

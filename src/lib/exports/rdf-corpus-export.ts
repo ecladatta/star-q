@@ -1,6 +1,8 @@
 import type { Literal, NamedNode, Quad } from 'n3'
 import type { RdfExportMode } from './export-format'
+import type { Prefix } from './rdf/namespaces'
 import type { RdfTerm } from './rdf/terms'
+import type { WikibaseRdfNamespaces } from '@/lib/wikibase'
 import type {
   AnnotationExport,
   DocumentAnnotationComponent,
@@ -10,6 +12,7 @@ import type {
 } from '@/types/types'
 import { DataFactory, Writer } from 'n3'
 import { buildDocumentElements } from '@/lib/document-elements'
+import { wikibaseRdfNamespaces } from '@/lib/wikibase'
 import {
   FULL_PREFIXES,
   NAMESPACES,
@@ -112,6 +115,7 @@ type ComponentProjection = {
 
 type FullDocumentContext = {
   corpusId: string
+  wikibase: WikibaseRdfNamespaces
   document: DocumentExport
   elements: TextOrTableElement[]
   emittedTargets: Set<string>
@@ -122,16 +126,21 @@ export function serializeRdfCorpusExport(
   corpusData: ExportModel,
   mode: RdfExportMode,
 ): string {
-  const writer = createWriter(mode)
+  if (!corpusData.wikibase) {
+    throw new Error('No Wikibase instance is available for this corpus; RDF export requires one.')
+  }
+  const wikibase = wikibaseRdfNamespaces(corpusData.wikibase.instance)
+  const writer = createWriter(mode, wikibase)
 
   if (mode === 'full') {
     addOntology(writer)
-    addCorpus(writer, corpusData)
+    addCorpus(writer, corpusData, wikibase)
   } else {
     for (const document of corpusData.documents) {
       document.annotations.forEach((annotation, annotationIndex) =>
         addTruthyAnnotation(
           writer,
+          wikibase,
           corpusData.id,
           document.id,
           annotation,
@@ -146,18 +155,19 @@ export function serializeRdfCorpusExport(
 
 function addTruthyAnnotation(
   writer: Writer,
+  wikibase: WikibaseRdfNamespaces,
   corpusId: string,
   documentId: string,
   annotation: AnnotationExport,
   annotationIndex: number,
 ) {
-  const statement = resolveStatement(corpusId, annotation)
+  const statement = resolveStatement(wikibase, corpusId, annotation)
   if (!statement) {
     return
   }
 
   writer.addQuad(statement.subject, statement.predicate, statement.object)
-  const qualifiers = resolveQualifiers(corpusId, annotation)
+  const qualifiers = resolveQualifiers(wikibase, corpusId, annotation)
   if (qualifiers.length === 0) {
     return
   }
@@ -171,7 +181,11 @@ function addTruthyAnnotation(
   }
 }
 
-function addCorpus(writer: Writer, corpusData: ExportModel) {
+function addCorpus(
+  writer: Writer,
+  corpusData: ExportModel,
+  wikibase: WikibaseRdfNamespaces,
+) {
   const corpus = corpusIri(corpusData.id)
   writer.addQuad(corpus, RDF_TYPE, DCAT_DATASET)
   if (corpusData.title) {
@@ -182,7 +196,7 @@ function addCorpus(writer: Writer, corpusData: ExportModel) {
   }
 
   for (const document of corpusData.documents) {
-    addFullDocument(writer, corpusData.id, document)
+    addFullDocument(writer, corpusData.id, document, wikibase)
   }
 }
 
@@ -190,11 +204,13 @@ function addFullDocument(
   writer: Writer,
   corpusId: string,
   document: DocumentExport,
+  wikibase: WikibaseRdfNamespaces,
 ) {
   const documentNode = documentIri(document.id)
   const elements = buildDocumentElements(document.raw)
   const context: FullDocumentContext = {
     corpusId,
+    wikibase,
     document,
     elements,
     emittedTargets: new Set(),
@@ -246,7 +262,7 @@ function addFullAnnotation(
   annotation: AnnotationExport,
   annotationIndex: number,
 ) {
-  const statement = resolveStatement(context.corpusId, annotation)
+  const statement = resolveStatement(context.wikibase, context.corpusId, annotation)
   if (
     !statement
     || !annotation.subject
@@ -288,7 +304,7 @@ function addFullQualifier(
   statementNode: NamedNode,
   qualifier: NonNullable<AnnotationExport['qualifiers']>[number],
 ) {
-  const predicate = predicateTerm(qualifier.predicate, context.corpusId, 'pq')
+  const predicate = predicateTerm(qualifier.predicate, context.corpusId, 'pq', context.wikibase)
   const predicateComponent = projectComponent(context, qualifier.predicate)
   const valueComponent = projectComponent(context, qualifier.value)
   if (!predicate || !predicateComponent || !valueComponent) {
@@ -371,7 +387,7 @@ function projectComponent(
   context: FullDocumentContext,
   component: DocumentAnnotationComponent,
 ): ComponentProjection | null {
-  const body = componentBodyTerm(component, context.corpusId)
+  const body = componentBodyTerm(component, context.corpusId, context.wikibase)
   const target = projectTarget(context, component)
   return body && target
     ? { iri: annotationIri(component.id), body, target }
@@ -461,18 +477,22 @@ function projectTableTarget(
   }
 }
 
-function resolveStatement(corpusId: string, annotation: AnnotationExport) {
+function resolveStatement(
+  wikibase: WikibaseRdfNamespaces,
+  corpusId: string,
+  annotation: AnnotationExport,
+) {
   if (!annotation.subject || !annotation.predicate || !annotation.object) {
     return null
   }
 
-  const subject = subjectTerm(annotation.subject, corpusId)
-  const predicate = predicateTerm(annotation.predicate, corpusId, 'wdt')
+  const subject = subjectTerm(annotation.subject, corpusId, wikibase)
+  const predicate = predicateTerm(annotation.predicate, corpusId, 'wdt', wikibase)
   if (!subject || !predicate) {
     return null
   }
 
-  const object = objectTerm(annotation.object, corpusId)
+  const object = objectTerm(annotation.object, corpusId, wikibase)
   return {
     subject,
     predicate,
@@ -481,12 +501,16 @@ function resolveStatement(corpusId: string, annotation: AnnotationExport) {
   }
 }
 
-function resolveQualifiers(corpusId: string, annotation: AnnotationExport) {
+function resolveQualifiers(
+  wikibase: WikibaseRdfNamespaces,
+  corpusId: string,
+  annotation: AnnotationExport,
+) {
   return sortedQualifiers(annotation)
     .flatMap((qualifier) => {
-      const predicate = predicateTerm(qualifier.predicate, corpusId, 'pq')
+      const predicate = predicateTerm(qualifier.predicate, corpusId, 'pq', wikibase)
       return predicate
-        ? [{ predicate, value: objectTerm(qualifier.value, corpusId) }]
+        ? [{ predicate, value: objectTerm(qualifier.value, corpusId, wikibase) }]
         : []
     })
 }
@@ -536,11 +560,17 @@ function addTripleTerm(
   writer.addQuad(subject, predicate, triple as unknown as NamedNode)
 }
 
-function createWriter(mode: RdfExportMode): Writer {
+function createWriter(mode: RdfExportMode, wikibase: WikibaseRdfNamespaces): Writer {
+  const namespaces: Record<Prefix, string> = {
+    ...NAMESPACES,
+    wd: wikibase.wd,
+    wdt: wikibase.wdt,
+    pq: wikibase.pq,
+  }
   const prefixes = mode === 'full' ? FULL_PREFIXES : TRUTHY_PREFIXES
   return new Writer({
     prefixes: Object.fromEntries(
-      prefixes.map(prefix => [prefix, NAMESPACES[prefix]]),
+      prefixes.map(prefix => [prefix, namespaces[prefix]]),
     ),
   })
 }

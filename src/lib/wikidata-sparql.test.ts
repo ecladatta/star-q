@@ -10,6 +10,7 @@ import {
 } from './wikidata-sparql'
 
 const fetchMock = vi.fn()
+const config = { instance: 'https://wikibase.example', sparqlEndpoint: 'https://wikibase.example/query/sparql' }
 
 beforeEach(() => {
   vi.stubGlobal('fetch', fetchMock)
@@ -18,6 +19,7 @@ beforeEach(() => {
 afterEach(() => {
   fetchMock.mockReset()
   vi.unstubAllGlobals()
+  vi.unstubAllEnvs()
 })
 
 function sparqlResponse(bindings: Array<Record<string, { value: string }>>) {
@@ -33,14 +35,14 @@ describe('wikidata sparql caching', () => {
       ]),
     })
 
-    const first = await fetchMembership([
+    const first = await fetchMembership(config, [
       ['Q1', 'Q5', 'instance-or-subclass'],
       ['Q2', 'Q5', 'instance-or-subclass'],
     ])
     expect(first).toEqual(new Set([membershipKey('Q1', 'Q5', 'instance-or-subclass')]))
     expect(fetchMock).toHaveBeenCalledTimes(1)
 
-    const second = await fetchMembership([
+    const second = await fetchMembership(config, [
       ['Q1', 'Q5', 'instance-or-subclass'],
       ['Q2', 'Q5', 'instance-or-subclass'],
     ])
@@ -63,7 +65,7 @@ describe('wikidata sparql caching', () => {
         ]),
       })
 
-    const result = await fetchMembership([
+    const result = await fetchMembership(config, [
       ['Q1', 'Q5', 'instance'],
       ['Q2', 'Q9', 'subclass'],
     ])
@@ -83,11 +85,11 @@ describe('wikidata sparql caching', () => {
       ]),
     })
 
-    const first = await fetchItemsWithTypeData(['Q1', 'Q2'])
+    const first = await fetchItemsWithTypeData(config, ['Q1', 'Q2'])
     expect(first).toEqual(new Set(['Q1']))
     expect(fetchMock).toHaveBeenCalledTimes(1)
 
-    const second = await fetchItemsWithTypeData(['Q1', 'Q2'])
+    const second = await fetchItemsWithTypeData(config, ['Q1', 'Q2'])
     expect(second).toEqual(new Set(['Q1']))
     expect(fetchMock).toHaveBeenCalledTimes(1)
   })
@@ -103,13 +105,39 @@ describe('wikidata sparql caching', () => {
       }),
     })
 
-    const first = await fetchEntityLabels(['Q5', 'Q9'])
+    const first = await fetchEntityLabels(config, ['Q5', 'Q9'])
     expect(first).toEqual(new Map([['Q5', 'human'], ['Q9', 'woman']]))
     expect(fetchMock).toHaveBeenCalledTimes(1)
 
-    const second = await fetchEntityLabels(['Q5', 'Q9'])
+    const second = await fetchEntityLabels(config, ['Q5', 'Q9'])
     expect(second).toEqual(new Map([['Q5', 'human'], ['Q9', 'woman']]))
     expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('cache keying', () => {
+  it('does not share the label cache between instances', async () => {
+    vi.resetModules()
+    const labelsForInstanceA = (await import('./wikidata-sparql')).fetchEntityLabels
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        entities: {
+          Q5: { labels: { en: { value: 'human' } } },
+        },
+      }),
+    })
+
+    await labelsForInstanceA(config, ['Q5'])
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+
+    await labelsForInstanceA({ instance: 'https://b.example', sparqlEndpoint: 'https://b.example/query/sparql' }, ['Q5'])
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+
+    vi.resetModules()
+    const labelsForInstanceB = (await import('./wikidata-sparql')).fetchEntityLabels
+    await labelsForInstanceB(config, ['Q5'])
+    expect(fetchMock).toHaveBeenCalledTimes(3)
   })
 })
 
@@ -134,7 +162,7 @@ describe('fetchPropertyConstraints', () => {
       }),
     })
 
-    const result = await fetchPropertyConstraints(['P69'])
+    const result = await fetchPropertyConstraints(config, ['P69'])
 
     expect(result.unavailable).toBe(false)
     expect(result.constraints.get('P69')).toEqual({
@@ -146,7 +174,7 @@ describe('fetchPropertyConstraints', () => {
   it('marks the result unavailable when entity data cannot be fetched', async () => {
     fetchMock.mockResolvedValue({ ok: false })
 
-    const result = await fetchPropertyConstraints(['P70'])
+    const result = await fetchPropertyConstraints(config, ['P70'])
 
     expect(result.unavailable).toBe(true)
     expect(result.constraints.size).toBe(0)
@@ -159,7 +187,7 @@ describe('fetchPropertyConstraints', () => {
       .mockResolvedValueOnce({ ok: true, json: async () => ({ entities }) })
       .mockResolvedValueOnce({ ok: false })
 
-    const result = await fetchPropertyConstraints(ids)
+    const result = await fetchPropertyConstraints(config, ids)
 
     expect(result.unavailable).toBe(true)
     expect(result.constraints.size).toBe(50)
@@ -168,7 +196,7 @@ describe('fetchPropertyConstraints', () => {
   it('marks the result unavailable when the API returns an error body without entities', async () => {
     fetchMock.mockResolvedValue({ ok: true, json: async () => ({ error: { code: 'rate-limited' } }) })
 
-    const result = await fetchPropertyConstraints(['P71'])
+    const result = await fetchPropertyConstraints(config, ['P71'])
 
     expect(result.unavailable).toBe(true)
     expect(result.constraints.size).toBe(0)
@@ -179,8 +207,8 @@ describe('request timeouts', () => {
   it('passes an AbortSignal to every fetch so requests can be aborted', async () => {
     fetchMock.mockResolvedValue({ ok: true, json: async () => sparqlResponse([]) })
 
-    await fetchMembership([['Q998877', 'Q998876', 'subclass']])
-    await fetchEntityLabels(['P123456'])
+    await fetchMembership(config, [['Q998877', 'Q998876', 'subclass']])
+    await fetchEntityLabels(config, ['P123456'])
 
     expect(fetchMock).toHaveBeenCalled()
     for (const [, init] of fetchMock.mock.calls) {
@@ -205,7 +233,7 @@ describe('bounded sparql concurrency', () => {
       { length: 1000 },
       (_, i) => [`Q${5000 + i}`, 'Q9999', 'instance'] as [string, string, 'instance'],
     )
-    await fetchMembership(pairs)
+    await fetchMembership(config, pairs)
 
     expect(maxInFlight).toBeGreaterThan(1)
     expect(maxInFlight).toBeLessThanOrEqual(SPARQL_CONCURRENCY)
@@ -249,6 +277,7 @@ describe('classifyPredicateCandidatesViaWikidata', () => {
       })
 
     const result = await classifyPredicateCandidatesViaWikidata(
+      config,
       ['P100', 'P101'],
       [{ entityId: 'Q7001', side: 'domain' }],
     )
@@ -285,10 +314,69 @@ describe('classifyPredicateCandidatesViaWikidata', () => {
       })
 
     const result = await classifyPredicateCandidatesViaWikidata(
+      config,
       ['P102'],
       [{ entityId: 'Q7001', side: 'domain' }],
     )
 
     expect(result).toEqual({ members: [], unverifiable: [], filteredOut: [{ id: 'P102', sides: ['domain'] }] })
+  })
+})
+
+describe('fetchConstraintModelSupport', () => {
+  it('reports supported when both constraint model entities exist and caches the result', async () => {
+    vi.resetModules()
+    const { fetchConstraintModelSupport } = await import('./wikidata-sparql')
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        entities: {
+          Q21503250: { claims: {} },
+          Q21510865: { claims: {} },
+        },
+      }),
+    })
+
+    expect(await fetchConstraintModelSupport(config)).toEqual({ status: 'supported' })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+
+    expect(await fetchConstraintModelSupport(config)).toEqual({ status: 'supported' })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('reports missing-items when a constraint model entity is absent', async () => {
+    vi.resetModules()
+    const { fetchConstraintModelSupport } = await import('./wikidata-sparql')
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        entities: {
+          Q21503250: { claims: {} },
+          Q21510865: { missing: '' },
+        },
+      }),
+    })
+
+    expect(await fetchConstraintModelSupport(config)).toEqual({ status: 'unavailable', reason: 'missing-items' })
+  })
+
+  it('reports fetch-failed when the constraint model entities cannot be fetched and retries later', async () => {
+    vi.resetModules()
+    const { fetchConstraintModelSupport } = await import('./wikidata-sparql')
+    fetchMock.mockResolvedValue({ ok: false })
+
+    expect(await fetchConstraintModelSupport(config)).toEqual({ status: 'unavailable', reason: 'fetch-failed' })
+
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        entities: {
+          Q21503250: { claims: {} },
+          Q21510865: { claims: {} },
+        },
+      }),
+    })
+    expect(await fetchConstraintModelSupport(config)).toEqual({ status: 'supported' })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 })

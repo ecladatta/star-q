@@ -10,6 +10,7 @@ import { ArrowDownIcon, ArrowRightIcon, ExternalLinkIcon, XIcon } from 'lucide-r
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useWikibaseInstance } from '@/hooks/useWikibaseInstance'
 import { cn } from '@/lib/utils'
 
 const ENTITY_ORDER: EntityType[] = ['subject', 'predicate', 'object']
@@ -27,14 +28,16 @@ function isWikidataId(value: string | null): boolean {
 }
 
 function EntityId({ component }: { component: DocumentAnnotationComponent }) {
+  const { wikiUrl } = useWikibaseInstance()
   const { entityValue, entityLabel, entityCustom } = component
   if (!entityValue || entityValue === entityLabel) {
     return null
   }
-  if (isWikidataId(entityValue) && !entityCustom) {
+  const url = isWikidataId(entityValue) && !entityCustom ? wikiUrl(entityValue) : null
+  if (url) {
     return (
       <a
-        href={`https://www.wikidata.org/wiki/${entityValue}`}
+        href={url}
         target="_blank"
         rel="noopener noreferrer"
         className="inline-flex items-center gap-0.5 font-medium text-accent hover:underline"

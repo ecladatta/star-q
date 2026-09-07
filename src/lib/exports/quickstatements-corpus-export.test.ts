@@ -58,6 +58,7 @@ function model(annotations: AnnotationExport[]): ExportModel {
     createdAt: null,
     updatedAt: null,
     customEntities: [],
+    wikibase: { instance: 'https://wikibase.example', sparqlEndpoint: 'https://wikibase.example/query/sparql' },
     documents: [
       {
         id: 'doc-1',

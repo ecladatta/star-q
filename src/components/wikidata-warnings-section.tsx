@@ -8,6 +8,7 @@ import { WikidataWarningRow } from './wikidata-warning-row'
 
 type WikidataWarningsSectionProps = {
   warningsPromise: Promise<CorpusWarnings>
+  instanceName: string | null
   groupByDocument?: boolean
   compact?: boolean
 }
@@ -61,7 +62,7 @@ function WarningsRows({ violations, unverifiable }: { violations: ConstraintChec
   )
 }
 
-function WikidataWarningsContent({ warnings, groupByDocument, compact }: { warnings: CorpusWarnings, groupByDocument: boolean, compact: boolean }) {
+function WikidataWarningsContent({ warnings, groupByDocument, compact, instanceName }: { warnings: CorpusWarnings, groupByDocument: boolean, compact: boolean, instanceName: string | null }) {
   const totalCount = warnings.violations.length + warnings.unverifiable.length
 
   if (totalCount === 0 && !warnings.unavailable) {
@@ -95,8 +96,11 @@ function WikidataWarningsContent({ warnings, groupByDocument, compact }: { warni
             {warnings.unavailable
               ? (
                   <p className="text-sm text-muted-foreground">
-                    Wikidata constraint check could not be completed, so annotations were not
-                    verified.
+                    {warnings.unavailableReason === 'no-instance'
+                      ? 'No Wikibase instance is available for this corpus.'
+                      : warnings.unavailableReason === 'not-supported'
+                        ? `Constraint checking is unavailable: the configured Wikibase instance ${instanceName} does not provide the Wikidata constraint model, so annotations were not verified.`
+                        : 'Wikidata constraint check could not be completed, so annotations were not verified.'}
                   </p>
                 )
               : totalCount === 0
@@ -147,9 +151,9 @@ function WikidataWarningsContent({ warnings, groupByDocument, compact }: { warni
   )
 }
 
-export async function WikidataWarningsSection({ warningsPromise, groupByDocument = true, compact = false }: WikidataWarningsSectionProps) {
+export async function WikidataWarningsSection({ warningsPromise, instanceName, groupByDocument = true, compact = false }: WikidataWarningsSectionProps) {
   const warnings = await warningsPromise
-  return <WikidataWarningsContent warnings={warnings} groupByDocument={groupByDocument} compact={compact} />
+  return <WikidataWarningsContent warnings={warnings} groupByDocument={groupByDocument} compact={compact} instanceName={instanceName} />
 }
 
 export function WikidataWarningsSkeleton({ compact = false }: { compact?: boolean }) {

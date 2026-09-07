@@ -6,15 +6,19 @@ import { Suspense } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { wikiUrl } from '@/lib/wikibase'
+import { loadCorpusWikibaseConfig } from '@/lib/wikibase-server'
 import { WikidataWarningsSection, WikidataWarningsSkeleton } from './wikidata-warnings-section'
 
 type AnalyticsContentProps = {
+  corpusId: string
   analyticsPromise: Promise<CorpusAnalytics>
   warningsPromise: Promise<CorpusWarnings>
 }
 
-export async function AnalyticsContent({ analyticsPromise, warningsPromise }: AnalyticsContentProps) {
-  const analytics = await analyticsPromise
+export async function AnalyticsContent({ corpusId, analyticsPromise, warningsPromise }: AnalyticsContentProps) {
+  const [analytics, wikibase] = await Promise.all([analyticsPromise, loadCorpusWikibaseConfig(corpusId)])
+  const wikiUrlFor = (id: string) => (wikibase ? wikiUrl(wikibase.instance, id) : null)
 
   return (
     <>
@@ -332,7 +336,7 @@ export async function AnalyticsContent({ analyticsPromise, warningsPromise }: An
 
       {/* Warnings */}
       <Suspense fallback={<WikidataWarningsSkeleton />}>
-        <WikidataWarningsSection warningsPromise={warningsPromise} />
+        <WikidataWarningsSection warningsPromise={warningsPromise} instanceName={wikibase?.label ?? null} />
       </Suspense>
 
       {/* Property Statistics */}
@@ -365,6 +369,7 @@ export async function AnalyticsContent({ analyticsPromise, warningsPromise }: An
                         <TableBody>
                           {analytics.propertyStats.map((stat) => {
                             const propertyKey = `${stat.label || 'null'}:${stat.value || 'null'}`
+                            const propertyUrl = stat.value && !stat.isCustom ? wikiUrlFor(stat.value) : null
 
                             return (
                               <TableRow key={propertyKey} className="border-t border-border hover:bg-muted/30">
@@ -373,11 +378,10 @@ export async function AnalyticsContent({ analyticsPromise, warningsPromise }: An
                                 </TableCell>
                                 <TableCell className="px-3 py-2.5 text-[13px]">
                                   {stat.value
-                                    ? stat.isCustom
-                                      ? stat.value
-                                      : (
+                                    ? propertyUrl
+                                      ? (
                                           <Link
-                                            href={`https://www.wikidata.org/wiki/${stat.value.startsWith('P') ? 'Property:' : ''}${stat.value}`}
+                                            href={propertyUrl}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="text-accent underline hover:opacity-80"
@@ -385,6 +389,7 @@ export async function AnalyticsContent({ analyticsPromise, warningsPromise }: An
                                             {stat.value}
                                           </Link>
                                         )
+                                      : stat.value
                                     : <span className="text-muted-foreground">—</span>}
                                 </TableCell>
                                 <TableCell className="px-3 py-2.5 text-right font-mono text-[13px] text-muted-foreground tabular-nums">{stat.count}</TableCell>
@@ -433,6 +438,7 @@ export async function AnalyticsContent({ analyticsPromise, warningsPromise }: An
                         <TableBody>
                           {analytics.entityStats.map((stat) => {
                             const entityKey = `${stat.label || 'null'}:${stat.value || 'null'}`
+                            const entityUrl = stat.value && !stat.isCustom ? wikiUrlFor(stat.value) : null
 
                             return (
                               <TableRow key={entityKey} className="border-t border-border hover:bg-muted/30">
@@ -441,11 +447,10 @@ export async function AnalyticsContent({ analyticsPromise, warningsPromise }: An
                                 </TableCell>
                                 <TableCell className="px-3 py-2.5 text-[13px]">
                                   {stat.value
-                                    ? stat.isCustom
-                                      ? stat.value
-                                      : (
+                                    ? entityUrl
+                                      ? (
                                           <Link
-                                            href={`https://www.wikidata.org/wiki/${stat.value.startsWith('P') ? 'Property:' : ''}${stat.value}`}
+                                            href={entityUrl}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="text-accent underline hover:opacity-80"
@@ -453,6 +458,7 @@ export async function AnalyticsContent({ analyticsPromise, warningsPromise }: An
                                             {stat.value}
                                           </Link>
                                         )
+                                      : stat.value
                                     : <span className="text-muted-foreground">—</span>}
                                 </TableCell>
                                 <TableCell className="px-3 py-2.5 text-right font-mono text-[13px] text-muted-foreground tabular-nums">{stat.count}</TableCell>

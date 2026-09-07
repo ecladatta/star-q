@@ -46,7 +46,7 @@ export default async function AnalyticsPage({ params }: { params: Promise<{ corp
       </PageHeader>
 
       <Suspense fallback={<AnalyticsSkeleton />}>
-        <AnalyticsContent analyticsPromise={analyticsPromise} warningsPromise={warningsPromise} />
+        <AnalyticsContent corpusId={corpusId} analyticsPromise={analyticsPromise} warningsPromise={warningsPromise} />
       </Suspense>
     </Page>
   )

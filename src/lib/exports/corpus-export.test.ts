@@ -11,6 +11,7 @@ vi.mock('@/actions/document/documentActions', () => ({
   getDocumentsMetadata: vi.fn(),
   getRawDocumentData: vi.fn(),
 }))
+vi.mock('@/lib/wikibase-server', () => ({ loadCorpusWikibaseConfig: vi.fn() }))
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -82,6 +83,7 @@ describe('getCorpusExportFilename', () => {
       createdAt: null,
       updatedAt: null,
       customEntities: [],
+      wikibase: { instance: 'https://wikibase.example', sparqlEndpoint: 'https://wikibase.example/query/sparql' },
       documents: [],
     }
   }
