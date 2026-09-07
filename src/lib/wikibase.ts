@@ -84,8 +84,18 @@ export function wikibaseWikiUrl(id: string): string {
   return wikiUrl(DEFAULT_WIKIBASE.instance, id)
 }
 
-export const WIKIBASE_RDF_NAMESPACES = {
-  wd: `${DEFAULT_WIKIBASE.instance}/entity/`,
-  wdt: `${DEFAULT_WIKIBASE.instance}/prop/direct/`,
-  pq: `${DEFAULT_WIKIBASE.instance}/prop/qualifier/`,
+export type WikibaseRdfNamespaces = {
+  wd: string
+  wdt: string
+  pq: string
 }
+
+export function wikibaseRdfNamespaces(instance: string): WikibaseRdfNamespaces {
+  return {
+    wd: `${instance}/entity/`,
+    wdt: `${instance}/prop/direct/`,
+    pq: `${instance}/prop/qualifier/`,
+  }
+}
+
+export const WIKIBASE_RDF_NAMESPACES = wikibaseRdfNamespaces(DEFAULT_WIKIBASE.instance)

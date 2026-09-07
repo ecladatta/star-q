@@ -1,4 +1,5 @@
 import type { Literal, NamedNode } from 'n3'
+import type { WikibaseRdfNamespaces } from '@/lib/wikibase'
 import type {
   DocumentAnnotationComponent,
   EntityDatatype,
@@ -95,23 +96,26 @@ export function statementIri(statementId: string): RdfIri {
 export function subjectTerm(
   component: DocumentAnnotationComponent,
   corpusId: string,
+  wikibase: WikibaseRdfNamespaces,
 ): RdfIri | null {
-  return entityIri(component, corpusId)
+  return entityIri(component, corpusId, wikibase)
 }
 
 export function predicateTerm(
   component: DocumentAnnotationComponent,
   corpusId: string,
   namespace: 'wdt' | 'pq',
+  wikibase: WikibaseRdfNamespaces,
 ): RdfIri | null {
-  return propertyTerm(component, corpusId, namespace)
+  return propertyTerm(component, corpusId, namespace, wikibase)
 }
 
 export function objectTerm(
   component: DocumentAnnotationComponent,
   corpusId: string,
+  wikibase: WikibaseRdfNamespaces,
 ): RdfTerm {
-  return entityIri(component, corpusId)
+  return entityIri(component, corpusId, wikibase)
     ?? literal(
       component.entityValue?.trim() || component.annotationValue,
       component.entityDatatype ?? undefined,
@@ -121,20 +125,22 @@ export function objectTerm(
 export function componentBodyTerm(
   component: DocumentAnnotationComponent,
   corpusId: string,
+  wikibase: WikibaseRdfNamespaces,
 ): RdfTerm | null {
   if (
     component.annotationTag === 'predicate'
     || component.annotationTag === 'qualifier-predicate'
   ) {
-    return propertyTerm(component, corpusId, 'wd')
+    return propertyTerm(component, corpusId, 'wd', wikibase)
   }
 
-  return objectTerm(component, corpusId)
+  return objectTerm(component, corpusId, wikibase)
 }
 
 function entityIri(
   component: DocumentAnnotationComponent,
   corpusId: string,
+  wikibase: WikibaseRdfNamespaces,
 ): RdfIri | null {
   if (component.entityCustomId) {
     return customResourceIri(corpusId, 'entity', component.entityCustomId)
@@ -142,7 +148,7 @@ function entityIri(
 
   const value = component.entityValue?.trim()
   if (value && /^[QP]\d+$/.test(value)) {
-    return iri(`${NAMESPACES.wd}${value}`)
+    return iri(`${wikibase.wd}${value}`)
   }
 
   return value ? absoluteIri(value) : null
@@ -152,6 +158,7 @@ function propertyTerm(
   component: DocumentAnnotationComponent,
   corpusId: string,
   namespace: 'wd' | 'wdt' | 'pq',
+  wikibase: WikibaseRdfNamespaces,
 ): RdfIri | null {
   if (component.entityCustomId) {
     return customResourceIri(corpusId, 'relation', component.entityCustomId)
@@ -159,7 +166,7 @@ function propertyTerm(
 
   const value = component.entityValue?.trim()
   if (value && /^P\d+$/.test(value)) {
-    return iri(`${NAMESPACES[namespace]}${value}`)
+    return iri(`${wikibase[namespace]}${value}`)
   }
 
   return value ? absoluteIri(value) : null

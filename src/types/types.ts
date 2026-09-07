@@ -1,4 +1,5 @@
 import type { CorpusCustomEntity, Document } from '@/db/schema'
+import type { WikibaseConfig } from '@/lib/wikibase'
 
 type DocumentElementBase = {
   elementIndex: number
@@ -220,4 +221,5 @@ export type ExportModel = {
   updatedAt: string | null
   documents: DocumentExport[]
   customEntities: CorpusCustomEntity[]
+  wikibase: WikibaseConfig
 }

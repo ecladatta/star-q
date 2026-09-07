@@ -1,5 +1,6 @@
 import type { ExportModel } from '@/types/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { DEFAULT_WIKIBASE } from '@/lib/wikibase'
 import { getCorpusExportFilename, resolveCorpusExportFormat } from './corpus-export'
 
 vi.mock('@/actions/annotation/annotationActions', () => ({ getAnnotations: vi.fn() }))
@@ -11,6 +12,7 @@ vi.mock('@/actions/document/documentActions', () => ({
   getDocumentsMetadata: vi.fn(),
   getRawDocumentData: vi.fn(),
 }))
+vi.mock('@/lib/wikibase-server', () => ({ loadCorpusWikibaseConfig: vi.fn() }))
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -82,6 +84,7 @@ describe('getCorpusExportFilename', () => {
       createdAt: null,
       updatedAt: null,
       customEntities: [],
+      wikibase: DEFAULT_WIKIBASE,
       documents: [],
     }
   }

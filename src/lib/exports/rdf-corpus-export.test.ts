@@ -4,6 +4,7 @@ import type {
   ExportModel,
 } from '@/types/types'
 import { describe, expect, it } from 'vitest'
+import { DEFAULT_WIKIBASE } from '@/lib/wikibase'
 import { serializeRdfCorpusExport } from './rdf-corpus-export'
 
 function component(overrides: Partial<DocumentAnnotationComponent> = {}): DocumentAnnotationComponent {
@@ -82,6 +83,7 @@ function model(annotations: AnnotationExport[], raw: ExportModel['documents'][nu
     createdAt: null,
     updatedAt: null,
     customEntities: [],
+    wikibase: DEFAULT_WIKIBASE,
     documents: [{
       id: 'doc-1',
       title: 'D',
@@ -93,6 +95,10 @@ function model(annotations: AnnotationExport[], raw: ExportModel['documents'][nu
       annotations,
     }],
   }
+}
+
+function withWikibase(corpusData: ExportModel, wikibase: ExportModel['wikibase']): ExportModel {
+  return { ...corpusData, wikibase }
 }
 
 function truthy(annotations: AnnotationExport[]): string {
@@ -141,6 +147,18 @@ describe('serializeRdfCorpusExport (truthy)', () => {
       subject: component({ entityValue: 'Not an ID' }),
     })])
     expect(output).not.toContain('wdt:P1')
+  })
+
+  it('resolves entity IRIs against the corpus wikibase instance', () => {
+    const output = serializeRdfCorpusExport(
+      withWikibase(model([annotation()], rawText()), {
+        instance: 'https://wikibase.example',
+        sparqlEndpoint: 'https://wikibase.example/sparql',
+      }),
+      'truthy',
+    )
+    expect(output).toContain('@prefix wd: <https://wikibase.example/entity/>')
+    expect(output).toContain('wd:Q1 wdt:P1 wd:Q2.')
   })
 })
 
