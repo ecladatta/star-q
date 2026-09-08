@@ -1,4 +1,4 @@
-import type { Dispatch, ReactNode, SetStateAction } from 'react'
+import type { Dispatch, SetStateAction } from 'react'
 import type { PropertyConstraints } from '@/lib/wikidata-constraints'
 import type {
   AnnotationComponentRole,
@@ -102,7 +102,7 @@ type AnnotationFormProps = {
   batchCreating?: boolean
   batchCellRole?: EntityType
   batchCellsCount?: number
-  batchPanel?: ReactNode
+  onBatchCellRoleChange?: (role: EntityType) => void
   onBatchExit?: () => void
 }
 
@@ -154,18 +154,55 @@ function serializeAnnotationForDirtyCheck(
   })
 }
 
-function CellsSlotIndicator({ slotRole, count }: { slotRole: EntityType, count: number }) {
+function CellsSlotIndicator({
+  slotRole,
+  count,
+  onRoleChange = () => {},
+  disabled = false,
+}: {
+  slotRole: EntityType
+  count: number
+  onRoleChange?: (role: EntityType) => void
+  disabled?: boolean
+}) {
   return (
-    <div className={cn('flex h-9 items-center gap-2 rounded-md border border-dashed px-2 text-sm font-medium', ROLE_SOFT[slotRole])}>
-      <LayersIcon className="size-4 shrink-0" />
+    <div className={cn('flex h-9 items-center gap-1.5 rounded-md border border-dashed px-1.5 text-sm font-medium', ROLE_SOFT[slotRole])}>
+      <LayersIcon className="size-3.5 shrink-0" />
       <span className="truncate">
-        From
-        {' '}
         {count}
         {' '}
-        selected cell
+        cell
         {count === 1 ? '' : 's'}
       </span>
+      <div className="ml-auto flex rounded-sm border p-0.5">
+        {(['subject', 'predicate', 'object'] as EntityType[]).map(type => (
+          <Tooltip key={type}>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                tabIndex={-1}
+                className={cn(
+                  'rounded-sm px-1.5 text-xs transition-colors',
+                  slotRole === type ? 'bg-background font-medium shadow-sm' : 'opacity-70 hover:opacity-100',
+                )}
+                onClick={() => onRoleChange(type)}
+                disabled={disabled}
+                aria-label={`Fill ${type} slot`}
+                aria-pressed={slotRole === type}
+              >
+                {type[0].toUpperCase()}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>
+              Fill
+              {' '}
+              {type}
+              {' '}
+              slot with selected cells
+            </TooltipContent>
+          </Tooltip>
+        ))}
+      </div>
     </div>
   )
 }
@@ -192,7 +229,7 @@ export function AnnotationForm({
   batchCreating = false,
   batchCellRole,
   batchCellsCount,
-  batchPanel,
+  onBatchCellRoleChange,
   onBatchExit,
 }: AnnotationFormProps) {
   const subjectTag = currentAnnotation?.subject
@@ -813,7 +850,7 @@ export function AnnotationForm({
             </CardTitle>
             <CardDescription>
               {batchMode
-                ? 'One annotation will be created for each selected cell, sharing the subject and predicate.'
+                ? 'One annotation per selected cell.'
                 : 'Select entities for each subject, predicate, and object.'}
             </CardDescription>
           </div>
@@ -970,7 +1007,7 @@ export function AnnotationForm({
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div>
               {batchMode && batchCellRole === 'subject'
-                ? <CellsSlotIndicator slotRole="subject" count={batchCellsCount ?? 0} />
+                ? <CellsSlotIndicator slotRole="subject" count={batchCellsCount ?? 0} onRoleChange={onBatchCellRoleChange} disabled={batchCreating} />
                 : (
                     <>
                       <div
@@ -1027,7 +1064,7 @@ export function AnnotationForm({
             </div>
             <div>
               {batchMode && batchCellRole === 'predicate'
-                ? <CellsSlotIndicator slotRole="predicate" count={batchCellsCount ?? 0} />
+                ? <CellsSlotIndicator slotRole="predicate" count={batchCellsCount ?? 0} onRoleChange={onBatchCellRoleChange} disabled={batchCreating} />
                 : (
                     <>
                       <div
@@ -1103,7 +1140,7 @@ export function AnnotationForm({
             </div>
             <div>
               {batchMode && batchCellRole === 'object'
-                ? <CellsSlotIndicator slotRole="object" count={batchCellsCount ?? 0} />
+                ? <CellsSlotIndicator slotRole="object" count={batchCellsCount ?? 0} onRoleChange={onBatchCellRoleChange} disabled={batchCreating} />
                 : (
                     <>
                       <div
@@ -1157,11 +1194,6 @@ export function AnnotationForm({
                   )}
             </div>
           </div>
-          {batchMode && batchPanel && (
-            <div className="pt-3">
-              {batchPanel}
-            </div>
-          )}
           {!batchMode && currentAnnotation && (
             <div className="pt-3">
               <div

@@ -28,7 +28,6 @@ import { annotationComponentsShareSegment, cn } from '@/lib/utils'
 import { AnnotationForm } from './annotation-form'
 import { AnnotationListPopover } from './annotation-list-popover'
 import { AnnotationsSidebar } from './annotations-sidebar'
-import { ColumnBatchPanel } from './column-batch-panel'
 import CombinedElement from './combined-element'
 import { DocumentHeader } from './document-header'
 import { DocumentPopoverAnchor } from './document-popover-anchor'
@@ -201,12 +200,6 @@ export function DocumentViewer({
     }
     return { elementIndex, col: tableSelection.cellIndex }
   }, [readOnly, popover.popoverState, selection, documentElements])
-
-  const batchHasFixed = {
-    subject: Boolean(currentAnnotation?.subject),
-    predicate: Boolean(currentAnnotation?.predicate),
-    object: Boolean(currentAnnotation?.object),
-  }
 
   const handleQualifierSelectionAssociation = useCallback(
     (side: QualifierSide) => {
@@ -492,27 +485,17 @@ export function DocumentViewer({
               batchCreating={cellBatch.creating}
               batchCellRole={cellBatch.cellRole}
               batchCellsCount={cellBatch.cells.length}
+              onBatchCellRoleChange={cellBatch.setCellRole}
               batchReady={Boolean(
                 CONSTANT_ROLES[cellBatch.cellRole].every(role => currentAnnotation?.[role])
                 && (cellBatch.preview?.createCount ?? 0) > 0,
               )}
-              batchSummary={cellBatch.preview
-                ? `Create ${cellBatch.preview.createCount} annotation${cellBatch.preview.createCount === 1 ? '' : 's'}`
-                : null}
+              batchSummary={cellBatch.preview?.createCount === 0
+                ? 'Nothing to create'
+                : cellBatch.preview
+                  ? `Create ${cellBatch.preview.createCount} annotation${cellBatch.preview.createCount === 1 ? '' : 's'}`
+                  : null}
               onBatchExit={cellBatch.exitBatchMode}
-              batchPanel={cellBatch.batchMode
-                ? (
-                    <ColumnBatchPanel
-                      preview={cellBatch.preview}
-                      cellsCount={cellBatch.cells.length}
-                      cellRole={cellBatch.cellRole}
-                      onCellRoleChange={cellBatch.setCellRole}
-                      hasFixed={batchHasFixed}
-                      creating={cellBatch.creating}
-                      onCreate={() => document && cellBatch.createBatch(document.id)}
-                    />
-                  )
-                : null}
             />
           )}
 
