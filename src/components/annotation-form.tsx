@@ -10,6 +10,7 @@ import type {
 import {
   AlertTriangleIcon,
   ArrowLeftRightIcon,
+  CheckIcon,
   ChevronDownIcon,
   ChevronRightIcon,
   CopyIcon,
@@ -44,6 +45,12 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import {
   Popover,
   PopoverClose,
@@ -154,10 +161,16 @@ function serializeAnnotationForDirtyCheck(
   })
 }
 
+const ROLE_LABEL: Record<EntityType, string> = {
+  subject: 'Subject',
+  predicate: 'Predicate',
+  object: 'Object',
+}
+
 function CellsSlotIndicator({
   slotRole,
   count,
-  onRoleChange = () => {},
+  onRoleChange,
   disabled = false,
 }: {
   slotRole: EntityType
@@ -166,44 +179,46 @@ function CellsSlotIndicator({
   disabled?: boolean
 }) {
   return (
-    <div className={cn('flex h-9 items-center gap-1.5 rounded-md border border-dashed px-1.5 text-sm font-medium', ROLE_SOFT[slotRole])}>
-      <LayersIcon className="size-3.5 shrink-0" />
-      <span className="truncate">
-        {count}
-        {' '}
-        cell
-        {count === 1 ? '' : 's'}
-      </span>
-      <div className="ml-auto flex rounded-sm border p-0.5">
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild disabled={disabled}>
+        <button
+          type="button"
+          tabIndex={-1}
+          className={cn(
+            'flex h-9 w-full items-center gap-1.5 rounded-md border border-dashed px-1.5 text-sm font-medium transition-opacity',
+            !disabled && 'cursor-pointer',
+            disabled && 'cursor-not-allowed opacity-60',
+            ROLE_SOFT[slotRole],
+          )}
+          aria-label={`Selected cells fill the ${ROLE_LABEL[slotRole].toLowerCase()} slot. Click to change.`}
+        >
+          <LayersIcon className="size-3.5 shrink-0" />
+          <span className="truncate">
+            {count}
+            {' '}
+            cell
+            {count === 1 ? '' : 's'}
+          </span>
+          <ChevronDownIcon className="ml-auto size-3.5 shrink-0" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-44">
         {(['subject', 'predicate', 'object'] as EntityType[]).map(type => (
-          <Tooltip key={type}>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                tabIndex={-1}
-                className={cn(
-                  'rounded-sm px-1.5 text-xs transition-colors',
-                  slotRole === type ? 'bg-background font-medium shadow-sm' : 'opacity-70 hover:opacity-100',
-                )}
-                onClick={() => onRoleChange(type)}
-                disabled={disabled}
-                aria-label={`Fill ${type} slot`}
-                aria-pressed={slotRole === type}
-              >
-                {type[0].toUpperCase()}
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>
-              Fill
-              {' '}
-              {type}
-              {' '}
-              slot with selected cells
-            </TooltipContent>
-          </Tooltip>
+          <DropdownMenuItem
+            key={type}
+            className="justify-between"
+            onClick={() => onRoleChange?.(type)}
+          >
+            Fill
+            {' '}
+            {ROLE_LABEL[type].toLowerCase()}
+            {' '}
+            slot
+            {slotRole === type && <CheckIcon className="size-3.5" />}
+          </DropdownMenuItem>
         ))}
-      </div>
-    </div>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 
