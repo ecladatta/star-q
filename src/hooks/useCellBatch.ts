@@ -42,6 +42,19 @@ function getTableCellElement(elementIndex: number, row: number, col: number): HT
   return container?.querySelector<HTMLElement>(`[data-cell="${row}-${col}"]`) ?? null
 }
 
+function findViewportForOrigin(origin: CellBatchCellRef): HTMLElement | null {
+  const cellElement = getTableCellElement(origin.elementIndex, origin.row, origin.col)
+  return cellElement?.closest<HTMLElement>('[data-slot="scroll-area-viewport"]') ?? null
+}
+
+const AUTO_SCROLL_EDGE = 48
+const AUTO_SCROLL_MAX_RATE = 16
+
+function computeAutoScrollRate(distance: number): number {
+  const clamped = Math.max(Math.min(distance, AUTO_SCROLL_EDGE), 0)
+  return Math.round((1 - clamped / AUTO_SCROLL_EDGE) * AUTO_SCROLL_MAX_RATE)
+}
+
 function getChipRectForCells(cells: CellBatchCellRef[]): ChipRect | null {
   let top = Number.POSITIVE_INFINITY
   let left = Number.POSITIVE_INFINITY
@@ -95,6 +108,9 @@ export function useCellBatch(options: UseCellBatchOptions) {
   const dragRef = useRef<{ origin: CellBatchCellRef, focus: CellBatchCellRef | null, active: boolean } | null>(null)
   const modifierClickRef = useRef(false)
   const batchModeRef = useRef(false)
+  const pointerRef = useRef<{ x: number, y: number } | null>(null)
+  const viewportRef = useRef<HTMLElement | null>(null)
+  const autoScrollRafRef = useRef<number | undefined>(undefined)
 
   useEffect(() => {
     batchModeRef.current = batchMode
@@ -201,6 +217,8 @@ export function useCellBatch(options: UseCellBatchOptions) {
     }
 
     dragRef.current = { origin: cell, focus: null, active: false }
+    pointerRef.current = null
+    viewportRef.current = null
     setChipRect(null)
   }, [extendRect, toggleCell])
 
@@ -223,6 +241,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
     if (!drag.active) {
       drag.active = true
       setDragging(true)
+      viewportRef.current = findViewportForOrigin(drag.origin)
       clearBrowserSelection()
     }
     extendRect(drag.origin, cell)
@@ -350,6 +369,93 @@ export function useCellBatch(options: UseCellBatchOptions) {
       setCreating(false)
     }
   }, [preview, creating, currentAnnotation, exitBatchMode, setCurrentAnnotation, setDocumentAnnotations])
+
+  useEffect(() => {
+    if (!dragging) {
+      return
+    }
+
+    const handlePointerMove = (event: PointerEvent) => {
+      pointerRef.current = { x: event.clientX, y: event.clientY }
+    }
+
+    const frame = () => {
+      const pointer = pointerRef.current
+      const drag = dragRef.current
+
+      if (pointer && drag?.active) {
+        const viewport = viewportRef.current
+        const innerScrollable = Boolean(
+          viewport && viewport.scrollHeight > viewport.clientHeight + 1,
+        )
+
+        if (innerScrollable && viewport) {
+          const rect = viewport.getBoundingClientRect()
+          let dy = 0
+          let dx = 0
+          if (pointer.y < rect.top + AUTO_SCROLL_EDGE) {
+            dy = -computeAutoScrollRate(pointer.y - rect.top)
+          } else if (pointer.y > rect.bottom - AUTO_SCROLL_EDGE) {
+            dy = computeAutoScrollRate(rect.bottom - pointer.y)
+          }
+          if (pointer.x < rect.left + AUTO_SCROLL_EDGE) {
+            dx = -computeAutoScrollRate(pointer.x - rect.left)
+          } else if (pointer.x > rect.right - AUTO_SCROLL_EDGE) {
+            dx = computeAutoScrollRate(rect.right - pointer.x)
+          }
+          if (dy !== 0) {
+            viewport.scrollTop += dy
+          }
+          if (dx !== 0) {
+            viewport.scrollLeft += dx
+          }
+        } else {
+          let dy = 0
+          let dx = 0
+          if (pointer.y < AUTO_SCROLL_EDGE) {
+            dy = -computeAutoScrollRate(pointer.y)
+          } else if (pointer.y > window.innerHeight - AUTO_SCROLL_EDGE) {
+            dy = computeAutoScrollRate(window.innerHeight - pointer.y)
+          }
+          if (pointer.x < AUTO_SCROLL_EDGE) {
+            dx = -computeAutoScrollRate(pointer.x)
+          } else if (pointer.x > window.innerWidth - AUTO_SCROLL_EDGE) {
+            dx = computeAutoScrollRate(window.innerWidth - pointer.x)
+          }
+          if (dy !== 0 || dx !== 0) {
+            window.scrollBy(dx, dy)
+          }
+        }
+
+        // Auto-scrolling under a stationary pointer doesn't fire mouseenter,
+        // so keep extending the selection to the cell revealed at the pointer.
+        const hit = document.elementFromPoint(pointer.x, pointer.y)
+          ?.closest<HTMLElement>('[data-cell]')
+        if (hit && hit.closest(`#element-${drag.origin.elementIndex}`)) {
+          const [row, col] = (hit.getAttribute('data-cell') || '').split('-').map(Number)
+          if (Number.isFinite(row) && Number.isFinite(col)) {
+            const cell: CellBatchCellRef = { elementIndex: drag.origin.elementIndex, row, col }
+            if (!drag.focus || cellKey(cell) !== cellKey(drag.focus)) {
+              drag.focus = cell
+              extendRect(drag.origin, cell)
+            }
+          }
+        }
+      }
+
+      autoScrollRafRef.current = requestAnimationFrame(frame)
+    }
+
+    window.addEventListener('pointermove', handlePointerMove)
+    autoScrollRafRef.current = requestAnimationFrame(frame)
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove)
+      if (autoScrollRafRef.current !== undefined) {
+        cancelAnimationFrame(autoScrollRafRef.current)
+      }
+    }
+  }, [dragging, extendRect])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
