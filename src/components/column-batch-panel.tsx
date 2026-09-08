@@ -1,83 +1,145 @@
 'use client'
-import type { CellBatchOffset, CellBatchPreview } from '@/lib/cell-batch'
-import { AlertTriangleIcon, CheckIcon, CopyIcon, LayersIcon, Loader2Icon, TextCursorInputIcon, XIcon } from 'lucide-react'
+import type { CellBatchPreview, CellExtraction } from '@/lib/cell-batch'
+import type { EntityType } from '@/types/types'
+import { CheckIcon, CopyIcon, LayersIcon, Loader2Icon, TextCursorInputIcon } from 'lucide-react'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { CONSTANT_ROLES } from '@/lib/cell-batch'
 import { cn } from '@/lib/utils'
+
+const ROLE_LABEL: Record<EntityType, string> = {
+  subject: 'Subject',
+  predicate: 'Predicate',
+  object: 'Object',
+}
+
+const ROLE_SOFT: Record<EntityType, string> = {
+  subject: 'bg-subject-soft text-subject-fg',
+  predicate: 'bg-predicate-soft text-predicate-fg',
+  object: 'bg-object-soft text-object-fg',
+}
 
 type ColumnBatchPanelProps = {
   preview: CellBatchPreview | null
   cellsCount: number
-  capturedOffset: CellBatchOffset | null
-  objectOffset: CellBatchOffset | null
-  onObjectOffsetChange: (offset: CellBatchOffset | null) => void
-  offsetExample: string | null
-  hasSubject: boolean
-  hasPredicate: boolean
+  cellRole: EntityType
+  onCellRoleChange: (role: EntityType) => void
+  extraction: CellExtraction | null
+  onExtractionChange: (extraction: CellExtraction | null) => void
+  capturedText: string | null
+  hasFixed: Record<EntityType, boolean>
   creating: boolean
-  onExit: () => void
   onCreate: () => void
 }
 
 export function ColumnBatchPanel({
   preview,
   cellsCount,
-  capturedOffset,
-  objectOffset,
-  onObjectOffsetChange,
-  offsetExample,
-  hasSubject,
-  hasPredicate,
+  cellRole,
+  onCellRoleChange,
+  extraction,
+  onExtractionChange,
+  capturedText,
+  hasFixed,
   creating,
-  onExit,
   onCreate,
 }: ColumnBatchPanelProps) {
-  const ready = hasSubject && hasPredicate && (preview?.createCount ?? 0) > 0
-  const visibleRows = preview?.rows.slice(0, 8) ?? []
-  const hiddenRowCount = (preview?.rows.length ?? 0) - visibleRows.length
+  const [patternDraft, setPatternDraft] = useState<string>(
+    extraction?.type === 'pattern' ? extraction.text : (capturedText ?? ''),
+  )
+  const [patternTab, setPatternTab] = useState<boolean>(extraction !== null)
+  const patternMode = patternTab
+  const constantRoles = CONSTANT_ROLES[cellRole]
+  const fixedReady = constantRoles.every(role => hasFixed[role])
+  const ready = fixedReady && (preview?.createCount ?? 0) > 0
+
+  const missingRoles = constantRoles.filter(role => !hasFixed[role])
+  const missingLabel = missingRoles.map(role => ROLE_LABEL[role].toLowerCase()).join(' and ')
+
+  const visibleRows = (preview?.rows.filter(row => row.status !== 'empty') ?? []).slice(0, 5)
+  const hiddenRowCount = (preview?.rows.filter(row => row.status !== 'empty').length ?? 0) - visibleRows.length
+
+  const setPatternMode = (mode: boolean) => {
+    if (creating) {
+      return
+    }
+    setPatternTab(mode)
+    if (!mode) {
+      onExtractionChange(null)
+    }
+  }
+
+  const applyPatternDraft = (draft: string) => {
+    setPatternDraft(draft)
+    if (draft.trim()) {
+      onExtractionChange({ type: 'pattern', text: draft })
+    } else {
+      onExtractionChange(null)
+    }
+  }
 
   return (
     <div className="rounded-lg border bg-muted/30 p-3">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-1.5 text-sm font-medium">
-          <LayersIcon className="size-4 shrink-0 text-accent" />
-          <span>
-            Batch annotation ·
-            {' '}
-            {cellsCount}
-            {' '}
-            cell
-            {cellsCount === 1 ? '' : 's'}
-            {' '}
-            selected
-          </span>
-        </div>
-        <Button variant="ghost" size="sm" onClick={onExit} disabled={creating}>
-          <XIcon />
-          Exit
-        </Button>
+      <div className="mb-2 flex min-w-0 items-center gap-1.5 text-sm font-medium">
+        <LayersIcon className="size-4 shrink-0 text-accent" />
+        <span>
+          Batch annotation ·
+          {' '}
+          {cellsCount}
+          {' '}
+          cell
+          {cellsCount === 1 ? '' : 's'}
+        </span>
       </div>
 
-      {(!hasSubject || !hasPredicate) && (
+      {missingRoles.length > 0 && (
         <div className="mb-2 flex items-center gap-1.5 rounded-md border border-dashed border-muted-foreground/40 px-2 py-1.5 text-xs text-muted-foreground">
           <TextCursorInputIcon className="size-3.5 shrink-0" />
           <span>
-            {hasSubject
-              ? 'Assign a predicate below — select text anywhere, or use the search field.'
-              : hasPredicate
-                ? 'Assign a subject below — select text anywhere, or use the search field.'
-                : 'Assign a subject and a predicate below — select text anywhere, or use the search fields.'}
+            Assign a shared
+            {' '}
+            {missingLabel}
+            {' '}
+            in the search fields above — it stays the same for every created annotation.
           </span>
         </div>
       )}
 
+      <div className="mb-1.5 text-xs text-muted-foreground">
+        Selected cells fill the
+        {' '}
+        <span className={cn('font-medium', ROLE_SOFT[cellRole])}>
+          {ROLE_LABEL[cellRole]}
+        </span>
+        {' '}
+        slot
+      </div>
       <div className="mb-2 flex rounded-md border p-0.5">
+        {(['subject', 'predicate', 'object'] as EntityType[]).map(type => (
+          <button
+            key={type}
+            type="button"
+            className={cn(
+              'flex-1 rounded-sm px-2 py-1 text-xs transition-colors',
+              cellRole === type ? 'bg-background font-medium shadow-sm' : 'text-muted-foreground hover:text-foreground',
+            )}
+            onClick={() => onCellRoleChange(type)}
+            disabled={creating}
+          >
+            {ROLE_LABEL[type]}
+          </button>
+        ))}
+      </div>
+
+      <div className="mb-1.5 text-xs text-muted-foreground">Per created annotation:</div>
+      <div className="flex rounded-md border p-0.5">
         <button
           type="button"
           className={cn(
             'flex-1 rounded-sm px-2 py-1 text-xs transition-colors',
-            objectOffset === null ? 'bg-background font-medium shadow-sm' : 'text-muted-foreground hover:text-foreground',
+            !patternMode ? 'bg-background font-medium shadow-sm' : 'text-muted-foreground hover:text-foreground',
           )}
-          onClick={() => onObjectOffsetChange(null)}
+          onClick={() => setPatternMode(false)}
           disabled={creating}
         >
           Entire cell
@@ -86,61 +148,48 @@ export function ColumnBatchPanel({
           type="button"
           className={cn(
             'flex-1 rounded-sm px-2 py-1 text-xs transition-colors',
-            objectOffset !== null ? 'bg-background font-medium shadow-sm' : 'text-muted-foreground hover:text-foreground',
-            !capturedOffset && 'cursor-not-allowed opacity-50 hover:text-muted-foreground',
+            patternMode ? 'bg-background font-medium shadow-sm' : 'text-muted-foreground hover:text-foreground',
           )}
-          onClick={() => capturedOffset && onObjectOffsetChange(capturedOffset)}
-          disabled={creating || !capturedOffset}
-          title={capturedOffset ? 'Use the text selection captured from the first cell' : 'Select a part of a cell, then choose “Annotate column” in the popover to capture it'}
+          onClick={() => setPatternMode(true)}
+          disabled={creating}
         >
-          Same selection in each row
-          {offsetExample && objectOffset !== null && (
-            <span className="ml-1 font-normal opacity-70">
-              (
-              {offsetExample}
-              )
-            </span>
-          )}
+          Same text in each row
         </button>
       </div>
+      {patternMode && (
+        <div className="mt-1.5">
+          <input
+            value={patternDraft}
+            onChange={event => applyPatternDraft(event.target.value)}
+            placeholder="Text to extract from each row…"
+            className="w-full rounded-md border bg-background px-2 py-1 text-xs placeholder:text-muted-foreground/60 focus-visible:ring-1 focus-visible:ring-accent focus-visible:outline-none"
+            disabled={creating}
+          />
+          {!patternDraft.trim() && (
+            <div className="mt-1 text-[10px] text-muted-foreground/70">
+              Leave empty to use entire cells. Type the exact text each row should contribute.
+            </div>
+          )}
+        </div>
+      )}
 
-      {preview && preview.rows.length > 0 && (
-        <div className="mb-2 max-h-40 overflow-y-auto rounded-md border bg-background">
+      {visibleRows.length > 0 && (
+        <div className="mt-2 max-h-28 overflow-y-auto rounded-md border bg-background">
           {visibleRows.map(row => (
             <div
               key={`${row.cell.elementIndex}:${row.cell.row}:${row.cell.col}`}
               className="flex items-center gap-1.5 border-b px-2 py-1.5 text-xs last:border-b-0"
             >
-              {row.status === 'create' && (
-                <>
-                  <CheckIcon className="size-3.5 shrink-0 text-success" />
-                  <span className="min-w-0 truncate">
-                    {row.object?.annotationValue}
-                  </span>
-                </>
-              )}
+              {row.status === 'create'
+                ? <CheckIcon className="size-3.5 shrink-0 text-success" />
+                : <CopyIcon className="size-3.5 shrink-0 text-amber-600" />}
+              <span className="min-w-0 truncate">
+                {row.component?.annotationValue}
+              </span>
               {row.status === 'duplicate' && (
-                <>
-                  <CopyIcon className="size-3.5 shrink-0 text-amber-600" />
-                  <span className="min-w-0 truncate">
-                    {row.object?.annotationValue}
-                  </span>
-                  <span className="ml-auto shrink-0 text-[10px] font-medium text-amber-600">
-                    already exists
-                  </span>
-                </>
-              )}
-              {row.status === 'empty' && (
-                <>
-                  <AlertTriangleIcon className="size-3.5 shrink-0 text-muted-foreground/60" />
-                  <span className="min-w-0 truncate text-muted-foreground/60">
-                    Row
-                    {' '}
-                    {row.cell.row + 1}
-                    {' '}
-                    · empty cell
-                  </span>
-                </>
+                <span className="ml-auto shrink-0 text-[10px] font-medium text-amber-600">
+                  already exists
+                </span>
               )}
             </div>
           ))}
@@ -149,21 +198,14 @@ export function ColumnBatchPanel({
               +
               {hiddenRowCount}
               {' '}
-              more row
-              {hiddenRowCount === 1 ? '' : 's'}
+              more
             </div>
           )}
         </div>
       )}
 
-      {preview && preview.rows.length === 0 && (
-        <div className="mb-2 rounded-md border border-dashed p-2 text-center text-xs text-muted-foreground">
-          No cells selected.
-        </div>
-      )}
-
       <Button
-        className="w-full bg-success text-success-foreground hover:bg-success/90"
+        className="mt-2 w-full bg-success text-success-foreground hover:bg-success/90"
         disabled={!ready || creating}
         onClick={onCreate}
       >

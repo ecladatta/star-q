@@ -1,7 +1,8 @@
 import type { Dispatch, SetStateAction } from 'react'
 import type { usePopoverState, useSelectionState } from './useSelectionState'
-import type { CellBatchCellRef, CellBatchOffset, CellBatchPreview } from '@/lib/cell-batch'
-import type { CurrentAnnotation, DocumentAnnotation, Entity } from '@/types/types'
+import type { BatchAnnotationItem } from '@/actions/annotation/annotationActions'
+import type { CellBatchCellRef, CellBatchOffset, CellBatchPreview, CellExtraction } from '@/lib/cell-batch'
+import type { CurrentAnnotation, DocumentAnnotation, DocumentAnnotationComponent, EntityType } from '@/types/types'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { v4 as uuidv4 } from 'uuid'
@@ -16,6 +17,7 @@ import {
   cellKey,
   cellsInRect,
   columnCellRefs,
+  CONSTANT_ROLES,
   dedupeCellRefs,
 } from '@/lib/cell-batch'
 import { clearBrowserSelection } from './useSelectionState'
@@ -102,8 +104,9 @@ export function useCellBatch(options: UseCellBatchOptions) {
   const [cells, setCells] = useState<CellBatchCellRef[]>([])
   const [dragging, setDragging] = useState(false)
   const [batchMode, setBatchMode] = useState(false)
+  const [cellRole, setCellRole] = useState<EntityType>('object')
   const [capturedOffset, setCapturedOffset] = useState<CellBatchOffset | null>(null)
-  const [objectOffset, setObjectOffset] = useState<CellBatchOffset | null>(null)
+  const [extraction, setExtraction] = useState<CellExtraction | null>(null)
   const [creating, setCreating] = useState(false)
   const [chipRect, setChipRect] = useState<ChipRect | null>(null)
 
@@ -151,14 +154,15 @@ export function useCellBatch(options: UseCellBatchOptions) {
 
   const exitBatchMode = useCallback(() => {
     setBatchMode(false)
-    setObjectOffset(null)
     setCapturedOffset(null)
+    setExtraction(null)
+    setCellRole('object')
     clearCells()
   }, [clearCells])
 
   const openBatchMode = useCallback((offset: CellBatchOffset | null) => {
     setCapturedOffset(offset)
-    setObjectOffset(offset)
+    setExtraction(offset ? { type: 'fixed', offset } : null)
     setBatchMode(true)
     popover.hidePopover()
   }, [popover])
@@ -413,41 +417,56 @@ export function useCellBatch(options: UseCellBatchOptions) {
       return null
     }
 
+    const fixed = {
+      subject: cellRole === 'subject' ? null : currentAnnotation?.subject ?? null,
+      predicate: cellRole === 'predicate' ? null : currentAnnotation?.predicate ?? null,
+      object: cellRole === 'object' ? null : currentAnnotation?.object ?? null,
+    }
+
     return buildCellBatchPreview({
       cells,
       documentElements,
-      offset: objectOffset,
-      subject: currentAnnotation?.subject ?? null,
-      predicate: currentAnnotation?.predicate ?? null,
+      cellRole,
+      fixed,
+      extraction,
       existingAnnotations: documentAnnotations,
       newId: uuidv4,
     })
-  }, [batchMode, cells, documentElements, objectOffset, currentAnnotation, documentAnnotations])
+  }, [batchMode, cells, documentElements, cellRole, extraction, currentAnnotation, documentAnnotations])
 
   const createBatch = useCallback(async (documentId: string) => {
     if (!preview || preview.createCount === 0 || creating) {
       return
     }
 
-    const subject = currentAnnotation?.subject
-    const predicate = currentAnnotation?.predicate
-    if (!subject || !predicate) {
+    const slots = {
+      subject: currentAnnotation?.subject ?? null,
+      predicate: currentAnnotation?.predicate ?? null,
+      object: currentAnnotation?.object ?? null,
+    }
+    if (CONSTANT_ROLES[cellRole].some(role => !slots[role])) {
       return
+    }
+
+    const buildItem = (chosenComp: DocumentAnnotationComponent): BatchAnnotationItem => {
+      const subjectComp = cellRole === 'subject' ? chosenComp : slots.subject!
+      const predicateComp = cellRole === 'predicate' ? chosenComp : slots.predicate!
+      const objectComp = cellRole === 'object' ? chosenComp : slots.object!
+      return {
+        subject: subjectComp,
+        subjectEntity: cellRole === 'subject' ? null : createEntityFromComponent(subjectComp),
+        predicate: predicateComp,
+        predicateEntity: cellRole === 'predicate' ? null : createEntityFromComponent(predicateComp),
+        object: objectComp,
+        objectEntity: cellRole === 'object' ? null : createEntityFromComponent(objectComp),
+      }
     }
 
     setCreating(true)
     try {
-      const subjectEntity: Entity = createEntityFromComponent(subject)
-      const predicateEntity: Entity = createEntityFromComponent(predicate)
       const items = preview.rows
-        .filter(row => row.status === 'create' && row.object)
-        .map(row => ({
-          subject,
-          subjectEntity,
-          predicate,
-          predicateEntity,
-          object: row.object!,
-        }))
+        .filter(row => row.status === 'create' && row.component)
+        .map(row => buildItem(row.component!))
 
       const createdIds = await addAnnotations(documentId, items)
       const refreshed = await getAnnotations(documentId)
@@ -482,7 +501,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
     } finally {
       setCreating(false)
     }
-  }, [preview, creating, currentAnnotation, exitBatchMode, setCurrentAnnotation, setDocumentAnnotations])
+  }, [cellRole, preview, creating, currentAnnotation, exitBatchMode, setCurrentAnnotation, setDocumentAnnotations])
 
   useEffect(() => {
     if (!dragging) {
@@ -649,9 +668,11 @@ export function useCellBatch(options: UseCellBatchOptions) {
     selectedKeys,
     dragging,
     batchMode,
+    cellRole,
+    setCellRole,
     capturedOffset,
-    objectOffset,
-    setObjectOffset,
+    extraction,
+    setExtraction,
     creating,
     preview,
     chipRect,

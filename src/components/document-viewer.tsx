@@ -22,6 +22,7 @@ import { useDocumentElements } from '@/hooks/useDocumentElements'
 import { useSelectionHandlers } from '@/hooks/useSelectionState'
 import { useWikibaseInstance } from '@/hooks/useWikibaseInstance'
 import { getAnnotationComponents } from '@/lib/annotation-roles'
+import { CONSTANT_ROLES } from '@/lib/cell-batch'
 import { isConstraintWarningsEnabled, isPredicateFilteringEnabled } from '@/lib/corpus-settings'
 import { annotationComponentsShareSegment, cn } from '@/lib/utils'
 import { AnnotationForm } from './annotation-form'
@@ -201,8 +202,14 @@ export function DocumentViewer({
     return { elementIndex, col: tableSelection.cellIndex }
   }, [readOnly, popover.popoverState, selection, documentElements])
 
-  const batchOffsetExample = useMemo(() => {
-    if (!cellBatch.batchMode || !cellBatch.objectOffset || cellBatch.cells.length === 0) {
+  const batchHasFixed = {
+    subject: Boolean(currentAnnotation?.subject),
+    predicate: Boolean(currentAnnotation?.predicate),
+    object: Boolean(currentAnnotation?.object),
+  }
+
+  const batchCapturedText = useMemo(() => {
+    if (!cellBatch.capturedOffset || cellBatch.cells.length === 0) {
       return null
     }
     const first = cellBatch.cells[0]
@@ -215,9 +222,9 @@ export function DocumentViewer({
     if (typeof text !== 'string') {
       return null
     }
-    const sliced = text.slice(cellBatch.objectOffset.start, cellBatch.objectOffset.end).trim()
+    const sliced = text.slice(cellBatch.capturedOffset.start, cellBatch.capturedOffset.end).trim()
     return sliced.length > 0 ? sliced : null
-  }, [cellBatch.batchMode, cellBatch.objectOffset, cellBatch.cells, documentElements])
+  }, [cellBatch.capturedOffset, cellBatch.cells, documentElements])
 
   const handleQualifierSelectionAssociation = useCallback(
     (side: QualifierSide) => {
@@ -501,9 +508,10 @@ export function DocumentViewer({
               onActiveQualifierChange={setActiveQualifierId}
               batchMode={cellBatch.batchMode}
               batchCreating={cellBatch.creating}
+              batchCellRole={cellBatch.cellRole}
+              batchCellsCount={cellBatch.cells.length}
               batchReady={Boolean(
-                currentAnnotation?.subject
-                && currentAnnotation?.predicate
+                CONSTANT_ROLES[cellBatch.cellRole].every(role => currentAnnotation?.[role])
                 && (cellBatch.preview?.createCount ?? 0) > 0,
               )}
               batchSummary={cellBatch.preview
@@ -515,14 +523,13 @@ export function DocumentViewer({
                     <ColumnBatchPanel
                       preview={cellBatch.preview}
                       cellsCount={cellBatch.cells.length}
-                      capturedOffset={cellBatch.capturedOffset}
-                      objectOffset={cellBatch.objectOffset}
-                      onObjectOffsetChange={cellBatch.setObjectOffset}
-                      offsetExample={batchOffsetExample}
-                      hasSubject={Boolean(currentAnnotation?.subject)}
-                      hasPredicate={Boolean(currentAnnotation?.predicate)}
+                      cellRole={cellBatch.cellRole}
+                      onCellRoleChange={cellBatch.setCellRole}
+                      extraction={cellBatch.extraction}
+                      onExtractionChange={cellBatch.setExtraction}
+                      capturedText={batchCapturedText}
+                      hasFixed={batchHasFixed}
                       creating={cellBatch.creating}
-                      onExit={cellBatch.exitBatchMode}
                       onCreate={() => document && cellBatch.createBatch(document.id)}
                     />
                   )

@@ -296,6 +296,7 @@ export type BatchAnnotationItem = {
   predicate: AnnotationComponent
   predicateEntity: Entity | null
   object: AnnotationComponent
+  objectEntity: Entity | null
 }
 
 export async function addAnnotations(
@@ -325,7 +326,7 @@ export async function addAnnotations(
       const [subjectId, predicateId, objectId] = await Promise.all([
         upsertAnnotationComponent(item.subject, item.subjectEntity, doc.corpusId, undefined, trx),
         upsertAnnotationComponent(item.predicate, item.predicateEntity, doc.corpusId, undefined, trx),
-        upsertAnnotationComponent(item.object, null, doc.corpusId, undefined, trx),
+        upsertAnnotationComponent(item.object, item.objectEntity, doc.corpusId, undefined, trx),
       ])
 
       const [createdAnnotation] = await trx.insert(annotation).values({

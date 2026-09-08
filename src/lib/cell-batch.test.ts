@@ -159,16 +159,18 @@ describe('buildCellBatchPreview', () => {
   })
   const cells = columnCellRefs(0, tableElement.value as string[][], 0)
 
-  it('creates one object per non-empty cell and skips empties', () => {
-    const preview = buildCellBatchPreview({
-      cells,
-      documentElements: [tableElement],
-      offset: null,
-      subject,
-      predicate,
-      existingAnnotations: [],
-      newId,
-    })
+  const baseInput = {
+    cells,
+    documentElements: [tableElement],
+    cellRole: 'object' as const,
+    fixed: { subject, predicate, object: null },
+    extraction: null,
+    existingAnnotations: [] as DocumentAnnotation[],
+    newId,
+  }
+
+  it('creates one component per non-empty cell and skips empties', () => {
+    const preview = buildCellBatchPreview(baseInput)
 
     expect(preview.createCount).toBe(2)
     expect(preview.emptyCount).toBe(1)
@@ -176,29 +178,77 @@ describe('buildCellBatchPreview', () => {
 
     const [first, skipped, second] = preview.rows
     expect(first.status).toBe('create')
-    expect(first.object?.annotationValue).toBe('Ada Lovelace')
-    expect(first.object?.annotationRow).toBe(1)
-    expect(first.object?.annotationCell).toBe(0)
-    expect(first.object?.annotationType).toBe('table')
-    expect(first.object?.annotationTag).toBe('object')
+    expect(first.component?.annotationValue).toBe('Ada Lovelace')
+    expect(first.component?.annotationRow).toBe(1)
+    expect(first.component?.annotationCell).toBe(0)
+    expect(first.component?.annotationType).toBe('table')
+    expect(first.component?.annotationTag).toBe('object')
     expect(skipped.status).toBe('empty')
-    expect(skipped.object).toBeNull()
-    expect(second.object?.annotationValue).toBe('Alan Turing')
+    expect(skipped.component).toBeNull()
+    expect(second.component?.annotationValue).toBe('Alan Turing')
   })
 
   it('applies the same relative offset to every row', () => {
     const preview = buildCellBatchPreview({
-      cells,
-      documentElements: [tableElement],
-      offset: { start: 0, end: 4 },
-      subject,
-      predicate,
-      existingAnnotations: [],
-      newId,
+      ...baseInput,
+      extraction: { type: 'fixed', offset: { start: 0, end: 4 } },
     })
 
-    expect(preview.rows[0].object?.annotationValue).toBe('Ada')
-    expect(preview.rows[2].object?.annotationValue).toBe('Alan')
+    expect(preview.rows[0].component?.annotationValue).toBe('Ada')
+    expect(preview.rows[2].component?.annotationValue).toBe('Alan')
+  })
+
+  it('matches a typed text pattern per row via first occurrence', () => {
+    const preview = buildCellBatchPreview({
+      ...baseInput,
+      extraction: { type: 'pattern', text: 'Ada' },
+    })
+
+    expect(preview.rows[0].component?.annotationValue).toBe('Ada')
+    expect(preview.rows[2].status).toBe('empty')
+  })
+
+  it('marks rows empty when the pattern is not found in a cell', () => {
+    const preview = buildCellBatchPreview({
+      ...baseInput,
+      extraction: { type: 'pattern', text: 'Alan' },
+    })
+
+    expect(preview.rows[0].status).toBe('empty')
+    expect(preview.rows[2].status).toBe('create')
+  })
+
+  it('fills the subject slot instead when the cells are the subject', () => {
+    const preview = buildCellBatchPreview({
+      ...baseInput,
+      cellRole: 'subject',
+      fixed: { subject: null, predicate, object: predicate },
+    })
+
+    const first = preview.rows[0]
+    expect(first.component?.annotationTag).toBe('subject')
+    expect(first.status).toBe('create')
+  })
+
+  it('marks all rows empty when a constant slot is missing', () => {
+    const preview = buildCellBatchPreview({
+      ...baseInput,
+      fixed: { subject: null, predicate, object: null },
+    })
+
+    expect(preview.emptyCount).toBe(3)
+    expect(preview.createCount).toBe(0)
+  })
+
+  it('marks all rows empty when the cells are the subject and subject constants are required', () => {
+    const preview = buildCellBatchPreview({
+      ...baseInput,
+      cellRole: 'subject',
+      fixed: { subject: null, predicate: null, object: predicate },
+    })
+
+    expect(preview.emptyCount).toBe(3)
+    expect(preview.createCount).toBe(0)
   })
 
   it('flags rows identical to an existing annotation as duplicates', () => {
@@ -218,13 +268,8 @@ describe('buildCellBatchPreview', () => {
     })
 
     const preview = buildCellBatchPreview({
-      cells,
-      documentElements: [tableElement],
-      offset: null,
-      subject,
-      predicate,
+      ...baseInput,
       existingAnnotations: [existing],
-      newId,
     })
 
     expect(preview.duplicateCount).toBe(1)
@@ -250,42 +295,17 @@ describe('buildCellBatchPreview', () => {
     existing.subject = { ...existing.subject, entityValue: 'Q5' }
 
     const preview = buildCellBatchPreview({
-      cells,
-      documentElements: [tableElement],
-      offset: null,
-      subject,
-      predicate,
+      ...baseInput,
       existingAnnotations: [existing],
-      newId,
     })
 
     expect(preview.rows[0].status).toBe('duplicate')
   })
 
-  it('marks all rows empty when subject or predicate is missing', () => {
-    const preview = buildCellBatchPreview({
-      cells,
-      documentElements: [tableElement],
-      offset: null,
-      subject: null,
-      predicate,
-      existingAnnotations: [],
-      newId,
-    })
-
-    expect(preview.emptyCount).toBe(3)
-    expect(preview.createCount).toBe(0)
-  })
-
   it('marks rows empty when the cell is outside the table', () => {
     const preview = buildCellBatchPreview({
+      ...baseInput,
       cells: [{ elementIndex: 0, row: 10, col: 0 }],
-      documentElements: [tableElement],
-      offset: null,
-      subject,
-      predicate,
-      existingAnnotations: [],
-      newId,
     })
 
     expect(preview.emptyCount).toBe(1)

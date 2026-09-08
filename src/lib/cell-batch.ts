@@ -2,6 +2,7 @@ import type {
   DocumentAnnotation,
   DocumentAnnotationComponent,
   DocumentElement,
+  EntityType,
 } from '@/types/types'
 
 export type CellBatchCellRef = {
@@ -15,12 +16,16 @@ export type CellBatchOffset = {
   end: number
 }
 
+export type CellExtraction
+  = | { type: 'fixed', offset: CellBatchOffset }
+    | { type: 'pattern', text: string }
+
 export type CellBatchRowStatus = 'create' | 'duplicate' | 'empty'
 
 export type CellBatchPreviewRow = {
   cell: CellBatchCellRef
   status: CellBatchRowStatus
-  object: DocumentAnnotationComponent | null
+  component: DocumentAnnotationComponent | null
 }
 
 export type CellBatchPreview = {
@@ -32,12 +37,25 @@ export type CellBatchPreview = {
 
 export type CellBatchElement = DocumentElement & { type?: 'text' | 'table' }
 
+export type CellBatchFixedSlots = {
+  subject: DocumentAnnotationComponent | null
+  predicate: DocumentAnnotationComponent | null
+  object: DocumentAnnotationComponent | null
+}
+
+// The roles that stay constant when the selected cells fill `cellRole`.
+export const CONSTANT_ROLES: Record<EntityType, [EntityType, EntityType]> = {
+  subject: ['predicate', 'object'],
+  predicate: ['subject', 'object'],
+  object: ['subject', 'predicate'],
+}
+
 export type CellBatchPreviewInput = {
   cells: CellBatchCellRef[]
   documentElements: CellBatchElement[]
-  offset: CellBatchOffset | null
-  subject: DocumentAnnotationComponent | null
-  predicate: DocumentAnnotationComponent | null
+  cellRole: EntityType
+  fixed: CellBatchFixedSlots
+  extraction: CellExtraction | null
   existingAnnotations: DocumentAnnotation[]
   newId: () => string
 }
@@ -135,22 +153,45 @@ function componentShapeMatches(
   )
 }
 
+// Returns null when there is no extraction (entire cell semantics) and
+// undefined when the extraction failed for this cell (skip the cell).
+function offsetForCell(cellText: string, extraction: CellExtraction | null): CellBatchOffset | null | undefined {
+  if (!extraction) {
+    return null
+  }
+  if (extraction.type === 'fixed') {
+    return extraction.offset
+  }
+  const index = cellText.indexOf(extraction.text)
+  if (index === -1 || extraction.text.length === 0) {
+    return undefined
+  }
+  return { start: index, end: index + extraction.text.length }
+}
+
 export function buildCellBatchPreview(input: CellBatchPreviewInput): CellBatchPreview {
-  const { cells, documentElements, offset, subject, predicate, existingAnnotations, newId } = input
+  const { cells, documentElements, cellRole, fixed, extraction, existingAnnotations, newId } = input
   const rows: CellBatchPreviewRow[] = []
+  const fixedIncomplete = CONSTANT_ROLES[cellRole].some(role => !fixed[role])
 
   for (const cell of dedupeCellRefs(cells)) {
     const element = documentElements[cell.elementIndex]
     const tableData = element?.type === 'table' ? element.value as string[][] : undefined
     const cellText = tableData?.[cell.row]?.[cell.col]
-    const sliced = typeof cellText === 'string' ? sliceCellObject(cellText, offset) : null
+    let sliced: { start: number, end: number, value: string } | null = null
+    if (typeof cellText === 'string') {
+      const offset = offsetForCell(cellText, extraction)
+      if (offset !== undefined) {
+        sliced = sliceCellObject(cellText, offset)
+      }
+    }
 
-    if (!sliced || !subject || !predicate) {
-      rows.push({ cell, status: 'empty', object: null })
+    if (fixedIncomplete || !sliced) {
+      rows.push({ cell, status: 'empty', component: null })
       continue
     }
 
-    const object: DocumentAnnotationComponent = {
+    const component: DocumentAnnotationComponent = {
       id: newId(),
       entityLabel: null,
       entityValue: null,
@@ -163,17 +204,18 @@ export function buildCellBatchPreview(input: CellBatchPreviewInput): CellBatchPr
       annotationCell: cell.col,
       annotationValue: sliced.value,
       annotationType: 'table',
-      annotationTag: 'object',
+      annotationTag: cellRole,
       elementIndex: cell.elementIndex,
     }
 
+    const slots: CellBatchFixedSlots = { ...fixed, [cellRole]: component }
     const duplicate = existingAnnotations.some(annotation =>
-      componentShapeMatches(subject, annotation.subject)
-      && componentShapeMatches(predicate, annotation.predicate)
-      && componentShapeMatches(object, annotation.object),
+      componentShapeMatches(slots.subject, annotation.subject)
+      && componentShapeMatches(slots.predicate, annotation.predicate)
+      && componentShapeMatches(slots.object, annotation.object),
     )
 
-    rows.push({ cell, status: duplicate ? 'duplicate' : 'create', object })
+    rows.push({ cell, status: duplicate ? 'duplicate' : 'create', component })
   }
 
   return {
