@@ -186,8 +186,8 @@ function CellsSlotIndicator({
           type="button"
           tabIndex={-1}
           className={cn(
-            'flex h-9 w-full items-center gap-1.5 rounded-md border border-dashed px-1.5 text-sm font-medium transition-opacity',
-            !disabled && 'cursor-pointer',
+            'flex h-9 w-full items-center gap-1.5 rounded-md border border-dashed px-1.5 text-sm font-medium transition-all',
+            !disabled && 'cursor-pointer hover:brightness-105',
             disabled && 'cursor-not-allowed opacity-60',
             ROLE_SOFT[slotRole],
           )}
