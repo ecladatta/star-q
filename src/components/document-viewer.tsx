@@ -273,6 +273,20 @@ export function DocumentViewer({
     }
   }
 
+  const scrollToSelectedCells = useCallback(() => {
+    const selected = cellBatch.cells
+    if (selected.length === 0) {
+      return
+    }
+    const middle = selected[Math.floor(selected.length / 2)]
+    const element = window.document.getElementById(`element-${middle.elementIndex}`)?.querySelector<HTMLElement>(
+      `[data-cell="${middle.row}-${middle.col}"]`,
+    )
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }, [cellBatch])
+
   const scrollToAnnotationComponent = (component: DocumentAnnotationComponent) => {
     const element = window.document.getElementById(
       `element-${component.elementIndex}`,
@@ -525,6 +539,7 @@ export function DocumentViewer({
                   ? `Create ${cellBatch.preview.createCount} annotation${cellBatch.preview.createCount === 1 ? '' : 's'}`
                   : null}
               onBatchExit={cellBatch.exitBatchMode}
+              scrollToCells={scrollToSelectedCells}
             />
           )}
 

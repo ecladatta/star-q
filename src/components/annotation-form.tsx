@@ -15,7 +15,6 @@ import {
   ChevronRightIcon,
   CopyIcon,
   EllipsisIcon,
-  LayersIcon,
   Loader2Icon,
   PlusIcon,
   SaveIcon,
@@ -111,6 +110,7 @@ type AnnotationFormProps = {
   batchCellRole?: EntityType
   batchCellsCount?: number
   onBatchCellRoleChange?: (role: EntityType) => void
+  scrollToCells?: () => void
   onBatchExit?: () => void
 }
 
@@ -172,54 +172,63 @@ function CellsSlotIndicator({
   slotRole,
   count,
   onRoleChange,
+  onScrollToCells,
   disabled = false,
 }: {
   slotRole: EntityType
   count: number
   onRoleChange?: (role: EntityType) => void
+  onScrollToCells?: () => void
   disabled?: boolean
 }) {
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild disabled={disabled}>
-        <button
-          type="button"
-          tabIndex={-1}
-          className={cn(
-            'flex h-9 w-full items-center gap-1.5 rounded-md border border-dashed px-1.5 text-sm font-medium transition-all',
-            !disabled && 'cursor-pointer hover:brightness-105',
-            disabled && 'cursor-not-allowed opacity-60',
-            ROLE_SOFT[slotRole],
-          )}
-          aria-label={`Selected cells fill the ${ROLE_LABEL[slotRole].toLowerCase()} slot. Click to change.`}
-        >
-          <LayersIcon className="size-3.5 shrink-0" />
-          <span className="truncate">
-            {count}
-            {' '}
-            cell
-            {count === 1 ? '' : 's'}
-          </span>
-          <EllipsisIcon className="ml-auto size-3.5 shrink-0" />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-44">
-        {(['subject', 'predicate', 'object'] as EntityType[]).map(type => (
-          <DropdownMenuItem
-            key={type}
-            className="justify-between"
-            onClick={() => onRoleChange?.(type)}
+    <div
+      className={cn(
+        'flex h-9 w-full items-center gap-1 rounded-md border border-dashed pl-1.5',
+        ROLE_SOFT[slotRole],
+      )}
+    >
+      <button
+        type="button"
+        tabIndex={-1}
+        className="cursor-pointer truncate text-sm"
+        onClick={onScrollToCells}
+        aria-label={`Scroll to the selected cells, which fill the ${ROLE_LABEL[slotRole].toLowerCase()} slot`}
+      >
+        {count}
+        {' '}
+        cell
+        {count === 1 ? '' : 's'}
+      </button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild disabled={disabled}>
+          <button
+            type="button"
+            tabIndex={-1}
+            className="-m-1 ml-auto cursor-pointer rounded-sm p-2 hover:bg-foreground/10"
+            aria-label="Change slot"
           >
-            Fill
-            {' '}
-            {ROLE_LABEL[type].toLowerCase()}
-            {' '}
-            slot
-            {slotRole === type && <CheckIcon className="size-3.5" />}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+            <EllipsisIcon className="block size-3.5" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-44">
+          {(['subject', 'predicate', 'object'] as EntityType[]).map(type => (
+            <DropdownMenuItem
+              key={type}
+              className="justify-between"
+              onClick={() => onRoleChange?.(type)}
+            >
+              Fill
+              {' '}
+              {ROLE_LABEL[type].toLowerCase()}
+              {' '}
+              slot
+              {slotRole === type && <CheckIcon className="size-3.5" />}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   )
 }
 
@@ -246,6 +255,7 @@ export function AnnotationForm({
   batchCellRole,
   batchCellsCount,
   onBatchCellRoleChange,
+  scrollToCells,
   onBatchExit,
 }: AnnotationFormProps) {
   const subjectTag = currentAnnotation?.subject
@@ -1023,7 +1033,7 @@ export function AnnotationForm({
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div>
               {batchMode && batchCellRole === 'subject'
-                ? <CellsSlotIndicator slotRole="subject" count={batchCellsCount ?? 0} onRoleChange={onBatchCellRoleChange} disabled={batchCreating} />
+                ? <CellsSlotIndicator slotRole="subject" count={batchCellsCount ?? 0} onRoleChange={onBatchCellRoleChange} onScrollToCells={scrollToCells} disabled={batchCreating} />
                 : (
                     <>
                       <div
@@ -1080,7 +1090,7 @@ export function AnnotationForm({
             </div>
             <div>
               {batchMode && batchCellRole === 'predicate'
-                ? <CellsSlotIndicator slotRole="predicate" count={batchCellsCount ?? 0} onRoleChange={onBatchCellRoleChange} disabled={batchCreating} />
+                ? <CellsSlotIndicator slotRole="predicate" count={batchCellsCount ?? 0} onRoleChange={onBatchCellRoleChange} onScrollToCells={scrollToCells} disabled={batchCreating} />
                 : (
                     <>
                       <div
@@ -1156,7 +1166,7 @@ export function AnnotationForm({
             </div>
             <div>
               {batchMode && batchCellRole === 'object'
-                ? <CellsSlotIndicator slotRole="object" count={batchCellsCount ?? 0} onRoleChange={onBatchCellRoleChange} disabled={batchCreating} />
+                ? <CellsSlotIndicator slotRole="object" count={batchCellsCount ?? 0} onRoleChange={onBatchCellRoleChange} onScrollToCells={scrollToCells} disabled={batchCreating} />
                 : (
                     <>
                       <div
