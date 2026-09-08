@@ -1,7 +1,7 @@
 'use client'
 import type { CellBatchPreview } from '@/lib/cell-batch'
 import type { EntityType } from '@/types/types'
-import { CheckIcon, CopyIcon, LayersIcon, Loader2Icon, TextCursorInputIcon } from 'lucide-react'
+import { CheckIcon, LayersIcon, Loader2Icon, TextCursorInputIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { CONSTANT_ROLES } from '@/lib/cell-batch'
 import { cn } from '@/lib/utils'
@@ -43,9 +43,6 @@ export function ColumnBatchPanel({
 
   const missingRoles = constantRoles.filter(role => !hasFixed[role])
   const missingLabel = missingRoles.map(role => ROLE_LABEL[role].toLowerCase()).join(' and ')
-
-  const visibleRows = (preview?.rows.filter(row => row.status !== 'empty') ?? []).slice(0, 5)
-  const hiddenRowCount = (preview?.rows.filter(row => row.status !== 'empty').length ?? 0) - visibleRows.length
 
   return (
     <div className="rounded-lg border bg-muted/30 p-3">
@@ -99,37 +96,6 @@ export function ColumnBatchPanel({
           </button>
         ))}
       </div>
-
-      {visibleRows.length > 0 && (
-        <div className="mt-2 max-h-28 overflow-y-auto rounded-md border bg-background">
-          {visibleRows.map(row => (
-            <div
-              key={`${row.cell.elementIndex}:${row.cell.row}:${row.cell.col}`}
-              className="flex items-center gap-1.5 border-b px-2 py-1.5 text-xs last:border-b-0"
-            >
-              {row.status === 'create'
-                ? <CheckIcon className="size-3.5 shrink-0 text-success" />
-                : <CopyIcon className="size-3.5 shrink-0 text-amber-600" />}
-              <span className="min-w-0 truncate">
-                {row.component?.annotationValue}
-              </span>
-              {row.status === 'duplicate' && (
-                <span className="ml-auto shrink-0 text-[10px] font-medium text-amber-600">
-                  already exists
-                </span>
-              )}
-            </div>
-          ))}
-          {hiddenRowCount > 0 && (
-            <div className="px-2 py-1.5 text-center text-xs text-muted-foreground">
-              +
-              {hiddenRowCount}
-              {' '}
-              more
-            </div>
-          )}
-        </div>
-      )}
 
       <Button
         className="mt-2 w-full bg-success text-success-foreground hover:bg-success/90"
