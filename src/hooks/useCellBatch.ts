@@ -22,7 +22,7 @@ import {
 } from '@/lib/cell-batch'
 import { clearBrowserSelection } from './useSelectionState'
 
-type ChipRect = {
+type AnchorRect = {
   top: number
   left: number
   width: number
@@ -60,7 +60,7 @@ function computeAutoScrollRate(distance: number): number {
   return Math.round((1 - clamped / AUTO_SCROLL_EDGE) * AUTO_SCROLL_MAX_RATE)
 }
 
-function getChipRectForCells(cells: CellBatchCellRef[]): ChipRect | null {
+function getAnchorRectForCells(cells: CellBatchCellRef[]): AnchorRect | null {
   let top = Number.POSITIVE_INFINITY
   let left = Number.POSITIVE_INFINITY
   let right = Number.NEGATIVE_INFINITY
@@ -106,7 +106,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
   const [batchMode, setBatchMode] = useState(false)
   const [cellRole, setCellRole] = useState<EntityType>('object')
   const [creating, setCreating] = useState(false)
-  const [chipRect, setChipRect] = useState<ChipRect | null>(null)
+  const [anchorRect, setAnchorRect] = useState<AnchorRect | null>(null)
 
   const anchorRef = useRef<CellBatchCellRef | null>(null)
   const dragRef = useRef<{ origin: CellBatchCellRef, focus: CellBatchCellRef | null, active: boolean } | null>(null)
@@ -139,7 +139,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
 
   const commitCells = useCallback((next: CellBatchCellRef[]) => {
     setCells(next)
-    setChipRect(dragRef.current?.active || next.length < 2 ? null : getChipRectForCells(next))
+    setAnchorRect(dragRef.current?.active || next.length < 2 ? null : getAnchorRectForCells(next))
   }, [])
 
   const clearCells = useCallback(() => {
@@ -211,12 +211,14 @@ export function useCellBatch(options: UseCellBatchOptions) {
     const anchor = anchorRef.current
     if (event.shiftKey && anchor && anchor.elementIndex === cell.elementIndex) {
       event.preventDefault()
+      popover.hidePopover()
       extendRect(anchor, cell)
       return
     }
 
     if (event.ctrlKey || event.metaKey) {
       event.preventDefault()
+      popover.hidePopover()
       modifierClickRef.current = true
       toggleCell(cell)
       return
@@ -225,8 +227,8 @@ export function useCellBatch(options: UseCellBatchOptions) {
     dragRef.current = { origin: cell, focus: null, active: false }
     pointerRef.current = null
     viewportRef.current = null
-    setChipRect(null)
-  }, [extendRect, toggleCell])
+    setAnchorRect(null)
+  }, [extendRect, toggleCell, popover])
 
   const handleCellDragOver = useCallback((cell: CellBatchCellRef) => {
     const drag = dragRef.current
@@ -249,9 +251,10 @@ export function useCellBatch(options: UseCellBatchOptions) {
       setDragging(true)
       viewportRef.current = findViewportForOrigin(drag.origin)
       clearBrowserSelection()
+      popover.hidePopover()
     }
     extendRect(drag.origin, cell)
-  }, [extendRect])
+  }, [extendRect, popover])
 
   const handleCellMouseUp = useCallback((): boolean => {
     const drag = dragRef.current
@@ -260,7 +263,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
     if (drag?.active) {
       anchorRef.current = drag.origin
       setDragging(false)
-      setChipRect(cells.length >= 2 ? getChipRectForCells(cells) : null)
+      setAnchorRect(cells.length >= 2 ? getAnchorRectForCells(cells) : null)
       return true
     }
 
@@ -598,7 +601,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
       const drag = dragRef.current
       if (drag?.active) {
         anchorRef.current = drag.origin
-        setChipRect(cells.length >= 2 ? getChipRectForCells(cells) : null)
+        setAnchorRect(cells.length >= 2 ? getAnchorRectForCells(cells) : null)
       }
       dragRef.current = null
       setDragging(false)
@@ -655,7 +658,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
     setCellRole,
     creating,
     preview,
-    chipRect,
+    anchorRect,
     openBatchMode,
     exitBatchMode,
     handleCellPointerDown,

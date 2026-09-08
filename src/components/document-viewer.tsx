@@ -2,20 +2,19 @@
 import type { ReactNode } from 'react'
 import type { DocumentMetadata } from '@/actions/corpus/corpusActions'
 import type { Corpus, Document } from '@/db/schema'
+import type { PopoverState } from '@/hooks/useSelectionState'
 import type { Offset } from '@/lib/utils'
 import type {
   DocumentAnnotation,
   DocumentAnnotationComponent,
   DocumentData,
+  EntityType,
 } from '@/types/types'
-import { CalendarDays, ListPlusIcon, XIcon } from 'lucide-react'
+import { CalendarDays } from 'lucide-react'
 import Link from 'next/link'
 import { useCallback, useMemo, useState } from 'react'
 import { toast } from 'sonner'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Popover, PopoverContent } from '@/components/ui/popover'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useAnnotationState } from '@/hooks/useAnnotationState'
 import { useAnnotationUrlSync } from '@/hooks/useAnnotationUrlSync'
 import { useDocumentElements } from '@/hooks/useDocumentElements'
@@ -30,7 +29,6 @@ import { AnnotationListPopover } from './annotation-list-popover'
 import { AnnotationsSidebar } from './annotations-sidebar'
 import CombinedElement from './combined-element'
 import { DocumentHeader } from './document-header'
-import { DocumentPopoverAnchor } from './document-popover-anchor'
 import { DocumentSidebar } from './document-sidebar'
 import { ReadOnlyAnnotationDetail } from './readonly-annotation-detail'
 import { SelectionPopover } from './selection-popover'
@@ -200,6 +198,37 @@ export function DocumentViewer({
     }
     return { elementIndex, col: tableSelection.cellIndex }
   }, [readOnly, popover.popoverState, selection, documentElements])
+
+  const anchorPopoverState = useMemo<PopoverState | null>(() => {
+    if (!cellBatch.anchorRect) {
+      return null
+    }
+    return {
+      top: cellBatch.anchorRect.top,
+      left: cellBatch.anchorRect.left,
+      anchorWidth: cellBatch.anchorRect.width,
+      anchorHeight: cellBatch.anchorRect.height,
+      annotation: null,
+      componentId: null,
+      visible: true,
+      annotations: [],
+      mentionData: null,
+    }
+  }, [cellBatch.anchorRect])
+
+  // Role presses on a multi-cell selection mean batch: one annotation per
+  // cell filling the chosen role.
+  const handleCellSelectionAssociation = useCallback((type: EntityType) => {
+    cellBatch.setCellRole(type)
+    cellBatch.openBatchMode()
+  }, [cellBatch])
+
+  const handleCellSelectionAnnotateColumn = useCallback(() => {
+    const first = cellBatch.cells[0]
+    if (first) {
+      cellBatch.handleSelectColumn(first.elementIndex, first.col, false)
+    }
+  }, [cellBatch])
 
   const handleQualifierSelectionAssociation = useCallback(
     (side: QualifierSide) => {
@@ -554,53 +583,23 @@ export function DocumentViewer({
             />
           )}
 
-          {/* Floating chip for multi-cell selections */}
-          {!readOnly && cellBatch.chipRect && !cellBatch.batchMode && !cellBatch.dragging && (
-            <Popover open={true}>
-              <DocumentPopoverAnchor
-                top={cellBatch.chipRect.top}
-                left={cellBatch.chipRect.left}
-                width={cellBatch.chipRect.width}
-                height={cellBatch.chipRect.height}
-              />
-              <PopoverContent
-                side="top"
-                sideOffset={6}
-                className="w-auto p-1"
-                onOpenAutoFocus={event => event.preventDefault()}
-                onMouseDown={event => event.stopPropagation()}
-              >
-                <div className="flex items-center gap-1">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-7 gap-1.5 text-xs font-medium"
-                    onClick={() => cellBatch.openBatchMode()}
-                  >
-                    <ListPlusIcon className="size-3.5" />
-                    Annotate
-                    {' '}
-                    {cellBatch.cells.length}
-                    {' '}
-                    cells
-                  </Button>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="size-7"
-                        onClick={cellBatch.clearCells}
-                        aria-label="Clear cell selection"
-                      >
-                        <XIcon className="size-3.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Clear selection (Esc)</TooltipContent>
-                  </Tooltip>
-                </div>
-              </PopoverContent>
-            </Popover>
+          {/* Same fresh-selection popup for multi-cell selections */}
+          {!readOnly
+            && cellBatch.anchorRect
+            && !cellBatch.batchMode
+            && !cellBatch.dragging
+            && anchorPopoverState && (
+            <SelectionPopover
+              popoverState={anchorPopoverState}
+              onClose={cellBatch.clearCells}
+              onDelete={deleteAnnotationById}
+              isDeletingAnnotation={isDeletingAnnotation}
+              onMentionAssociation={handleCellSelectionAssociation}
+              onQualifierSelectionAssociation={() => {}}
+              hasCurrentAnnotation={false}
+              onEditAnnotation={handleEditAnnotation}
+              onAnnotateColumn={handleCellSelectionAnnotateColumn}
+            />
           )}
         </div>
       </main>
