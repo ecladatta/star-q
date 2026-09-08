@@ -14,6 +14,7 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   CopyIcon,
+  EllipsisIcon,
   LayersIcon,
   Loader2Icon,
   PlusIcon,
@@ -199,10 +200,10 @@ function CellsSlotIndicator({
             cell
             {count === 1 ? '' : 's'}
           </span>
-          <ChevronDownIcon className="ml-auto size-3.5 shrink-0" />
+          <EllipsisIcon className="ml-auto size-3.5 shrink-0" />
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-44">
+      <DropdownMenuContent align="end" className="w-44">
         {(['subject', 'predicate', 'object'] as EntityType[]).map(type => (
           <DropdownMenuItem
             key={type}
