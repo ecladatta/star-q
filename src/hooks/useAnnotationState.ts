@@ -21,8 +21,9 @@ import {
   getAnnotationById,
   updateAnnotation,
 } from '@/actions/annotation/annotationActions'
-import { entityTypeForComponentRole, getAnnotationComponents } from '@/lib/annotation-roles'
+import { createEntityFromComponent, getAnnotationComponents } from '@/lib/annotation-roles'
 import { validateAnnotationComponent, validateAnnotationQualifiers, validateAnnotationTriple } from '@/lib/annotation-validation'
+import { useCellBatch } from './useCellBatch'
 import { useKeyboardShortcuts } from './useKeyboardShortcuts'
 import { usePopoverState, useSelectionState } from './useSelectionState'
 
@@ -32,17 +33,6 @@ class AnnotationError extends Error {
   constructor(message: string, public code?: string) {
     super(message)
     this.name = 'AnnotationError'
-  }
-}
-
-function createEntityFromComponent(component: DocumentAnnotationComponent): Entity {
-  return {
-    label: component.entityLabel || '',
-    value: component.entityValue || '',
-    custom: component.entityCustom || false,
-    customId: component.entityCustomId || null,
-    datatype: component.entityDatatype || null,
-    type: entityTypeForComponentRole(component.annotationTag),
   }
 }
 
@@ -253,6 +243,16 @@ export function useAnnotationState(
   useEffect(() => {
     elementsRef.current = documentElements
   }, [documentElements])
+
+  const cellBatch = useCellBatch({
+    documentElements,
+    documentAnnotations,
+    currentAnnotation,
+    setCurrentAnnotation,
+    setDocumentAnnotations,
+    selection,
+    popover,
+  })
 
   const setLoadingState = useCallback((key: keyof typeof loadingStates, value: boolean) => {
     setLoadingStates(prev => ({ ...prev, [key]: value }))
@@ -750,5 +750,6 @@ export function useAnnotationState(
     // Sub-hooks
     selection,
     popover,
+    cellBatch,
   } as const
 }

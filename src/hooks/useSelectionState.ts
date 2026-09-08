@@ -87,7 +87,7 @@ function getDocumentAnchorFromRect(rect: DOMRect | DOMRectReadOnly) {
   }
 }
 
-function clearBrowserSelection() {
+export function clearBrowserSelection() {
   try {
     const selection = window.getSelection()
     if (selection) {

@@ -1,13 +1,14 @@
 'use client'
 import type { Offset } from '@/lib/utils'
 import type { AnnotationComponentRole, CurrentAnnotation, DocumentElement } from '@/types/types'
-import { Check, Copy } from 'lucide-react'
+import { Check, Columns3Icon, Copy } from 'lucide-react'
 import { createElement, useState } from 'react'
 
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { getAnnotationComponents } from '@/lib/annotation-roles'
 import { cn, splitWithOffsets } from '@/lib/utils'
 import Split from './split'
@@ -27,9 +28,14 @@ export type CombinedElementProps = {
   data: { title: string, level?: number }
   handleTextSelection: (index: number, selectionContainer: Element, textSource?: string) => void
   handleTableSelection: (index: number, row: number, cell: number) => void
+  handleTableCellMouseDown?: (index: number, row: number, col: number, event: React.MouseEvent<HTMLElement>) => void
+  handleTableCellDragOver?: (index: number, row: number, col: number) => void
+  handleTableCellMouseUp?: (index: number, row: number, col: number) => void
   handleSplitClick: (split: Offset, anchorRect?: DOMRect) => void
   documentElements: DocumentElement[]
   currentAnnotation: CurrentAnnotation | null
+  selectedCellKeys?: Set<string>
+  onSelectColumn?: (col: number, additive: boolean) => void
   readOnly?: boolean
 }
 
@@ -63,9 +69,14 @@ function CombinedElement({
   data,
   handleTextSelection,
   handleTableSelection,
+  handleTableCellMouseDown,
+  handleTableCellDragOver,
+  handleTableCellMouseUp,
   handleSplitClick,
   documentElements,
   currentAnnotation,
+  selectedCellKeys,
+  onSelectColumn,
   readOnly = false,
 }: CombinedElementProps) {
   const [hoveredCell, setHoveredCell] = useState<{ row: number, cell: number } | null>(null)
@@ -239,18 +250,27 @@ function CombinedElement({
     )
 
     const handleCellMouseUp = (rowIndex: number, cellIndex: number) => {
-      // Small delay to ensure selection state is properly updated
-      setTimeout(() => {
-        const selection = window.getSelection()
+      if (handleTableCellMouseUp) {
+        handleTableCellMouseUp(elementIndex, rowIndex, cellIndex)
+        return
+      }
 
-        if (selection && !selection.isCollapsed && selection.rangeCount > 0) {
-          // There's a text selection - handle it as text selection
-          handleTableSelection(elementIndex, rowIndex, cellIndex)
-        } else {
-          // No text selection - handle as whole cell click
-          handleTableSelection(elementIndex, rowIndex, cellIndex)
-        }
+      // Fallback for consumers that don't compose cell-range selection
+      setTimeout(() => {
+        handleTableSelection(elementIndex, rowIndex, cellIndex)
       }, 50)
+    }
+
+    const handleCellMouseDown = (rowIndex: number, cellIndex: number, event: React.MouseEvent<HTMLElement>) => {
+      handleTableCellMouseDown?.(elementIndex, rowIndex, cellIndex, event)
+    }
+
+    const handleCellDragOver = (rowIndex: number, cellIndex: number) => {
+      handleTableCellDragOver?.(elementIndex, rowIndex, cellIndex)
+    }
+
+    const isCellSelected = (rowIndex: number, cellIndex: number) => {
+      return selectedCellKeys?.has(`${elementIndex}:${rowIndex}:${cellIndex}`) ?? false
     }
 
     // Build the border style based on which components are present
@@ -320,7 +340,7 @@ function CombinedElement({
                         key={cellIndex}
                         role="button"
                         tabIndex={0}
-                        className={cn('relative p-3 font-medium transition-colors duration-200 select-text first:rounded-tl-[11px] last:rounded-tr-[11px]', isHovered ? 'bg-accent/10! ring-1! ring-inset! ring-accent/40!' : 'hover:bg-accent/10! hover:ring-1! hover:ring-inset! hover:ring-accent/40!')}
+                        className={cn('group/head relative p-3 font-medium transition-colors duration-200 select-text first:rounded-tl-[11px] last:rounded-tr-[11px]', isHovered ? 'bg-accent/10! ring-1! ring-inset! ring-accent/40!' : 'hover:bg-accent/10! hover:ring-1! hover:ring-inset! hover:ring-accent/40!')}
                         onMouseEnter={() => setHoveredCell({ row: 0, cell: cellIndex })}
                         onMouseLeave={() => setHoveredCell(null)}
                         {...(!readOnly && { onMouseUp: () => handleCellMouseUp(0, cellIndex) })}
@@ -337,6 +357,26 @@ function CombinedElement({
                             isCurrentAnnotation={split.componentId ? isComponentFromCurrentAnnotation(split.componentId, currentAnnotation) : false}
                           />
                         ))}
+                        {!readOnly && onSelectColumn && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                tabIndex={-1}
+                                className="absolute top-1.5 right-1.5 z-10 rounded-md border bg-background/95 p-1 text-muted-foreground opacity-0 shadow-sm transition-opacity group-hover/head:opacity-100 hover:text-foreground focus-visible:opacity-100"
+                                onMouseDown={event => event.stopPropagation()}
+                                onMouseUp={event => event.stopPropagation()}
+                                onClick={event => onSelectColumn(cellIndex, event.ctrlKey || event.metaKey)}
+                                aria-label={`Annotate column ${cellIndex + 1}`}
+                              >
+                                <Columns3Icon className="size-3.5" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              Annotate this column (one annotation per row). Ctrl/Cmd-click to add another column.
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
                       </TableHead>
                     )
                   })}
@@ -354,6 +394,7 @@ function CombinedElement({
                   {row.map((cellSplits, cellIndex) => {
                     const actualRowIndex = rowIndex + 1
                     const isHovered = hoveredCell?.row === actualRowIndex && hoveredCell?.cell === cellIndex
+                    const isSelected = isCellSelected(actualRowIndex, cellIndex)
 
                     return (
                       <TableCell
@@ -362,10 +403,20 @@ function CombinedElement({
                         key={cellIndex}
                         role="button"
                         tabIndex={0}
-                        className={cn('relative p-3 transition-colors duration-200 select-text', isHovered ? 'bg-accent/10! ring-1! ring-inset! ring-accent/40!' : 'hover:bg-accent/10! hover:ring-1! hover:ring-inset! hover:ring-accent/40!')}
-                        onMouseEnter={() => setHoveredCell({ row: actualRowIndex, cell: cellIndex })}
+                        className={cn(
+                          'relative p-3 transition-colors duration-200 select-text',
+                          isHovered ? 'bg-accent/10! ring-1! ring-inset! ring-accent/40!' : 'hover:bg-accent/10! hover:ring-1! hover:ring-inset! hover:ring-accent/40!',
+                          isSelected && 'bg-accent/15! ring-2! ring-inset! ring-accent/60!',
+                        )}
+                        onMouseEnter={() => {
+                          setHoveredCell({ row: actualRowIndex, cell: cellIndex })
+                          handleCellDragOver(actualRowIndex, cellIndex)
+                        }}
                         onMouseLeave={() => setHoveredCell(null)}
-                        {...(!readOnly && { onMouseUp: () => handleCellMouseUp(actualRowIndex, cellIndex) })}
+                        {...(!readOnly && {
+                          onMouseDown: event => handleCellMouseDown(actualRowIndex, cellIndex, event),
+                          onMouseUp: () => handleCellMouseUp(actualRowIndex, cellIndex),
+                        })}
                         aria-label={`Table cell row ${actualRowIndex + 1}, column ${cellIndex + 1}. Click to annotate this cell.`}
                         title={`Click to annotate cell: ${renderedTableData[actualRowIndex][cellIndex]}`}
                         data-cell={`${actualRowIndex}-${cellIndex}`}

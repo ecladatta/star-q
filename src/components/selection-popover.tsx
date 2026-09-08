@@ -1,6 +1,6 @@
 import type { PopoverState } from '@/hooks/useSelectionState'
 import type { DocumentAnnotation, EntityType } from '@/types/types'
-import { BoxIcon, EditIcon, LinkIcon, Loader2Icon, TextSelectIcon, Trash2Icon, UserIcon } from 'lucide-react'
+import { BoxIcon, Columns3Icon, EditIcon, LinkIcon, Loader2Icon, TextSelectIcon, Trash2Icon, UserIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
@@ -31,6 +31,7 @@ type SelectionPopoverProps = {
   onQualifierSelectionAssociation: (side: QualifierSide) => void
   hasCurrentAnnotation: boolean
   onEditAnnotation: (annotation: DocumentAnnotation) => void
+  onAnnotateColumn?: () => void
 }
 
 export function SelectionPopover({
@@ -42,6 +43,7 @@ export function SelectionPopover({
   onQualifierSelectionAssociation,
   hasCurrentAnnotation,
   onEditAnnotation,
+  onAnnotateColumn,
 }: SelectionPopoverProps) {
   if (!popoverState.visible)
     return null
@@ -188,6 +190,30 @@ export function SelectionPopover({
                 </TooltipContent>
               </Tooltip>
             </div>
+            {onAnnotateColumn && !popoverState.annotation && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="w-full justify-start gap-1.5 text-xs font-medium"
+                    onClick={onAnnotateColumn}
+                  >
+                    <Columns3Icon className="size-3.5" />
+                    <span>
+                      Annotate
+                      {' '}
+                      <u>c</u>
+                      olumn
+                    </span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Create one annotation per non-empty row in this column, using the current selection.
+                </TooltipContent>
+              </Tooltip>
+            )}
             {hasCurrentAnnotation && (
               <div className="grid grid-cols-2 gap-2 border-t border-dashed pt-2">
                 {QUALIFIER_ACTIONS.map(action => (

@@ -290,6 +290,65 @@ export async function addAnnotation(
   return annotationId
 }
 
+export type BatchAnnotationItem = {
+  subject: AnnotationComponent
+  subjectEntity: Entity | null
+  predicate: AnnotationComponent
+  predicateEntity: Entity | null
+  object: AnnotationComponent
+}
+
+export async function addAnnotations(
+  documentId: string,
+  items: BatchAnnotationItem[],
+): Promise<string[]> {
+  if (items.length === 0) {
+    return []
+  }
+
+  const userId = await requireAuth()
+  await requireEditDocument(documentId)
+
+  const [doc] = await db.select({ corpusId: document.corpusId }).from(document).where(eq(document.id, documentId))
+  if (!doc) {
+    throw new Error('Document not found')
+  }
+
+  const createdIds = await db.transaction(async (trx) => {
+    const [existing] = await trx.select({ count: count() }).from(annotation).where(eq(annotation.documentId, documentId))
+    if ((existing?.count ?? 0) + items.length > MAX_ANNOTATIONS_PER_DOCUMENT) {
+      throw new Error(`A document can have at most ${MAX_ANNOTATIONS_PER_DOCUMENT} annotations.`)
+    }
+
+    const ids: string[] = []
+    for (const item of items) {
+      const [subjectId, predicateId, objectId] = await Promise.all([
+        upsertAnnotationComponent(item.subject, item.subjectEntity, doc.corpusId, undefined, trx),
+        upsertAnnotationComponent(item.predicate, item.predicateEntity, doc.corpusId, undefined, trx),
+        upsertAnnotationComponent(item.object, null, doc.corpusId, undefined, trx),
+      ])
+
+      const [createdAnnotation] = await trx.insert(annotation).values({
+        documentId,
+        subjectId,
+        predicateId,
+        objectId,
+        userId,
+      }).returning({ id: annotation.id })
+
+      ids.push(createdAnnotation.id)
+    }
+
+    await trx.update(document).set({ updatedAt: new Date() }).where(eq(document.id, documentId))
+
+    return ids
+  })
+
+  revalidatePath(`/document/${documentId}`)
+
+  return createdIds
+}
+
 export async function updateAnnotation(
   id: string,
   subjectAnnotation: AnnotationComponent,

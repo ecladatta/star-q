@@ -1,4 +1,4 @@
-import type { Dispatch, SetStateAction } from 'react'
+import type { Dispatch, ReactNode, SetStateAction } from 'react'
 import type { PropertyConstraints } from '@/lib/wikidata-constraints'
 import type {
   AnnotationComponentRole,
@@ -95,6 +95,12 @@ type AnnotationFormProps = {
   ) => void
   hasActiveSelection: boolean
   onActiveQualifierChange: (qualifierId: string | null) => void
+  batchMode?: boolean
+  batchReady?: boolean
+  batchSummary?: string | null
+  batchCreating?: boolean
+  batchPanel?: ReactNode
+  onBatchExit?: () => void
 }
 
 function normalizeComponentForDirtyCheck(
@@ -161,6 +167,12 @@ export function AnnotationForm({
   clearQualifierSide,
   hasActiveSelection,
   onActiveQualifierChange,
+  batchMode = false,
+  batchReady = false,
+  batchSummary = null,
+  batchCreating = false,
+  batchPanel,
+  onBatchExit,
 }: AnnotationFormProps) {
   const subjectTag = currentAnnotation?.subject
   const predicateTag = currentAnnotation?.predicate
@@ -237,6 +249,7 @@ export function AnnotationForm({
 
   const hasAnyTags = Boolean(subjectTag || predicateTag || objectTag)
   const hasAllTags = Boolean(subjectTag && predicateTag && objectTag)
+  const docked = hasAnyTags || batchMode
   const qualifiers = useMemo(
     () => currentAnnotation?.qualifiers ?? [],
     [currentAnnotation?.qualifiers],
@@ -693,7 +706,7 @@ export function AnnotationForm({
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault()
         e.stopPropagation()
-        if (hasAllTags && !annotationFormLoading && !isDeletingAnnotation) {
+        if ((hasAllTags || (batchMode && batchReady)) && !annotationFormLoading && !isDeletingAnnotation && !batchCreating) {
           handleSave()
         }
       }
@@ -748,36 +761,43 @@ export function AnnotationForm({
     handleSave,
     currentAnnotation,
     handleCloneAnnotation,
+    batchMode,
+    batchReady,
+    batchCreating,
   ])
 
   return (
     <div
-      inert={!hasAnyTags}
+      inert={!docked}
       className={cn(
         'fixed bottom-0 left-1/2 z-10 w-full max-w-(--breakpoint-md) -translate-x-1/2 transition-transform duration-300 md:w-3/4 lg:w-2/3',
-        hasAnyTags ? 'translate-y-0' : 'translate-y-full',
+        docked ? 'translate-y-0' : 'translate-y-full',
       )}
     >
       <Card
         className={cn(
           'mb-0 w-full rounded-lg border text-left transition-all md:mb-6',
-          currentAnnotation?.id
+          (currentAnnotation?.id || batchMode)
           && 'border-accent ring-1 ring-accent/20',
         )}
       >
         <CardHeader className="flex flex-row pb-4">
           <div>
             <CardTitle>
-              {currentAnnotation?.id
-                ? 'Editing annotation'
-                : 'Finalize your new annotation'}
+              {batchMode
+                ? 'Batch annotation'
+                : currentAnnotation?.id
+                  ? 'Editing annotation'
+                  : 'Finalize your new annotation'}
             </CardTitle>
             <CardDescription>
-              Select entities for each subject, predicate, and object.
+              {batchMode
+                ? 'One annotation will be created for each selected cell, sharing the subject and predicate.'
+                : 'Select entities for each subject, predicate, and object.'}
             </CardDescription>
           </div>
           <div className="ml-auto flex gap-2">
-            {currentAnnotation?.id && (
+            {!batchMode && currentAnnotation?.id && (
               <>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -860,10 +880,12 @@ export function AnnotationForm({
                   className="bg-success text-success-foreground hover:bg-success/90"
                   onClick={handleSave}
                   disabled={
-                    !hasAllTags || annotationFormLoading || isDeletingAnnotation
+                    batchMode
+                      ? !batchReady || batchCreating || annotationFormLoading || isDeletingAnnotation
+                      : !hasAllTags || annotationFormLoading || isDeletingAnnotation
                   }
                 >
-                  {annotationFormLoading
+                  {(batchMode ? batchCreating : annotationFormLoading)
                     ? (
                         <Loader2Icon className="animate-spin" />
                       )
@@ -873,9 +895,11 @@ export function AnnotationForm({
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                Save changes (
-                {saveShortcut}
-                )
+                {batchMode
+                  ? `${batchSummary ?? 'Create annotations'} (${saveShortcut})`
+                  : 'Save changes ('}
+                {!batchMode && saveShortcut}
+                {!batchMode && ')'}
               </TooltipContent>
             </Tooltip>
             <AlertDialog
@@ -886,13 +910,13 @@ export function AnnotationForm({
                 <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
-                    onClick={handleDiscard}
+                    onClick={batchMode && onBatchExit ? onBatchExit : handleDiscard}
                     data-discard-annotation-trigger
                   >
                     ✕
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Discard changes</TooltipContent>
+                <TooltipContent>{batchMode ? 'Exit batch mode' : 'Discard changes'}</TooltipContent>
               </Tooltip>
               <AlertDialogContent>
                 <AlertDialogHeader>
@@ -922,7 +946,7 @@ export function AnnotationForm({
           </div>
         </CardHeader>
         <CardContent className="max-h-[min(70vh,32rem)] overflow-y-auto">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className={cn('grid grid-cols-1 gap-3', batchMode ? 'sm:grid-cols-2' : 'sm:grid-cols-3')}>
             <div>
               <div
                 role="button"
@@ -1028,18 +1052,20 @@ export function AnnotationForm({
                     filteringEnabled={wikidataPredicateFiltering}
                   />
                 </div>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="px-2"
-                      onClick={handleSwapSubjectObject}
-                    >
-                      <ArrowLeftRightIcon className="size-5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Swap subject and object</TooltipContent>
-                </Tooltip>
+                {!batchMode && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="px-2"
+                        onClick={handleSwapSubjectObject}
+                      >
+                        <ArrowLeftRightIcon className="size-5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Swap subject and object</TooltipContent>
+                  </Tooltip>
+                )}
               </div>
             </div>
             <div>
@@ -1091,8 +1117,64 @@ export function AnnotationForm({
                 filteringEnabled={wikidataPredicateFiltering}
               />
             </div>
+            {!batchMode && (
+              <div>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  className="mb-1 flex w-full cursor-pointer items-center justify-between truncate rounded-md bg-object-soft px-2 py-0.5 text-sm font-medium text-object-fg transition-opacity hover:opacity-80"
+                  onClick={() => scrollToElement(objectTag)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      scrollToElement(objectTag)
+                    }
+                  }}
+                >
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="truncate">
+                        {objectTag?.annotationValue ?? '\u00A0'}
+                      </span>
+                    </TooltipTrigger>
+                    {objectTag?.annotationValue && (
+                      <TooltipContent>{objectTag.annotationValue}</TooltipContent>
+                    )}
+                  </Tooltip>
+                  {objectTag && (
+                    <button
+                      type="button"
+                      className="ml-2"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        removeTag('object')
+                      }}
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+                <EntitySelector
+                  type="object"
+                  value={getEntityValue(currentAnnotation?.object, 'object')}
+                  onValueChange={newValue =>
+                    handleEntityChange('object', newValue)}
+                  text={currentAnnotation?.object?.annotationValue ?? ''}
+                  corpusId={corpusId}
+                  constraints={objectConstraintSide ? effectivePredicateConstraints : null}
+                  constraintSide={objectConstraintSide}
+                  constraintPropertyLabel={predicateEntityLabel}
+                  filteringEnabled={wikidataPredicateFiltering}
+                />
+              </div>
+            )}
           </div>
-          {currentAnnotation && (
+          {batchMode && batchPanel && (
+            <div className="pt-3">
+              {batchPanel}
+            </div>
+          )}
+          {!batchMode && currentAnnotation && (
             <div className="pt-3">
               <div
                 className={cn(

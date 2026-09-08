@@ -8,11 +8,14 @@ import type {
   DocumentAnnotationComponent,
   DocumentData,
 } from '@/types/types'
-import { CalendarDays } from 'lucide-react'
+import { CalendarDays, ListPlusIcon, XIcon } from 'lucide-react'
 import Link from 'next/link'
 import { useCallback, useMemo, useState } from 'react'
 import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { Popover, PopoverContent } from '@/components/ui/popover'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useAnnotationState } from '@/hooks/useAnnotationState'
 import { useAnnotationUrlSync } from '@/hooks/useAnnotationUrlSync'
 import { useDocumentElements } from '@/hooks/useDocumentElements'
@@ -24,8 +27,10 @@ import { annotationComponentsShareSegment, cn } from '@/lib/utils'
 import { AnnotationForm } from './annotation-form'
 import { AnnotationListPopover } from './annotation-list-popover'
 import { AnnotationsSidebar } from './annotations-sidebar'
+import { ColumnBatchPanel } from './column-batch-panel'
 import CombinedElement from './combined-element'
 import { DocumentHeader } from './document-header'
+import { DocumentPopoverAnchor } from './document-popover-anchor'
 import { DocumentSidebar } from './document-sidebar'
 import { ReadOnlyAnnotationDetail } from './readonly-annotation-detail'
 import { SelectionPopover } from './selection-popover'
@@ -163,6 +168,7 @@ export function DocumentViewer({
     clearQualifierSide,
     selection,
     popover,
+    cellBatch,
   } = annotationState
 
   const { handleTextSelection, handleTableSelection } = useSelectionHandlers(
@@ -170,6 +176,48 @@ export function DocumentViewer({
     selection,
     popover,
   )
+
+  const handleTableCellMouseUp = useCallback((index: number, row: number, col: number) => {
+    if (cellBatch.handleCellMouseUp()) {
+      return
+    }
+
+    // Small delay to ensure selection state is properly updated
+    setTimeout(handleTableSelection, 50, index, row, col)
+  }, [cellBatch, handleTableSelection])
+
+  const popoverAnnotateColumnTarget = useMemo(() => {
+    if (readOnly || !popover.popoverState.visible || popover.popoverState.annotation) {
+      return null
+    }
+    const elementIndex = selection.currentElementIndex
+    const tableSelection = selection.tableSelection
+    if (elementIndex === null || !tableSelection) {
+      return null
+    }
+    if (documentElements[elementIndex]?.type !== 'table') {
+      return null
+    }
+    return { elementIndex, col: tableSelection.cellIndex }
+  }, [readOnly, popover.popoverState, selection, documentElements])
+
+  const batchOffsetExample = useMemo(() => {
+    if (!cellBatch.batchMode || !cellBatch.objectOffset || cellBatch.cells.length === 0) {
+      return null
+    }
+    const first = cellBatch.cells[0]
+    const element = documentElements[first.elementIndex]
+    if (element?.type !== 'table') {
+      return null
+    }
+    const tableData = element.value as string[][]
+    const text = tableData?.[first.row]?.[first.col]
+    if (typeof text !== 'string') {
+      return null
+    }
+    const sliced = text.slice(cellBatch.objectOffset.start, cellBatch.objectOffset.end).trim()
+    return sliced.length > 0 ? sliced : null
+  }, [cellBatch.batchMode, cellBatch.objectOffset, cellBatch.cells, documentElements])
 
   const handleQualifierSelectionAssociation = useCallback(
     (side: QualifierSide) => {
@@ -275,11 +323,22 @@ export function DocumentViewer({
   const handleAnnotationClick = toggleAnnotation
 
   const handleSaveAnnotation = async () => {
-    if (!document || !currentAnnotation)
+    if (!document) {
       return
+    }
+
+    if (cellBatch.batchMode) {
+      await cellBatch.createBatch(document.id)
+      return
+    }
+
+    if (!currentAnnotation) {
+      return
+    }
     const { subject, predicate, object } = currentAnnotation
-    if (!subject || !predicate || !object)
+    if (!subject || !predicate || !object) {
       return
+    }
     await createAnnotation(document.id, subject, predicate, object)
   }
 
@@ -404,9 +463,17 @@ export function DocumentViewer({
                       {...element}
                       handleSplitClick={handleSplitClick}
                       handleTableSelection={handleTableSelection}
+                      handleTableCellMouseDown={(index, row, col, event) =>
+                        cellBatch.handleCellMouseDown({ elementIndex: index, row, col }, event)}
+                      handleTableCellDragOver={(index, row, col) =>
+                        cellBatch.handleCellDragOver({ elementIndex: index, row, col })}
+                      handleTableCellMouseUp={handleTableCellMouseUp}
                       handleTextSelection={handleTextSelection}
                       documentElements={documentElements}
                       currentAnnotation={currentAnnotation}
+                      selectedCellKeys={cellBatch.selectedKeys}
+                      onSelectColumn={(col, additive) =>
+                        cellBatch.handleSelectColumn(element.elementIndex, col, additive)}
                       readOnly={readOnly}
                     />
                   ))}
@@ -432,6 +499,34 @@ export function DocumentViewer({
               clearQualifierSide={clearQualifierSide}
               hasActiveSelection={selection.hasSelection()}
               onActiveQualifierChange={setActiveQualifierId}
+              batchMode={cellBatch.batchMode}
+              batchCreating={cellBatch.creating}
+              batchReady={Boolean(
+                currentAnnotation?.subject
+                && currentAnnotation?.predicate
+                && (cellBatch.preview?.createCount ?? 0) > 0,
+              )}
+              batchSummary={cellBatch.preview
+                ? `Create ${cellBatch.preview.createCount} annotation${cellBatch.preview.createCount === 1 ? '' : 's'}`
+                : null}
+              onBatchExit={cellBatch.exitBatchMode}
+              batchPanel={cellBatch.batchMode
+                ? (
+                    <ColumnBatchPanel
+                      preview={cellBatch.preview}
+                      cellsCount={cellBatch.cells.length}
+                      capturedOffset={cellBatch.capturedOffset}
+                      objectOffset={cellBatch.objectOffset}
+                      onObjectOffsetChange={cellBatch.setObjectOffset}
+                      offsetExample={batchOffsetExample}
+                      hasSubject={Boolean(currentAnnotation?.subject)}
+                      hasPredicate={Boolean(currentAnnotation?.predicate)}
+                      creating={cellBatch.creating}
+                      onExit={cellBatch.exitBatchMode}
+                      onCreate={() => document && cellBatch.createBatch(document.id)}
+                    />
+                  )
+                : null}
             />
           )}
 
@@ -480,7 +575,63 @@ export function DocumentViewer({
               }
               hasCurrentAnnotation={Boolean(currentAnnotation)}
               onEditAnnotation={handleEditAnnotation}
+              onAnnotateColumn={popoverAnnotateColumnTarget
+                ? () =>
+                    cellBatch.handleAnnotateColumnFromPopover(
+                      popoverAnnotateColumnTarget.elementIndex,
+                      popoverAnnotateColumnTarget.col,
+                    )
+                : undefined}
             />
+          )}
+
+          {/* Floating chip for multi-cell selections */}
+          {!readOnly && cellBatch.chipRect && !cellBatch.batchMode && (
+            <Popover open={true}>
+              <DocumentPopoverAnchor
+                top={cellBatch.chipRect.top}
+                left={cellBatch.chipRect.left}
+                width={cellBatch.chipRect.width}
+                height={cellBatch.chipRect.height}
+              />
+              <PopoverContent
+                side="top"
+                sideOffset={6}
+                className="w-auto p-1"
+                onOpenAutoFocus={event => event.preventDefault()}
+                onMouseDown={event => event.stopPropagation()}
+              >
+                <div className="flex items-center gap-1">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 gap-1.5 text-xs font-medium"
+                    onClick={() => cellBatch.openBatchMode(null)}
+                  >
+                    <ListPlusIcon className="size-3.5" />
+                    Annotate
+                    {' '}
+                    {cellBatch.cells.length}
+                    {' '}
+                    cells
+                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="size-7"
+                        onClick={cellBatch.clearCells}
+                        aria-label="Clear cell selection"
+                      >
+                        <XIcon className="size-3.5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Clear selection (Esc)</TooltipContent>
+                  </Tooltip>
+                </div>
+              </PopoverContent>
+            </Popover>
           )}
         </div>
       </main>
