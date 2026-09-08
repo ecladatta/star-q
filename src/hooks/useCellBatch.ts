@@ -104,7 +104,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
   const [cells, setCells] = useState<CellBatchCellRef[]>([])
   const [dragging, setDragging] = useState(false)
   const [batchMode, setBatchMode] = useState(false)
-  const [cellRole, setCellRole] = useState<EntityType>('object')
+  const [cellRole, setCellRole] = useState<EntityType>('subject')
   const [creating, setCreating] = useState(false)
   const [anchorRect, setAnchorRect] = useState<AnchorRect | null>(null)
 
@@ -152,7 +152,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
 
   const exitBatchMode = useCallback(() => {
     setBatchMode(false)
-    setCellRole('object')
+    setCellRole('subject')
     clearCells()
   }, [clearCells])
 
@@ -390,11 +390,13 @@ export function useCellBatch(options: UseCellBatchOptions) {
     } else {
       selectColumn(elementIndex, col)
     }
+    setCellRole('subject')
     openBatchMode()
   }, [toggleColumn, selectColumn, openBatchMode])
 
   const handleAnnotateColumnFromPopover = useCallback((elementIndex: number, col: number) => {
     selectColumn(elementIndex, col)
+    setCellRole('subject')
     openBatchMode()
     selection.clearSelection()
   }, [openBatchMode, selectColumn, selection])
