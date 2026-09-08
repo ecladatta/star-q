@@ -92,7 +92,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
   const [chipRect, setChipRect] = useState<ChipRect | null>(null)
 
   const anchorRef = useRef<CellBatchCellRef | null>(null)
-  const dragRef = useRef<{ origin: CellBatchCellRef, active: boolean } | null>(null)
+  const dragRef = useRef<{ origin: CellBatchCellRef, focus: CellBatchCellRef | null, active: boolean } | null>(null)
   const modifierClickRef = useRef(false)
   const batchModeRef = useRef(false)
 
@@ -200,22 +200,31 @@ export function useCellBatch(options: UseCellBatchOptions) {
       return
     }
 
-    dragRef.current = { origin: cell, active: false }
+    dragRef.current = { origin: cell, focus: null, active: false }
     setChipRect(null)
   }, [extendRect, toggleCell])
 
   const handleCellDragOver = useCallback((cell: CellBatchCellRef) => {
     const drag = dragRef.current
-    if (!drag || drag.active || cellKey(cell) === cellKey(drag.origin)) {
+    if (!drag) {
+      return
+    }
+    if (cellKey(cell) === cellKey(drag.origin)) {
       return
     }
     if (cell.elementIndex !== drag.origin.elementIndex) {
       return
     }
+    if (drag.focus && cellKey(cell) === cellKey(drag.focus)) {
+      return
+    }
 
-    drag.active = true
-    setDragging(true)
-    clearBrowserSelection()
+    drag.focus = cell
+    if (!drag.active) {
+      drag.active = true
+      setDragging(true)
+      clearBrowserSelection()
+    }
     extendRect(drag.origin, cell)
   }, [extendRect])
 
