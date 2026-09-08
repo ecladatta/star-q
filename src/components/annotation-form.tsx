@@ -1068,55 +1068,6 @@ export function AnnotationForm({
                 )}
               </div>
             </div>
-            <div>
-              <div
-                role="button"
-                tabIndex={0}
-                className="mb-1 flex w-full cursor-pointer items-center justify-between truncate rounded-md bg-object-soft px-2 py-0.5 text-sm font-medium text-object-fg transition-opacity hover:opacity-80"
-                onClick={() => scrollToElement(objectTag)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault()
-                    scrollToElement(objectTag)
-                  }
-                }}
-              >
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="truncate">
-                      {objectTag?.annotationValue ?? '\u00A0'}
-                    </span>
-                  </TooltipTrigger>
-                  {objectTag?.annotationValue && (
-                    <TooltipContent>{objectTag.annotationValue}</TooltipContent>
-                  )}
-                </Tooltip>
-                {objectTag && (
-                  <button
-                    type="button"
-                    className="ml-2"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      removeTag('object')
-                    }}
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-              <EntitySelector
-                type="object"
-                value={getEntityValue(currentAnnotation?.object, 'object')}
-                onValueChange={newValue =>
-                  handleEntityChange('object', newValue)}
-                text={currentAnnotation?.object?.annotationValue ?? ''}
-                corpusId={corpusId}
-                constraints={objectConstraintSide ? effectivePredicateConstraints : null}
-                constraintSide={objectConstraintSide}
-                constraintPropertyLabel={predicateEntityLabel}
-                filteringEnabled={wikidataPredicateFiltering}
-              />
-            </div>
             {!batchMode && (
               <div>
                 <div

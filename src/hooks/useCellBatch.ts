@@ -114,7 +114,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
 
   const commitCells = useCallback((next: CellBatchCellRef[]) => {
     setCells(next)
-    setChipRect(next.length >= 2 ? getChipRectForCells(next) : null)
+    setChipRect(dragRef.current?.active || next.length < 2 ? null : getChipRectForCells(next))
   }, [])
 
   const clearCells = useCallback(() => {
@@ -201,6 +201,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
     }
 
     dragRef.current = { origin: cell, active: false }
+    setChipRect(null)
   }, [extendRect, toggleCell])
 
   const handleCellDragOver = useCallback((cell: CellBatchCellRef) => {
@@ -225,6 +226,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
     if (drag?.active) {
       anchorRef.current = drag.origin
       setDragging(false)
+      setChipRect(cells.length >= 2 ? getChipRectForCells(cells) : null)
       return true
     }
 
@@ -237,7 +239,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
       clearCells()
     }
     return false
-  }, [clearCells])
+  }, [cells, clearCells])
 
   const handleSelectColumn = useCallback((elementIndex: number, col: number, additive: boolean) => {
     if (additive) {
@@ -364,6 +366,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
       const drag = dragRef.current
       if (drag?.active) {
         anchorRef.current = drag.origin
+        setChipRect(cells.length >= 2 ? getChipRectForCells(cells) : null)
       }
       dragRef.current = null
       setDragging(false)
@@ -371,13 +374,14 @@ export function useCellBatch(options: UseCellBatchOptions) {
 
     window.addEventListener('mouseup', handleWindowMouseUp)
     return () => window.removeEventListener('mouseup', handleWindowMouseUp)
-  }, [])
+  }, [cells])
 
   const selectedKeys = useMemo(() => new Set(cells.map(cellKey)), [cells])
 
   return {
     cells,
     selectedKeys,
+    dragging,
     batchMode,
     capturedOffset,
     objectOffset,

@@ -586,7 +586,7 @@ export function DocumentViewer({
           )}
 
           {/* Floating chip for multi-cell selections */}
-          {!readOnly && cellBatch.chipRect && !cellBatch.batchMode && (
+          {!readOnly && cellBatch.chipRect && !cellBatch.batchMode && !cellBatch.dragging && (
             <Popover open={true}>
               <DocumentPopoverAnchor
                 top={cellBatch.chipRect.top}

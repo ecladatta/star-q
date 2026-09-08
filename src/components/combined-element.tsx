@@ -357,13 +357,13 @@ function CombinedElement({
                             isCurrentAnnotation={split.componentId ? isComponentFromCurrentAnnotation(split.componentId, currentAnnotation) : false}
                           />
                         ))}
-                        {!readOnly && onSelectColumn && (
+                        {!readOnly && onSelectColumn && tableData.length > 1 && (
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <button
                                 type="button"
                                 tabIndex={-1}
-                                className="absolute top-1.5 right-1.5 z-10 rounded-md border bg-background/95 p-1 text-muted-foreground opacity-0 shadow-sm transition-opacity group-hover/head:opacity-100 hover:text-foreground focus-visible:opacity-100"
+                                className="absolute top-full right-1 z-20 -translate-y-1/2 rounded-md border bg-background/95 p-1 text-muted-foreground opacity-0 shadow-sm transition-opacity group-hover/head:opacity-100 hover:text-foreground focus-visible:opacity-100"
                                 onMouseDown={event => event.stopPropagation()}
                                 onMouseUp={event => event.stopPropagation()}
                                 onClick={event => onSelectColumn(cellIndex, event.ctrlKey || event.metaKey)}
