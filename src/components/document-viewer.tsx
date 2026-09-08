@@ -463,8 +463,8 @@ export function DocumentViewer({
                       {...element}
                       handleSplitClick={handleSplitClick}
                       handleTableSelection={handleTableSelection}
-                      handleTableCellMouseDown={(index, row, col, event) =>
-                        cellBatch.handleCellMouseDown({ elementIndex: index, row, col }, event)}
+                      handleTableCellPointerDown={(index, row, col, event) =>
+                        cellBatch.handleCellPointerDown({ elementIndex: index, row, col }, event)}
                       handleTableCellDragOver={(index, row, col) =>
                         cellBatch.handleCellDragOver({ elementIndex: index, row, col })}
                       handleTableCellMouseUp={handleTableCellMouseUp}

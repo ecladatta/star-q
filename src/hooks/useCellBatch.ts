@@ -50,6 +50,9 @@ function findViewportForOrigin(origin: CellBatchCellRef): HTMLElement | null {
 const AUTO_SCROLL_EDGE = 48
 const AUTO_SCROLL_MAX_RATE = 16
 
+const TOUCH_LONG_PRESS_MS = 450
+const TOUCH_SLOP = 12
+
 function computeAutoScrollRate(distance: number): number {
   const clamped = Math.max(Math.min(distance, AUTO_SCROLL_EDGE), 0)
   return Math.round((1 - clamped / AUTO_SCROLL_EDGE) * AUTO_SCROLL_MAX_RATE)
@@ -111,6 +114,11 @@ export function useCellBatch(options: UseCellBatchOptions) {
   const pointerRef = useRef<{ x: number, y: number } | null>(null)
   const viewportRef = useRef<HTMLElement | null>(null)
   const autoScrollRafRef = useRef<number | undefined>(undefined)
+  const pendingTouchCleanupRef = useRef<(() => void) | null>(null)
+  const activeTouchCleanupRef = useRef<(() => void) | null>(null)
+  const activeTouchPointerIdRef = useRef<number | null>(null)
+  const touchMoveBlockRef = useRef<((event: TouchEvent) => void) | null>(null)
+  const touchStyledCellRef = useRef<HTMLElement | null>(null)
 
   useEffect(() => {
     batchModeRef.current = batchMode
@@ -268,6 +276,112 @@ export function useCellBatch(options: UseCellBatchOptions) {
     }
     return false
   }, [cells, clearCells])
+
+  const startPendingTouchGesture = useCallback((cell: CellBatchCellRef, event: React.PointerEvent<HTMLElement>) => {
+    pendingTouchCleanupRef.current?.()
+    pendingTouchCleanupRef.current = null
+
+    const pointerId = event.pointerId
+    const startX = event.clientX
+    const startY = event.clientY
+    const gesture: { teardown: () => void } = { teardown: () => {} }
+
+    // Tap or scroll intent: cancel the pending gesture. Taps keep the
+    // standard single-cell flow via compatibility mouse events; scroll
+    // intents keep native scrolling (we never blocked it).
+    const onMove = (moveEvent: PointerEvent) => {
+      if (moveEvent.pointerId !== pointerId) {
+        return
+      }
+      if (Math.hypot(moveEvent.clientX - startX, moveEvent.clientY - startY) > TOUCH_SLOP) {
+        gesture.teardown()
+      }
+    }
+    const onUp = (upEvent: PointerEvent) => {
+      if (upEvent.pointerId !== pointerId) {
+        return
+      }
+      gesture.teardown()
+    }
+    const onCancel = (cancelEvent: PointerEvent) => {
+      if (cancelEvent.pointerId !== pointerId) {
+        return
+      }
+      gesture.teardown()
+    }
+
+    const removePendingListeners = () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onCancel)
+    }
+
+    const timer = window.setTimeout(() => {
+      removePendingListeners()
+
+      // Long-press activation: the touch gesture becomes a range selection
+      // anchored at the pressed cell. Subsequent moves extend it (the rAF
+      // loop hit-tests the pointer position) and touch scrolling is blocked
+      // so the pan gesture belongs to the selection.
+      activeTouchPointerIdRef.current = pointerId
+      dragRef.current = { origin: cell, focus: null, active: true }
+      pointerRef.current = { x: startX, y: startY }
+      viewportRef.current = findViewportForOrigin(cell)
+      setDragging(true)
+      clearBrowserSelection()
+      commitCells(cellsInRect(cell, cell))
+
+      const cellElement = getTableCellElement(cell.elementIndex, cell.row, cell.col)
+      if (cellElement) {
+        cellElement.style.setProperty('-webkit-user-select', 'none')
+        cellElement.style.setProperty('-webkit-touch-callout', 'none')
+        touchStyledCellRef.current = cellElement
+      }
+
+      const block = (touchEvent: TouchEvent) => {
+        if (activeTouchPointerIdRef.current !== null) {
+          touchEvent.preventDefault()
+        }
+      }
+      window.addEventListener('touchmove', block, { passive: false })
+      touchMoveBlockRef.current = block
+
+      activeTouchCleanupRef.current = () => {
+        if (touchMoveBlockRef.current) {
+          window.removeEventListener('touchmove', touchMoveBlockRef.current)
+          touchMoveBlockRef.current = null
+        }
+        if (touchStyledCellRef.current) {
+          touchStyledCellRef.current.style.removeProperty('-webkit-user-select')
+          touchStyledCellRef.current.style.removeProperty('-webkit-touch-callout')
+          touchStyledCellRef.current = null
+        }
+        activeTouchPointerIdRef.current = null
+        activeTouchCleanupRef.current = null
+      }
+    }, TOUCH_LONG_PRESS_MS)
+
+    gesture.teardown = () => {
+      window.clearTimeout(timer)
+      removePendingListeners()
+      pendingTouchCleanupRef.current = null
+    }
+    pendingTouchCleanupRef.current = () => gesture.teardown()
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onCancel)
+  }, [commitCells])
+
+  // Mouse and pen drags keep the direct-drag flow; touch drags start with a
+  // long-press so one-finger scrolling on cells keeps working.
+  const handleCellPointerDown = useCallback((cell: CellBatchCellRef, event: React.PointerEvent<HTMLElement>) => {
+    if (event.pointerType === 'touch') {
+      startPendingTouchGesture(cell, event)
+      return
+    }
+
+    handleCellMouseDown(cell, event)
+  }, [handleCellMouseDown, startPendingTouchGesture])
 
   const handleSelectColumn = useCallback((elementIndex: number, col: number, additive: boolean) => {
     if (additive) {
@@ -463,6 +577,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
         return
       }
       if (dragRef.current?.active) {
+        activeTouchCleanupRef.current?.()
         dragRef.current = null
         setDragging(false)
         clearBrowserSelection()
@@ -477,7 +592,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
   }, [cells.length, exitBatchMode])
 
   useEffect(() => {
-    const handleWindowMouseUp = () => {
+    const finalizeDrag = () => {
       const drag = dragRef.current
       if (drag?.active) {
         anchorRef.current = drag.origin
@@ -487,9 +602,45 @@ export function useCellBatch(options: UseCellBatchOptions) {
       setDragging(false)
     }
 
+    const handleWindowMouseUp = () => {
+      finalizeDrag()
+    }
+
+    const handleWindowPointerUp = (event: PointerEvent) => {
+      if (event.pointerType !== 'touch' || event.pointerId !== activeTouchPointerIdRef.current) {
+        return
+      }
+      activeTouchCleanupRef.current?.()
+      finalizeDrag()
+    }
+
+    // The system claimed the touch (e.g. a system gesture): abort the
+    // selection instead of finalizing it.
+    const handleWindowPointerCancel = (event: PointerEvent) => {
+      if (event.pointerType !== 'touch' || event.pointerId !== activeTouchPointerIdRef.current) {
+        return
+      }
+      activeTouchCleanupRef.current?.()
+      finalizeDrag()
+      clearCells()
+    }
+
     window.addEventListener('mouseup', handleWindowMouseUp)
-    return () => window.removeEventListener('mouseup', handleWindowMouseUp)
-  }, [cells])
+    window.addEventListener('pointerup', handleWindowPointerUp)
+    window.addEventListener('pointercancel', handleWindowPointerCancel)
+    return () => {
+      window.removeEventListener('mouseup', handleWindowMouseUp)
+      window.removeEventListener('pointerup', handleWindowPointerUp)
+      window.removeEventListener('pointercancel', handleWindowPointerCancel)
+    }
+  }, [cells, clearCells])
+
+  useEffect(() => {
+    return () => {
+      pendingTouchCleanupRef.current?.()
+      activeTouchCleanupRef.current?.()
+    }
+  }, [])
 
   const selectedKeys = useMemo(() => new Set(cells.map(cellKey)), [cells])
 
@@ -506,7 +657,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
     chipRect,
     openBatchMode,
     exitBatchMode,
-    handleCellMouseDown,
+    handleCellPointerDown,
     handleCellDragOver,
     handleCellMouseUp,
     handleSelectColumn,

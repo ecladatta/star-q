@@ -28,7 +28,7 @@ export type CombinedElementProps = {
   data: { title: string, level?: number }
   handleTextSelection: (index: number, selectionContainer: Element, textSource?: string) => void
   handleTableSelection: (index: number, row: number, cell: number) => void
-  handleTableCellMouseDown?: (index: number, row: number, col: number, event: React.MouseEvent<HTMLElement>) => void
+  handleTableCellPointerDown?: (index: number, row: number, col: number, event: React.PointerEvent<HTMLElement>) => void
   handleTableCellDragOver?: (index: number, row: number, col: number) => void
   handleTableCellMouseUp?: (index: number, row: number, col: number) => void
   handleSplitClick: (split: Offset, anchorRect?: DOMRect) => void
@@ -69,7 +69,7 @@ function CombinedElement({
   data,
   handleTextSelection,
   handleTableSelection,
-  handleTableCellMouseDown,
+  handleTableCellPointerDown,
   handleTableCellDragOver,
   handleTableCellMouseUp,
   handleSplitClick,
@@ -261,8 +261,8 @@ function CombinedElement({
       }, 50)
     }
 
-    const handleCellMouseDown = (rowIndex: number, cellIndex: number, event: React.MouseEvent<HTMLElement>) => {
-      handleTableCellMouseDown?.(elementIndex, rowIndex, cellIndex, event)
+    const handleCellPointerDown = (rowIndex: number, cellIndex: number, event: React.PointerEvent<HTMLElement>) => {
+      handleTableCellPointerDown?.(elementIndex, rowIndex, cellIndex, event)
     }
 
     const handleCellDragOver = (rowIndex: number, cellIndex: number) => {
@@ -414,7 +414,7 @@ function CombinedElement({
                         }}
                         onMouseLeave={() => setHoveredCell(null)}
                         {...(!readOnly && {
-                          onMouseDown: event => handleCellMouseDown(actualRowIndex, cellIndex, event),
+                          onPointerDown: event => handleCellPointerDown(actualRowIndex, cellIndex, event),
                           onMouseUp: () => handleCellMouseUp(actualRowIndex, cellIndex),
                         })}
                         aria-label={`Table cell row ${actualRowIndex + 1}, column ${cellIndex + 1}. Click to annotate this cell.`}
