@@ -7,7 +7,7 @@ import {
   cellsInRect,
   columnCellRefs,
   dedupeCellRefs,
-  sliceCellObject,
+  trimmedCellValue,
 } from './cell-batch'
 
 let idCounter = 0
@@ -117,22 +117,13 @@ describe('columnCellRefs', () => {
   })
 })
 
-describe('sliceCellObject', () => {
-  it('returns the full trimmed cell without offset', () => {
-    expect(sliceCellObject('  Ada  ', null)).toEqual({ start: 2, end: 5, value: 'Ada' })
-  })
-
-  it('slices and trims with a relative offset', () => {
-    expect(sliceCellObject('Ada Lovelace', { start: 4, end: 12 })).toEqual({ start: 4, end: 12, value: 'Lovelace' })
-  })
-
-  it('shrinks the slice around whitespace', () => {
-    expect(sliceCellObject('Ada Lovelace', { start: 0, end: 4 })).toEqual({ start: 0, end: 3, value: 'Ada' })
+describe('trimmedCellValue', () => {
+  it('returns the full trimmed cell', () => {
+    expect(trimmedCellValue('  Ada  ')).toEqual({ start: 2, end: 5, value: 'Ada' })
   })
 
   it('returns null for empty results', () => {
-    expect(sliceCellObject('   ', null)).toBeNull()
-    expect(sliceCellObject('Ada', { start: 1, end: 1 })).toBeNull()
+    expect(trimmedCellValue('   ')).toBeNull()
   })
 })
 
@@ -164,7 +155,6 @@ describe('buildCellBatchPreview', () => {
     documentElements: [tableElement],
     cellRole: 'object' as const,
     fixed: { subject, predicate, object: null },
-    extraction: null,
     existingAnnotations: [] as DocumentAnnotation[],
     newId,
   }
@@ -186,36 +176,6 @@ describe('buildCellBatchPreview', () => {
     expect(skipped.status).toBe('empty')
     expect(skipped.component).toBeNull()
     expect(second.component?.annotationValue).toBe('Alan Turing')
-  })
-
-  it('applies the same relative offset to every row', () => {
-    const preview = buildCellBatchPreview({
-      ...baseInput,
-      extraction: { type: 'fixed', offset: { start: 0, end: 4 } },
-    })
-
-    expect(preview.rows[0].component?.annotationValue).toBe('Ada')
-    expect(preview.rows[2].component?.annotationValue).toBe('Alan')
-  })
-
-  it('matches a typed text pattern per row via first occurrence', () => {
-    const preview = buildCellBatchPreview({
-      ...baseInput,
-      extraction: { type: 'pattern', text: 'Ada' },
-    })
-
-    expect(preview.rows[0].component?.annotationValue).toBe('Ada')
-    expect(preview.rows[2].status).toBe('empty')
-  })
-
-  it('marks rows empty when the pattern is not found in a cell', () => {
-    const preview = buildCellBatchPreview({
-      ...baseInput,
-      extraction: { type: 'pattern', text: 'Alan' },
-    })
-
-    expect(preview.rows[0].status).toBe('empty')
-    expect(preview.rows[2].status).toBe('create')
   })
 
   it('fills the subject slot instead when the cells are the subject', () => {

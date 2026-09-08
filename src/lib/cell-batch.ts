@@ -16,10 +16,6 @@ export type CellBatchOffset = {
   end: number
 }
 
-export type CellExtraction
-  = | { type: 'fixed', offset: CellBatchOffset }
-    | { type: 'pattern', text: string }
-
 export type CellBatchRowStatus = 'create' | 'duplicate' | 'empty'
 
 export type CellBatchPreviewRow = {
@@ -55,7 +51,6 @@ export type CellBatchPreviewInput = {
   documentElements: CellBatchElement[]
   cellRole: EntityType
   fixed: CellBatchFixedSlots
-  extraction: CellExtraction | null
   existingAnnotations: DocumentAnnotation[]
   newId: () => string
 }
@@ -112,24 +107,19 @@ export function columnCellRefs(elementIndex: number, tableData: string[][], col:
   return cells
 }
 
-export function sliceCellObject(
-  cellText: string,
-  offset: CellBatchOffset | null,
-): { start: number, end: number, value: string } | null {
-  const raw = offset ? cellText.slice(offset.start, offset.end) : cellText
-  const trimmed = raw.trim()
+export function trimmedCellValue(cellText: string): { start: number, end: number, value: string } | null {
+  const trimmed = cellText.trim()
 
   if (!trimmed) {
     return null
   }
 
-  const leading = raw.length - raw.trimStart().length
-  const trailing = raw.length - raw.trimEnd().length
-  const base = offset ? offset.start : 0
+  const leading = cellText.length - cellText.trimStart().length
+  const trailing = cellText.length - cellText.trimEnd().length
 
   return {
-    start: base + leading,
-    end: base + raw.length - trailing,
+    start: leading,
+    end: cellText.length - trailing,
     value: trimmed,
   }
 }
@@ -153,24 +143,8 @@ function componentShapeMatches(
   )
 }
 
-// Returns null when there is no extraction (entire cell semantics) and
-// undefined when the extraction failed for this cell (skip the cell).
-function offsetForCell(cellText: string, extraction: CellExtraction | null): CellBatchOffset | null | undefined {
-  if (!extraction) {
-    return null
-  }
-  if (extraction.type === 'fixed') {
-    return extraction.offset
-  }
-  const index = cellText.indexOf(extraction.text)
-  if (index === -1 || extraction.text.length === 0) {
-    return undefined
-  }
-  return { start: index, end: index + extraction.text.length }
-}
-
 export function buildCellBatchPreview(input: CellBatchPreviewInput): CellBatchPreview {
-  const { cells, documentElements, cellRole, fixed, extraction, existingAnnotations, newId } = input
+  const { cells, documentElements, cellRole, fixed, existingAnnotations, newId } = input
   const rows: CellBatchPreviewRow[] = []
   const fixedIncomplete = CONSTANT_ROLES[cellRole].some(role => !fixed[role])
 
@@ -178,15 +152,9 @@ export function buildCellBatchPreview(input: CellBatchPreviewInput): CellBatchPr
     const element = documentElements[cell.elementIndex]
     const tableData = element?.type === 'table' ? element.value as string[][] : undefined
     const cellText = tableData?.[cell.row]?.[cell.col]
-    let sliced: { start: number, end: number, value: string } | null = null
-    if (typeof cellText === 'string') {
-      const offset = offsetForCell(cellText, extraction)
-      if (offset !== undefined) {
-        sliced = sliceCellObject(cellText, offset)
-      }
-    }
+    const value = typeof cellText === 'string' ? trimmedCellValue(cellText) : null
 
-    if (fixedIncomplete || !sliced) {
+    if (fixedIncomplete || !value) {
       rows.push({ cell, status: 'empty', component: null })
       continue
     }
@@ -198,11 +166,11 @@ export function buildCellBatchPreview(input: CellBatchPreviewInput): CellBatchPr
       entityCustom: null,
       entityCustomId: null,
       entityDatatype: null,
-      annotationStart: sliced.start,
-      annotationEnd: sliced.end,
+      annotationStart: value.start,
+      annotationEnd: value.end,
       annotationRow: cell.row,
       annotationCell: cell.col,
-      annotationValue: sliced.value,
+      annotationValue: value.value,
       annotationType: 'table',
       annotationTag: cellRole,
       elementIndex: cell.elementIndex,

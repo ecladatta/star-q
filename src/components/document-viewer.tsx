@@ -208,24 +208,6 @@ export function DocumentViewer({
     object: Boolean(currentAnnotation?.object),
   }
 
-  const batchCapturedText = useMemo(() => {
-    if (!cellBatch.capturedOffset || cellBatch.cells.length === 0) {
-      return null
-    }
-    const first = cellBatch.cells[0]
-    const element = documentElements[first.elementIndex]
-    if (element?.type !== 'table') {
-      return null
-    }
-    const tableData = element.value as string[][]
-    const text = tableData?.[first.row]?.[first.col]
-    if (typeof text !== 'string') {
-      return null
-    }
-    const sliced = text.slice(cellBatch.capturedOffset.start, cellBatch.capturedOffset.end).trim()
-    return sliced.length > 0 ? sliced : null
-  }, [cellBatch.capturedOffset, cellBatch.cells, documentElements])
-
   const handleQualifierSelectionAssociation = useCallback(
     (side: QualifierSide) => {
       const activeQualifierExists = Boolean(
@@ -525,9 +507,6 @@ export function DocumentViewer({
                       cellsCount={cellBatch.cells.length}
                       cellRole={cellBatch.cellRole}
                       onCellRoleChange={cellBatch.setCellRole}
-                      extraction={cellBatch.extraction}
-                      onExtractionChange={cellBatch.setExtraction}
-                      capturedText={batchCapturedText}
                       hasFixed={batchHasFixed}
                       creating={cellBatch.creating}
                       onCreate={() => document && cellBatch.createBatch(document.id)}
@@ -613,7 +592,7 @@ export function DocumentViewer({
                     size="sm"
                     variant="outline"
                     className="h-7 gap-1.5 text-xs font-medium"
-                    onClick={() => cellBatch.openBatchMode(null)}
+                    onClick={() => cellBatch.openBatchMode()}
                   >
                     <ListPlusIcon className="size-3.5" />
                     Annotate

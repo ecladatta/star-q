@@ -1,7 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react'
 import type { usePopoverState, useSelectionState } from './useSelectionState'
 import type { BatchAnnotationItem } from '@/actions/annotation/annotationActions'
-import type { CellBatchCellRef, CellBatchOffset, CellBatchPreview, CellExtraction } from '@/lib/cell-batch'
+import type { CellBatchCellRef, CellBatchPreview } from '@/lib/cell-batch'
 import type { CurrentAnnotation, DocumentAnnotation, DocumentAnnotationComponent, EntityType } from '@/types/types'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
@@ -105,8 +105,6 @@ export function useCellBatch(options: UseCellBatchOptions) {
   const [dragging, setDragging] = useState(false)
   const [batchMode, setBatchMode] = useState(false)
   const [cellRole, setCellRole] = useState<EntityType>('object')
-  const [capturedOffset, setCapturedOffset] = useState<CellBatchOffset | null>(null)
-  const [extraction, setExtraction] = useState<CellExtraction | null>(null)
   const [creating, setCreating] = useState(false)
   const [chipRect, setChipRect] = useState<ChipRect | null>(null)
 
@@ -154,15 +152,11 @@ export function useCellBatch(options: UseCellBatchOptions) {
 
   const exitBatchMode = useCallback(() => {
     setBatchMode(false)
-    setCapturedOffset(null)
-    setExtraction(null)
     setCellRole('object')
     clearCells()
   }, [clearCells])
 
-  const openBatchMode = useCallback((offset: CellBatchOffset | null) => {
-    setCapturedOffset(offset)
-    setExtraction(offset ? { type: 'fixed', offset } : null)
+  const openBatchMode = useCallback(() => {
     setBatchMode(true)
     popover.hidePopover()
   }, [popover])
@@ -393,24 +387,14 @@ export function useCellBatch(options: UseCellBatchOptions) {
     } else {
       selectColumn(elementIndex, col)
     }
-    openBatchMode(null)
+    openBatchMode()
   }, [toggleColumn, selectColumn, openBatchMode])
 
   const handleAnnotateColumnFromPopover = useCallback((elementIndex: number, col: number) => {
-    const element = documentElements[elementIndex]
-    const tableData = element?.type === 'table' ? element.value as string[][] : undefined
-    const anchorCell = tableData?.[selection.tableSelection?.rowIndex ?? -1]?.[col]
-
-    let offset: CellBatchOffset | null = null
-    const { start, end } = selection.selectedOffset
-    if (typeof anchorCell === 'string' && !(start === 0 && end === anchorCell.length)) {
-      offset = { start, end }
-    }
-
     selectColumn(elementIndex, col)
-    openBatchMode(offset)
+    openBatchMode()
     selection.clearSelection()
-  }, [documentElements, openBatchMode, selectColumn, selection])
+  }, [openBatchMode, selectColumn, selection])
 
   const preview = useMemo<CellBatchPreview | null>(() => {
     if (!batchMode) {
@@ -428,11 +412,10 @@ export function useCellBatch(options: UseCellBatchOptions) {
       documentElements,
       cellRole,
       fixed,
-      extraction,
       existingAnnotations: documentAnnotations,
       newId: uuidv4,
     })
-  }, [batchMode, cells, documentElements, cellRole, extraction, currentAnnotation, documentAnnotations])
+  }, [batchMode, cells, documentElements, cellRole, currentAnnotation, documentAnnotations])
 
   const createBatch = useCallback(async (documentId: string) => {
     if (!preview || preview.createCount === 0 || creating) {
@@ -670,9 +653,6 @@ export function useCellBatch(options: UseCellBatchOptions) {
     batchMode,
     cellRole,
     setCellRole,
-    capturedOffset,
-    extraction,
-    setExtraction,
     creating,
     preview,
     chipRect,

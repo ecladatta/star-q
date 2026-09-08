@@ -3,7 +3,7 @@
 ## Overview
 STAR-Q is a web-based application designed to facilitate the annotation of texts and tables.
 
-Tables support spreadsheet-style cell selection (drag for a range, Shift+Click to extend, Ctrl/Cmd+Click to toggle individual cells) and a batch mode: select cells, define subject and predicate once, and create one annotation per non-empty cell. The "Annotate this column" button in a column header selects the whole column; selecting part of a cell and choosing "Annotate column" in the popover applies that same selection to every row.
+Tables support spreadsheet-style cell selection (drag for a range, Shift+Click to extend, Ctrl/Cmd+Click to toggle individual cells) and a batch mode: select cells, define the shared slots once, and create one annotation per non-empty cell. The "Annotate this column" button in a column header selects the whole column; choosing "Annotate column" in the popover does the same from any cell.
 
 ## Prerequisites
 

@@ -210,7 +210,7 @@ export function SelectionPopover({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  Create one annotation per non-empty row in this column, using the current selection.
+                  Create one annotation per non-empty row in this column.
                 </TooltipContent>
               </Tooltip>
             )}

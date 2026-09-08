@@ -1,8 +1,7 @@
 'use client'
-import type { CellBatchPreview, CellExtraction } from '@/lib/cell-batch'
+import type { CellBatchPreview } from '@/lib/cell-batch'
 import type { EntityType } from '@/types/types'
 import { CheckIcon, CopyIcon, LayersIcon, Loader2Icon, TextCursorInputIcon } from 'lucide-react'
-import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { CONSTANT_ROLES } from '@/lib/cell-batch'
 import { cn } from '@/lib/utils'
@@ -24,9 +23,6 @@ type ColumnBatchPanelProps = {
   cellsCount: number
   cellRole: EntityType
   onCellRoleChange: (role: EntityType) => void
-  extraction: CellExtraction | null
-  onExtractionChange: (extraction: CellExtraction | null) => void
-  capturedText: string | null
   hasFixed: Record<EntityType, boolean>
   creating: boolean
   onCreate: () => void
@@ -37,18 +33,10 @@ export function ColumnBatchPanel({
   cellsCount,
   cellRole,
   onCellRoleChange,
-  extraction,
-  onExtractionChange,
-  capturedText,
   hasFixed,
   creating,
   onCreate,
 }: ColumnBatchPanelProps) {
-  const [patternDraft, setPatternDraft] = useState<string>(
-    extraction?.type === 'pattern' ? extraction.text : (capturedText ?? ''),
-  )
-  const [patternTab, setPatternTab] = useState<boolean>(extraction !== null)
-  const patternMode = patternTab
   const constantRoles = CONSTANT_ROLES[cellRole]
   const fixedReady = constantRoles.every(role => hasFixed[role])
   const ready = fixedReady && (preview?.createCount ?? 0) > 0
@@ -58,25 +46,6 @@ export function ColumnBatchPanel({
 
   const visibleRows = (preview?.rows.filter(row => row.status !== 'empty') ?? []).slice(0, 5)
   const hiddenRowCount = (preview?.rows.filter(row => row.status !== 'empty').length ?? 0) - visibleRows.length
-
-  const setPatternMode = (mode: boolean) => {
-    if (creating) {
-      return
-    }
-    setPatternTab(mode)
-    if (!mode) {
-      onExtractionChange(null)
-    }
-  }
-
-  const applyPatternDraft = (draft: string) => {
-    setPatternDraft(draft)
-    if (draft.trim()) {
-      onExtractionChange({ type: 'pattern', text: draft })
-    } else {
-      onExtractionChange(null)
-    }
-  }
 
   return (
     <div className="rounded-lg border bg-muted/30 p-3">
@@ -114,7 +83,7 @@ export function ColumnBatchPanel({
         {' '}
         slot
       </div>
-      <div className="mb-2 flex rounded-md border p-0.5">
+      <div className="flex rounded-md border p-0.5">
         {(['subject', 'predicate', 'object'] as EntityType[]).map(type => (
           <button
             key={type}
@@ -130,48 +99,6 @@ export function ColumnBatchPanel({
           </button>
         ))}
       </div>
-
-      <div className="mb-1.5 text-xs text-muted-foreground">Per created annotation:</div>
-      <div className="flex rounded-md border p-0.5">
-        <button
-          type="button"
-          className={cn(
-            'flex-1 rounded-sm px-2 py-1 text-xs transition-colors',
-            !patternMode ? 'bg-background font-medium shadow-sm' : 'text-muted-foreground hover:text-foreground',
-          )}
-          onClick={() => setPatternMode(false)}
-          disabled={creating}
-        >
-          Entire cell
-        </button>
-        <button
-          type="button"
-          className={cn(
-            'flex-1 rounded-sm px-2 py-1 text-xs transition-colors',
-            patternMode ? 'bg-background font-medium shadow-sm' : 'text-muted-foreground hover:text-foreground',
-          )}
-          onClick={() => setPatternMode(true)}
-          disabled={creating}
-        >
-          Same text in each row
-        </button>
-      </div>
-      {patternMode && (
-        <div className="mt-1.5">
-          <input
-            value={patternDraft}
-            onChange={event => applyPatternDraft(event.target.value)}
-            placeholder="Text to extract from each row…"
-            className="w-full rounded-md border bg-background px-2 py-1 text-xs placeholder:text-muted-foreground/60 focus-visible:ring-1 focus-visible:ring-accent focus-visible:outline-none"
-            disabled={creating}
-          />
-          {!patternDraft.trim() && (
-            <div className="mt-1 text-[10px] text-muted-foreground/70">
-              Leave empty to use entire cells. Type the exact text each row should contribute.
-            </div>
-          )}
-        </div>
-      )}
 
       {visibleRows.length > 0 && (
         <div className="mt-2 max-h-28 overflow-y-auto rounded-md border bg-background">
