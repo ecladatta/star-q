@@ -95,15 +95,12 @@ export function findEntityPositionsInTable(
   entity2Search: string,
   tableData: string[][],
 ): { entity1Row: number, entity1Cell: number, entity2Row: number, entity2Cell: number } {
-  // Default positions: assumes entity1 in the first data cell of a row, entity2 in the second.
-  // These defaults might need to be (0,0) and (0,1) if table headers are not part of entity search.
-  // Current defaults (0,1) and (0,2) are a bit arbitrary if table has no headers.
-  // For this refactor, keeping existing logic: entity1 in col index 1, entity2 in col index 2 of *first row searched*.
+  // Fallback when an entity is not found: first row, cells 1 and 2.
   const positions = {
     entity1Row: 0,
-    entity1Cell: 1, // Defaulting to [0,1]
+    entity1Cell: 1,
     entity2Row: 0,
-    entity2Cell: 2, // Defaulting to [0,2]
+    entity2Cell: 2,
   }
   let e1Found = false
   let e2Found = false
