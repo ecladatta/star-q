@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1](https://github.com/ecladatta/star-q/compare/v1.2.0...v1.2.1) (2026-09-11)
+
+
+### Bug Fixes
+
+* **header:** inline logo SVG so it adapts to dark mode ([054d0b5](https://github.com/ecladatta/star-q/commit/054d0b5c4c279a636191477b081a6c6c71b822e4))
+
 ## [1.2.0](https://github.com/ecladatta/star-q/compare/v1.1.0...v1.2.0) (2026-09-11)
 
 
