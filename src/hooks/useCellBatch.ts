@@ -4,7 +4,6 @@ import type { BatchAnnotationItem, CellBatchCellRef, CellBatchPreview, CellBatch
 import type { CurrentAnnotation, DocumentAnnotation, DocumentAnnotationComponent, Entity, EntityType } from '@/types/types'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { v4 as uuidv4 } from 'uuid'
 import {
   addAnnotations,
   deleteAnnotations,
@@ -53,6 +52,11 @@ function findViewportForOrigin(origin: CellBatchCellRef): HTMLElement | null {
 function nextEmptyRole(currentAnnotation: CurrentAnnotation | null): EntityType {
   const roles: EntityType[] = ['subject', 'predicate', 'object']
   return roles.find(role => !currentAnnotation?.[role]) ?? 'subject'
+}
+
+function nextPreviewId(): () => string {
+  let counter = 0
+  return () => `preview-component-${counter++}`
 }
 
 const AUTO_SCROLL_EDGE = 48
@@ -657,7 +661,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
       cellRole: selectedRole,
       fixed,
       existingAnnotations: documentAnnotations,
-      newId: uuidv4,
+      newId: nextPreviewId(),
     })
   }, [batchMode, cells, documentElements, selectedRole, currentAnnotation, documentAnnotations])
 
