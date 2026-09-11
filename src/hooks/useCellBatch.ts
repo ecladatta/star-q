@@ -563,8 +563,8 @@ export function useCellBatch(options: UseCellBatchOptions) {
       }
     } else {
       toggleColumn(elementIndex, col)
+      openBatchMode()
     }
-    openBatchMode()
   }, [isColumnSelected, releaseCells, exitBatchMode, selectColumn, setCellRole, openBatchMode, toggleColumn, currentAnnotation])
 
   const handleSelectRow = useCallback((elementIndex: number, row: number, additive: boolean) => {
@@ -590,8 +590,8 @@ export function useCellBatch(options: UseCellBatchOptions) {
       }
     } else {
       toggleRow(elementIndex, row)
+      openBatchMode()
     }
-    openBatchMode()
   }, [isRowSelected, releaseCells, exitBatchMode, selectRow, setCellRole, openBatchMode, toggleRow, currentAnnotation])
 
   const selectCell = useCallback((elementIndex: number, row: number, col: number) => {
@@ -625,8 +625,8 @@ export function useCellBatch(options: UseCellBatchOptions) {
       }
     } else {
       toggleAll(elementIndex)
+      openBatchMode()
     }
-    openBatchMode()
   }, [isAllSelected, releaseCells, exitBatchMode, selectAll, setCellRole, openBatchMode, toggleAll, currentAnnotation])
 
   const preview = useMemo<CellBatchPreview | null>(() => {
