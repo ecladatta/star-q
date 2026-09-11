@@ -130,6 +130,14 @@ describe('rowCellRefs', () => {
     ])
   })
 
+  it('spans the header row when targeted', () => {
+    const refs = rowCellRefs(0, tableElement.value as string[][], 0)
+    expect(refs).toEqual([
+      { elementIndex: 0, row: 0, col: 0 },
+      { elementIndex: 0, row: 0, col: 1 },
+    ])
+  })
+
   it('returns empty for missing rows', () => {
     expect(rowCellRefs(0, tableElement.value as string[][], 99)).toEqual([])
   })
