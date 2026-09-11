@@ -1,8 +1,8 @@
 import type { Dispatch, SetStateAction } from 'react'
 import type { usePopoverState, useSelectionState } from './useSelectionState'
 import type { BatchAnnotationItem } from '@/actions/annotation/annotationActions'
-import type { CellBatchCellRef, CellBatchPreview } from '@/lib/cell-batch'
-import type { CurrentAnnotation, DocumentAnnotation, DocumentAnnotationComponent, EntityType } from '@/types/types'
+import type { CellBatchCellRef, CellBatchPreview, CellBatchPreviewRow } from '@/lib/cell-batch'
+import type { CurrentAnnotation, DocumentAnnotation, Entity, EntityType } from '@/types/types'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { v4 as uuidv4 } from 'uuid'
@@ -11,14 +11,17 @@ import {
   deleteAnnotations,
   getAnnotations,
 } from '@/actions/annotation/annotationActions'
-import { createEntityFromComponent } from '@/lib/annotation-roles'
 import {
+  allCellRefs,
+  buildBatchAnnotationItem,
   buildCellBatchPreview,
   cellKey,
   cellsInRect,
   columnCellRefs,
   CONSTANT_ROLES,
   dedupeCellRefs,
+  rowCellRefs,
+  trimmedCellValue,
 } from '@/lib/cell-batch'
 import { clearBrowserSelection } from './useSelectionState'
 
@@ -47,6 +50,11 @@ function getTableCellElement(elementIndex: number, row: number, col: number): HT
 function findViewportForOrigin(origin: CellBatchCellRef): HTMLElement | null {
   const cellElement = getTableCellElement(origin.elementIndex, origin.row, origin.col)
   return cellElement?.closest<HTMLElement>('[data-slot="scroll-area-viewport"]') ?? null
+}
+
+function nextEmptyRole(currentAnnotation: CurrentAnnotation | null): EntityType {
+  const roles: EntityType[] = ['subject', 'predicate', 'object']
+  return roles.find(role => !currentAnnotation?.[role]) ?? 'subject'
 }
 
 const AUTO_SCROLL_EDGE = 48
@@ -104,9 +112,27 @@ export function useCellBatch(options: UseCellBatchOptions) {
   const [cells, setCells] = useState<CellBatchCellRef[]>([])
   const [dragging, setDragging] = useState(false)
   const [batchMode, setBatchMode] = useState(false)
-  const [cellRole, setCellRole] = useState<EntityType>('subject')
+  const [cellRoleState, setCellRoleState] = useState<EntityType>('subject')
   const [creating, setCreating] = useState(false)
   const [anchorRect, setAnchorRect] = useState<AnchorRect | null>(null)
+  const [cellEntities, setCellEntities] = useState<Map<string, Entity>>(() => new Map())
+
+  const resetCellEntities = useCallback(() => {
+    setCellEntities(new Map())
+  }, [])
+
+  const setCellEntity = useCallback((cell: CellBatchCellRef, entity: Entity | null) => {
+    const key = cellKey(cell)
+    setCellEntities((prev) => {
+      const next = new Map(prev)
+      if (entity) {
+        next.set(key, entity)
+      } else {
+        next.delete(key)
+      }
+      return next
+    })
+  }, [])
 
   const anchorRef = useRef<CellBatchCellRef | null>(null)
   const dragRef = useRef<{ origin: CellBatchCellRef, focus: CellBatchCellRef | null, active: boolean } | null>(null)
@@ -148,13 +174,29 @@ export function useCellBatch(options: UseCellBatchOptions) {
     }
     anchorRef.current = null
     commitCells([])
-  }, [cells, commitCells])
+    resetCellEntities()
+  }, [cells, commitCells, resetCellEntities])
 
   const exitBatchMode = useCallback(() => {
     setBatchMode(false)
-    setCellRole('subject')
+    setCellRoleState('subject')
     clearCells()
-  }, [clearCells])
+    setCurrentAnnotation(null)
+  }, [clearCells, setCurrentAnnotation])
+
+  const releaseCells = useCallback(() => {
+    setBatchMode(false)
+    setCellRoleState('subject')
+    clearCells()
+    resetCellEntities()
+  }, [clearCells, resetCellEntities])
+
+  const setCellRole = useCallback((type: EntityType) => {
+    setCellRoleState(type)
+    // The selected cells now fill this role; release the fixed component
+    // that was assigned to it, if any.
+    setCurrentAnnotation(prev => (prev?.[type] ? { ...prev, [type]: undefined } : prev))
+  }, [setCurrentAnnotation])
 
   const openBatchMode = useCallback(() => {
     setBatchMode(true)
@@ -168,14 +210,18 @@ export function useCellBatch(options: UseCellBatchOptions) {
       ? cells.filter(candidate => cellKey(candidate) !== key)
       : dedupeCellRefs([...cells, cell])
     anchorRef.current = cell
-    commitCells(next)
-  }, [cells, commitCells])
+    setCells(next)
+    setAnchorRect(null)
+  }, [cells])
 
   const extendRect = useCallback((from: CellBatchCellRef, to: CellBatchCellRef) => {
+    resetCellEntities()
     commitCells(cellsInRect(from, to))
-  }, [commitCells])
+  }, [commitCells, resetCellEntities])
 
   const selectColumn = useCallback((elementIndex: number, col: number) => {
+    dragRef.current = null
+    resetCellEntities()
     const element = documentElements[elementIndex]
     const tableData = element?.type === 'table' ? element.value as string[][] : undefined
     if (!tableData || tableData.length < 2) {
@@ -185,9 +231,10 @@ export function useCellBatch(options: UseCellBatchOptions) {
     const refs = columnCellRefs(elementIndex, tableData, col)
     anchorRef.current = refs[0] ?? null
     commitCells(refs)
-  }, [commitCells, documentElements])
+  }, [commitCells, documentElements, resetCellEntities])
 
   const toggleColumn = useCallback((elementIndex: number, col: number) => {
+    dragRef.current = null
     const element = documentElements[elementIndex]
     const tableData = element?.type === 'table' ? element.value as string[][] : undefined
     if (!tableData || tableData.length < 2) {
@@ -203,9 +250,74 @@ export function useCellBatch(options: UseCellBatchOptions) {
     commitCells(next)
   }, [cells, commitCells, documentElements])
 
+  const selectRow = useCallback((elementIndex: number, row: number) => {
+    dragRef.current = null
+    resetCellEntities()
+    const element = documentElements[elementIndex]
+    const tableData = element?.type === 'table' ? element.value as string[][] : undefined
+    if (!tableData?.[row]) {
+      toast.error('This row has no cells to annotate.')
+      return
+    }
+    const refs = rowCellRefs(elementIndex, tableData, row)
+    anchorRef.current = refs[0] ?? null
+    commitCells(refs)
+  }, [commitCells, documentElements, resetCellEntities])
+
+  const toggleRow = useCallback((elementIndex: number, row: number) => {
+    dragRef.current = null
+    const element = documentElements[elementIndex]
+    const tableData = element?.type === 'table' ? element.value as string[][] : undefined
+    if (!tableData?.[row]) {
+      return
+    }
+    const refs = rowCellRefs(elementIndex, tableData, row)
+    const keys = new Set(refs.map(cellKey))
+    const allSelected = refs.every(ref => cells.some(candidate => cellKey(candidate) === cellKey(ref)))
+    const next = allSelected
+      ? cells.filter(candidate => !keys.has(cellKey(candidate)))
+      : dedupeCellRefs([...cells, ...refs])
+    anchorRef.current = refs[0] ?? null
+    commitCells(next)
+  }, [cells, commitCells, documentElements])
+
+  const selectAll = useCallback((elementIndex: number) => {
+    dragRef.current = null
+    resetCellEntities()
+    const element = documentElements[elementIndex]
+    const tableData = element?.type === 'table' ? element.value as string[][] : undefined
+    if (!tableData || tableData.length < 2) {
+      toast.error('This table has no data rows to annotate.')
+      return
+    }
+    const refs = allCellRefs(elementIndex, tableData)
+    anchorRef.current = refs[0] ?? null
+    commitCells(refs)
+  }, [commitCells, documentElements, resetCellEntities])
+
+  const toggleAll = useCallback((elementIndex: number) => {
+    dragRef.current = null
+    const element = documentElements[elementIndex]
+    const tableData = element?.type === 'table' ? element.value as string[][] : undefined
+    if (!tableData) {
+      return
+    }
+    const refs = allCellRefs(elementIndex, tableData)
+    anchorRef.current = refs[0] ?? null
+    commitCells(dedupeCellRefs([...cells, ...refs]))
+  }, [cells, commitCells, documentElements])
+
   const handleCellMouseDown = useCallback((cell: CellBatchCellRef, event: React.MouseEvent<HTMLElement>) => {
     if (event.button !== 0) {
       return
+    }
+
+    const isModifierClick = event.ctrlKey || event.metaKey
+    if (!isModifierClick && modifierClickRef.current) {
+      // Canceling the modifier click's pointerdown suppresses its
+      // compatibility mouseup, so the flag was never consumed. Clear it
+      // or it would swallow this plain click.
+      modifierClickRef.current = false
     }
 
     const anchor = anchorRef.current
@@ -273,6 +385,12 @@ export function useCellBatch(options: UseCellBatchOptions) {
     }
 
     if (!batchModeRef.current) {
+      const clickedSelected = drag
+        && cells.some(candidate => cellKey(candidate) === cellKey(drag.origin))
+      if (clickedSelected) {
+        setAnchorRect(getAnchorRectForCells(cells))
+        return true
+      }
       clearCells()
     }
     return false
@@ -384,22 +502,116 @@ export function useCellBatch(options: UseCellBatchOptions) {
     handleCellMouseDown(cell, event)
   }, [handleCellMouseDown, startPendingTouchGesture])
 
-  const handleSelectColumn = useCallback((elementIndex: number, col: number, additive: boolean) => {
-    if (additive) {
-      toggleColumn(elementIndex, col)
-    } else {
-      selectColumn(elementIndex, col)
+  const isColumnSelected = useCallback((elementIndex: number, col: number) => {
+    const element = documentElements[elementIndex]
+    const tableData = element?.type === 'table' ? element.value as string[][] : undefined
+    if (!tableData || tableData.length < 2) {
+      return false
     }
-    setCellRole('subject')
+    const refs = columnCellRefs(elementIndex, tableData, col)
+    return refs.length > 0 && refs.every(ref => cells.some(candidate => cellKey(candidate) === cellKey(ref)))
+  }, [cells, documentElements])
+
+  const isRowSelected = useCallback((elementIndex: number, row: number) => {
+    const element = documentElements[elementIndex]
+    const tableData = element?.type === 'table' ? element.value as string[][] : undefined
+    if (!tableData?.[row]) {
+      return false
+    }
+    const refs = rowCellRefs(elementIndex, tableData, row)
+    return refs.length > 0 && refs.every(ref => cells.some(candidate => cellKey(candidate) === cellKey(ref)))
+  }, [cells, documentElements])
+
+  const isAllSelected = useCallback((elementIndex: number) => {
+    const element = documentElements[elementIndex]
+    const tableData = element?.type === 'table' ? element.value as string[][] : undefined
+    if (!tableData || tableData.length < 2) {
+      return false
+    }
+    const refs = allCellRefs(elementIndex, tableData)
+    return refs.length > 0 && refs.every(ref => cells.some(candidate => cellKey(candidate) === cellKey(ref)))
+  }, [cells, documentElements])
+
+  const handleSelectColumn = useCallback((elementIndex: number, col: number, additive: boolean) => {
+    if (!additive && isColumnSelected(elementIndex, col)) {
+      // Clicking the button again on a selected column deselects it. With an
+      // in-progress annotation, drop only the cells and keep the form.
+      if (currentAnnotation) {
+        releaseCells()
+      } else {
+        exitBatchMode()
+      }
+      return
+    }
+    if (!additive) {
+      selectColumn(elementIndex, col)
+      setCellRole(nextEmptyRole(currentAnnotation))
+    } else {
+      toggleColumn(elementIndex, col)
+    }
     openBatchMode()
-  }, [toggleColumn, selectColumn, openBatchMode])
+  }, [isColumnSelected, releaseCells, exitBatchMode, selectColumn, setCellRole, openBatchMode, toggleColumn, currentAnnotation])
+
+  const handleSelectRow = useCallback((elementIndex: number, row: number, additive: boolean) => {
+    if (!additive && isRowSelected(elementIndex, row)) {
+      // Clicking the button again on a selected row deselects it. With an
+      // in-progress annotation, drop only the cells and keep the form.
+      if (currentAnnotation) {
+        releaseCells()
+      } else {
+        exitBatchMode()
+      }
+      return
+    }
+    if (!additive) {
+      selectRow(elementIndex, row)
+      setCellRole(nextEmptyRole(currentAnnotation))
+    } else {
+      toggleRow(elementIndex, row)
+    }
+    openBatchMode()
+  }, [isRowSelected, releaseCells, exitBatchMode, selectRow, setCellRole, openBatchMode, toggleRow, currentAnnotation])
+
+  const selectCell = useCallback((elementIndex: number, row: number, col: number) => {
+    dragRef.current = null
+    resetCellEntities()
+    const cell = { elementIndex, row, col }
+    anchorRef.current = cell
+    commitCells([cell])
+  }, [commitCells, resetCellEntities])
+
+  const handleSelectAll = useCallback((elementIndex: number, additive: boolean) => {
+    if (!additive && isAllSelected(elementIndex)) {
+      // Clicking the button again on a fully selected table deselects all
+      // cells. With an in-progress annotation, drop only the cells and keep
+      // the form.
+      if (currentAnnotation) {
+        releaseCells()
+      } else {
+        exitBatchMode()
+      }
+      return
+    }
+    if (!additive) {
+      selectAll(elementIndex)
+      setCellRole(nextEmptyRole(currentAnnotation))
+    } else {
+      toggleAll(elementIndex)
+    }
+    openBatchMode()
+  }, [isAllSelected, releaseCells, exitBatchMode, selectAll, setCellRole, openBatchMode, toggleAll, currentAnnotation])
 
   const handleAnnotateColumnFromPopover = useCallback((elementIndex: number, col: number) => {
-    selectColumn(elementIndex, col)
-    setCellRole('subject')
-    openBatchMode()
+    handleSelectColumn(elementIndex, col, false)
     selection.clearSelection()
-  }, [openBatchMode, selectColumn, selection])
+  }, [handleSelectColumn, selection])
+
+  const handleAnnotateRowFromPopover = useCallback((elementIndex: number, row: number) => {
+    handleSelectRow(elementIndex, row, false)
+    selection.clearSelection()
+  }, [handleSelectRow, selection])
+
+  const cellRole = cellRoleState
 
   const preview = useMemo<CellBatchPreview | null>(() => {
     if (!batchMode) {
@@ -436,25 +648,14 @@ export function useCellBatch(options: UseCellBatchOptions) {
       return
     }
 
-    const buildItem = (chosenComp: DocumentAnnotationComponent): BatchAnnotationItem => {
-      const subjectComp = cellRole === 'subject' ? chosenComp : slots.subject!
-      const predicateComp = cellRole === 'predicate' ? chosenComp : slots.predicate!
-      const objectComp = cellRole === 'object' ? chosenComp : slots.object!
-      return {
-        subject: subjectComp,
-        subjectEntity: cellRole === 'subject' ? null : createEntityFromComponent(subjectComp),
-        predicate: predicateComp,
-        predicateEntity: cellRole === 'predicate' ? null : createEntityFromComponent(predicateComp),
-        object: objectComp,
-        objectEntity: cellRole === 'object' ? null : createEntityFromComponent(objectComp),
-      }
-    }
+    const buildItem = (row: CellBatchPreviewRow): BatchAnnotationItem =>
+      buildBatchAnnotationItem({ row, cellRole, fixed: slots, cellEntities })
 
     setCreating(true)
     try {
       const items = preview.rows
         .filter(row => row.status === 'create' && row.component)
-        .map(row => buildItem(row.component!))
+        .map(row => buildItem(row))
 
       const createdIds = await addAnnotations(documentId, items)
       const refreshed = await getAnnotations(documentId)
@@ -489,7 +690,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
     } finally {
       setCreating(false)
     }
-  }, [cellRole, preview, creating, currentAnnotation, exitBatchMode, setCurrentAnnotation, setDocumentAnnotations])
+  }, [cellRole, preview, creating, currentAnnotation, cellEntities, exitBatchMode, setCurrentAnnotation, setDocumentAnnotations])
 
   useEffect(() => {
     if (!dragging) {
@@ -590,13 +791,18 @@ export function useCellBatch(options: UseCellBatchOptions) {
         clearBrowserSelection()
       }
       if (cells.length > 0) {
-        exitBatchMode()
+        // With an in-progress annotation, defer to the form's discard
+        // confirmation (its close button is triggered by the keyboard
+        // shortcuts' Escape handler). Exit immediately otherwise.
+        if (!currentAnnotation) {
+          exitBatchMode()
+        }
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [cells.length, exitBatchMode])
+  }, [cells.length, currentAnnotation, exitBatchMode])
 
   useEffect(() => {
     const finalizeDrag = () => {
@@ -651,6 +857,21 @@ export function useCellBatch(options: UseCellBatchOptions) {
 
   const selectedKeys = useMemo(() => new Set(cells.map(cellKey)), [cells])
 
+  const cellRows = useMemo(() => {
+    return dedupeCellRefs(cells).map((cell) => {
+      const element = documentElements[cell.elementIndex]
+      const tableData = element?.type === 'table' ? element.value as string[][] : undefined
+      const cellText = tableData?.[cell.row]?.[cell.col]
+      const value = typeof cellText === 'string' ? trimmedCellValue(cellText) : null
+
+      return {
+        cell,
+        text: value?.value ?? '',
+        filled: Boolean(value),
+      }
+    })
+  }, [cells, documentElements])
+
   return {
     cells,
     selectedKeys,
@@ -661,13 +882,21 @@ export function useCellBatch(options: UseCellBatchOptions) {
     creating,
     preview,
     anchorRect,
+    cellEntities,
+    setCellEntity,
+    cellRows,
     openBatchMode,
     exitBatchMode,
+    releaseCells,
     handleCellPointerDown,
     handleCellDragOver,
     handleCellMouseUp,
     handleSelectColumn,
+    handleSelectRow,
+    selectCell,
+    handleSelectAll,
     handleAnnotateColumnFromPopover,
+    handleAnnotateRowFromPopover,
     createBatch,
     clearCells,
   } as const

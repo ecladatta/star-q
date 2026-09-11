@@ -2,8 +2,10 @@ import type {
   DocumentAnnotation,
   DocumentAnnotationComponent,
   DocumentElement,
+  Entity,
   EntityType,
 } from '@/types/types'
+import { createEntityFromComponent } from '@/lib/annotation-roles'
 
 export type CellBatchCellRef = {
   elementIndex: number
@@ -107,6 +109,32 @@ export function columnCellRefs(elementIndex: number, tableData: string[][], col:
   return cells
 }
 
+export function rowCellRefs(elementIndex: number, tableData: string[][], row: number): CellBatchCellRef[] {
+  const cells: CellBatchCellRef[] = []
+  const rowData = tableData[row]
+  if (!rowData) {
+    return cells
+  }
+  for (let col = 0; col < rowData.length; col++) {
+    cells.push({ elementIndex, row, col })
+  }
+  return cells
+}
+
+export function allCellRefs(elementIndex: number, tableData: string[][]): CellBatchCellRef[] {
+  const cells: CellBatchCellRef[] = []
+  for (let row = 0; row < tableData.length; row++) {
+    const rowData = tableData[row]
+    if (!rowData) {
+      continue
+    }
+    for (let col = 0; col < rowData.length; col++) {
+      cells.push({ elementIndex, row, col })
+    }
+  }
+  return cells
+}
+
 export function trimmedCellValue(cellText: string): { start: number, end: number, value: string } | null {
   const trimmed = cellText.trim()
 
@@ -191,5 +219,49 @@ export function buildCellBatchPreview(input: CellBatchPreviewInput): CellBatchPr
     createCount: rows.filter(row => row.status === 'create').length,
     duplicateCount: rows.filter(row => row.status === 'duplicate').length,
     emptyCount: rows.filter(row => row.status === 'empty').length,
+  }
+}
+
+export type CellBatchAnnotationItem = {
+  subject: DocumentAnnotationComponent
+  subjectEntity: Entity | null
+  predicate: DocumentAnnotationComponent
+  predicateEntity: Entity | null
+  object: DocumentAnnotationComponent
+  objectEntity: Entity | null
+}
+
+export function buildBatchAnnotationItem(input: {
+  row: CellBatchPreviewRow
+  cellRole: EntityType
+  fixed: CellBatchFixedSlots
+  cellEntities: Map<string, Entity>
+}): CellBatchAnnotationItem {
+  const { row, cellRole, fixed, cellEntities } = input
+  const chosenComp = row.component!
+  const chosenEntity = cellEntities.get(cellKey(row.cell)) ?? null
+  const subjectComp = cellRole === 'subject' ? chosenComp : fixed.subject!
+  const predicateComp = cellRole === 'predicate' ? chosenComp : fixed.predicate!
+  const objectComp = cellRole === 'object' ? chosenComp : fixed.object!
+
+  return {
+    subject: subjectComp,
+    subjectEntity: cellRole === 'subject'
+      ? chosenEntity
+      : subjectComp
+        ? createEntityFromComponent(subjectComp)
+        : null,
+    predicate: predicateComp,
+    predicateEntity: cellRole === 'predicate'
+      ? chosenEntity
+      : predicateComp
+        ? createEntityFromComponent(predicateComp)
+        : null,
+    object: objectComp,
+    objectEntity: cellRole === 'object'
+      ? chosenEntity
+      : objectComp
+        ? createEntityFromComponent(objectComp)
+        : null,
   }
 }

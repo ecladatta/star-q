@@ -184,21 +184,6 @@ export function DocumentViewer({
     setTimeout(handleTableSelection, 50, index, row, col)
   }, [cellBatch, handleTableSelection])
 
-  const popoverAnnotateColumnTarget = useMemo(() => {
-    if (readOnly || !popover.popoverState.visible || popover.popoverState.annotation) {
-      return null
-    }
-    const elementIndex = selection.currentElementIndex
-    const tableSelection = selection.tableSelection
-    if (elementIndex === null || !tableSelection) {
-      return null
-    }
-    if (documentElements[elementIndex]?.type !== 'table') {
-      return null
-    }
-    return { elementIndex, col: tableSelection.cellIndex }
-  }, [readOnly, popover.popoverState, selection, documentElements])
-
   const anchorPopoverState = useMemo<PopoverState | null>(() => {
     if (!cellBatch.anchorRect) {
       return null
@@ -221,13 +206,6 @@ export function DocumentViewer({
   const handleCellSelectionAssociation = useCallback((type: EntityType) => {
     cellBatch.setCellRole(type)
     cellBatch.openBatchMode()
-  }, [cellBatch])
-
-  const handleCellSelectionAnnotateColumn = useCallback(() => {
-    const first = cellBatch.cells[0]
-    if (first) {
-      cellBatch.handleSelectColumn(first.elementIndex, first.col, false)
-    }
   }, [cellBatch])
 
   const handleQualifierSelectionAssociation = useCallback(
@@ -499,6 +477,10 @@ export function DocumentViewer({
                       selectedCellKeys={cellBatch.selectedKeys}
                       onSelectColumn={(col, additive) =>
                         cellBatch.handleSelectColumn(element.elementIndex, col, additive)}
+                      onSelectRow={(row, additive) =>
+                        cellBatch.handleSelectRow(element.elementIndex, row, additive)}
+                      onSelectAll={additive =>
+                        cellBatch.handleSelectAll(element.elementIndex, additive)}
                       readOnly={readOnly}
                     />
                   ))}
@@ -528,7 +510,10 @@ export function DocumentViewer({
               batchCreating={cellBatch.creating}
               batchCellRole={cellBatch.cellRole}
               batchCellsCount={cellBatch.cells.length}
+              batchCellRows={cellBatch.cellRows}
+              batchCellEntities={cellBatch.cellEntities}
               onBatchCellRoleChange={cellBatch.setCellRole}
+              onBatchCellEntityChange={cellBatch.setCellEntity}
               batchReady={Boolean(
                 CONSTANT_ROLES[cellBatch.cellRole].every(role => currentAnnotation?.[role])
                 && (cellBatch.preview?.createCount ?? 0) > 0,
@@ -588,13 +573,6 @@ export function DocumentViewer({
               }
               hasCurrentAnnotation={Boolean(currentAnnotation)}
               onEditAnnotation={handleEditAnnotation}
-              onAnnotateColumn={popoverAnnotateColumnTarget
-                ? () =>
-                    cellBatch.handleAnnotateColumnFromPopover(
-                      popoverAnnotateColumnTarget.elementIndex,
-                      popoverAnnotateColumnTarget.col,
-                    )
-                : undefined}
             />
           )}
 
@@ -613,7 +591,7 @@ export function DocumentViewer({
               onQualifierSelectionAssociation={() => {}}
               hasCurrentAnnotation={false}
               onEditAnnotation={handleEditAnnotation}
-              onAnnotateColumn={handleCellSelectionAnnotateColumn}
+              keepOnModifierOutside
             />
           )}
         </div>

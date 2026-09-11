@@ -13,6 +13,7 @@ export type PopoverState = {
   visible: boolean
   annotations: DocumentAnnotation[]
   mentionData: AnnotationMention | null
+  isTableCell?: boolean
 }
 
 const INITIAL_POPOVER_STATE: PopoverState = {
@@ -330,6 +331,7 @@ function useTableSelectionHandler(
           componentId: null,
           annotations: [],
           mentionData: null,
+          isTableCell: true,
         })
       }
     }, SELECTION_TIMEOUT)

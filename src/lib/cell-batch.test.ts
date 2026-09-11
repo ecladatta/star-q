@@ -1,12 +1,16 @@
+import type { CellBatchPreviewRow } from './cell-batch'
 import type { DocumentAnnotation, DocumentAnnotationComponent, DocumentElement } from '@/types/types'
 import { describe, expect, it } from 'vitest'
 import {
+  allCellRefs,
+  buildBatchAnnotationItem,
   buildCellBatchPreview,
   cellDomKey,
   cellKey,
   cellsInRect,
   columnCellRefs,
   dedupeCellRefs,
+  rowCellRefs,
   trimmedCellValue,
 } from './cell-batch'
 
@@ -114,6 +118,40 @@ describe('columnCellRefs', () => {
   it('skips the header row', () => {
     const refs = columnCellRefs(0, tableElement.value as string[][], 0)
     expect(refs.map(ref => ref.row)).toEqual([1, 2, 3])
+  })
+})
+
+describe('rowCellRefs', () => {
+  it('spans every column of the row', () => {
+    const refs = rowCellRefs(0, tableElement.value as string[][], 1)
+    expect(refs).toEqual([
+      { elementIndex: 0, row: 1, col: 0 },
+      { elementIndex: 0, row: 1, col: 1 },
+    ])
+  })
+
+  it('returns empty for missing rows', () => {
+    expect(rowCellRefs(0, tableElement.value as string[][], 99)).toEqual([])
+  })
+})
+
+describe('allCellRefs', () => {
+  it('returns the header row and every data cell', () => {
+    const refs = allCellRefs(0, tableElement.value as string[][])
+    expect(refs).toEqual([
+      { elementIndex: 0, row: 0, col: 0 },
+      { elementIndex: 0, row: 0, col: 1 },
+      { elementIndex: 0, row: 1, col: 0 },
+      { elementIndex: 0, row: 1, col: 1 },
+      { elementIndex: 0, row: 2, col: 0 },
+      { elementIndex: 0, row: 2, col: 1 },
+      { elementIndex: 0, row: 3, col: 0 },
+      { elementIndex: 0, row: 3, col: 1 },
+    ])
+  })
+
+  it('returns empty for an empty table', () => {
+    expect(allCellRefs(0, [])).toEqual([])
   })
 })
 
@@ -269,5 +307,67 @@ describe('buildCellBatchPreview', () => {
     })
 
     expect(preview.emptyCount).toBe(1)
+  })
+})
+
+describe('buildBatchAnnotationItem', () => {
+  const row: CellBatchPreviewRow = {
+    cell: { elementIndex: 0, row: 1, col: 0 },
+    status: 'create',
+    component: component({
+      annotationTag: 'subject',
+      annotationValue: 'Ada Lovelace',
+      annotationRow: 1,
+      annotationCell: 0,
+    }),
+  }
+
+  it('uses the per-cell entity for the cell role', () => {
+    const item = buildBatchAnnotationItem({
+      row,
+      cellRole: 'subject',
+      fixed: { subject: null, predicate: null, object: null },
+      cellEntities: new Map([[cellKey(row.cell), { label: 'Ada Lovelace', value: 'Q7254', type: 'subject', custom: false, customId: null, datatype: null }]]),
+    })
+
+    expect(item.subject).toBe(row.component)
+    expect(item.subjectEntity?.value).toBe('Q7254')
+  })
+
+  it('falls back to a null entity when the cell has none', () => {
+    const item = buildBatchAnnotationItem({
+      row,
+      cellRole: 'subject',
+      fixed: { subject: null, predicate: null, object: null },
+      cellEntities: new Map(),
+    })
+
+    expect(item.subjectEntity).toBeNull()
+  })
+
+  it('derives entities for the fixed roles from their components', () => {
+    const rowComp = component({
+      annotationTag: 'subject',
+      annotationValue: 'Ada Lovelace',
+      entityValue: 'Q7254',
+      annotationRow: 1,
+      annotationCell: 0,
+    })
+    const occupation = component({ annotationTag: 'predicate', annotationValue: 'occupation', entityValue: 'P106' })
+    const item = buildBatchAnnotationItem({
+      row: { ...row, status: 'duplicate', component: rowComp },
+      cellRole: 'object',
+      fixed: {
+        subject: rowComp,
+        predicate: occupation,
+        object: null,
+      },
+      cellEntities: new Map(),
+    })
+
+    expect(item.subjectEntity?.value).toBe('Q7254')
+    expect(item.predicateEntity?.value).toBe('P106')
+    expect(item.object).toBe(rowComp)
+    expect(item.objectEntity).toBeNull()
   })
 })

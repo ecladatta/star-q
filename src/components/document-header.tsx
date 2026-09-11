@@ -88,7 +88,7 @@ export function DocumentHeader({
                 <MoreHorizontal className="size-3.5" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuCheckboxItem
                 checked={fullWidth}
                 onCheckedChange={checked => setFullWidth(checked)}

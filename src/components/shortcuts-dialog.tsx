@@ -120,9 +120,9 @@ export function ShortcutsDialog() {
                 </kbd>
               </div>
               <div className="flex justify-between">
-                <span>Select column</span>
+                <span>Select all cells</span>
                 <kbd className="rounded-sm bg-muted px-2 py-1 text-xs">
-                  Header button
+                  Button
                 </kbd>
               </div>
             </div>

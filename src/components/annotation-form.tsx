@@ -1,4 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react'
+import type { CellBatchCellRef } from '@/lib/cell-batch'
 import type { PropertyConstraints } from '@/lib/wikidata-constraints'
 import type {
   AnnotationComponentRole,
@@ -15,6 +16,7 @@ import {
   ChevronRightIcon,
   CopyIcon,
   EllipsisIcon,
+  LayersIcon,
   Loader2Icon,
   PlusIcon,
   SaveIcon,
@@ -37,6 +39,7 @@ import {
   AlertDialogMedia,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -45,6 +48,11 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -64,6 +72,7 @@ import {
 } from '@/components/ui/tooltip'
 import { entityTypeForComponentRole } from '@/lib/annotation-roles'
 import { validateAnnotationQualifiers } from '@/lib/annotation-validation'
+import { cellKey } from '@/lib/cell-batch'
 import { cn, isMac } from '@/lib/utils'
 import { WIKIDATA_ITEM_PATTERN, WIKIDATA_PROPERTY_PATTERN } from '@/lib/wikidata-constraints'
 
@@ -109,7 +118,10 @@ type AnnotationFormProps = {
   batchCreating?: boolean
   batchCellRole?: EntityType
   batchCellsCount?: number
+  batchCellRows?: Array<{ cell: CellBatchCellRef, text: string, filled: boolean }> | null
+  batchCellEntities?: Map<string, Entity>
   onBatchCellRoleChange?: (role: EntityType) => void
+  onBatchCellEntityChange?: (cell: CellBatchCellRef, entity: Entity | null) => void
   scrollToCells?: () => void
   onBatchExit?: () => void
 }
@@ -184,17 +196,18 @@ function CellsSlotIndicator({
   return (
     <div
       className={cn(
-        'flex h-9 w-full items-center gap-1 rounded-md border border-dashed pl-1.5',
+        'flex w-full items-center gap-1 rounded-md border border-dashed pl-1.5',
         ROLE_SOFT[slotRole],
       )}
     >
       <button
         type="button"
         tabIndex={-1}
-        className="cursor-pointer truncate text-sm"
+        className="flex cursor-pointer items-center gap-1.5 truncate text-sm"
         onClick={onScrollToCells}
         aria-label={`Scroll to the selected cells, which fill the ${ROLE_LABEL[slotRole].toLowerCase()} slot`}
       >
+        <LayersIcon className="size-3.5" />
         {count}
         {' '}
         cell
@@ -205,7 +218,7 @@ function CellsSlotIndicator({
           <button
             type="button"
             tabIndex={-1}
-            className="-m-1 ml-auto cursor-pointer rounded-sm p-2 hover:bg-foreground/10"
+            className="ml-auto cursor-pointer rounded-sm p-1 hover:bg-foreground/10"
             aria-label="Change slot"
           >
             <EllipsisIcon className="block size-3.5" />
@@ -254,7 +267,10 @@ export function AnnotationForm({
   batchCreating = false,
   batchCellRole,
   batchCellsCount,
+  batchCellRows = null,
+  batchCellEntities,
   onBatchCellRoleChange,
+  onBatchCellEntityChange,
   scrollToCells,
   onBatchExit,
 }: AnnotationFormProps) {
@@ -371,6 +387,17 @@ export function AnnotationForm({
   const effectiveQualifierPredicateConstraints = qualifierPredicatesEligible
     ? (qualifierPredicateConstraints ?? {})
     : null
+  // The constraint side applies to the entity picked for the cell role's entities.
+  const cellConstraintSide = batchCellRole === 'subject'
+    ? subjectConstraintSide
+    : batchCellRole === 'object'
+      ? objectConstraintSide
+      : null
+  const singleBatchCell = batchCellsCount === 1 ? batchCellRows?.[0] ?? null : null
+  const singleBatchCellEntity = singleBatchCell
+    ? batchCellEntities?.get(cellKey(singleBatchCell.cell)) ?? null
+    : null
+
   // undefined auto-opens the first useful row; null means the user collapsed all qualifier editors.
   const [expandedQualifierId, setExpandedQualifierId] = useState<string | null | undefined
   >(undefined)
@@ -687,8 +714,12 @@ export function AnnotationForm({
 
   const discardCurrentAnnotation = useCallback(() => {
     setDiscardDialogOpen(false)
+    if (batchMode && onBatchExit) {
+      onBatchExit()
+      return
+    }
     setCurrentAnnotation(null)
-  }, [setCurrentAnnotation])
+  }, [batchMode, onBatchExit, setCurrentAnnotation])
 
   const handleDiscard = useCallback(() => {
     if (hasUnsavedChanges) {
@@ -994,7 +1025,7 @@ export function AnnotationForm({
                 <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
-                    onClick={batchMode && onBatchExit ? onBatchExit : handleDiscard}
+                    onClick={handleDiscard}
                     data-discard-annotation-trigger
                   >
                     ✕
@@ -1033,7 +1064,26 @@ export function AnnotationForm({
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div>
               {batchMode && batchCellRole === 'subject'
-                ? <CellsSlotIndicator slotRole="subject" count={batchCellsCount ?? 0} onRoleChange={onBatchCellRoleChange} onScrollToCells={scrollToCells} disabled={batchCreating} />
+                ? (
+                    <>
+                      <CellsSlotIndicator slotRole="subject" count={batchCellsCount ?? 0} onRoleChange={onBatchCellRoleChange} onScrollToCells={scrollToCells} disabled={batchCreating} />
+                      {singleBatchCell && (
+                        <div className="mt-1">
+                          <EntitySelector
+                            type="subject"
+                            value={singleBatchCellEntity}
+                            onValueChange={newValue => onBatchCellEntityChange?.(singleBatchCell.cell, newValue)}
+                            text={singleBatchCell.text}
+                            corpusId={corpusId}
+                            constraints={subjectConstraintSide ? effectivePredicateConstraints : null}
+                            constraintSide={subjectConstraintSide}
+                            constraintPropertyLabel={predicateEntityLabel}
+                            filteringEnabled={wikidataPredicateFiltering}
+                          />
+                        </div>
+                      )}
+                    </>
+                  )
                 : (
                     <>
                       <div
@@ -1090,7 +1140,24 @@ export function AnnotationForm({
             </div>
             <div>
               {batchMode && batchCellRole === 'predicate'
-                ? <CellsSlotIndicator slotRole="predicate" count={batchCellsCount ?? 0} onRoleChange={onBatchCellRoleChange} onScrollToCells={scrollToCells} disabled={batchCreating} />
+                ? (
+                    <>
+                      <CellsSlotIndicator slotRole="predicate" count={batchCellsCount ?? 0} onRoleChange={onBatchCellRoleChange} onScrollToCells={scrollToCells} disabled={batchCreating} />
+                      {singleBatchCell && (
+                        <div className="mt-1">
+                          <EntitySelector
+                            type="predicate"
+                            value={singleBatchCellEntity}
+                            onValueChange={newValue => onBatchCellEntityChange?.(singleBatchCell.cell, newValue)}
+                            text={singleBatchCell.text}
+                            corpusId={corpusId}
+                            constraintEntityChecks={predicateEntityChecks}
+                            filteringEnabled={wikidataPredicateFiltering}
+                          />
+                        </div>
+                      )}
+                    </>
+                  )
                 : (
                     <>
                       <div
@@ -1166,7 +1233,26 @@ export function AnnotationForm({
             </div>
             <div>
               {batchMode && batchCellRole === 'object'
-                ? <CellsSlotIndicator slotRole="object" count={batchCellsCount ?? 0} onRoleChange={onBatchCellRoleChange} onScrollToCells={scrollToCells} disabled={batchCreating} />
+                ? (
+                    <>
+                      <CellsSlotIndicator slotRole="object" count={batchCellsCount ?? 0} onRoleChange={onBatchCellRoleChange} onScrollToCells={scrollToCells} disabled={batchCreating} />
+                      {singleBatchCell && (
+                        <div className="mt-1">
+                          <EntitySelector
+                            type="object"
+                            value={singleBatchCellEntity}
+                            onValueChange={newValue => onBatchCellEntityChange?.(singleBatchCell.cell, newValue)}
+                            text={singleBatchCell.text}
+                            corpusId={corpusId}
+                            constraints={objectConstraintSide ? effectivePredicateConstraints : null}
+                            constraintSide={objectConstraintSide}
+                            constraintPropertyLabel={predicateEntityLabel}
+                            filteringEnabled={wikidataPredicateFiltering}
+                          />
+                        </div>
+                      )}
+                    </>
+                  )
                 : (
                     <>
                       <div
@@ -1220,6 +1306,106 @@ export function AnnotationForm({
                   )}
             </div>
           </div>
+          {batchMode && (batchCellsCount ?? 0) > 1 && (
+            <Collapsible className="pt-1">
+              <CollapsibleTrigger
+                className="group flex w-full items-center gap-1.5 rounded-md border border-dashed px-2 py-1.5 text-sm font-medium text-muted-foreground hover:bg-foreground/5"
+              >
+                <ChevronRightIcon className="size-3.5 transition-transform group-data-[state=open]:rotate-90" />
+                Per-cell entities
+                <Badge variant="secondary" className="ml-auto font-normal">
+                  {(() => {
+                    const filled = (batchCellRows ?? []).filter(row => row.filled)
+                    const withEntity = filled.filter(row => batchCellEntities?.has(cellKey(row.cell))).length
+                    return `${withEntity} of ${filled.length} set`
+                  })()}
+                </Badge>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                {(() => {
+                  const filledRows = (batchCellRows ?? []).filter(row => row.filled)
+                  const anySet = filledRows.some(row => batchCellEntities?.has(cellKey(row.cell)))
+
+                  return (
+                    <div className="mt-2 flex items-center gap-2 rounded-md bg-muted/40 px-2 py-1.5">
+                      <span className="w-20 shrink-0 text-xs font-medium text-muted-foreground">Apply to all</span>
+                      <div className="min-w-0 flex-1">
+                        <EntitySelector
+                          type={batchCellRole ?? 'subject'}
+                          value={null}
+                          onValueChange={(newValue) => {
+                            if (!newValue) {
+                              return
+                            }
+                            for (const row of filledRows) {
+                              onBatchCellEntityChange?.(row.cell, newValue)
+                            }
+                          }}
+                          text=""
+                          corpusId={corpusId}
+                          constraints={cellConstraintSide ? effectivePredicateConstraints : null}
+                          constraintSide={cellConstraintSide}
+                          constraintPropertyLabel={predicateEntityLabel}
+                          filteringEnabled={wikidataPredicateFiltering}
+                        />
+                      </div>
+                      {anySet && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-7 shrink-0 text-destructive hover:text-destructive"
+                          onClick={() => {
+                            for (const row of filledRows) {
+                              onBatchCellEntityChange?.(row.cell, null)
+                            }
+                          }}
+                          aria-label="Clear entities for all cells"
+                        >
+                          <Trash2Icon className="size-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  )
+                })()}
+                <div className="mt-1 flex max-h-72 flex-col gap-1 overflow-y-auto pr-1">
+                  {(batchCellRows ?? []).map(row => (
+                    <div
+                      key={cellKey(row.cell)}
+                      className={cn('flex items-center gap-2 rounded-md border px-2 py-1.5', !row.filled && 'bg-muted/40')}
+                    >
+                      {row.filled
+                        ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="min-w-0 flex-1 truncate text-xs">{row.text}</span>
+                              </TooltipTrigger>
+                              <TooltipContent>{row.text}</TooltipContent>
+                            </Tooltip>
+                          )
+                        : (
+                            <span className="min-w-0 flex-1 text-xs text-muted-foreground">Empty cell</span>
+                          )}
+                      <div className="w-44 shrink-0">
+                        {row.filled && (
+                          <EntitySelector
+                            type={batchCellRole ?? 'subject'}
+                            value={batchCellEntities?.get(cellKey(row.cell)) ?? null}
+                            onValueChange={newValue => onBatchCellEntityChange?.(row.cell, newValue)}
+                            text={row.text}
+                            corpusId={corpusId}
+                            constraints={cellConstraintSide ? effectivePredicateConstraints : null}
+                            constraintSide={cellConstraintSide}
+                            constraintPropertyLabel={predicateEntityLabel}
+                            filteringEnabled={wikidataPredicateFiltering}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          )}
           {!batchMode && currentAnnotation && (
             <div className="pt-3">
               <div

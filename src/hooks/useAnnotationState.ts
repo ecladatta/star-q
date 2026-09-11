@@ -628,6 +628,23 @@ export function useAnnotationState(
   }, [])
 
   const handleSelectionMentionAssociation = useCallback((type: EntityType) => {
+    if (cellBatch.batchMode && cellBatch.cellRole === type) {
+      // The keystroke refers to the latest selection, which claims the role
+      // the docked batch's cells occupy. Drop the cells entirely and fall
+      // back to a regular annotation with this selection as the role.
+      cellBatch.releaseCells()
+    }
+
+    if (popover.popoverState.isTableCell && selection.tableSelection && selection.currentElementIndex !== null) {
+      const { rowIndex, cellIndex } = selection.tableSelection
+      cellBatch.selectCell(selection.currentElementIndex, rowIndex, cellIndex)
+      cellBatch.setCellRole(type)
+      cellBatch.openBatchMode()
+      selection.clearSelection()
+      popover.hidePopover()
+      return
+    }
+
     const mention = popover.popoverState.mentionData
     if (mention) {
       setCurrentAnnotation(prev => ({
@@ -645,7 +662,7 @@ export function useAnnotationState(
       addToCurrentAnnotation(type)
     }
     popover.hidePopover()
-  }, [addToCurrentAnnotation, handleMentionAssociation, popover, selection])
+  }, [addToCurrentAnnotation, handleMentionAssociation, popover, selection, cellBatch])
 
   const handleCloneAnnotation = useCallback((annotation?: DocumentAnnotation) => {
     const annotationToClone = annotation || popover.popoverState.annotation
@@ -684,7 +701,22 @@ export function useAnnotationState(
     popoverVisible: popover.popoverState.visible,
     hasSelection: selection.hasSelection(),
     currentAnnotation: popover.popoverState.annotation,
-    onAnnotationAction: handleSelectionMentionAssociation,
+    onAnnotationAction: (type) => {
+      // A visible selection popover means the user just made a new text or
+      // cell selection: the keystroke refers to it, not to the docked batch.
+      if (popover.popoverState.visible) {
+        handleSelectionMentionAssociation(type)
+        return
+      }
+
+      if (cellBatch.cells.length > 0) {
+        cellBatch.setCellRole(type)
+        cellBatch.openBatchMode()
+        return
+      }
+
+      handleSelectionMentionAssociation(type)
+    },
     onEditCurrentAnnotation: () => {
       if (popover.popoverState.annotation) {
         setCurrentAnnotation(popover.popoverState.annotation)
