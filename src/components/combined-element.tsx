@@ -201,9 +201,15 @@ function CombinedElement({
     tableWrapper?.addEventListener('scroll', updateAll, { capture: true, passive: true })
     window.addEventListener('resize', updateAll)
 
+    const resizeObserver = new ResizeObserver(updateAll)
+    if (tableWrapper) {
+      resizeObserver.observe(tableWrapper)
+    }
+
     return () => {
       tableWrapper?.removeEventListener('scroll', updateAll, { capture: true })
       window.removeEventListener('resize', updateAll)
+      resizeObserver.disconnect()
     }
   }, [updateColumnButtonPosition, updateRowButtonPosition, updateTableActionRailPosition])
 
