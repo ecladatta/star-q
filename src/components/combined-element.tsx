@@ -213,7 +213,7 @@ function CombinedElement({
       const rowMarkdown = `| ${cells.join(' | ')} |`
 
       if (rowIndex === 0) {
-        const separator = `| ${cells.map(() => '---').join('---')} |`
+        const separator = `| ${cells.map(() => '---').join(' | ')} |`
         return `${rowMarkdown}\n${separator}`
       }
 
