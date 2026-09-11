@@ -21,6 +21,8 @@ import { requireEditAnnotation, requireEditCorpus, requireEditDocument, requireV
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0]
 type DbExecutor = typeof db | Transaction
 
+const ANNOTATION_INSERT_CHUNK = 100
+
 type ComponentWithCustomEntity = {
   entityCustom: boolean | null
   entityLabel: string | null
@@ -313,23 +315,27 @@ export async function addAnnotations(
       throw new Error(`A document can have at most ${MAX_ANNOTATIONS_PER_DOCUMENT} annotations.`)
     }
 
-    const ids: string[] = []
+    const values: Array<{
+      documentId: string
+      subjectId: string
+      predicateId: string
+      objectId: string
+      userId: string
+    }> = []
     for (const item of items) {
       const [subjectId, predicateId, objectId] = await Promise.all([
         upsertAnnotationComponent(item.subject, item.subjectEntity, doc.corpusId, undefined, trx),
         upsertAnnotationComponent(item.predicate, item.predicateEntity, doc.corpusId, undefined, trx),
         upsertAnnotationComponent(item.object, item.objectEntity, doc.corpusId, undefined, trx),
       ])
+      values.push({ documentId, subjectId, predicateId, objectId, userId })
+    }
 
-      const [createdAnnotation] = await trx.insert(annotation).values({
-        documentId,
-        subjectId,
-        predicateId,
-        objectId,
-        userId,
-      }).returning({ id: annotation.id })
-
-      ids.push(createdAnnotation.id)
+    const ids: string[] = []
+    for (let start = 0; start < values.length; start += ANNOTATION_INSERT_CHUNK) {
+      const chunk = values.slice(start, start + ANNOTATION_INSERT_CHUNK)
+      const inserted = await trx.insert(annotation).values(chunk).returning({ id: annotation.id })
+      ids.push(...inserted.map(row => row.id))
     }
 
     await trx.update(document).set({ updatedAt: new Date() }).where(eq(document.id, documentId))
