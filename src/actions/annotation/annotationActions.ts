@@ -1,5 +1,6 @@
 'use server'
 import type { AnnotationComponent } from '@/db/schema'
+import type { CellBatchAnnotationItem as BatchAnnotationItem } from '@/lib/cell-batch'
 import type {
   AnnotationComponentRole,
   AnnotationQualifierInput,
@@ -288,15 +289,6 @@ export async function addAnnotation(
   revalidatePath(`/document/${documentId}`)
 
   return annotationId
-}
-
-export type BatchAnnotationItem = {
-  subject: AnnotationComponent
-  subjectEntity: Entity | null
-  predicate: AnnotationComponent
-  predicateEntity: Entity | null
-  object: AnnotationComponent
-  objectEntity: Entity | null
 }
 
 export async function addAnnotations(

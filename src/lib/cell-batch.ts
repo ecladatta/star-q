@@ -231,6 +231,8 @@ export type CellBatchAnnotationItem = {
   objectEntity: Entity | null
 }
 
+export type BatchAnnotationItem = CellBatchAnnotationItem
+
 export function buildBatchAnnotationItem(input: {
   row: CellBatchPreviewRow & { component: DocumentAnnotationComponent }
   cellRole: EntityType

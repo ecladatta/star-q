@@ -1,7 +1,6 @@
 import type { Dispatch, SetStateAction } from 'react'
 import type { usePopoverState } from './useSelectionState'
-import type { BatchAnnotationItem } from '@/actions/annotation/annotationActions'
-import type { CellBatchCellRef, CellBatchPreview, CellBatchPreviewRow } from '@/lib/cell-batch'
+import type { BatchAnnotationItem, CellBatchCellRef, CellBatchPreview, CellBatchPreviewRow } from '@/lib/cell-batch'
 import type { CurrentAnnotation, DocumentAnnotation, DocumentAnnotationComponent, Entity, EntityType } from '@/types/types'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
