@@ -1,6 +1,6 @@
-import type { Dispatch, SetStateAction } from 'react'
+import type { Dispatch, ReactNode, SetStateAction } from 'react'
 import type { CellBatchCellRef } from '@/lib/cell-batch'
-import type { PropertyConstraints } from '@/lib/wikidata-constraints'
+import type { ConstraintEntityCheck, ConstraintSide, PropertyConstraints } from '@/lib/wikidata-constraints'
 import type {
   AnnotationComponentRole,
   CurrentAnnotation,
@@ -241,6 +241,98 @@ function CellsSlotIndicator({
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
+  )
+}
+
+function SlotField({
+  slotRole,
+  tag,
+  entityValue,
+  onEntityChange,
+  scrollTo,
+  onRemove,
+  corpusId,
+  constraints,
+  constraintSide,
+  constraintPropertyLabel,
+  constraintEntityChecks,
+  filteringEnabled,
+  trailing,
+}: {
+  slotRole: EntityType
+  tag: DocumentAnnotationComponent | undefined
+  entityValue: Entity | null
+  onEntityChange: (newValue: Entity | null) => void
+  scrollTo: () => void
+  onRemove: () => void
+  corpusId: string
+  constraints?: PropertyConstraints | null
+  constraintSide?: ConstraintSide | null
+  constraintPropertyLabel?: string | null
+  constraintEntityChecks?: Array<ConstraintEntityCheck & { label: string }> | null
+  filteringEnabled?: boolean
+  trailing?: ReactNode
+}) {
+  return (
+    <>
+      <div
+        role="button"
+        tabIndex={0}
+        className={cn(
+          'mb-1 flex w-full cursor-pointer items-center justify-between truncate rounded-md px-2 py-0.5 text-sm font-medium transition-opacity hover:opacity-80',
+          ROLE_SOFT[slotRole],
+        )}
+        onClick={() => scrollTo()}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            scrollTo()
+          }
+        }}
+      >
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="truncate">
+              {tag?.annotationValue ?? '\u00A0'}
+            </span>
+          </TooltipTrigger>
+          {tag?.annotationValue && (
+            <TooltipContent>
+              {tag.annotationValue}
+            </TooltipContent>
+          )}
+        </Tooltip>
+        {tag && (
+          <button
+            type="button"
+            className="ml-2 shrink-0"
+            onClick={(e) => {
+              e.stopPropagation()
+              onRemove()
+            }}
+          >
+            ✕
+          </button>
+        )}
+      </div>
+      <div className="flex min-w-0 items-center gap-1">
+        <div className="min-w-0 flex-1">
+          <EntitySelector
+            type={slotRole}
+            value={entityValue}
+            onValueChange={onEntityChange}
+            text={tag?.annotationValue ?? ''}
+            corpusId={corpusId}
+            constraints={constraints}
+            constraintSide={constraintSide}
+            constraintPropertyLabel={constraintPropertyLabel}
+            constraintEntityChecks={constraintEntityChecks}
+            filteringEnabled={filteringEnabled}
+          />
+        </div>
+        {trailing}
+      </div>
+    </>
   )
 }
 
@@ -1102,57 +1194,19 @@ export function AnnotationForm({
                     </>
                   )
                 : (
-                    <>
-                      <div
-                        role="button"
-                        tabIndex={0}
-                        className="mb-1 flex w-full cursor-pointer items-center justify-between truncate rounded-md bg-subject-soft px-2 py-0.5 text-sm font-medium text-subject-fg transition-opacity hover:opacity-80"
-                        onClick={() => scrollToElement(subjectTag)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault()
-                            scrollToElement(subjectTag)
-                          }
-                        }}
-                      >
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="truncate">
-                              {subjectTag?.annotationValue ?? '\u00A0'}
-                            </span>
-                          </TooltipTrigger>
-                          {subjectTag?.annotationValue && (
-                            <TooltipContent>
-                              {subjectTag.annotationValue}
-                            </TooltipContent>
-                          )}
-                        </Tooltip>
-                        {subjectTag && (
-                          <button
-                            type="button"
-                            className="ml-2 shrink-0"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              removeTag('subject')
-                            }}
-                          >
-                            ✕
-                          </button>
-                        )}
-                      </div>
-                      <EntitySelector
-                        type="subject"
-                        value={getEntityValue(currentAnnotation?.subject, 'subject')}
-                        onValueChange={newValue =>
-                          handleEntityChange('subject', newValue)}
-                        text={currentAnnotation?.subject?.annotationValue ?? ''}
-                        corpusId={corpusId}
-                        constraints={subjectConstraintSide ? effectivePredicateConstraints : null}
-                        constraintSide={subjectConstraintSide}
-                        constraintPropertyLabel={predicateEntityLabel}
-                        filteringEnabled={wikidataPredicateFiltering}
-                      />
-                    </>
+                    <SlotField
+                      slotRole="subject"
+                      tag={subjectTag}
+                      entityValue={getEntityValue(currentAnnotation?.subject, 'subject')}
+                      onEntityChange={newValue => handleEntityChange('subject', newValue)}
+                      scrollTo={() => scrollToElement(subjectTag)}
+                      onRemove={() => removeTag('subject')}
+                      corpusId={corpusId}
+                      constraints={subjectConstraintSide ? effectivePredicateConstraints : null}
+                      constraintSide={subjectConstraintSide}
+                      constraintPropertyLabel={predicateEntityLabel}
+                      filteringEnabled={wikidataPredicateFiltering}
+                    />
                   )}
             </div>
             <div>
@@ -1176,60 +1230,17 @@ export function AnnotationForm({
                     </>
                   )
                 : (
-                    <>
-                      <div
-                        role="button"
-                        tabIndex={0}
-                        className="mb-1 flex w-full cursor-pointer items-center justify-between truncate rounded-md bg-predicate-soft px-2 py-0.5 text-sm font-medium text-predicate-fg transition-opacity hover:opacity-80"
-                        onClick={() => scrollToElement(predicateTag)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault()
-                            scrollToElement(predicateTag)
-                          }
-                        }}
-                      >
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="truncate">
-                              {predicateTag?.annotationValue ?? '\u00A0'}
-                            </span>
-                          </TooltipTrigger>
-                          {predicateTag?.annotationValue && (
-                            <TooltipContent>
-                              {predicateTag.annotationValue}
-                            </TooltipContent>
-                          )}
-                        </Tooltip>
-                        {predicateTag && (
-                          <button
-                            type="button"
-                            className="ml-2"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              removeTag('predicate')
-                            }}
-                          >
-                            ✕
-                          </button>
-                        )}
-                      </div>
-                      <div className="flex min-w-0 items-center gap-1">
-                        <div className="min-w-0 flex-1">
-                          <EntitySelector
-                            type="predicate"
-                            value={getEntityValue(
-                              currentAnnotation?.predicate,
-                              'predicate',
-                            )}
-                            onValueChange={newValue =>
-                              handleEntityChange('predicate', newValue)}
-                            text={currentAnnotation?.predicate?.annotationValue ?? ''}
-                            corpusId={corpusId}
-                            constraintEntityChecks={predicateEntityChecks}
-                            filteringEnabled={wikidataPredicateFiltering}
-                          />
-                        </div>
+                    <SlotField
+                      slotRole="predicate"
+                      tag={predicateTag}
+                      entityValue={getEntityValue(currentAnnotation?.predicate, 'predicate')}
+                      onEntityChange={newValue => handleEntityChange('predicate', newValue)}
+                      scrollTo={() => scrollToElement(predicateTag)}
+                      onRemove={() => removeTag('predicate')}
+                      corpusId={corpusId}
+                      constraintEntityChecks={predicateEntityChecks}
+                      filteringEnabled={wikidataPredicateFiltering}
+                      trailing={(
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button
@@ -1243,8 +1254,8 @@ export function AnnotationForm({
                           </TooltipTrigger>
                           <TooltipContent>Swap subject and object</TooltipContent>
                         </Tooltip>
-                      </div>
-                    </>
+                      )}
+                    />
                   )}
             </div>
             <div>
@@ -1270,55 +1281,19 @@ export function AnnotationForm({
                     </>
                   )
                 : (
-                    <>
-                      <div
-                        role="button"
-                        tabIndex={0}
-                        className="mb-1 flex w-full cursor-pointer items-center justify-between truncate rounded-md bg-object-soft px-2 py-0.5 text-sm font-medium text-object-fg transition-opacity hover:opacity-80"
-                        onClick={() => scrollToElement(objectTag)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault()
-                            scrollToElement(objectTag)
-                          }
-                        }}
-                      >
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <span className="truncate">
-                              {objectTag?.annotationValue ?? '\u00A0'}
-                            </span>
-                          </TooltipTrigger>
-                          {objectTag?.annotationValue && (
-                            <TooltipContent>{objectTag.annotationValue}</TooltipContent>
-                          )}
-                        </Tooltip>
-                        {objectTag && (
-                          <button
-                            type="button"
-                            className="ml-2"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              removeTag('object')
-                            }}
-                          >
-                            ✕
-                          </button>
-                        )}
-                      </div>
-                      <EntitySelector
-                        type="object"
-                        value={getEntityValue(currentAnnotation?.object, 'object')}
-                        onValueChange={newValue =>
-                          handleEntityChange('object', newValue)}
-                        text={currentAnnotation?.object?.annotationValue ?? ''}
-                        corpusId={corpusId}
-                        constraints={objectConstraintSide ? effectivePredicateConstraints : null}
-                        constraintSide={objectConstraintSide}
-                        constraintPropertyLabel={predicateEntityLabel}
-                        filteringEnabled={wikidataPredicateFiltering}
-                      />
-                    </>
+                    <SlotField
+                      slotRole="object"
+                      tag={objectTag}
+                      entityValue={getEntityValue(currentAnnotation?.object, 'object')}
+                      onEntityChange={newValue => handleEntityChange('object', newValue)}
+                      scrollTo={() => scrollToElement(objectTag)}
+                      onRemove={() => removeTag('object')}
+                      corpusId={corpusId}
+                      constraints={objectConstraintSide ? effectivePredicateConstraints : null}
+                      constraintSide={objectConstraintSide}
+                      constraintPropertyLabel={predicateEntityLabel}
+                      filteringEnabled={wikidataPredicateFiltering}
+                    />
                   )}
             </div>
           </div>
