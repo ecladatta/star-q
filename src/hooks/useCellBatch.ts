@@ -160,10 +160,16 @@ export function useCellBatch(options: UseCellBatchOptions) {
     }
   }, [dragging])
 
-  const commitCells = useCallback((next: CellBatchCellRef[]) => {
+  const commitCells = useCallback((next: CellBatchCellRef[], showAnchor = true) => {
     resetCellEntities()
     setCells(next)
-    setAnchorRect(dragRef.current?.active || next.length < 2 ? null : getAnchorRectForCells(next))
+    if (dragRef.current?.active || next.length < 2) {
+      setAnchorRect(null)
+    } else if (showAnchor) {
+      setAnchorRect(getAnchorRectForCells(next))
+    } else {
+      setAnchorRect(prev => (prev === null ? null : getAnchorRectForCells(next)))
+    }
   }, [resetCellEntities])
 
   const clearCells = useCallback(() => {
@@ -208,7 +214,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
       ? cells.filter(candidate => cellKey(candidate) !== key)
       : dedupeCellRefs([...cells, cell])
     anchorRef.current = cell
-    commitCells(next)
+    commitCells(next, false)
   }, [cells, commitCells])
 
   const extendRect = useCallback((from: CellBatchCellRef, to: CellBatchCellRef) => {
@@ -221,11 +227,12 @@ export function useCellBatch(options: UseCellBatchOptions) {
     const tableData = element?.type === 'table' ? element.value as string[][] : undefined
     if (!tableData || tableData.length < 2) {
       toast.error('This column has no data rows to annotate.')
-      return
+      return 0
     }
     const refs = columnCellRefs(elementIndex, tableData, col)
     anchorRef.current = refs[0] ?? null
     commitCells(refs)
+    return refs.length
   }, [commitCells, documentElements])
 
   const toggleColumn = useCallback((elementIndex: number, col: number) => {
@@ -242,7 +249,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
       ? cells.filter(candidate => !keys.has(cellKey(candidate)))
       : dedupeCellRefs([...cells, ...refs])
     anchorRef.current = refs[0] ?? null
-    commitCells(next)
+    commitCells(next, false)
   }, [cells, commitCells, documentElements])
 
   const selectRow = useCallback((elementIndex: number, row: number) => {
@@ -251,11 +258,12 @@ export function useCellBatch(options: UseCellBatchOptions) {
     const tableData = element?.type === 'table' ? element.value as string[][] : undefined
     if (!tableData?.[row]) {
       toast.error('This row has no cells to annotate.')
-      return
+      return 0
     }
     const refs = rowCellRefs(elementIndex, tableData, row)
     anchorRef.current = refs[0] ?? null
     commitCells(refs)
+    return refs.length
   }, [commitCells, documentElements])
 
   const toggleRow = useCallback((elementIndex: number, row: number) => {
@@ -272,7 +280,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
       ? cells.filter(candidate => !keys.has(cellKey(candidate)))
       : dedupeCellRefs([...cells, ...refs])
     anchorRef.current = refs[0] ?? null
-    commitCells(next)
+    commitCells(next, false)
   }, [cells, commitCells, documentElements])
 
   const selectAll = useCallback((elementIndex: number) => {
@@ -281,11 +289,12 @@ export function useCellBatch(options: UseCellBatchOptions) {
     const tableData = element?.type === 'table' ? element.value as string[][] : undefined
     if (!tableData || tableData.length < 2) {
       toast.error('This table has no data rows to annotate.')
-      return
+      return 0
     }
     const refs = allCellRefs(elementIndex, tableData)
     anchorRef.current = refs[0] ?? null
     commitCells(refs)
+    return refs.length
   }, [commitCells, documentElements])
 
   const toggleAll = useCallback((elementIndex: number) => {
@@ -303,7 +312,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
       ? cells.filter(candidate => !keys.has(cellKey(candidate)))
       : dedupeCellRefs([...cells, ...refs])
     anchorRef.current = refs[0] ?? null
-    commitCells(next)
+    commitCells(next, false)
   }, [cells, commitCells, documentElements])
 
   const handleCellMouseDown = useCallback((cell: CellBatchCellRef, event: React.MouseEvent<HTMLElement>) => {
@@ -543,8 +552,15 @@ export function useCellBatch(options: UseCellBatchOptions) {
       return
     }
     if (!additive) {
-      selectColumn(elementIndex, col)
-      setCellRole(nextEmptyRole(currentAnnotation))
+      const selectedCount = selectColumn(elementIndex, col)
+      if (selectedCount >= 2) {
+        // Stage the selection; batch mode opens once a role is chosen from
+        // the anchored popover.
+        setBatchMode(false)
+      } else {
+        setCellRole(nextEmptyRole(currentAnnotation))
+        openBatchMode()
+      }
     } else {
       toggleColumn(elementIndex, col)
     }
@@ -563,8 +579,15 @@ export function useCellBatch(options: UseCellBatchOptions) {
       return
     }
     if (!additive) {
-      selectRow(elementIndex, row)
-      setCellRole(nextEmptyRole(currentAnnotation))
+      const selectedCount = selectRow(elementIndex, row)
+      if (selectedCount >= 2) {
+        // Stage the selection; batch mode opens once a role is chosen from
+        // the anchored popover.
+        setBatchMode(false)
+      } else {
+        setCellRole(nextEmptyRole(currentAnnotation))
+        openBatchMode()
+      }
     } else {
       toggleRow(elementIndex, row)
     }
@@ -591,8 +614,15 @@ export function useCellBatch(options: UseCellBatchOptions) {
       return
     }
     if (!additive) {
-      selectAll(elementIndex)
-      setCellRole(nextEmptyRole(currentAnnotation))
+      const selectedCount = selectAll(elementIndex)
+      if (selectedCount >= 2) {
+        // Stage the selection; batch mode opens once a role is chosen from
+        // the anchored popover.
+        setBatchMode(false)
+      } else {
+        setCellRole(nextEmptyRole(currentAnnotation))
+        openBatchMode()
+      }
     } else {
       toggleAll(elementIndex)
     }
