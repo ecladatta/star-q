@@ -418,40 +418,41 @@ function CombinedElement({
       if (!inRowZone)
         return
 
-      const rows = new Map<number, HTMLElement>()
+      let hoveredRow: number | null = null
+      let nearestRow = -1
+      let nearestDistance = Number.POSITIVE_INFINITY
+      let previousRow = -1
 
       for (const cell of tableWrapper.querySelectorAll<HTMLElement>('[data-cell]')) {
-        const rowIndex = Number.parseInt(cell.dataset.cell?.split('-')[0] ?? '', 10)
+        const row = Number.parseInt(cell.dataset.cell?.split('-')[0] ?? '', 10)
 
-        if (rowIndex >= 0 && !rows.has(rowIndex))
-          rows.set(rowIndex, cell)
+        if (!(row >= 0) || row === previousRow)
+          continue
+
+        previousRow = row
+        const rowRect = cell.getBoundingClientRect()
+
+        if (event.clientY >= rowRect.top && event.clientY <= rowRect.bottom) {
+          hoveredRow = row
+          break
+        }
+
+        const distance = Math.abs(rowRect.top + rowRect.height / 2 - event.clientY)
+        if (distance < nearestDistance) {
+          nearestDistance = distance
+          nearestRow = row
+        }
       }
 
-      const sortedRowIndexes = Array.from(rows.keys()).sort((a, b) => a - b)
-      const rowIndex = sortedRowIndexes.find((index) => {
-        const firstCell = rows.get(index)
-        const rowRect = firstCell?.getBoundingClientRect()
+      if (hoveredRow === null && nearestRow >= 0)
+        hoveredRow = nearestRow
 
-        return rowRect && event.clientY >= rowRect.top && event.clientY <= rowRect.bottom
-      }) ?? sortedRowIndexes.reduce((nearest, index, _, allRows) => {
-        const rowRect = rows.get(index)?.getBoundingClientRect()
-        const nearestRect = rows.get(allRows[nearest])?.getBoundingClientRect()
-        const distance = rowRect
-          ? Math.abs(rowRect.top + rowRect.height / 2 - event.clientY)
-          : Number.POSITIVE_INFINITY
-        const nearestDistance = nearestRect
-          ? Math.abs(nearestRect.top + nearestRect.height / 2 - event.clientY)
-          : Number.POSITIVE_INFINITY
-
-        return distance < nearestDistance ? index : nearest
-      }, 0)
-
-      if (!rows.has(rowIndex))
+      if (hoveredRow === null)
         return
 
-      hoveredRowRef.current = rowIndex
-      setHoveredCell({ row: rowIndex, cell: 0 })
-      updateRowButtonPosition(rowIndex)
+      hoveredRowRef.current = hoveredRow
+      setHoveredCell({ row: hoveredRow, cell: 0 })
+      updateRowButtonPosition(hoveredRow)
       hoveredHeaderRef.current = null
       setColumnButtonPosition(null)
     }
