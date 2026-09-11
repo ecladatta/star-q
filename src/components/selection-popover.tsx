@@ -31,6 +31,7 @@ type SelectionPopoverProps = {
   hasCurrentAnnotation: boolean
   onEditAnnotation: (annotation: DocumentAnnotation) => void
   keepOnModifierOutside?: boolean
+  keepOnTriggerSelector?: string
 }
 
 export function SelectionPopover({
@@ -43,6 +44,7 @@ export function SelectionPopover({
   hasCurrentAnnotation,
   onEditAnnotation,
   keepOnModifierOutside,
+  keepOnTriggerSelector,
 }: SelectionPopoverProps) {
   if (!popoverState.visible)
     return null
@@ -66,6 +68,14 @@ export function SelectionPopover({
           collisionPadding={12}
           onInteractOutside={(event) => {
             const originalEvent = event instanceof CustomEvent ? event.detail.originalEvent : null
+            const target = originalEvent?.target instanceof Element ? originalEvent.target : null
+            if (keepOnTriggerSelector && target?.closest(keepOnTriggerSelector)) {
+              // Interacting with a batch selection trigger must not dismiss
+              // the role popover; the trigger's own click restages the
+              // selection and re-anchors the popover.
+              event.preventDefault()
+              return
+            }
             if (keepOnModifierOutside && originalEvent && 'ctrlKey' in originalEvent) {
               const pointerEvent = originalEvent as PointerEvent
               if (pointerEvent.ctrlKey || pointerEvent.metaKey) {

@@ -591,6 +591,7 @@ export function DocumentViewer({
               hasCurrentAnnotation={false}
               onEditAnnotation={handleEditAnnotation}
               keepOnModifierOutside
+              keepOnTriggerSelector="[data-batch-select-trigger]"
             />
           )}
         </div>

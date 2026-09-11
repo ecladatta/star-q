@@ -767,6 +767,7 @@ function CombinedElement({
                   ref={columnButtonRef}
                   type="button"
                   tabIndex={-1}
+                  data-batch-select-trigger="column"
                   className="absolute z-30 -translate-x-1/2 -translate-y-full rounded-md border bg-background/95 p-1 text-muted-foreground opacity-100 shadow-sm transition-opacity before:absolute before:-inset-3 before:content-[''] after:absolute after:inset-x-0 after:-bottom-4 after:h-4 after:content-[''] hover:text-foreground focus-visible:opacity-100"
                   style={{ top: columnButtonPosition.top, left: columnButtonPosition.left }}
                   onMouseDown={event => event.stopPropagation()}
@@ -791,6 +792,7 @@ function CombinedElement({
                   ref={rowButtonRef}
                   type="button"
                   tabIndex={-1}
+                  data-batch-select-trigger="row"
                   className="absolute z-30 rounded-md border bg-background/95 p-1 text-muted-foreground opacity-100 shadow-sm transition-opacity before:absolute before:-inset-3 before:content-[''] after:absolute after:inset-y-0 after:-right-4 after:w-4 after:content-[''] hover:text-foreground focus-visible:opacity-100"
                   style={{ top: rowButtonPosition.top, left: rowButtonPosition.left }}
                   onMouseDown={event => event.stopPropagation()}
@@ -829,6 +831,7 @@ function CombinedElement({
                       className="size-7 p-1"
                       onClick={event => onSelectAll(event.ctrlKey || event.metaKey)}
                       tabIndex={-1}
+                      data-batch-select-trigger="all"
                       aria-label="Select all table cells"
                     >
                       <Grid2x2Check className="size-4" />
