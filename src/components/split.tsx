@@ -11,6 +11,7 @@ function Split(props: {
   mark?: boolean
   isCurrentAnnotation?: boolean
   className?: string
+  componentId?: string
   onClick: (anchorRect?: DOMRect) => void
 }) {
   if (props.mark) {
@@ -28,6 +29,18 @@ function Split(props: {
       e.preventDefault()
       props.onClick(e.currentTarget.getBoundingClientRect())
     }
+  }
+
+  if (!props.componentId) {
+    return (
+      <span
+        className={cn('cursor-text whitespace-pre-wrap', props.className)}
+        data-start={props.start}
+        data-end={props.end}
+      >
+        {props.content}
+      </span>
+    )
   }
 
   return (

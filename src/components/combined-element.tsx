@@ -295,10 +295,6 @@ function CombinedElement({
           ...(!readOnly && {
             onMouseUp: (event: React.MouseEvent<HTMLElement>) =>
               handleTextSelection(elementIndex, event.currentTarget, rawTitle),
-            onKeyUp: (event: React.KeyboardEvent<HTMLElement>) =>
-              event.key === 'Enter' && handleTextSelection(elementIndex, event.currentTarget, rawTitle),
-            role: 'textbox',
-            tabIndex: 0,
           }),
         }
       : {
@@ -326,10 +322,7 @@ function CombinedElement({
         <div
           className="min-w-0 text-[15px]/7 wrap-break-word"
           {...(!readOnly && {
-            role: 'textbox',
-            tabIndex: 0,
             onMouseUp: (event: React.MouseEvent<HTMLElement>) => handleTextSelection(elementIndex, event.currentTarget),
-            onKeyUp: (event: React.KeyboardEvent<HTMLElement>) => event.key === 'Enter' && handleTextSelection(elementIndex, event.currentTarget),
           })}
         >
           {splits
