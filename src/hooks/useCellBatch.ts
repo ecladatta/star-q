@@ -162,9 +162,10 @@ export function useCellBatch(options: UseCellBatchOptions) {
   }, [dragging])
 
   const commitCells = useCallback((next: CellBatchCellRef[]) => {
+    resetCellEntities()
     setCells(next)
     setAnchorRect(dragRef.current?.active || next.length < 2 ? null : getAnchorRectForCells(next))
-  }, [])
+  }, [resetCellEntities])
 
   const clearCells = useCallback(() => {
     if (cells.length === 0) {
@@ -208,18 +209,15 @@ export function useCellBatch(options: UseCellBatchOptions) {
       ? cells.filter(candidate => cellKey(candidate) !== key)
       : dedupeCellRefs([...cells, cell])
     anchorRef.current = cell
-    setCells(next)
-    setAnchorRect(null)
-  }, [cells])
+    commitCells(next)
+  }, [cells, commitCells])
 
   const extendRect = useCallback((from: CellBatchCellRef, to: CellBatchCellRef) => {
-    resetCellEntities()
     commitCells(cellsInRect(from, to))
-  }, [commitCells, resetCellEntities])
+  }, [commitCells])
 
   const selectColumn = useCallback((elementIndex: number, col: number) => {
     dragRef.current = null
-    resetCellEntities()
     const element = documentElements[elementIndex]
     const tableData = element?.type === 'table' ? element.value as string[][] : undefined
     if (!tableData || tableData.length < 2) {
@@ -229,7 +227,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
     const refs = columnCellRefs(elementIndex, tableData, col)
     anchorRef.current = refs[0] ?? null
     commitCells(refs)
-  }, [commitCells, documentElements, resetCellEntities])
+  }, [commitCells, documentElements])
 
   const toggleColumn = useCallback((elementIndex: number, col: number) => {
     dragRef.current = null
@@ -250,7 +248,6 @@ export function useCellBatch(options: UseCellBatchOptions) {
 
   const selectRow = useCallback((elementIndex: number, row: number) => {
     dragRef.current = null
-    resetCellEntities()
     const element = documentElements[elementIndex]
     const tableData = element?.type === 'table' ? element.value as string[][] : undefined
     if (!tableData?.[row]) {
@@ -260,7 +257,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
     const refs = rowCellRefs(elementIndex, tableData, row)
     anchorRef.current = refs[0] ?? null
     commitCells(refs)
-  }, [commitCells, documentElements, resetCellEntities])
+  }, [commitCells, documentElements])
 
   const toggleRow = useCallback((elementIndex: number, row: number) => {
     dragRef.current = null
@@ -281,7 +278,6 @@ export function useCellBatch(options: UseCellBatchOptions) {
 
   const selectAll = useCallback((elementIndex: number) => {
     dragRef.current = null
-    resetCellEntities()
     const element = documentElements[elementIndex]
     const tableData = element?.type === 'table' ? element.value as string[][] : undefined
     if (!tableData || tableData.length < 2) {
@@ -291,7 +287,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
     const refs = allCellRefs(elementIndex, tableData)
     anchorRef.current = refs[0] ?? null
     commitCells(refs)
-  }, [commitCells, documentElements, resetCellEntities])
+  }, [commitCells, documentElements])
 
   const toggleAll = useCallback((elementIndex: number) => {
     dragRef.current = null
@@ -572,11 +568,10 @@ export function useCellBatch(options: UseCellBatchOptions) {
 
   const selectCell = useCallback((elementIndex: number, row: number, col: number) => {
     dragRef.current = null
-    resetCellEntities()
     const cell = { elementIndex, row, col }
     anchorRef.current = cell
     commitCells([cell])
-  }, [commitCells, resetCellEntities])
+  }, [commitCells])
 
   const handleSelectAll = useCallback((elementIndex: number, additive: boolean) => {
     if (!additive && isAllSelected(elementIndex)) {
