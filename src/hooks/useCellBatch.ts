@@ -297,8 +297,14 @@ export function useCellBatch(options: UseCellBatchOptions) {
       return
     }
     const refs = allCellRefs(elementIndex, tableData)
+    const keys = new Set(refs.map(cellKey))
+    const allSelected = refs.length > 0
+      && refs.every(ref => cells.some(candidate => cellKey(candidate) === cellKey(ref)))
+    const next = allSelected
+      ? cells.filter(candidate => !keys.has(cellKey(candidate)))
+      : dedupeCellRefs([...cells, ...refs])
     anchorRef.current = refs[0] ?? null
-    commitCells(dedupeCellRefs([...cells, ...refs]))
+    commitCells(next)
   }, [cells, commitCells, documentElements])
 
   const handleCellMouseDown = useCallback((cell: CellBatchCellRef, event: React.MouseEvent<HTMLElement>) => {
