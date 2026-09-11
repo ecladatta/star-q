@@ -134,6 +134,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
   const anchorRef = useRef<CellBatchCellRef | null>(null)
   const dragRef = useRef<{ origin: CellBatchCellRef, focus: CellBatchCellRef | null, active: boolean } | null>(null)
   const modifierClickRef = useRef(false)
+  const touchReleaseRef = useRef(false)
   const batchModeRef = useRef(false)
   const pointerRef = useRef<{ x: number, y: number } | null>(null)
   const viewportRef = useRef<HTMLElement | null>(null)
@@ -383,6 +384,16 @@ export function useCellBatch(options: UseCellBatchOptions) {
     if (drag?.active) {
       anchorRef.current = drag.origin
       setDragging(false)
+
+      if (touchReleaseRef.current) {
+        touchReleaseRef.current = false
+        if (cells.length === 1) {
+          setCellRole(nextEmptyRole(currentAnnotation))
+          openBatchMode()
+        }
+        return true
+      }
+
       setAnchorRect(cells.length >= 2 ? getAnchorRectForCells(cells) : null)
       return true
     }
@@ -402,7 +413,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
       clearCells()
     }
     return false
-  }, [cells, clearCells])
+  }, [cells, clearCells, currentAnnotation, openBatchMode, setCellRole])
 
   const startPendingTouchGesture = useCallback((cell: CellBatchCellRef, event: React.PointerEvent<HTMLElement>) => {
     pendingTouchCleanupRef.current?.()
@@ -843,6 +854,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
         return
       }
       activeTouchCleanupRef.current?.()
+      touchReleaseRef.current = true
       finalizeDrag()
     }
 
