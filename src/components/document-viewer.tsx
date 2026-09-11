@@ -474,12 +474,12 @@ export function DocumentViewer({
                       currentAnnotation={currentAnnotation}
                       selectedCellKeys={cellBatch.selectedKeys}
                       cellRole={cellBatch.batchMode ? cellBatch.cellRole : undefined}
-                      onSelectColumn={(col, additive) =>
-                        cellBatch.handleSelectColumn(element.elementIndex, col, additive)}
-                      onSelectRow={(row, additive) =>
-                        cellBatch.handleSelectRow(element.elementIndex, row, additive)}
-                      onSelectAll={additive =>
-                        cellBatch.handleSelectAll(element.elementIndex, additive)}
+                      onSelectColumn={(col, additive, originRect) =>
+                        cellBatch.handleSelectColumn(element.elementIndex, col, additive, originRect)}
+                      onSelectRow={(row, additive, originRect) =>
+                        cellBatch.handleSelectRow(element.elementIndex, row, additive, originRect)}
+                      onSelectAll={(additive, originRect) =>
+                        cellBatch.handleSelectAll(element.elementIndex, additive, originRect)}
                       readOnly={readOnly}
                     />
                   ))}

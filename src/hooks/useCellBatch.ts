@@ -30,6 +30,8 @@ type AnchorRect = {
   height: number
 }
 
+export type CellBatchOriginRect = AnchorRect
+
 type UseCellBatchOptions = {
   documentElements: Parameters<typeof buildCellBatchPreview>[0]['documentElements']
   documentAnnotations: DocumentAnnotation[]
@@ -177,6 +179,16 @@ export function useCellBatch(options: UseCellBatchOptions) {
     }
   }, [resetCellEntities])
 
+  const commitStagedCells = useCallback((next: CellBatchCellRef[], originRect: CellBatchOriginRect | null) => {
+    resetCellEntities()
+    setCells(next)
+    if (dragRef.current?.active || next.length < 2) {
+      setAnchorRect(null)
+      return
+    }
+    setAnchorRect(originRect ?? getAnchorRectForCells(next))
+  }, [resetCellEntities])
+
   const clearCells = useCallback(() => {
     if (cells.length === 0) {
       return
@@ -226,7 +238,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
     commitCells(cellsInRect(from, to))
   }, [commitCells])
 
-  const selectColumn = useCallback((elementIndex: number, col: number) => {
+  const selectColumn = useCallback((elementIndex: number, col: number, originRect: CellBatchOriginRect | null = null) => {
     dragRef.current = null
     const element = documentElements[elementIndex]
     const tableData = element?.type === 'table' ? element.value as string[][] : undefined
@@ -236,9 +248,9 @@ export function useCellBatch(options: UseCellBatchOptions) {
     }
     const refs = columnCellRefs(elementIndex, tableData, col)
     anchorRef.current = refs[0] ?? null
-    commitCells(refs)
+    commitStagedCells(refs, originRect)
     return refs.length
-  }, [commitCells, documentElements])
+  }, [commitStagedCells, documentElements])
 
   const toggleColumn = useCallback((elementIndex: number, col: number) => {
     dragRef.current = null
@@ -257,7 +269,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
     commitCells(next)
   }, [cells, commitCells, documentElements])
 
-  const selectRow = useCallback((elementIndex: number, row: number) => {
+  const selectRow = useCallback((elementIndex: number, row: number, originRect: CellBatchOriginRect | null = null) => {
     dragRef.current = null
     const element = documentElements[elementIndex]
     const tableData = element?.type === 'table' ? element.value as string[][] : undefined
@@ -267,9 +279,9 @@ export function useCellBatch(options: UseCellBatchOptions) {
     }
     const refs = rowCellRefs(elementIndex, tableData, row)
     anchorRef.current = refs[0] ?? null
-    commitCells(refs)
+    commitStagedCells(refs, originRect)
     return refs.length
-  }, [commitCells, documentElements])
+  }, [commitStagedCells, documentElements])
 
   const toggleRow = useCallback((elementIndex: number, row: number) => {
     dragRef.current = null
@@ -288,7 +300,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
     commitCells(next)
   }, [cells, commitCells, documentElements])
 
-  const selectAll = useCallback((elementIndex: number) => {
+  const selectAll = useCallback((elementIndex: number, originRect: CellBatchOriginRect | null = null) => {
     dragRef.current = null
     const element = documentElements[elementIndex]
     const tableData = element?.type === 'table' ? element.value as string[][] : undefined
@@ -298,9 +310,9 @@ export function useCellBatch(options: UseCellBatchOptions) {
     }
     const refs = allCellRefs(elementIndex, tableData)
     anchorRef.current = refs[0] ?? null
-    commitCells(refs)
+    commitStagedCells(refs, originRect)
     return refs.length
-  }, [commitCells, documentElements])
+  }, [commitStagedCells, documentElements])
 
   const toggleAll = useCallback((elementIndex: number) => {
     dragRef.current = null
@@ -555,7 +567,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
     return refs.length > 0 && refs.every(ref => cells.some(candidate => cellKey(candidate) === cellKey(ref)))
   }, [cells, documentElements])
 
-  const handleSelectColumn = useCallback((elementIndex: number, col: number, additive: boolean) => {
+  const handleSelectColumn = useCallback((elementIndex: number, col: number, additive: boolean, originRect: CellBatchOriginRect | null = null) => {
     if (!additive && isColumnSelected(elementIndex, col)) {
       // Clicking the button again on a selected column deselects it. With an
       // in-progress annotation, drop only the cells and keep the form.
@@ -567,7 +579,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
       return
     }
     if (!additive) {
-      const selectedCount = selectColumn(elementIndex, col)
+      const selectedCount = selectColumn(elementIndex, col, originRect)
       if (selectedCount >= 2) {
         // Stage the selection; batch mode opens once a role is chosen from
         // the anchored popover.
@@ -581,7 +593,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
     }
   }, [isColumnSelected, releaseCells, exitBatchMode, selectColumn, setCellRole, openBatchMode, toggleColumn, currentAnnotation])
 
-  const handleSelectRow = useCallback((elementIndex: number, row: number, additive: boolean) => {
+  const handleSelectRow = useCallback((elementIndex: number, row: number, additive: boolean, originRect: CellBatchOriginRect | null = null) => {
     if (!additive && isRowSelected(elementIndex, row)) {
       // Clicking the button again on a selected row deselects it. With an
       // in-progress annotation, drop only the cells and keep the form.
@@ -593,7 +605,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
       return
     }
     if (!additive) {
-      const selectedCount = selectRow(elementIndex, row)
+      const selectedCount = selectRow(elementIndex, row, originRect)
       if (selectedCount >= 2) {
         // Stage the selection; batch mode opens once a role is chosen from
         // the anchored popover.
@@ -614,7 +626,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
     commitCells([cell])
   }, [commitCells])
 
-  const handleSelectAll = useCallback((elementIndex: number, additive: boolean) => {
+  const handleSelectAll = useCallback((elementIndex: number, additive: boolean, originRect: CellBatchOriginRect | null = null) => {
     if (!additive && isAllSelected(elementIndex)) {
       // Clicking the button again on a fully selected table deselects all
       // cells. With an in-progress annotation, drop only the cells and keep
@@ -627,7 +639,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
       return
     }
     if (!additive) {
-      const selectedCount = selectAll(elementIndex)
+      const selectedCount = selectAll(elementIndex, originRect)
       if (selectedCount >= 2) {
         // Stage the selection; batch mode opens once a role is chosen from
         // the anchored popover.

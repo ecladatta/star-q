@@ -1,10 +1,11 @@
 'use client'
+import type { CellBatchOriginRect } from '@/hooks/useCellBatch'
 import type { Offset } from '@/lib/utils'
 import type { AnnotationComponentRole, CurrentAnnotation, DocumentElement, EntityType } from '@/types/types'
 import { Check, Columns3Icon, Copy, Grid2x2Check, Rows3Icon } from 'lucide-react'
 import { createElement, useCallback, useEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
 
+import { createPortal } from 'react-dom'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
@@ -37,9 +38,9 @@ export type CombinedElementProps = {
   currentAnnotation: CurrentAnnotation | null
   selectedCellKeys?: Set<string>
   cellRole?: EntityType
-  onSelectColumn?: (col: number, additive: boolean) => void
-  onSelectRow?: (row: number, additive: boolean) => void
-  onSelectAll?: (additive: boolean) => void
+  onSelectColumn?: (col: number, additive: boolean, originRect?: CellBatchOriginRect | null) => void
+  onSelectRow?: (row: number, additive: boolean, originRect?: CellBatchOriginRect | null) => void
+  onSelectAll?: (additive: boolean, originRect?: CellBatchOriginRect | null) => void
   readOnly?: boolean
 }
 
@@ -773,7 +774,15 @@ function CombinedElement({
                   onMouseDown={event => event.stopPropagation()}
                   onPointerDown={event => event.stopPropagation()}
                   onMouseUp={event => event.stopPropagation()}
-                  onClick={event => onSelectColumn(hoveredCell.cell, event.ctrlKey || event.metaKey)}
+                  onClick={(event) => {
+                    const rect = event.currentTarget.getBoundingClientRect()
+                    onSelectColumn(hoveredCell.cell, event.ctrlKey || event.metaKey, {
+                      top: rect.top + window.scrollY,
+                      left: rect.left + window.scrollX,
+                      width: rect.width,
+                      height: rect.height,
+                    })
+                  }}
                   aria-label={`Annotate column ${hoveredCell.cell + 1}`}
                 >
                   <Columns3Icon className="size-3.5" />
@@ -805,7 +814,15 @@ function CombinedElement({
                       setRowButtonPosition(null)
                     }
                   }}
-                  onClick={event => onSelectRow(hoveredCell.row, event.ctrlKey || event.metaKey)}
+                  onClick={(event) => {
+                    const rect = event.currentTarget.getBoundingClientRect()
+                    onSelectRow(hoveredCell.row, event.ctrlKey || event.metaKey, {
+                      top: rect.top + window.scrollY,
+                      left: rect.left + window.scrollX,
+                      width: rect.width,
+                      height: rect.height,
+                    })
+                  }}
                   aria-label={`Annotate row ${hoveredCell.row + 1}`}
                 >
                   <Rows3Icon className="size-3.5" />
@@ -829,7 +846,15 @@ function CombinedElement({
                       variant="outline"
                       size="sm"
                       className="size-7 p-1"
-                      onClick={event => onSelectAll(event.ctrlKey || event.metaKey)}
+                      onClick={(event) => {
+                        const rect = event.currentTarget.getBoundingClientRect()
+                        onSelectAll(event.ctrlKey || event.metaKey, {
+                          top: rect.top + window.scrollY,
+                          left: rect.left + window.scrollX,
+                          width: rect.width,
+                          height: rect.height,
+                        })
+                      }}
                       tabIndex={-1}
                       data-batch-select-trigger="all"
                       aria-label="Select all table cells"
