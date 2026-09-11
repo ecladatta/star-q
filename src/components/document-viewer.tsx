@@ -176,7 +176,7 @@ export function DocumentViewer({
   )
 
   const handleTableCellMouseUp = useCallback((index: number, row: number, col: number) => {
-    if (cellBatch.handleCellMouseUp()) {
+    if (cellBatch.handleCellMouseUp({ elementIndex: index, row, col })) {
       return
     }
 

@@ -345,6 +345,12 @@ export function useCellBatch(options: UseCellBatchOptions) {
       modifierClickRef.current = false
     }
 
+    const interactiveTarget = event.target instanceof Element
+      && event.target.closest('[role="button"]')
+    if (interactiveTarget && interactiveTarget !== event.currentTarget) {
+      return
+    }
+
     const anchor = anchorRef.current
     if (event.shiftKey && anchor && anchor.elementIndex === cell.elementIndex) {
       event.preventDefault()
@@ -393,7 +399,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
     extendRect(drag.origin, cell)
   }, [extendRect, popover])
 
-  const handleCellMouseUp = useCallback((): boolean => {
+  const handleCellMouseUp = useCallback((cell?: CellBatchCellRef): boolean => {
     const drag = dragRef.current
     dragRef.current = null
 
@@ -420,8 +426,8 @@ export function useCellBatch(options: UseCellBatchOptions) {
     }
 
     if (!batchModeRef.current) {
-      const clickedSelected = drag
-        && cells.some(candidate => cellKey(candidate) === cellKey(drag.origin))
+      const clickedSelected = cell !== undefined
+        && cells.some(candidate => cellKey(candidate) === cellKey(cell))
       if (clickedSelected) {
         setAnchorRect(getAnchorRectForCells(cells))
         return true
@@ -882,13 +888,13 @@ export function useCellBatch(options: UseCellBatchOptions) {
       clearCells()
     }
 
-    window.addEventListener('mouseup', handleWindowMouseUp)
-    window.addEventListener('pointerup', handleWindowPointerUp)
-    window.addEventListener('pointercancel', handleWindowPointerCancel)
+    window.addEventListener('mouseup', handleWindowMouseUp, true)
+    window.addEventListener('pointerup', handleWindowPointerUp, true)
+    window.addEventListener('pointercancel', handleWindowPointerCancel, true)
     return () => {
-      window.removeEventListener('mouseup', handleWindowMouseUp)
-      window.removeEventListener('pointerup', handleWindowPointerUp)
-      window.removeEventListener('pointercancel', handleWindowPointerCancel)
+      window.removeEventListener('mouseup', handleWindowMouseUp, true)
+      window.removeEventListener('pointerup', handleWindowPointerUp, true)
+      window.removeEventListener('pointercancel', handleWindowPointerCancel, true)
     }
   }, [cells, clearCells])
 
