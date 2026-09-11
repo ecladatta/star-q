@@ -714,7 +714,9 @@ export function useAnnotationState(
         return
       }
 
-      if (cellBatch.cells.length > 0) {
+      // Staged cells waiting on the anchored role popover (drags, columns,
+      // rows, select-all): the keystroke picks the batch's role.
+      if (cellBatch.cells.length > 0 && !cellBatch.batchMode) {
         cellBatch.setCellRole(type)
         cellBatch.openBatchMode()
         return
