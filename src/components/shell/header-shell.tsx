@@ -2,9 +2,9 @@
 
 import type { ReactNode } from 'react'
 import type { NavItem } from './nav-items'
-import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { Logo } from '@/components/logo'
 import { APP_NAME } from '@/lib/config'
 import { cn } from '@/lib/utils'
 import { isActive } from './nav-items'
@@ -22,7 +22,7 @@ export function HeaderShell({ beforeLogo, children }: HeaderShellProps) {
     <header className={cn('flex h-14 shrink-0 items-center gap-2 bg-muted px-4 sm:px-6', !hasCorpusNav && 'border-b')}>
       {beforeLogo}
       <Link href="/" className="flex shrink-0 items-center gap-2 text-[15px] font-semibold tracking-tight hover:opacity-75">
-        <Image src="/logo.svg" alt="" width={24} height={24} unoptimized />
+        <Logo className="size-6 shrink-0" />
         {APP_NAME}
       </Link>
       {children}
