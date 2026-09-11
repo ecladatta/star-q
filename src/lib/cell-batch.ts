@@ -41,7 +41,6 @@ export type CellBatchFixedSlots = {
   object: DocumentAnnotationComponent | null
 }
 
-// The roles that stay constant when the selected cells fill `cellRole`.
 export const CONSTANT_ROLES: Record<EntityType, [EntityType, EntityType]> = {
   subject: ['predicate', 'object'],
   predicate: ['subject', 'object'],

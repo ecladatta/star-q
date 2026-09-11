@@ -201,8 +201,6 @@ export function DocumentViewer({
     }
   }, [cellBatch.anchorRect])
 
-  // Role presses on a multi-cell selection mean batch: one annotation per
-  // cell filling the chosen role.
   const handleCellSelectionAssociation = useCallback((type: EntityType) => {
     cellBatch.setCellRole(type)
     cellBatch.openBatchMode()
