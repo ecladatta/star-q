@@ -1,6 +1,7 @@
 # STAR-Q
 
 ## Overview
+
 STAR-Q is a web-based application designed to facilitate the annotation of texts and tables.
 
 ## Prerequisites

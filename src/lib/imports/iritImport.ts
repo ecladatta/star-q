@@ -337,21 +337,21 @@ async function createDocumentInDb(docData: ProcessedDocument, order: number): Pr
     .map(table => ({
       startOffset: 0, // Offset within the table content itself
       endOffset: table.tableContent.length,
-      tableData: parseCSV(table.tableContent), // Assuming tableContent is valid CSV
+      tableData: parseCSV(table.tableContent),
     }))
 
   const documentPayload: DocumentData = {
     _source: {
       identificationMetadata: {
-        id: docData.title, // Consider a more unique ID if titles can collide
+        id: docData.title,
         title: docData.title,
         versionDate: new Date().toISOString(),
-        hash: docData.title, // Consider a content hash if needed for uniqueness/versioning
-        wikidata: '', // Placeholder or needs actual data
+        hash: docData.title,
+        wikidata: '',
         url: [docData.url],
       },
       extractionMetadata: [{
-        technology: 'text', // Or more specific if applicable
+        technology: 'text',
         texts: textsForDb,
         tables: tablesForDb,
       }],
@@ -395,8 +395,8 @@ function createAnnotationComponent(
     annotationCell: cell,
     annotationRow: row,
     entityCustom: true,
-    entityCustomId: null, // Will be set when saved to database
-    entityDatatype: 'string', // Default, might need adjustment based on actual entity types
+    entityCustomId: null,
+    entityDatatype: 'string',
     entityLabel: value,
     entityValue: value,
   }

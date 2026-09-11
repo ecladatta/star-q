@@ -156,7 +156,7 @@ export function AnnotationListPopover({
     return null
 
   return (
-    <TooltipProvider delayDuration={200}>
+    <TooltipProvider delayDuration={200} disableHoverableContent>
       <div
         onFocusCapture={(e) => {
           e.stopPropagation()

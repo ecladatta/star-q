@@ -1,5 +1,6 @@
-import type { Dispatch, SetStateAction } from 'react'
-import type { PropertyConstraints } from '@/lib/wikidata-constraints'
+import type { Dispatch, ReactNode, SetStateAction } from 'react'
+import type { CellBatchCellRef } from '@/lib/cell-batch'
+import type { ConstraintEntityCheck, ConstraintSide, PropertyConstraints } from '@/lib/wikidata-constraints'
 import type {
   AnnotationComponentRole,
   CurrentAnnotation,
@@ -10,9 +11,12 @@ import type {
 import {
   AlertTriangleIcon,
   ArrowLeftRightIcon,
+  CheckIcon,
   ChevronDownIcon,
   ChevronRightIcon,
   CopyIcon,
+  EllipsisIcon,
+  LayersIcon,
   Loader2Icon,
   PlusIcon,
   SaveIcon,
@@ -35,6 +39,7 @@ import {
   AlertDialogMedia,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -43,6 +48,17 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import {
   Popover,
   PopoverClose,
@@ -56,6 +72,7 @@ import {
 } from '@/components/ui/tooltip'
 import { entityTypeForComponentRole } from '@/lib/annotation-roles'
 import { validateAnnotationQualifiers } from '@/lib/annotation-validation'
+import { cellKey } from '@/lib/cell-batch'
 import { cn, isMac } from '@/lib/utils'
 import { WIKIDATA_ITEM_PATTERN, WIKIDATA_PROPERTY_PATTERN } from '@/lib/wikidata-constraints'
 
@@ -95,6 +112,18 @@ type AnnotationFormProps = {
   ) => void
   hasActiveSelection: boolean
   onActiveQualifierChange: (qualifierId: string | null) => void
+  batchMode?: boolean
+  batchReady?: boolean
+  batchSummary?: string | null
+  batchCreating?: boolean
+  batchCellRole?: EntityType
+  batchCellsCount?: number
+  batchCellRows?: Array<{ cell: CellBatchCellRef, text: string, filled: boolean }> | null
+  batchCellEntities?: Map<string, Entity>
+  onBatchCellRoleChange?: (role: EntityType) => void
+  onBatchCellEntityChange?: (cell: CellBatchCellRef, entity: Entity | null) => void
+  scrollToCells?: () => void
+  onBatchExit?: () => void
 }
 
 function normalizeComponentForDirtyCheck(
@@ -145,6 +174,168 @@ function serializeAnnotationForDirtyCheck(
   })
 }
 
+const ROLE_LABEL: Record<EntityType, string> = {
+  subject: 'Subject',
+  predicate: 'Predicate',
+  object: 'Object',
+}
+
+function CellsSlotIndicator({
+  slotRole,
+  count,
+  onRoleChange,
+  onScrollToCells,
+  disabled = false,
+}: {
+  slotRole: EntityType
+  count: number
+  onRoleChange?: (role: EntityType) => void
+  onScrollToCells?: () => void
+  disabled?: boolean
+}) {
+  return (
+    <div
+      className={cn(
+        'flex w-full items-center gap-1 rounded-md border border-dashed pl-1.5',
+        ROLE_SOFT[slotRole],
+      )}
+    >
+      <button
+        type="button"
+        tabIndex={-1}
+        className="flex cursor-pointer items-center gap-1.5 truncate text-sm"
+        onClick={onScrollToCells}
+        aria-label={`Scroll to the selected cells, which fill the ${ROLE_LABEL[slotRole].toLowerCase()} slot`}
+      >
+        <LayersIcon className="size-3.5" />
+        {count}
+        {' '}
+        cell
+        {count === 1 ? '' : 's'}
+      </button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild disabled={disabled}>
+          <button
+            type="button"
+            className="ml-auto cursor-pointer rounded-sm p-1 hover:bg-foreground/10"
+            aria-label="Change slot"
+          >
+            <EllipsisIcon className="block size-3.5" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-44">
+          {(['subject', 'predicate', 'object'] as EntityType[]).map(type => (
+            <DropdownMenuItem
+              key={type}
+              className="justify-between"
+              onClick={() => onRoleChange?.(type)}
+            >
+              Fill
+              {' '}
+              {ROLE_LABEL[type].toLowerCase()}
+              {' '}
+              slot
+              {slotRole === type && <CheckIcon className="size-3.5" />}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  )
+}
+
+function SlotField({
+  slotRole,
+  tag,
+  entityValue,
+  onEntityChange,
+  scrollTo,
+  onRemove,
+  corpusId,
+  constraints,
+  constraintSide,
+  constraintPropertyLabel,
+  constraintEntityChecks,
+  filteringEnabled,
+  trailing,
+}: {
+  slotRole: EntityType
+  tag: DocumentAnnotationComponent | undefined
+  entityValue: Entity | null
+  onEntityChange: (newValue: Entity | null) => void
+  scrollTo: () => void
+  onRemove: () => void
+  corpusId: string
+  constraints?: PropertyConstraints | null
+  constraintSide?: ConstraintSide | null
+  constraintPropertyLabel?: string | null
+  constraintEntityChecks?: Array<ConstraintEntityCheck & { label: string }> | null
+  filteringEnabled?: boolean
+  trailing?: ReactNode
+}) {
+  return (
+    <>
+      <div
+        role="button"
+        tabIndex={0}
+        className={cn(
+          'mb-1 flex w-full cursor-pointer items-center justify-between truncate rounded-md px-2 py-0.5 text-sm font-medium transition-opacity hover:opacity-80',
+          ROLE_SOFT[slotRole],
+        )}
+        onClick={() => scrollTo()}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            scrollTo()
+          }
+        }}
+      >
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="truncate">
+              {tag?.annotationValue ?? '\u00A0'}
+            </span>
+          </TooltipTrigger>
+          {tag?.annotationValue && (
+            <TooltipContent>
+              {tag.annotationValue}
+            </TooltipContent>
+          )}
+        </Tooltip>
+        {tag && (
+          <button
+            type="button"
+            className="ml-2 shrink-0"
+            onClick={(e) => {
+              e.stopPropagation()
+              onRemove()
+            }}
+          >
+            ✕
+          </button>
+        )}
+      </div>
+      <div className="flex min-w-0 items-center gap-1">
+        <div className="min-w-0 flex-1">
+          <EntitySelector
+            type={slotRole}
+            value={entityValue}
+            onValueChange={onEntityChange}
+            text={tag?.annotationValue ?? ''}
+            corpusId={corpusId}
+            constraints={constraints}
+            constraintSide={constraintSide}
+            constraintPropertyLabel={constraintPropertyLabel}
+            constraintEntityChecks={constraintEntityChecks}
+            filteringEnabled={filteringEnabled}
+          />
+        </div>
+        {trailing}
+      </div>
+    </>
+  )
+}
+
 export function AnnotationForm({
   currentAnnotation,
   setCurrentAnnotation,
@@ -161,6 +352,18 @@ export function AnnotationForm({
   clearQualifierSide,
   hasActiveSelection,
   onActiveQualifierChange,
+  batchMode = false,
+  batchReady = false,
+  batchSummary = null,
+  batchCreating = false,
+  batchCellRole,
+  batchCellsCount,
+  batchCellRows = null,
+  batchCellEntities,
+  onBatchCellRoleChange,
+  onBatchCellEntityChange,
+  scrollToCells,
+  onBatchExit,
 }: AnnotationFormProps) {
   const subjectTag = currentAnnotation?.subject
   const predicateTag = currentAnnotation?.predicate
@@ -237,6 +440,7 @@ export function AnnotationForm({
 
   const hasAnyTags = Boolean(subjectTag || predicateTag || objectTag)
   const hasAllTags = Boolean(subjectTag && predicateTag && objectTag)
+  const docked = hasAnyTags || batchMode
   const qualifiers = useMemo(
     () => currentAnnotation?.qualifiers ?? [],
     [currentAnnotation?.qualifiers],
@@ -274,6 +478,17 @@ export function AnnotationForm({
   const effectiveQualifierPredicateConstraints = qualifierPredicatesEligible
     ? (qualifierPredicateConstraints ?? {})
     : null
+  // The constraint side applies to the entity picked for the cell role's entities.
+  const cellConstraintSide = batchCellRole === 'subject'
+    ? subjectConstraintSide
+    : batchCellRole === 'object'
+      ? objectConstraintSide
+      : null
+  const singleBatchCell = batchCellsCount === 1 ? batchCellRows?.[0] ?? null : null
+  const singleBatchCellEntity = singleBatchCell
+    ? batchCellEntities?.get(cellKey(singleBatchCell.cell)) ?? null
+    : null
+
   // undefined auto-opens the first useful row; null means the user collapsed all qualifier editors.
   const [expandedQualifierId, setExpandedQualifierId] = useState<string | null | undefined
   >(undefined)
@@ -375,6 +590,24 @@ export function AnnotationForm({
   }
 
   const handleSwapSubjectObject = () => {
+    if (batchMode && (batchCellRole === 'subject' || batchCellRole === 'object')) {
+      const cellRole = batchCellRole
+      const otherRole: EntityType = cellRole === 'subject' ? 'object' : 'subject'
+      setCurrentAnnotation((prev) => {
+        if (!prev)
+          return prev
+
+        const swapped = prev[otherRole]
+        return {
+          ...prev,
+          [cellRole]: swapped ? { ...swapped, annotationTag: cellRole } : undefined,
+          [otherRole]: undefined,
+        }
+      })
+      onBatchCellRoleChange?.(otherRole)
+      return
+    }
+
     setCurrentAnnotation((prev) => {
       if (!prev)
         return prev
@@ -590,8 +823,12 @@ export function AnnotationForm({
 
   const discardCurrentAnnotation = useCallback(() => {
     setDiscardDialogOpen(false)
+    if (batchMode && onBatchExit) {
+      onBatchExit()
+      return
+    }
     setCurrentAnnotation(null)
-  }, [setCurrentAnnotation])
+  }, [batchMode, onBatchExit, setCurrentAnnotation])
 
   const handleDiscard = useCallback(() => {
     if (hasUnsavedChanges) {
@@ -693,7 +930,7 @@ export function AnnotationForm({
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault()
         e.stopPropagation()
-        if (hasAllTags && !annotationFormLoading && !isDeletingAnnotation) {
+        if ((hasAllTags || (batchMode && batchReady)) && !annotationFormLoading && !isDeletingAnnotation && !batchCreating) {
           handleSave()
         }
       }
@@ -748,36 +985,43 @@ export function AnnotationForm({
     handleSave,
     currentAnnotation,
     handleCloneAnnotation,
+    batchMode,
+    batchReady,
+    batchCreating,
   ])
 
   return (
     <div
-      inert={!hasAnyTags}
+      inert={!docked}
       className={cn(
         'fixed bottom-0 left-1/2 z-10 w-full max-w-(--breakpoint-md) -translate-x-1/2 transition-transform duration-300 md:w-3/4 lg:w-2/3',
-        hasAnyTags ? 'translate-y-0' : 'translate-y-full',
+        docked ? 'translate-y-0' : 'translate-y-full',
       )}
     >
       <Card
         className={cn(
           'mb-0 w-full rounded-lg border text-left transition-all md:mb-6',
-          currentAnnotation?.id
+          (currentAnnotation?.id || batchMode)
           && 'border-accent ring-1 ring-accent/20',
         )}
       >
         <CardHeader className="flex flex-row pb-4">
           <div>
             <CardTitle>
-              {currentAnnotation?.id
-                ? 'Editing annotation'
-                : 'Finalize your new annotation'}
+              {batchMode
+                ? 'Batch annotation'
+                : currentAnnotation?.id
+                  ? 'Editing annotation'
+                  : 'Finalize your new annotation'}
             </CardTitle>
             <CardDescription>
-              Select entities for each subject, predicate, and object.
+              {batchMode
+                ? 'One annotation per selected cell.'
+                : 'Select entities for each subject, predicate, and object.'}
             </CardDescription>
           </div>
           <div className="ml-auto flex gap-2">
-            {currentAnnotation?.id && (
+            {!batchMode && currentAnnotation?.id && (
               <>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -860,10 +1104,12 @@ export function AnnotationForm({
                   className="bg-success text-success-foreground hover:bg-success/90"
                   onClick={handleSave}
                   disabled={
-                    !hasAllTags || annotationFormLoading || isDeletingAnnotation
+                    batchMode
+                      ? !batchReady || batchCreating || annotationFormLoading || isDeletingAnnotation
+                      : !hasAllTags || annotationFormLoading || isDeletingAnnotation
                   }
                 >
-                  {annotationFormLoading
+                  {(batchMode ? batchCreating : annotationFormLoading)
                     ? (
                         <Loader2Icon className="animate-spin" />
                       )
@@ -873,9 +1119,11 @@ export function AnnotationForm({
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                Save changes (
-                {saveShortcut}
-                )
+                {batchMode
+                  ? `${batchSummary ?? 'Create annotations'} (${saveShortcut})`
+                  : 'Save changes ('}
+                {!batchMode && saveShortcut}
+                {!batchMode && ')'}
               </TooltipContent>
             </Tooltip>
             <AlertDialog
@@ -892,7 +1140,7 @@ export function AnnotationForm({
                     ✕
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Discard changes</TooltipContent>
+                <TooltipContent>{batchMode ? 'Exit batch mode' : 'Discard changes'}</TooltipContent>
               </Tooltip>
               <AlertDialogContent>
                 <AlertDialogHeader>
@@ -924,175 +1172,232 @@ export function AnnotationForm({
         <CardContent className="max-h-[min(70vh,32rem)] overflow-y-auto">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div>
-              <div
-                role="button"
-                tabIndex={0}
-                className="mb-1 flex w-full cursor-pointer items-center justify-between truncate rounded-md bg-subject-soft px-2 py-0.5 text-sm font-medium text-subject-fg transition-opacity hover:opacity-80"
-                onClick={() => scrollToElement(subjectTag)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault()
-                    scrollToElement(subjectTag)
-                  }
-                }}
-              >
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="truncate">
-                      {subjectTag?.annotationValue ?? '\u00A0'}
-                    </span>
-                  </TooltipTrigger>
-                  {subjectTag?.annotationValue && (
-                    <TooltipContent>
-                      {subjectTag.annotationValue}
-                    </TooltipContent>
+              {batchMode && batchCellRole === 'subject'
+                ? (
+                    <>
+                      <CellsSlotIndicator slotRole="subject" count={batchCellsCount ?? 0} onRoleChange={onBatchCellRoleChange} onScrollToCells={scrollToCells} disabled={batchCreating} />
+                      {singleBatchCell && (
+                        <div className="mt-1">
+                          <EntitySelector
+                            type="subject"
+                            value={singleBatchCellEntity}
+                            onValueChange={newValue => onBatchCellEntityChange?.(singleBatchCell.cell, newValue)}
+                            text={singleBatchCell.text}
+                            corpusId={corpusId}
+                            constraints={subjectConstraintSide ? effectivePredicateConstraints : null}
+                            constraintSide={subjectConstraintSide}
+                            constraintPropertyLabel={predicateEntityLabel}
+                            filteringEnabled={wikidataPredicateFiltering}
+                          />
+                        </div>
+                      )}
+                    </>
+                  )
+                : (
+                    <SlotField
+                      slotRole="subject"
+                      tag={subjectTag}
+                      entityValue={getEntityValue(currentAnnotation?.subject, 'subject')}
+                      onEntityChange={newValue => handleEntityChange('subject', newValue)}
+                      scrollTo={() => scrollToElement(subjectTag)}
+                      onRemove={() => removeTag('subject')}
+                      corpusId={corpusId}
+                      constraints={subjectConstraintSide ? effectivePredicateConstraints : null}
+                      constraintSide={subjectConstraintSide}
+                      constraintPropertyLabel={predicateEntityLabel}
+                      filteringEnabled={wikidataPredicateFiltering}
+                    />
                   )}
-                </Tooltip>
-                {subjectTag && (
-                  <button
-                    type="button"
-                    className="ml-2 shrink-0"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      removeTag('subject')
-                    }}
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-              <EntitySelector
-                type="subject"
-                value={getEntityValue(currentAnnotation?.subject, 'subject')}
-                onValueChange={newValue =>
-                  handleEntityChange('subject', newValue)}
-                text={currentAnnotation?.subject?.annotationValue ?? ''}
-                corpusId={corpusId}
-                constraints={subjectConstraintSide ? effectivePredicateConstraints : null}
-                constraintSide={subjectConstraintSide}
-                constraintPropertyLabel={predicateEntityLabel}
-                filteringEnabled={wikidataPredicateFiltering}
-              />
             </div>
             <div>
-              <div
-                role="button"
-                tabIndex={0}
-                className="mb-1 flex w-full cursor-pointer items-center justify-between truncate rounded-md bg-predicate-soft px-2 py-0.5 text-sm font-medium text-predicate-fg transition-opacity hover:opacity-80"
-                onClick={() => scrollToElement(predicateTag)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault()
-                    scrollToElement(predicateTag)
-                  }
-                }}
-              >
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="truncate">
-                      {predicateTag?.annotationValue ?? '\u00A0'}
-                    </span>
-                  </TooltipTrigger>
-                  {predicateTag?.annotationValue && (
-                    <TooltipContent>
-                      {predicateTag.annotationValue}
-                    </TooltipContent>
+              {batchMode && batchCellRole === 'predicate'
+                ? (
+                    <>
+                      <CellsSlotIndicator slotRole="predicate" count={batchCellsCount ?? 0} onRoleChange={onBatchCellRoleChange} onScrollToCells={scrollToCells} disabled={batchCreating} />
+                      {singleBatchCell && (
+                        <div className="mt-1">
+                          <EntitySelector
+                            type="predicate"
+                            value={singleBatchCellEntity}
+                            onValueChange={newValue => onBatchCellEntityChange?.(singleBatchCell.cell, newValue)}
+                            text={singleBatchCell.text}
+                            corpusId={corpusId}
+                            constraintEntityChecks={predicateEntityChecks}
+                            filteringEnabled={wikidataPredicateFiltering}
+                          />
+                        </div>
+                      )}
+                    </>
+                  )
+                : (
+                    <SlotField
+                      slotRole="predicate"
+                      tag={predicateTag}
+                      entityValue={getEntityValue(currentAnnotation?.predicate, 'predicate')}
+                      onEntityChange={newValue => handleEntityChange('predicate', newValue)}
+                      scrollTo={() => scrollToElement(predicateTag)}
+                      onRemove={() => removeTag('predicate')}
+                      corpusId={corpusId}
+                      constraintEntityChecks={predicateEntityChecks}
+                      filteringEnabled={wikidataPredicateFiltering}
+                      trailing={(
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className="px-2"
+                              disabled={batchCreating}
+                              onClick={handleSwapSubjectObject}
+                            >
+                              <ArrowLeftRightIcon className="size-5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Swap subject and object</TooltipContent>
+                        </Tooltip>
+                      )}
+                    />
                   )}
-                </Tooltip>
-                {predicateTag && (
-                  <button
-                    type="button"
-                    className="ml-2"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      removeTag('predicate')
-                    }}
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-              <div className="flex min-w-0 items-center gap-1">
-                <div className="min-w-0 flex-1">
-                  <EntitySelector
-                    type="predicate"
-                    value={getEntityValue(
-                      currentAnnotation?.predicate,
-                      'predicate',
-                    )}
-                    onValueChange={newValue =>
-                      handleEntityChange('predicate', newValue)}
-                    text={currentAnnotation?.predicate?.annotationValue ?? ''}
-                    corpusId={corpusId}
-                    constraintEntityChecks={predicateEntityChecks}
-                    filteringEnabled={wikidataPredicateFiltering}
-                  />
-                </div>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className="px-2"
-                      onClick={handleSwapSubjectObject}
-                    >
-                      <ArrowLeftRightIcon className="size-5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Swap subject and object</TooltipContent>
-                </Tooltip>
-              </div>
             </div>
             <div>
-              <div
-                role="button"
-                tabIndex={0}
-                className="mb-1 flex w-full cursor-pointer items-center justify-between truncate rounded-md bg-object-soft px-2 py-0.5 text-sm font-medium text-object-fg transition-opacity hover:opacity-80"
-                onClick={() => scrollToElement(objectTag)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault()
-                    scrollToElement(objectTag)
-                  }
-                }}
-              >
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="truncate">
-                      {objectTag?.annotationValue ?? '\u00A0'}
-                    </span>
-                  </TooltipTrigger>
-                  {objectTag?.annotationValue && (
-                    <TooltipContent>{objectTag.annotationValue}</TooltipContent>
+              {batchMode && batchCellRole === 'object'
+                ? (
+                    <>
+                      <CellsSlotIndicator slotRole="object" count={batchCellsCount ?? 0} onRoleChange={onBatchCellRoleChange} onScrollToCells={scrollToCells} disabled={batchCreating} />
+                      {singleBatchCell && (
+                        <div className="mt-1">
+                          <EntitySelector
+                            type="object"
+                            value={singleBatchCellEntity}
+                            onValueChange={newValue => onBatchCellEntityChange?.(singleBatchCell.cell, newValue)}
+                            text={singleBatchCell.text}
+                            corpusId={corpusId}
+                            constraints={objectConstraintSide ? effectivePredicateConstraints : null}
+                            constraintSide={objectConstraintSide}
+                            constraintPropertyLabel={predicateEntityLabel}
+                            filteringEnabled={wikidataPredicateFiltering}
+                          />
+                        </div>
+                      )}
+                    </>
+                  )
+                : (
+                    <SlotField
+                      slotRole="object"
+                      tag={objectTag}
+                      entityValue={getEntityValue(currentAnnotation?.object, 'object')}
+                      onEntityChange={newValue => handleEntityChange('object', newValue)}
+                      scrollTo={() => scrollToElement(objectTag)}
+                      onRemove={() => removeTag('object')}
+                      corpusId={corpusId}
+                      constraints={objectConstraintSide ? effectivePredicateConstraints : null}
+                      constraintSide={objectConstraintSide}
+                      constraintPropertyLabel={predicateEntityLabel}
+                      filteringEnabled={wikidataPredicateFiltering}
+                    />
                   )}
-                </Tooltip>
-                {objectTag && (
-                  <button
-                    type="button"
-                    className="ml-2"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      removeTag('object')
-                    }}
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-              <EntitySelector
-                type="object"
-                value={getEntityValue(currentAnnotation?.object, 'object')}
-                onValueChange={newValue =>
-                  handleEntityChange('object', newValue)}
-                text={currentAnnotation?.object?.annotationValue ?? ''}
-                corpusId={corpusId}
-                constraints={objectConstraintSide ? effectivePredicateConstraints : null}
-                constraintSide={objectConstraintSide}
-                constraintPropertyLabel={predicateEntityLabel}
-                filteringEnabled={wikidataPredicateFiltering}
-              />
             </div>
           </div>
-          {currentAnnotation && (
+          {batchMode && (batchCellsCount ?? 0) > 1 && (
+            <Collapsible className="pt-1">
+              <CollapsibleTrigger
+                className="group flex w-full items-center gap-1.5 rounded-md border border-dashed px-2 py-1.5 text-sm font-medium text-muted-foreground hover:bg-foreground/5"
+              >
+                <ChevronRightIcon className="size-3.5 transition-transform group-data-[state=open]:rotate-90" />
+                Per-cell entities
+                <Badge variant="secondary" className="ml-auto font-normal">
+                  {(() => {
+                    const filled = (batchCellRows ?? []).filter(row => row.filled)
+                    const withEntity = filled.filter(row => batchCellEntities?.has(cellKey(row.cell))).length
+                    return `${withEntity} of ${filled.length} set`
+                  })()}
+                </Badge>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                {(() => {
+                  const filledRows = (batchCellRows ?? []).filter(row => row.filled)
+                  const anySet = filledRows.some(row => batchCellEntities?.has(cellKey(row.cell)))
+
+                  return (
+                    <div className="mt-2 flex items-center gap-2 rounded-md bg-muted/40 px-2 py-1.5">
+                      <span className="w-20 shrink-0 text-xs font-medium text-muted-foreground">Apply to all</span>
+                      <div className="min-w-0 flex-1">
+                        <EntitySelector
+                          type={batchCellRole ?? 'subject'}
+                          value={null}
+                          onValueChange={(newValue) => {
+                            if (!newValue) {
+                              return
+                            }
+                            for (const row of filledRows) {
+                              onBatchCellEntityChange?.(row.cell, newValue)
+                            }
+                          }}
+                          text=""
+                          corpusId={corpusId}
+                          constraints={cellConstraintSide ? effectivePredicateConstraints : null}
+                          constraintSide={cellConstraintSide}
+                          constraintPropertyLabel={predicateEntityLabel}
+                          filteringEnabled={wikidataPredicateFiltering}
+                        />
+                      </div>
+                      {anySet && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-7 shrink-0 text-destructive hover:text-destructive"
+                          onClick={() => {
+                            for (const row of filledRows) {
+                              onBatchCellEntityChange?.(row.cell, null)
+                            }
+                          }}
+                          aria-label="Clear entities for all cells"
+                        >
+                          <Trash2Icon className="size-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  )
+                })()}
+                <div className="mt-1 flex max-h-72 flex-col gap-1 overflow-y-auto pr-1">
+                  {(batchCellRows ?? []).map(row => (
+                    <div
+                      key={cellKey(row.cell)}
+                      className={cn('flex items-center gap-2 rounded-md border px-2 py-1.5', !row.filled && 'bg-muted/40')}
+                    >
+                      {row.filled
+                        ? (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="min-w-0 flex-1 truncate text-xs">{row.text}</span>
+                              </TooltipTrigger>
+                              <TooltipContent>{row.text}</TooltipContent>
+                            </Tooltip>
+                          )
+                        : (
+                            <span className="min-w-0 flex-1 text-xs text-muted-foreground">Empty cell</span>
+                          )}
+                      <div className="w-44 shrink-0">
+                        {row.filled && (
+                          <EntitySelector
+                            type={batchCellRole ?? 'subject'}
+                            value={batchCellEntities?.get(cellKey(row.cell)) ?? null}
+                            onValueChange={newValue => onBatchCellEntityChange?.(row.cell, newValue)}
+                            text={row.text}
+                            corpusId={corpusId}
+                            constraints={cellConstraintSide ? effectivePredicateConstraints : null}
+                            constraintSide={cellConstraintSide}
+                            constraintPropertyLabel={predicateEntityLabel}
+                            filteringEnabled={wikidataPredicateFiltering}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          )}
+          {!batchMode && currentAnnotation && (
             <div className="pt-3">
               <div
                 className={cn(

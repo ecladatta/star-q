@@ -42,10 +42,6 @@ function Mark(props: MarkProps) {
   }
 
   return (
-    // Note: making this span a button (and thus adding a tabIndex)
-    // makes it impossible to select text within it, so we disable
-    // the eslint rule for this line.
-    // eslint-disable-next-line jsx-a11y/no-static-element-interactions
     <span
       className={cn(
         'cursor-pointer rounded-sm px-1 whitespace-pre-wrap ring-1 transition-opacity duration-300 select-text ring-inset',
@@ -57,6 +53,8 @@ function Mark(props: MarkProps) {
       )}
       data-start={props.start}
       data-end={props.end}
+      role="button"
+      tabIndex={0}
       onKeyUp={handleKeyUp}
       onMouseUp={handleMouseUp}
     >

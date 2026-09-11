@@ -21,8 +21,9 @@ import {
   getAnnotationById,
   updateAnnotation,
 } from '@/actions/annotation/annotationActions'
-import { entityTypeForComponentRole, getAnnotationComponents } from '@/lib/annotation-roles'
+import { createEntityFromComponent, getAnnotationComponents } from '@/lib/annotation-roles'
 import { validateAnnotationComponent, validateAnnotationQualifiers, validateAnnotationTriple } from '@/lib/annotation-validation'
+import { useCellBatch } from './useCellBatch'
 import { useKeyboardShortcuts } from './useKeyboardShortcuts'
 import { usePopoverState, useSelectionState } from './useSelectionState'
 
@@ -32,17 +33,6 @@ class AnnotationError extends Error {
   constructor(message: string, public code?: string) {
     super(message)
     this.name = 'AnnotationError'
-  }
-}
-
-function createEntityFromComponent(component: DocumentAnnotationComponent): Entity {
-  return {
-    label: component.entityLabel || '',
-    value: component.entityValue || '',
-    custom: component.entityCustom || false,
-    customId: component.entityCustomId || null,
-    datatype: component.entityDatatype || null,
-    type: entityTypeForComponentRole(component.annotationTag),
   }
 }
 
@@ -253,6 +243,15 @@ export function useAnnotationState(
   useEffect(() => {
     elementsRef.current = documentElements
   }, [documentElements])
+
+  const cellBatch = useCellBatch({
+    documentElements,
+    documentAnnotations,
+    currentAnnotation,
+    setCurrentAnnotation,
+    setDocumentAnnotations,
+    popover,
+  })
 
   const setLoadingState = useCallback((key: keyof typeof loadingStates, value: boolean) => {
     setLoadingStates(prev => ({ ...prev, [key]: value }))
@@ -628,6 +627,29 @@ export function useAnnotationState(
   }, [])
 
   const handleSelectionMentionAssociation = useCallback((type: EntityType) => {
+    if (cellBatch.batchMode && cellBatch.cellRole === type) {
+      // The keystroke refers to the latest selection, which claims the role
+      // the docked batch's cells occupy. Drop the cells entirely and fall
+      // back to a regular annotation with this selection as the role.
+      cellBatch.releaseCells()
+    }
+
+    if (popover.popoverState.isTableCell && selection.tableSelection && selection.currentElementIndex !== null) {
+      if (cellBatch.cells.length > 0 && cellBatch.cellRole !== type) {
+        addToCurrentAnnotation(type)
+        popover.hidePopover()
+        return
+      }
+
+      const { rowIndex, cellIndex } = selection.tableSelection
+      cellBatch.selectCell(selection.currentElementIndex, rowIndex, cellIndex)
+      cellBatch.setCellRole(type)
+      cellBatch.openBatchMode()
+      selection.clearSelection()
+      popover.hidePopover()
+      return
+    }
+
     const mention = popover.popoverState.mentionData
     if (mention) {
       setCurrentAnnotation(prev => ({
@@ -645,7 +667,7 @@ export function useAnnotationState(
       addToCurrentAnnotation(type)
     }
     popover.hidePopover()
-  }, [addToCurrentAnnotation, handleMentionAssociation, popover, selection])
+  }, [addToCurrentAnnotation, handleMentionAssociation, popover, selection, cellBatch])
 
   const handleCloneAnnotation = useCallback((annotation?: DocumentAnnotation) => {
     const annotationToClone = annotation || popover.popoverState.annotation
@@ -684,7 +706,24 @@ export function useAnnotationState(
     popoverVisible: popover.popoverState.visible,
     hasSelection: selection.hasSelection(),
     currentAnnotation: popover.popoverState.annotation,
-    onAnnotationAction: handleSelectionMentionAssociation,
+    onAnnotationAction: (type) => {
+      // A visible selection popover means the user just made a new text or
+      // cell selection: the keystroke refers to it, not to the docked batch.
+      if (popover.popoverState.visible) {
+        handleSelectionMentionAssociation(type)
+        return
+      }
+
+      // Staged cells waiting on the anchored role popover (drags, columns,
+      // rows, select-all): the keystroke picks the batch's role.
+      if (cellBatch.cells.length > 0 && !cellBatch.batchMode) {
+        cellBatch.setCellRole(type)
+        cellBatch.openBatchMode()
+        return
+      }
+
+      handleSelectionMentionAssociation(type)
+    },
     onEditCurrentAnnotation: () => {
       if (popover.popoverState.annotation) {
         setCurrentAnnotation(popover.popoverState.annotation)
@@ -750,5 +789,6 @@ export function useAnnotationState(
     // Sub-hooks
     selection,
     popover,
+    cellBatch,
   } as const
 }

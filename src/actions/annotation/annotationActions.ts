@@ -1,5 +1,6 @@
 'use server'
 import type { AnnotationComponent } from '@/db/schema'
+import type { CellBatchAnnotationItem as BatchAnnotationItem } from '@/lib/cell-batch'
 import type {
   AnnotationComponentRole,
   AnnotationQualifierInput,
@@ -19,6 +20,8 @@ import { requireEditAnnotation, requireEditCorpus, requireEditDocument, requireV
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0]
 type DbExecutor = typeof db | Transaction
+
+const ANNOTATION_INSERT_CHUNK = 100
 
 type ComponentWithCustomEntity = {
   entityCustom: boolean | null
@@ -288,6 +291,61 @@ export async function addAnnotation(
   revalidatePath(`/document/${documentId}`)
 
   return annotationId
+}
+
+export async function addAnnotations(
+  documentId: string,
+  items: BatchAnnotationItem[],
+): Promise<string[]> {
+  if (items.length === 0) {
+    return []
+  }
+
+  const userId = await requireAuth()
+  await requireEditDocument(documentId)
+
+  const [doc] = await db.select({ corpusId: document.corpusId }).from(document).where(eq(document.id, documentId))
+  if (!doc) {
+    throw new Error('Document not found')
+  }
+
+  const createdIds = await db.transaction(async (trx) => {
+    const [existing] = await trx.select({ count: count() }).from(annotation).where(eq(annotation.documentId, documentId))
+    if ((existing?.count ?? 0) + items.length > MAX_ANNOTATIONS_PER_DOCUMENT) {
+      throw new Error(`A document can have at most ${MAX_ANNOTATIONS_PER_DOCUMENT} annotations.`)
+    }
+
+    const values: Array<{
+      documentId: string
+      subjectId: string
+      predicateId: string
+      objectId: string
+      userId: string
+    }> = []
+    for (const item of items) {
+      const [subjectId, predicateId, objectId] = await Promise.all([
+        upsertAnnotationComponent(item.subject, item.subjectEntity, doc.corpusId, undefined, trx),
+        upsertAnnotationComponent(item.predicate, item.predicateEntity, doc.corpusId, undefined, trx),
+        upsertAnnotationComponent(item.object, item.objectEntity, doc.corpusId, undefined, trx),
+      ])
+      values.push({ documentId, subjectId, predicateId, objectId, userId })
+    }
+
+    const ids: string[] = []
+    for (let start = 0; start < values.length; start += ANNOTATION_INSERT_CHUNK) {
+      const chunk = values.slice(start, start + ANNOTATION_INSERT_CHUNK)
+      const inserted = await trx.insert(annotation).values(chunk).returning({ id: annotation.id })
+      ids.push(...inserted.map(row => row.id))
+    }
+
+    await trx.update(document).set({ updatedAt: new Date() }).where(eq(document.id, documentId))
+
+    return ids
+  })
+
+  revalidatePath(`/document/${documentId}`)
+
+  return createdIds
 }
 
 export async function updateAnnotation(

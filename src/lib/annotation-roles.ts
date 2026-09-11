@@ -3,6 +3,7 @@ import type {
   CurrentAnnotation,
   DocumentAnnotation,
   DocumentAnnotationComponent,
+  Entity,
   EntityType,
 } from '@/types/types'
 
@@ -14,6 +15,17 @@ export function entityTypeForComponentRole(role: AnnotationComponentRole): Entit
     return 'object'
   }
   return role
+}
+
+export function createEntityFromComponent(component: DocumentAnnotationComponent): Entity {
+  return {
+    label: component.entityLabel || '',
+    value: component.entityValue || '',
+    custom: component.entityCustom || false,
+    customId: component.entityCustomId || null,
+    datatype: component.entityDatatype || null,
+    type: entityTypeForComponentRole(component.annotationTag),
+  }
 }
 
 export function getAnnotationComponents(

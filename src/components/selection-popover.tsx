@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button'
 import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import { DocumentPopoverAnchor } from './document-popover-anchor'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
 
 type QualifierSide = 'predicate' | 'value'
 
@@ -31,6 +30,8 @@ type SelectionPopoverProps = {
   onQualifierSelectionAssociation: (side: QualifierSide) => void
   hasCurrentAnnotation: boolean
   onEditAnnotation: (annotation: DocumentAnnotation) => void
+  keepOnModifierOutside?: boolean
+  keepOnTriggerSelector?: string
 }
 
 export function SelectionPopover({
@@ -42,6 +43,8 @@ export function SelectionPopover({
   onQualifierSelectionAssociation,
   hasCurrentAnnotation,
   onEditAnnotation,
+  keepOnModifierOutside,
+  keepOnTriggerSelector,
 }: SelectionPopoverProps) {
   if (!popoverState.visible)
     return null
@@ -58,7 +61,29 @@ export function SelectionPopover({
           width={popoverState.anchorWidth}
           height={popoverState.anchorHeight}
         />
-        <PopoverContent className="w-auto max-w-[calc(100vw-1rem)]" side="top" sideOffset={8} collisionPadding={12}>
+        <PopoverContent
+          className="w-auto max-w-[calc(100vw-1rem)]"
+          side="top"
+          sideOffset={8}
+          collisionPadding={12}
+          onInteractOutside={(event) => {
+            const originalEvent = event instanceof CustomEvent ? event.detail.originalEvent : null
+            const target = originalEvent?.target instanceof Element ? originalEvent.target : null
+            if (keepOnTriggerSelector && target?.closest(keepOnTriggerSelector)) {
+              // Interacting with a batch selection trigger must not dismiss
+              // the role popover; the trigger's own click restages the
+              // selection and re-anchors the popover.
+              event.preventDefault()
+              return
+            }
+            if (keepOnModifierOutside && originalEvent && 'ctrlKey' in originalEvent) {
+              const pointerEvent = originalEvent as PointerEvent
+              if (pointerEvent.ctrlKey || pointerEvent.metaKey) {
+                event.preventDefault()
+              }
+            }
+          }}
+        >
           <div className="flex flex-col gap-2">
             <div className="flex gap-2">
               {popoverState.annotation && (
@@ -73,141 +98,105 @@ export function SelectionPopover({
                       dit
                     </span>
                   </Button>
-                  <TooltipProvider delayDuration={200}>
-                    <Popover>
-                      <Tooltip>
-                        <PopoverTrigger asChild>
-                          <TooltipTrigger asChild>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="border-destructive/50 text-destructive hover:text-destructive focus-visible:ring-destructive"
+                        data-delete-annotation-popover-trigger
+                      >
+                        <Trash2Icon />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent side="top">
+                      <form onSubmit={async (e) => {
+                        e.preventDefault()
+                        if (popoverState.annotation) {
+                          await onDelete(popoverState.annotation.id)
+                          onClose()
+                        }
+                      }}
+                      >
+                        <div className="flex flex-col items-center">
+                          <p>Are you sure you want to delete this annotation?</p>
+                          <div className="mt-2 flex gap-2">
                             <Button
-                              variant="outline"
-                              className="border-destructive/50 text-destructive hover:text-destructive focus-visible:ring-destructive"
-                              data-delete-annotation-popover-trigger
+                              type="submit"
+                              variant="destructive"
+                              disabled={isDeletingAnnotation}
                             >
-                              <Trash2Icon />
+                              {isDeletingAnnotation ? <Loader2Icon className="animate-spin" /> : 'Delete'}
                             </Button>
-                          </TooltipTrigger>
-                        </PopoverTrigger>
-                        <TooltipContent>
-                          Delete annotation (Delete)
-                        </TooltipContent>
-                      </Tooltip>
-                      <PopoverContent side="top">
-                        <form onSubmit={async (e) => {
-                          e.preventDefault()
-                          if (popoverState.annotation) {
-                            await onDelete(popoverState.annotation.id)
-                            onClose()
-                          }
-                        }}
-                        >
-                          <div className="flex flex-col items-center">
-                            <p>Are you sure you want to delete this annotation?</p>
-                            <div className="mt-2 flex gap-2">
-                              <Button
-                                type="submit"
-                                variant="destructive"
-                                disabled={isDeletingAnnotation}
-                              >
-                                {isDeletingAnnotation ? <Loader2Icon className="animate-spin" /> : 'Delete'}
+                            <PopoverClose asChild>
+                              <Button type="button" variant="ghost" disabled={isDeletingAnnotation}>
+                                Cancel
                               </Button>
-                              <PopoverClose asChild>
-                                <Button type="button" variant="ghost" disabled={isDeletingAnnotation}>
-                                  Cancel
-                                </Button>
-                              </PopoverClose>
-                            </div>
+                            </PopoverClose>
                           </div>
-                        </form>
-                      </PopoverContent>
-                    </Popover>
-                  </TooltipProvider>
+                        </div>
+                      </form>
+                    </PopoverContent>
+                  </Popover>
                   <div className="mx-1 border-l border-border" />
                 </>
               )}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 border-subject/50 text-subject-fg hover:bg-subject-soft/50 focus-visible:ring-subject"
-                    onClick={() => onMentionAssociation('subject')}
-                  >
-                    <UserIcon />
-                    {!popoverState.annotation && (
-                      <span>
-                        <u>S</u>
-                        ubject
-                      </span>
-                    )}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  New subject
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 border-predicate/50 text-predicate-fg hover:bg-predicate-soft/50 focus-visible:ring-predicate"
-                    onClick={() => onMentionAssociation('predicate')}
-                  >
-                    <LinkIcon />
-                    {!popoverState.annotation && (
-                      <span>
-                        <u>P</u>
-                        redicate
-                      </span>
-                    )}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  New predicate
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 border-object/50 text-object-fg hover:bg-object-soft/50 focus-visible:ring-object"
-                    onClick={() => onMentionAssociation('object')}
-                  >
-                    <BoxIcon />
-                    {!popoverState.annotation && (
-                      <span>
-                        <u>O</u>
-                        bject
-                      </span>
-                    )}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  New object
-                </TooltipContent>
-              </Tooltip>
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 border-subject/50 text-subject-fg hover:bg-subject-soft/50 focus-visible:ring-subject"
+                onClick={() => onMentionAssociation('subject')}
+              >
+                <UserIcon />
+                {!popoverState.annotation && (
+                  <span>
+                    <u>S</u>
+                    ubject
+                  </span>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 border-predicate/50 text-predicate-fg hover:bg-predicate-soft/50 focus-visible:ring-predicate"
+                onClick={() => onMentionAssociation('predicate')}
+              >
+                <LinkIcon />
+                {!popoverState.annotation && (
+                  <span>
+                    <u>P</u>
+                    redicate
+                  </span>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1 border-object/50 text-object-fg hover:bg-object-soft/50 focus-visible:ring-object"
+                onClick={() => onMentionAssociation('object')}
+              >
+                <BoxIcon />
+                {!popoverState.annotation && (
+                  <span>
+                    <u>O</u>
+                    bject
+                  </span>
+                )}
+              </Button>
             </div>
             {hasCurrentAnnotation && (
               <div className="grid grid-cols-2 gap-2 border-t border-dashed pt-2">
                 {QUALIFIER_ACTIONS.map(action => (
-                  <Tooltip key={action.side}>
-                    <TooltipTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className={cn('h-8 justify-center gap-1.5 px-2 text-xs font-medium', action.className)}
-                        onClick={() => onQualifierSelectionAssociation(action.side)}
-                      >
-                        <TextSelectIcon className="size-3.5" />
-                        <span>{action.label}</span>
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      {`Use selection as qualifier ${action.side}`}
-                    </TooltipContent>
-                  </Tooltip>
+                  <Button
+                    key={action.side}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className={cn('h-8 justify-center gap-1.5 px-2 text-xs font-medium', action.className)}
+                    onClick={() => onQualifierSelectionAssociation(action.side)}
+                  >
+                    <TextSelectIcon className="size-3.5" />
+                    <span>{action.label}</span>
+                  </Button>
                 ))}
               </div>
             )}

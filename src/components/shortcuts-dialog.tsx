@@ -97,6 +97,38 @@ export function ShortcutsDialog() {
           </div>
           <div>
             <h4 className="mb-2 text-sm font-medium">
+              Table Batch Annotation
+            </h4>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span>Select cell range</span>
+                <kbd className="rounded-sm bg-muted px-2 py-1 text-xs">
+                  Drag
+                </kbd>
+              </div>
+              <div className="flex justify-between">
+                <span>Extend cell range</span>
+                <kbd className="rounded-sm bg-muted px-2 py-1 text-xs">
+                  Shift+Click
+                </kbd>
+              </div>
+              <div className="flex justify-between">
+                <span>Add/remove single cell</span>
+                <kbd className="rounded-sm bg-muted px-2 py-1 text-xs">
+                  {ctrlKey}
+                  +Click
+                </kbd>
+              </div>
+              <div className="flex justify-between">
+                <span>Select all cells</span>
+                <kbd className="rounded-sm bg-muted px-2 py-1 text-xs">
+                  Button
+                </kbd>
+              </div>
+            </div>
+          </div>
+          <div>
+            <h4 className="mb-2 text-sm font-medium">
               Form Actions
             </h4>
             <div className="space-y-2 text-sm">
