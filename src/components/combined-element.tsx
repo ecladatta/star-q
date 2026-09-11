@@ -349,8 +349,14 @@ function CombinedElement({
       if (!tableWrapper)
         return
 
+      const zoneTarget = event.target instanceof Element
+        && (Boolean(event.target.closest('[data-table-hover-zone]'))
+          || Boolean(columnButtonRef.current?.contains(event.target))
+          || Boolean(rowButtonRef.current?.contains(event.target)))
+
       const wrapperRect = tableWrapper.getBoundingClientRect()
-      const inColumnZone = event.clientY >= wrapperRect.top - COLUMN_BUTTON_HOVER_ZONE
+      const inColumnZone = zoneTarget
+        && event.clientY >= wrapperRect.top - COLUMN_BUTTON_HOVER_ZONE
         && event.clientY < wrapperRect.top
         && event.clientX >= wrapperRect.left - COLUMN_BUTTON_HOVER_ZONE
         && event.clientX <= wrapperRect.right + COLUMN_BUTTON_HOVER_ZONE
@@ -603,7 +609,7 @@ function CombinedElement({
           }
         }}
       >
-        <div className="relative z-10 mb-2 flex min-w-0 items-center justify-between">
+        <div className="relative z-10 mt-10 mb-2 flex min-w-0 items-center justify-between">
           {data.title && <div className="min-w-0 text-sm font-semibold wrap-break-word">{normalizeRenderedWhitespace(data.title)}</div>}
         </div>
         <div ref={tableWrapperRef} className="relative min-w-0 px-5 md:px-7 lg:px-0">
@@ -634,7 +640,7 @@ function CombinedElement({
           {!readOnly && onSelectColumn && tableData.length > 1 && (
             <div
               aria-hidden="true"
-              className="absolute -top-10 left-1/2 z-20 h-10 w-[calc(100%+5rem)] -translate-x-1/2"
+              className="absolute -top-10 left-1/2 z-0 h-10 w-[calc(100%+5rem)] -translate-x-1/2"
               data-table-hover-zone="column"
               onMouseEnter={handleTableRootMouseMove}
               onMouseMove={handleTableRootMouseMove}
