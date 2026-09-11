@@ -109,7 +109,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
   const [cells, setCells] = useState<CellBatchCellRef[]>([])
   const [dragging, setDragging] = useState(false)
   const [batchMode, setBatchMode] = useState(false)
-  const [cellRoleState, setCellRoleState] = useState<EntityType>('subject')
+  const [selectedRole, setSelectedRole] = useState<EntityType>('subject')
   const [creating, setCreating] = useState(false)
   const [anchorRect, setAnchorRect] = useState<AnchorRect | null>(null)
   const [cellEntities, setCellEntities] = useState<Map<string, Entity>>(() => new Map())
@@ -177,20 +177,20 @@ export function useCellBatch(options: UseCellBatchOptions) {
 
   const exitBatchMode = useCallback(() => {
     setBatchMode(false)
-    setCellRoleState('subject')
+    setSelectedRole('subject')
     clearCells()
     setCurrentAnnotation(null)
   }, [clearCells, setCurrentAnnotation])
 
   const releaseCells = useCallback(() => {
     setBatchMode(false)
-    setCellRoleState('subject')
+    setSelectedRole('subject')
     clearCells()
     resetCellEntities()
   }, [clearCells, resetCellEntities])
 
   const setCellRole = useCallback((type: EntityType) => {
-    setCellRoleState(type)
+    setSelectedRole(type)
     // The selected cells now fill this role; release the fixed component
     // that was assigned to it, if any.
     setCurrentAnnotation(prev => (prev?.[type] ? { ...prev, [type]: undefined } : prev))
@@ -599,28 +599,26 @@ export function useCellBatch(options: UseCellBatchOptions) {
     openBatchMode()
   }, [isAllSelected, releaseCells, exitBatchMode, selectAll, setCellRole, openBatchMode, toggleAll, currentAnnotation])
 
-  const cellRole = cellRoleState
-
   const preview = useMemo<CellBatchPreview | null>(() => {
     if (!batchMode) {
       return null
     }
 
     const fixed = {
-      subject: cellRole === 'subject' ? null : currentAnnotation?.subject ?? null,
-      predicate: cellRole === 'predicate' ? null : currentAnnotation?.predicate ?? null,
-      object: cellRole === 'object' ? null : currentAnnotation?.object ?? null,
+      subject: selectedRole === 'subject' ? null : currentAnnotation?.subject ?? null,
+      predicate: selectedRole === 'predicate' ? null : currentAnnotation?.predicate ?? null,
+      object: selectedRole === 'object' ? null : currentAnnotation?.object ?? null,
     }
 
     return buildCellBatchPreview({
       cells,
       documentElements,
-      cellRole,
+      cellRole: selectedRole,
       fixed,
       existingAnnotations: documentAnnotations,
       newId: uuidv4,
     })
-  }, [batchMode, cells, documentElements, cellRole, currentAnnotation, documentAnnotations])
+  }, [batchMode, cells, documentElements, selectedRole, currentAnnotation, documentAnnotations])
 
   const createBatch = useCallback(async (documentId: string) => {
     if (!preview || preview.createCount === 0 || creating) {
@@ -633,13 +631,13 @@ export function useCellBatch(options: UseCellBatchOptions) {
       object: currentAnnotation?.object ?? null,
     }
     const hasFixedSlots = (candidate: typeof slots): candidate is Record<EntityType, DocumentAnnotationComponent> =>
-      CONSTANT_ROLES[cellRole].every(role => candidate[role] !== null)
+      CONSTANT_ROLES[selectedRole].every(role => candidate[role] !== null)
     if (!hasFixedSlots(slots)) {
       return
     }
 
     const buildItem = (row: CellBatchPreviewRow & { component: DocumentAnnotationComponent }): BatchAnnotationItem =>
-      buildBatchAnnotationItem({ row, cellRole, fixed: slots, cellEntities })
+      buildBatchAnnotationItem({ row, cellRole: selectedRole, fixed: slots, cellEntities })
 
     setCreating(true)
     try {
@@ -681,7 +679,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
     } finally {
       setCreating(false)
     }
-  }, [cellRole, preview, creating, currentAnnotation, cellEntities, exitBatchMode, setCurrentAnnotation, setDocumentAnnotations])
+  }, [selectedRole, preview, creating, currentAnnotation, cellEntities, exitBatchMode, setCurrentAnnotation, setDocumentAnnotations])
 
   useEffect(() => {
     if (!dragging) {
@@ -868,7 +866,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
     selectedKeys,
     dragging,
     batchMode,
-    cellRole,
+    cellRole: selectedRole,
     setCellRole,
     creating,
     preview,
