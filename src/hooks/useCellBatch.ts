@@ -2,7 +2,7 @@ import type { Dispatch, SetStateAction } from 'react'
 import type { usePopoverState } from './useSelectionState'
 import type { BatchAnnotationItem } from '@/actions/annotation/annotationActions'
 import type { CellBatchCellRef, CellBatchPreview, CellBatchPreviewRow } from '@/lib/cell-batch'
-import type { CurrentAnnotation, DocumentAnnotation, Entity, EntityType } from '@/types/types'
+import type { CurrentAnnotation, DocumentAnnotation, DocumentAnnotationComponent, Entity, EntityType } from '@/types/types'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { v4 as uuidv4 } from 'uuid'
@@ -633,17 +633,20 @@ export function useCellBatch(options: UseCellBatchOptions) {
       predicate: currentAnnotation?.predicate ?? null,
       object: currentAnnotation?.object ?? null,
     }
-    if (CONSTANT_ROLES[cellRole].some(role => !slots[role])) {
+    const hasFixedSlots = (candidate: typeof slots): candidate is Record<EntityType, DocumentAnnotationComponent> =>
+      CONSTANT_ROLES[cellRole].every(role => candidate[role] !== null)
+    if (!hasFixedSlots(slots)) {
       return
     }
 
-    const buildItem = (row: CellBatchPreviewRow): BatchAnnotationItem =>
+    const buildItem = (row: CellBatchPreviewRow & { component: DocumentAnnotationComponent }): BatchAnnotationItem =>
       buildBatchAnnotationItem({ row, cellRole, fixed: slots, cellEntities })
 
     setCreating(true)
     try {
       const items = preview.rows
-        .filter(row => row.status === 'create' && row.component)
+        .filter((row): row is CellBatchPreviewRow & { component: DocumentAnnotationComponent } =>
+          row.status === 'create' && row.component !== null)
         .map(row => buildItem(row))
 
       const createdIds = await addAnnotations(documentId, items)

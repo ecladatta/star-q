@@ -311,7 +311,7 @@ describe('buildCellBatchPreview', () => {
 })
 
 describe('buildBatchAnnotationItem', () => {
-  const row: CellBatchPreviewRow = {
+  const row = {
     cell: { elementIndex: 0, row: 1, col: 0 },
     status: 'create',
     component: component({
@@ -320,13 +320,13 @@ describe('buildBatchAnnotationItem', () => {
       annotationRow: 1,
       annotationCell: 0,
     }),
-  }
+  } satisfies CellBatchPreviewRow & { component: DocumentAnnotationComponent }
 
   it('uses the per-cell entity for the cell role', () => {
     const item = buildBatchAnnotationItem({
       row,
       cellRole: 'subject',
-      fixed: { subject: null, predicate: null, object: null },
+      fixed: { subject: row.component, predicate: component({ annotationTag: 'predicate' }), object: component({ annotationTag: 'object' }) },
       cellEntities: new Map([[cellKey(row.cell), { label: 'Ada Lovelace', value: 'Q7254', type: 'subject', custom: false, customId: null, datatype: null }]]),
     })
 
@@ -338,7 +338,7 @@ describe('buildBatchAnnotationItem', () => {
     const item = buildBatchAnnotationItem({
       row,
       cellRole: 'subject',
-      fixed: { subject: null, predicate: null, object: null },
+      fixed: { subject: row.component, predicate: component({ annotationTag: 'predicate' }), object: component({ annotationTag: 'object' }) },
       cellEntities: new Map(),
     })
 
@@ -360,7 +360,7 @@ describe('buildBatchAnnotationItem', () => {
       fixed: {
         subject: rowComp,
         predicate: occupation,
-        object: null,
+        object: rowComp,
       },
       cellEntities: new Map(),
     })

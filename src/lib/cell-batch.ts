@@ -232,17 +232,17 @@ export type CellBatchAnnotationItem = {
 }
 
 export function buildBatchAnnotationItem(input: {
-  row: CellBatchPreviewRow
+  row: CellBatchPreviewRow & { component: DocumentAnnotationComponent }
   cellRole: EntityType
-  fixed: CellBatchFixedSlots
+  fixed: CellBatchFixedSlots & Record<EntityType, DocumentAnnotationComponent>
   cellEntities: Map<string, Entity>
 }): CellBatchAnnotationItem {
   const { row, cellRole, fixed, cellEntities } = input
-  const chosenComp = row.component!
+  const chosenComp = row.component
   const chosenEntity = cellEntities.get(cellKey(row.cell)) ?? null
-  const subjectComp = cellRole === 'subject' ? chosenComp : fixed.subject!
-  const predicateComp = cellRole === 'predicate' ? chosenComp : fixed.predicate!
-  const objectComp = cellRole === 'object' ? chosenComp : fixed.object!
+  const subjectComp = cellRole === 'subject' ? chosenComp : fixed.subject
+  const predicateComp = cellRole === 'predicate' ? chosenComp : fixed.predicate
+  const objectComp = cellRole === 'object' ? chosenComp : fixed.object
 
   return {
     subject: subjectComp,
