@@ -217,7 +217,6 @@ function CellsSlotIndicator({
         <DropdownMenuTrigger asChild disabled={disabled}>
           <button
             type="button"
-            tabIndex={-1}
             className="ml-auto cursor-pointer rounded-sm p-1 hover:bg-foreground/10"
             aria-label="Change slot"
           >
