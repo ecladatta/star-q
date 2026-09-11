@@ -635,6 +635,12 @@ export function useAnnotationState(
     }
 
     if (popover.popoverState.isTableCell && selection.tableSelection && selection.currentElementIndex !== null) {
+      if (cellBatch.cells.length > 0 && cellBatch.cellRole !== type) {
+        addToCurrentAnnotation(type)
+        popover.hidePopover()
+        return
+      }
+
       const { rowIndex, cellIndex } = selection.tableSelection
       cellBatch.selectCell(selection.currentElementIndex, rowIndex, cellIndex)
       cellBatch.setCellRole(type)
