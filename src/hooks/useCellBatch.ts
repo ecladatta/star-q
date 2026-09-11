@@ -254,7 +254,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
       ? cells.filter(candidate => !keys.has(cellKey(candidate)))
       : dedupeCellRefs([...cells, ...refs])
     anchorRef.current = refs[0] ?? null
-    commitCells(next, false)
+    commitCells(next)
   }, [cells, commitCells, documentElements])
 
   const selectRow = useCallback((elementIndex: number, row: number) => {
@@ -285,7 +285,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
       ? cells.filter(candidate => !keys.has(cellKey(candidate)))
       : dedupeCellRefs([...cells, ...refs])
     anchorRef.current = refs[0] ?? null
-    commitCells(next, false)
+    commitCells(next)
   }, [cells, commitCells, documentElements])
 
   const selectAll = useCallback((elementIndex: number) => {
@@ -317,7 +317,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
       ? cells.filter(candidate => !keys.has(cellKey(candidate)))
       : dedupeCellRefs([...cells, ...refs])
     anchorRef.current = refs[0] ?? null
-    commitCells(next, false)
+    commitCells(next)
   }, [cells, commitCells, documentElements])
 
   const handleCellMouseDown = useCallback((cell: CellBatchCellRef, event: React.MouseEvent<HTMLElement>) => {
@@ -578,7 +578,6 @@ export function useCellBatch(options: UseCellBatchOptions) {
       }
     } else {
       toggleColumn(elementIndex, col)
-      openBatchMode()
     }
   }, [isColumnSelected, releaseCells, exitBatchMode, selectColumn, setCellRole, openBatchMode, toggleColumn, currentAnnotation])
 
@@ -605,7 +604,6 @@ export function useCellBatch(options: UseCellBatchOptions) {
       }
     } else {
       toggleRow(elementIndex, row)
-      openBatchMode()
     }
   }, [isRowSelected, releaseCells, exitBatchMode, selectRow, setCellRole, openBatchMode, toggleRow, currentAnnotation])
 
@@ -640,7 +638,6 @@ export function useCellBatch(options: UseCellBatchOptions) {
       }
     } else {
       toggleAll(elementIndex)
-      openBatchMode()
     }
   }, [isAllSelected, releaseCells, exitBatchMode, selectAll, setCellRole, openBatchMode, toggleAll, currentAnnotation])
 
