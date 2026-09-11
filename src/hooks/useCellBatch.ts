@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react'
-import type { usePopoverState, useSelectionState } from './useSelectionState'
+import type { usePopoverState } from './useSelectionState'
 import type { BatchAnnotationItem } from '@/actions/annotation/annotationActions'
 import type { CellBatchCellRef, CellBatchPreview, CellBatchPreviewRow } from '@/lib/cell-batch'
 import type { CurrentAnnotation, DocumentAnnotation, Entity, EntityType } from '@/types/types'
@@ -38,7 +38,6 @@ type UseCellBatchOptions = {
   currentAnnotation: CurrentAnnotation | null
   setCurrentAnnotation: Dispatch<SetStateAction<CurrentAnnotation | null>>
   setDocumentAnnotations: Dispatch<SetStateAction<DocumentAnnotation[]>>
-  selection: ReturnType<typeof useSelectionState>
   popover: ReturnType<typeof usePopoverState>
 }
 
@@ -105,7 +104,6 @@ export function useCellBatch(options: UseCellBatchOptions) {
     currentAnnotation,
     setCurrentAnnotation,
     setDocumentAnnotations,
-    selection,
     popover,
   } = options
 
@@ -601,16 +599,6 @@ export function useCellBatch(options: UseCellBatchOptions) {
     openBatchMode()
   }, [isAllSelected, releaseCells, exitBatchMode, selectAll, setCellRole, openBatchMode, toggleAll, currentAnnotation])
 
-  const handleAnnotateColumnFromPopover = useCallback((elementIndex: number, col: number) => {
-    handleSelectColumn(elementIndex, col, false)
-    selection.clearSelection()
-  }, [handleSelectColumn, selection])
-
-  const handleAnnotateRowFromPopover = useCallback((elementIndex: number, row: number) => {
-    handleSelectRow(elementIndex, row, false)
-    selection.clearSelection()
-  }, [handleSelectRow, selection])
-
   const cellRole = cellRoleState
 
   const preview = useMemo<CellBatchPreview | null>(() => {
@@ -895,8 +883,6 @@ export function useCellBatch(options: UseCellBatchOptions) {
     handleSelectRow,
     selectCell,
     handleSelectAll,
-    handleAnnotateColumnFromPopover,
-    handleAnnotateRowFromPopover,
     createBatch,
     clearCells,
   } as const

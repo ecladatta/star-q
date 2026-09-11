@@ -250,7 +250,6 @@ export function useAnnotationState(
     currentAnnotation,
     setCurrentAnnotation,
     setDocumentAnnotations,
-    selection,
     popover,
   })
 
