@@ -499,6 +499,24 @@ export function AnnotationForm({
   }
 
   const handleSwapSubjectObject = () => {
+    if (batchMode && (batchCellRole === 'subject' || batchCellRole === 'object')) {
+      const cellRole = batchCellRole
+      const otherRole: EntityType = cellRole === 'subject' ? 'object' : 'subject'
+      setCurrentAnnotation((prev) => {
+        if (!prev)
+          return prev
+
+        const swapped = prev[otherRole]
+        return {
+          ...prev,
+          [cellRole]: swapped ? { ...swapped, annotationTag: cellRole } : undefined,
+          [otherRole]: undefined,
+        }
+      })
+      onBatchCellRoleChange?.(otherRole)
+      return
+    }
+
     setCurrentAnnotation((prev) => {
       if (!prev)
         return prev
@@ -1213,20 +1231,19 @@ export function AnnotationForm({
                             filteringEnabled={wikidataPredicateFiltering}
                           />
                         </div>
-                        {!batchMode && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="outline"
-                                className="px-2"
-                                onClick={handleSwapSubjectObject}
-                              >
-                                <ArrowLeftRightIcon className="size-5" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Swap subject and object</TooltipContent>
-                          </Tooltip>
-                        )}
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="outline"
+                              className="px-2"
+                              disabled={batchCreating}
+                              onClick={handleSwapSubjectObject}
+                            >
+                              <ArrowLeftRightIcon className="size-5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Swap subject and object</TooltipContent>
+                        </Tooltip>
                       </div>
                     </>
                   )}
