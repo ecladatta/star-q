@@ -252,7 +252,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
     return refs.length
   }, [commitStagedCells, documentElements])
 
-  const toggleColumn = useCallback((elementIndex: number, col: number) => {
+  const toggleColumn = useCallback((elementIndex: number, col: number, originRect: CellBatchOriginRect | null = null) => {
     dragRef.current = null
     const element = documentElements[elementIndex]
     const tableData = element?.type === 'table' ? element.value as string[][] : undefined
@@ -266,8 +266,12 @@ export function useCellBatch(options: UseCellBatchOptions) {
       ? cells.filter(candidate => !keys.has(cellKey(candidate)))
       : dedupeCellRefs([...cells, ...refs])
     anchorRef.current = refs[0] ?? null
-    commitCells(next)
-  }, [cells, commitCells, documentElements])
+    if (allSelected) {
+      commitCells(next)
+    } else {
+      commitStagedCells(next, originRect)
+    }
+  }, [cells, commitCells, commitStagedCells, documentElements])
 
   const selectRow = useCallback((elementIndex: number, row: number, originRect: CellBatchOriginRect | null = null) => {
     dragRef.current = null
@@ -283,7 +287,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
     return refs.length
   }, [commitStagedCells, documentElements])
 
-  const toggleRow = useCallback((elementIndex: number, row: number) => {
+  const toggleRow = useCallback((elementIndex: number, row: number, originRect: CellBatchOriginRect | null = null) => {
     dragRef.current = null
     const element = documentElements[elementIndex]
     const tableData = element?.type === 'table' ? element.value as string[][] : undefined
@@ -297,8 +301,12 @@ export function useCellBatch(options: UseCellBatchOptions) {
       ? cells.filter(candidate => !keys.has(cellKey(candidate)))
       : dedupeCellRefs([...cells, ...refs])
     anchorRef.current = refs[0] ?? null
-    commitCells(next)
-  }, [cells, commitCells, documentElements])
+    if (allSelected) {
+      commitCells(next)
+    } else {
+      commitStagedCells(next, originRect)
+    }
+  }, [cells, commitCells, commitStagedCells, documentElements])
 
   const selectAll = useCallback((elementIndex: number, originRect: CellBatchOriginRect | null = null) => {
     dragRef.current = null
@@ -314,7 +322,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
     return refs.length
   }, [commitStagedCells, documentElements])
 
-  const toggleAll = useCallback((elementIndex: number) => {
+  const toggleAll = useCallback((elementIndex: number, originRect: CellBatchOriginRect | null = null) => {
     dragRef.current = null
     const element = documentElements[elementIndex]
     const tableData = element?.type === 'table' ? element.value as string[][] : undefined
@@ -329,8 +337,12 @@ export function useCellBatch(options: UseCellBatchOptions) {
       ? cells.filter(candidate => !keys.has(cellKey(candidate)))
       : dedupeCellRefs([...cells, ...refs])
     anchorRef.current = refs[0] ?? null
-    commitCells(next)
-  }, [cells, commitCells, documentElements])
+    if (allSelected) {
+      commitCells(next)
+    } else {
+      commitStagedCells(next, originRect)
+    }
+  }, [cells, commitCells, commitStagedCells, documentElements])
 
   const handleCellMouseDown = useCallback((cell: CellBatchCellRef, event: React.MouseEvent<HTMLElement>) => {
     if (event.button !== 0) {
@@ -595,7 +607,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
         openBatchMode()
       }
     } else {
-      toggleColumn(elementIndex, col)
+      toggleColumn(elementIndex, col, originRect)
     }
   }, [isColumnSelected, releaseCells, exitBatchMode, selectColumn, setCellRole, openBatchMode, toggleColumn, currentAnnotation])
 
@@ -621,7 +633,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
         openBatchMode()
       }
     } else {
-      toggleRow(elementIndex, row)
+      toggleRow(elementIndex, row, originRect)
     }
   }, [isRowSelected, releaseCells, exitBatchMode, selectRow, setCellRole, openBatchMode, toggleRow, currentAnnotation])
 
@@ -655,7 +667,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
         openBatchMode()
       }
     } else {
-      toggleAll(elementIndex)
+      toggleAll(elementIndex, originRect)
     }
   }, [isAllSelected, releaseCells, exitBatchMode, selectAll, setCellRole, openBatchMode, toggleAll, currentAnnotation])
 
