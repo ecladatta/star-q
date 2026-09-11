@@ -1,6 +1,6 @@
 'use client'
 import type { Offset } from '@/lib/utils'
-import type { AnnotationComponentRole, CurrentAnnotation, DocumentElement } from '@/types/types'
+import type { AnnotationComponentRole, CurrentAnnotation, DocumentElement, EntityType } from '@/types/types'
 import { Check, Columns3Icon, Copy, Grid2x2Check, Rows3Icon } from 'lucide-react'
 import { createElement, useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -36,10 +36,17 @@ export type CombinedElementProps = {
   documentElements: DocumentElement[]
   currentAnnotation: CurrentAnnotation | null
   selectedCellKeys?: Set<string>
+  cellRole?: EntityType
   onSelectColumn?: (col: number, additive: boolean) => void
   onSelectRow?: (row: number, additive: boolean) => void
   onSelectAll?: (additive: boolean) => void
   readOnly?: boolean
+}
+
+const ROLE_SELECTED_CELL: Record<EntityType, string> = {
+  subject: 'bg-subject-soft/60! ring-subject/60!',
+  predicate: 'bg-predicate-soft/60! ring-predicate/60!',
+  object: 'bg-object-soft/60! ring-object/60!',
 }
 
 function isComponentFromCurrentAnnotation(componentId: string, currentAnnotation: CurrentAnnotation | null): boolean {
@@ -90,6 +97,7 @@ function CombinedElement({
   documentElements,
   currentAnnotation,
   selectedCellKeys,
+  cellRole,
   onSelectColumn,
   onSelectRow,
   onSelectAll,
@@ -674,6 +682,7 @@ function CombinedElement({
                               'group/head sticky top-0 z-10 bg-muted p-3 font-medium transition-colors duration-200 select-text first:rounded-tl-[11px] last:rounded-tr-[11px]',
                               isHovered ? 'bg-[color-mix(in_srgb,var(--accent)_10%,var(--muted))]! ring-1! ring-inset! ring-accent/40!' : 'hover:bg-[color-mix(in_srgb,var(--accent)_10%,var(--muted))]! hover:ring-1! hover:ring-inset! hover:ring-accent/40!',
                               isSelected && 'bg-[color-mix(in_srgb,var(--accent)_15%,var(--muted))]! ring-2! ring-inset! ring-accent/60!',
+                              isSelected && cellRole && ROLE_SELECTED_CELL[cellRole],
                             )}
                             onMouseEnter={() => handleHeaderMouseEnter(cellIndex)}
                             onMouseLeave={handleHeaderMouseLeave}
@@ -722,6 +731,7 @@ function CombinedElement({
                               'relative p-3 transition-colors duration-200 select-text',
                               isHovered ? 'bg-accent/10! ring-1! ring-inset! ring-accent/40!' : 'hover:bg-accent/10! hover:ring-1! hover:ring-inset! hover:ring-accent/40!',
                               isSelected && 'bg-accent/15! ring-2! ring-inset! ring-accent/60!',
+                              isSelected && cellRole && ROLE_SELECTED_CELL[cellRole],
                             )}
                             onMouseEnter={() => {
                               handleRowCellEnter(actualRowIndex, cellIndex)

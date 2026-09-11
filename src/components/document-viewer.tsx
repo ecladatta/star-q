@@ -475,6 +475,7 @@ export function DocumentViewer({
                       documentElements={documentElements}
                       currentAnnotation={currentAnnotation}
                       selectedCellKeys={cellBatch.selectedKeys}
+                      cellRole={cellBatch.batchMode ? cellBatch.cellRole : undefined}
                       onSelectColumn={(col, additive) =>
                         cellBatch.handleSelectColumn(element.elementIndex, col, additive)}
                       onSelectRow={(row, additive) =>
