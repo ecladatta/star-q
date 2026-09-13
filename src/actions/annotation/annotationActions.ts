@@ -15,13 +15,14 @@ import { db } from '@/db/drizzle'
 import { annotation, annotationComponent, annotationQualifier, corpusCustomEntity, document } from '@/db/schema'
 import { entityTypeForComponentRole } from '@/lib/annotation-roles'
 import { NotFoundError, requireAuth } from '@/lib/auth-utils'
-import { MAX_ANNOTATIONS_PER_DOCUMENT } from '@/lib/constants'
+import { MAX_ANNOTATIONS_PER_BATCH, MAX_ANNOTATIONS_PER_DOCUMENT } from '@/lib/constants'
 import { requireEditAnnotation, requireEditCorpus, requireEditDocument, requireViewDocument } from '@/lib/corpus-access'
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0]
 type DbExecutor = typeof db | Transaction
 
 const ANNOTATION_INSERT_CHUNK = 100
+const COMPONENT_UPLINK_CHUNK = 50
 
 type ComponentWithCustomEntity = {
   entityCustom: boolean | null
@@ -300,6 +301,9 @@ export async function addAnnotations(
   if (items.length === 0) {
     return []
   }
+  if (items.length > MAX_ANNOTATIONS_PER_BATCH) {
+    throw new Error(`A batch can create at most ${MAX_ANNOTATIONS_PER_BATCH} annotations.`)
+  }
 
   const userId = await requireAuth()
   await requireEditDocument(documentId)
@@ -322,13 +326,15 @@ export async function addAnnotations(
       objectId: string
       userId: string
     }> = []
-    for (const item of items) {
-      const [subjectId, predicateId, objectId] = await Promise.all([
-        upsertAnnotationComponent(item.subject, item.subjectEntity, doc.corpusId, undefined, trx),
-        upsertAnnotationComponent(item.predicate, item.predicateEntity, doc.corpusId, undefined, trx),
-        upsertAnnotationComponent(item.object, item.objectEntity, doc.corpusId, undefined, trx),
-      ])
-      values.push({ documentId, subjectId, predicateId, objectId, userId })
+    for (let start = 0; start < items.length; start += COMPONENT_UPLINK_CHUNK) {
+      const itemChunk = items.slice(start, start + COMPONENT_UPLINK_CHUNK)
+      const chunkValues = await Promise.all(itemChunk.map(item =>
+        Promise.all([
+          upsertAnnotationComponent(item.subject, item.subjectEntity, doc.corpusId, undefined, trx),
+          upsertAnnotationComponent(item.predicate, item.predicateEntity, doc.corpusId, undefined, trx),
+          upsertAnnotationComponent(item.object, item.objectEntity, doc.corpusId, undefined, trx),
+        ]).then(([subjectId, predicateId, objectId]) => ({ documentId, subjectId, predicateId, objectId, userId }))))
+      values.push(...chunkValues)
     }
 
     const ids: string[] = []
