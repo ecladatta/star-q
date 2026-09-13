@@ -191,6 +191,10 @@ export async function fetchMembership(config: WikibaseConfig, pairs: MembershipT
 
   const byRelation = new Map<ConstraintRelation, Array<[string, string]>>()
   for (const [item, cls, relation] of pairs) {
+    // Ids are interpolated as wd: terms, so only well-formed ids may reach SPARQL text.
+    if (!WIKIDATA_ITEM_PATTERN.test(item) || !WIKIDATA_ITEM_PATTERN.test(cls)) {
+      continue
+    }
     const key = membershipKey(item, cls, relation)
     const cached = membershipCache.get(cacheKey(config, key))
     if (cached === true) {
@@ -245,6 +249,10 @@ export async function fetchItemsWithTypeData(config: WikibaseConfig, items: stri
 
   const missing: string[] = []
   for (const id of items) {
+    // Ids are interpolated as wd: terms, so only well-formed ids may reach SPARQL text.
+    if (!WIKIDATA_ITEM_PATTERN.test(id)) {
+      continue
+    }
     const cached = typeDataCache.get(cacheKey(config, id))
     if (cached === true) {
       typed.add(id)

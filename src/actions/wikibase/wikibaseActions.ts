@@ -5,6 +5,7 @@ import { db } from '@/db/drizzle'
 import { wikibaseInstances } from '@/db/schema'
 import { requireViewCorpus } from '@/lib/corpus-access'
 import { loadCorpusWikibaseConfig } from '@/lib/wikibase-server'
+import { WIKIDATA_ITEM_PATTERN, WIKIDATA_PROPERTY_PATTERN } from '@/lib/wikidata-constraints'
 import {
   classifyEntityCandidatesViaWikidata,
   classifyPredicateCandidatesViaWikidata,
@@ -33,18 +34,39 @@ function truncateSearch(search: string): string {
   return search.slice(0, MAX_SEARCH_LENGTH)
 }
 
-function capIds(ids: string[], max: number): string[] {
+function validPropertyIds(ids: string[], max: number): string[] {
   if (!Array.isArray(ids)) {
     return []
   }
-  return ids.filter(id => typeof id === 'string').slice(0, max)
+  return ids.filter(id => typeof id === 'string' && WIKIDATA_PROPERTY_PATTERN.test(id)).slice(0, max)
 }
 
-function capItems<T>(items: T[], max: number): T[] {
-  if (!Array.isArray(items)) {
+function validItemIds(ids: string[], max: number): string[] {
+  if (!Array.isArray(ids)) {
     return []
   }
-  return items.slice(0, max)
+  return ids.filter(id => typeof id === 'string' && WIKIDATA_ITEM_PATTERN.test(id)).slice(0, max)
+}
+
+function validChecks(checks: ConstraintEntityCheck[], max: number): ConstraintEntityCheck[] {
+  if (!Array.isArray(checks)) {
+    return []
+  }
+  return checks
+    .filter(check =>
+      check != null
+      && typeof check.entityId === 'string'
+      && WIKIDATA_ITEM_PATTERN.test(check.entityId)
+      && (check.side === 'domain' || check.side === 'range'))
+    .slice(0, max)
+}
+
+function validConstraintSides(constraints: PropertyConstraints, side: ConstraintSide): PropertyConstraints {
+  const constraintsForSide = constraints?.[side]
+  const classes = Array.isArray(constraintsForSide)
+    ? constraintsForSide.filter(({ class: cls }) => typeof cls === 'string' && WIKIDATA_ITEM_PATTERN.test(cls))
+    : []
+  return { domain: side === 'domain' ? classes : [], range: side === 'range' ? classes : [] }
 }
 
 export async function searchWikibaseEntities(corpusId: string, search: string, type: 'item' | 'property', limit: number) {
@@ -62,7 +84,7 @@ export async function fetchWikibasePropertyConstraints(corpusId: string, propert
   if (!config) {
     return { constraints: {}, unavailable: true }
   }
-  const { constraints, unavailable } = await fetchPropertyConstraints(config, capIds(propertyIds, MAX_PROPERTY_IDS))
+  const { constraints, unavailable } = await fetchPropertyConstraints(config, validPropertyIds(propertyIds, MAX_PROPERTY_IDS))
   return { constraints: Object.fromEntries(constraints), unavailable }
 }
 
@@ -73,7 +95,7 @@ export async function classifyWikibaseEntityCandidates(
   side: ConstraintSide,
 ): Promise<{ classification: EntityCandidateClassification, support: ConstraintModelSupport }> {
   await requireViewCorpus(corpusId)
-  const cappedCandidates = capIds(candidates, MAX_CANDIDATES)
+  const cappedCandidates = validItemIds(candidates, MAX_CANDIDATES)
   const config = await loadCorpusWikibaseConfig(corpusId)
   if (!config) {
     return { classification: { members: cappedCandidates, unverifiable: [], filteredOut: [] }, support: { status: 'unavailable', reason: 'fetch-failed' } }
@@ -82,7 +104,7 @@ export async function classifyWikibaseEntityCandidates(
   if (support.status === 'unavailable') {
     return { classification: { members: cappedCandidates, unverifiable: [], filteredOut: [] }, support }
   }
-  const classification = await classifyEntityCandidatesViaWikidata(config, cappedCandidates, constraints, side)
+  const classification = await classifyEntityCandidatesViaWikidata(config, cappedCandidates, validConstraintSides(constraints, side), side)
   return { classification, support }
 }
 
@@ -92,8 +114,8 @@ export async function classifyWikibasePredicateCandidates(
   checks: ConstraintEntityCheck[],
 ): Promise<{ classification: EntityCandidateClassification, support: ConstraintModelSupport }> {
   await requireViewCorpus(corpusId)
-  const cappedCandidates = capIds(candidates, MAX_CANDIDATES)
-  const cappedChecks = capItems(checks, MAX_CHECKS)
+  const cappedCandidates = validPropertyIds(candidates, MAX_CANDIDATES)
+  const cappedChecks = validChecks(checks, MAX_CHECKS)
   const config = await loadCorpusWikibaseConfig(corpusId)
   if (!config) {
     return { classification: { members: cappedCandidates, unverifiable: [], filteredOut: [] }, support: { status: 'unavailable', reason: 'fetch-failed' } }

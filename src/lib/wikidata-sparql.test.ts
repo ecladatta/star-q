@@ -241,6 +241,42 @@ describe('bounded sparql concurrency', () => {
   })
 })
 
+describe('sparql id validation', () => {
+  it('drops non-conforming ids from membership queries without fetching them', async () => {
+    vi.resetModules()
+    const { fetchMembership } = await import('./wikidata-sparql')
+    fetchMock.mockResolvedValue({ ok: true, json: async () => sparqlResponse([]) })
+
+    await fetchMembership(config, [
+      ['Q1', 'Q5', 'instance-or-subclass'],
+      ['Q1) . ?s ?p ?o . (wd:Q9', 'Q5', 'instance-or-subclass'],
+      ['Q2', 'Q5; SERVICE wikibase:label { bd:serviceParam } . (wd:Q3', 'instance-or-subclass'],
+    ])
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const query = new URLSearchParams(fetchMock.mock.calls[0][1].body).get('query') ?? ''
+    expect(query).toContain('(wd:Q1 wd:Q5)')
+    expect(query).not.toContain('?o')
+    expect(query).not.toContain('SERVICE')
+  })
+
+  it('drops non-conforming ids from type-data queries without fetching them', async () => {
+    vi.resetModules()
+    const { fetchItemsWithTypeData } = await import('./wikidata-sparql')
+    fetchMock.mockResolvedValue({ ok: true, json: async () => sparqlResponse([]) })
+
+    await fetchItemsWithTypeData(config, [
+      'Q1',
+      'Q1} UNION { ?s ?p ?o . (wd:Q9',
+    ])
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const query = new URLSearchParams(fetchMock.mock.calls[0][1].body).get('query') ?? ''
+    expect(query).toContain('wd:Q1')
+    expect(query).not.toContain('?s')
+  })
+})
+
 describe('classifyPredicateCandidatesViaWikidata', () => {
   it('classifies candidate predicates against entity checks', async () => {
     fetchMock
