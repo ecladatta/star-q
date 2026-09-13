@@ -31,9 +31,15 @@ export function FadeNav({ ariaLabel, wrapperClassName, navClassName, leftFadeCla
   useEffect(() => {
     const frame = requestAnimationFrame(update)
     window.addEventListener('resize', update)
+    const nav = navRef.current
+    const observer = nav ? new ResizeObserver(update) : null
+    if (nav && observer) {
+      observer.observe(nav)
+    }
     return () => {
       cancelAnimationFrame(frame)
       window.removeEventListener('resize', update)
+      observer?.disconnect()
     }
   }, [update])
 
