@@ -64,18 +64,16 @@ export function DocumentHeader({
           {title}
         </h2>
         <div className="flex shrink-0 items-center gap-1">
-          {annotationsCount > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 gap-1 px-2 md:hidden"
-              onClick={onOpenAnnotations}
-            >
-              <ListIcon className="size-3.5" />
-              <span className="text-xs">{annotationsCount}</span>
-              <span className="sr-only">Open annotations panel</span>
-            </Button>
-          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1 px-2 md:hidden"
+            onClick={onOpenAnnotations}
+          >
+            <ListIcon className="size-3.5" />
+            <span className="text-xs">{annotationsCount}</span>
+            <span className="sr-only">Open annotations panel</span>
+          </Button>
           <ShortcutsDialog />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

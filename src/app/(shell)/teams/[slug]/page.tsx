@@ -54,7 +54,7 @@ export default async function TeamPage({ params }: { params: Promise<{ slug: str
               <Label htmlFor="username">Exact username</Label>
               <Input id="username" name="username" required />
             </div>
-            <select name="role" className="h-8 rounded-md border border-input bg-background px-3 text-sm">
+            <select name="role" className="h-8 rounded-md border border-input bg-background px-3 text-base md:text-sm">
               <option value="member">Member</option>
               <option value="owner">Owner</option>
             </select>

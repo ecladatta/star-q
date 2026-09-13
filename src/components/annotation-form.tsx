@@ -994,7 +994,7 @@ export function AnnotationForm({
     <div
       inert={!docked}
       className={cn(
-        'fixed bottom-0 left-1/2 z-10 w-full max-w-(--breakpoint-md) -translate-x-1/2 transition-transform duration-300 md:w-3/4 lg:w-2/3',
+        'fixed bottom-0 left-1/2 z-40 w-full max-w-(--breakpoint-md) -translate-x-1/2 transition-transform duration-300 md:w-3/4 lg:w-2/3',
         docked ? 'translate-y-0' : 'translate-y-full',
       )}
     >

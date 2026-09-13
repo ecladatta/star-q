@@ -51,7 +51,7 @@ export default async function AdminUserPage({ params }: { params: Promise<{ user
             <Input id="username" name="username" defaultValue={user.username ?? ''} required />
           </div>
           <div className="flex items-center gap-3">
-            <select name="role" defaultValue={user.role} className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm">
+            <select name="role" defaultValue={user.role} className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-base md:text-sm">
               <option value="user">User</option>
               <option value="admin">Admin</option>
             </select>
