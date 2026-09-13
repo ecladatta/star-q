@@ -54,7 +54,7 @@ function parseInstanceUrl(raw: string, field: string): string {
   if (value.length > MAX_INSTANCE_URL_LENGTH) {
     throw new TypeError(`Invalid Wikibase instance "${field}": must be at most ${MAX_INSTANCE_URL_LENGTH} characters`)
   }
-  return value
+  return value.endsWith('/') ? value.slice(0, -1) : value
 }
 
 export function parseWikibaseInstanceInput(input: WikibaseInstanceInput): WikibaseInstanceInput {
@@ -72,9 +72,14 @@ export function parseWikibaseInstanceInput(input: WikibaseInstanceInput): Wikiba
   }
 }
 
-export function wikiUrl(instance: string, id: string): string {
-  const prefix = id.startsWith('P') ? 'Property:' : ''
-  return `${instance}/wiki/${prefix}${id}`
+export function wikiUrl(instance: string, id: string): string | null {
+  if (/^Q\d+$/.test(id)) {
+    return `${instance}/wiki/${id}`
+  }
+  if (/^P\d+$/.test(id)) {
+    return `${instance}/wiki/Property:${id}`
+  }
+  return null
 }
 
 export type WikibaseRdfNamespaces = {

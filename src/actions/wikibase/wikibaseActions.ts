@@ -1,6 +1,7 @@
 'use server'
 import type { ConstraintEntityCheck, ConstraintSide, EntityCandidateClassification, PropertyConstraints } from '@/lib/wikidata-constraints'
 import type { ConstraintModelSupport } from '@/lib/wikidata-sparql'
+import { eq } from 'drizzle-orm'
 import { db } from '@/db/drizzle'
 import { wikibaseInstances } from '@/db/schema'
 import { requireViewCorpus } from '@/lib/corpus-access'
@@ -98,7 +99,7 @@ export async function classifyWikibaseEntityCandidates(
   const cappedCandidates = validItemIds(candidates, MAX_CANDIDATES)
   const config = await loadCorpusWikibaseConfig(corpusId)
   if (!config) {
-    return { classification: { members: cappedCandidates, unverifiable: [], filteredOut: [] }, support: { status: 'unavailable', reason: 'fetch-failed' } }
+    return { classification: { members: cappedCandidates, unverifiable: [], filteredOut: [] }, support: { status: 'unavailable', reason: 'no-instance' } }
   }
   const support = await fetchConstraintModelSupport(config)
   if (support.status === 'unavailable') {
@@ -118,7 +119,7 @@ export async function classifyWikibasePredicateCandidates(
   const cappedChecks = validChecks(checks, MAX_CHECKS)
   const config = await loadCorpusWikibaseConfig(corpusId)
   if (!config) {
-    return { classification: { members: cappedCandidates, unverifiable: [], filteredOut: [] }, support: { status: 'unavailable', reason: 'fetch-failed' } }
+    return { classification: { members: cappedCandidates, unverifiable: [], filteredOut: [] }, support: { status: 'unavailable', reason: 'no-instance' } }
   }
   const support = await fetchConstraintModelSupport(config)
   if (support.status === 'unavailable') {
@@ -130,5 +131,5 @@ export async function classifyWikibasePredicateCandidates(
 
 export async function listWikibaseInstancesForCorpus(corpusId: string) {
   await requireViewCorpus(corpusId)
-  return db.select().from(wikibaseInstances).orderBy(wikibaseInstances.label)
+  return db.select().from(wikibaseInstances).where(eq(wikibaseInstances.enabled, true)).orderBy(wikibaseInstances.label)
 }

@@ -622,7 +622,7 @@ export function EntitySelector({
                     : 'No entities match the property constraints. Use "Show all results" to see everything.')
                 : 'No entities found.'}
             </CommandEmpty>
-            {classificationSupport?.status === 'unavailable' && (
+            {classificationSupport?.status === 'unavailable' && classificationSupport.reason !== 'no-instance' && (
               <div className="border-b px-3 py-2 text-[11px] text-muted-foreground">
                 Constraint filtering is unavailable on this Wikibase instance. All candidates are shown.
               </div>
@@ -845,7 +845,7 @@ export function EntitySelector({
                             {' '}
                             {filteredOutCount}
                             {' '}
-                            more  (may not match constraints)
+                            more (may not match constraints)
                           </span>
                         </CommandItem>
                       )}

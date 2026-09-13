@@ -28,6 +28,7 @@ type CorpusSettingsPanelProps = {
 }
 
 const SERVER_DEFAULT_WIKIBASE = 'server-default'
+const NONE_SENTINELS = new Set([WIKIBASE_INSTANCE_NONE, SERVER_DEFAULT_WIKIBASE])
 
 export function CorpusSettingsPanel({ corpus, wikibaseInstances, onCorpusRenamed, canManageVisibility = false, dangerZone }: CorpusSettingsPanelProps) {
   const [corpusTitle, setCorpusTitle] = useState(corpus.title)
@@ -224,6 +225,9 @@ export function CorpusSettingsPanel({ corpus, wikibaseInstances, onCorpusRenamed
   const selectableInstances = wikibaseInstances.filter(instance => instance.enabled || instance.id === currentInstanceId)
   const defaultInstance = wikibaseInstances.find(instance => instance.isDefault)
   const serverDefaultLabel = `Server default${defaultInstance ? ` (${defaultInstance.label})` : ''}`
+  const currentInstanceDisabled = currentInstanceId != null
+    && !NONE_SENTINELS.has(currentInstanceId)
+    && !wikibaseInstances.some(instance => instance.id === currentInstanceId && instance.enabled)
 
   return (
     <Tabs defaultValue="general" className="flex flex-1 flex-col gap-4 overflow-hidden">
@@ -311,6 +315,11 @@ export function CorpusSettingsPanel({ corpus, wikibaseInstances, onCorpusRenamed
                 ))}
               </SelectContent>
             </Select>
+            {currentInstanceDisabled && (
+              <p className="text-xs text-destructive">
+                The Wikibase instance selected for this corpus is disabled; entity features are unavailable until an admin re-enables it or you pick another instance.
+              </p>
+            )}
           </div>
           <div className="flex items-start justify-between gap-4 rounded-lg border border-border bg-card p-4">
             <div className="space-y-1">

@@ -428,7 +428,7 @@ export async function classifyPredicateCandidatesViaWikidata(
 
 export type ConstraintModelSupport
   = | { status: 'supported' }
-    | { status: 'unavailable', reason: 'missing-items' | 'fetch-failed' }
+    | { status: 'unavailable', reason: 'missing-items' | 'fetch-failed' | 'no-instance' }
 
 export async function fetchConstraintModelSupport(config: WikibaseConfig): Promise<ConstraintModelSupport> {
   const wdk = WBK(config)

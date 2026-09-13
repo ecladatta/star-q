@@ -6,7 +6,30 @@ describe('wikibase config', () => {
 
     expect(wikiUrl('https://wikibase.example', 'Q1')).toBe('https://wikibase.example/wiki/Q1')
     expect(wikiUrl('https://wikibase.example', 'P31')).toBe('https://wikibase.example/wiki/Property:P31')
-    expect(wikiUrl('https://wikibase.example', 'Qx')).toBe('https://wikibase.example/wiki/Qx')
+    expect(wikiUrl('https://wikibase.example', 'Qx')).toBeNull()
+    expect(wikiUrl('https://wikibase.example', 'Paris')).toBeNull()
+  })
+
+  it('returns null for non-conforming ids instead of guessing the namespace', async () => {
+    const { wikiUrl } = await import('./wikibase')
+
+    expect(wikiUrl('https://wikibase.example', '')).toBeNull()
+    expect(wikiUrl('https://wikibase.example', 'Q')).toBeNull()
+    expect(wikiUrl('https://wikibase.example', 'Property:P31')).toBeNull()
+  })
+
+  it('strips a single trailing slash from registered urls', async () => {
+    const { parseWikibaseInstanceInput } = await import('./wikibase')
+
+    expect(parseWikibaseInstanceInput({
+      label: 'Example',
+      instanceUrl: 'https://wikibase.example/',
+      sparqlEndpoint: 'https://wikibase.example/query/sparql/',
+    })).toEqual({
+      label: 'Example',
+      instanceUrl: 'https://wikibase.example',
+      sparqlEndpoint: 'https://wikibase.example/query/sparql',
+    })
   })
 })
 

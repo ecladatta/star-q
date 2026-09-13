@@ -207,7 +207,7 @@ export function WikibaseInstanceManager({ instances }: { instances: WikibaseInst
             </ConfirmActionButton>
           </div>
         ))}
-        {instances.length === 0 && (
+        {displayedInstances.length === 0 && (
           <p className="p-4 text-sm text-muted-foreground">No instances registered yet.</p>
         )}
       </section>
