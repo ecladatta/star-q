@@ -120,6 +120,8 @@ export function useCellBatch(options: UseCellBatchOptions) {
   const [anchorRect, setAnchorRect] = useState<AnchorRect | null>(null)
   const [cellEntities, setCellEntities] = useState<Map<string, Entity>>(() => new Map())
 
+  const cellKeySet = useMemo(() => new Set(cells.map(cellKey)), [cells])
+
   const resetCellEntities = useCallback(() => {
     setCellEntities(new Map())
   }, [])
@@ -226,13 +228,13 @@ export function useCellBatch(options: UseCellBatchOptions) {
 
   const toggleCell = useCallback((cell: CellBatchCellRef) => {
     const key = cellKey(cell)
-    const exists = cells.some(candidate => cellKey(candidate) === key)
+    const exists = cellKeySet.has(key)
     const next = exists
       ? cells.filter(candidate => cellKey(candidate) !== key)
       : dedupeCellRefs([...cells, cell])
     anchorRef.current = cell
     commitCells(next, false)
-  }, [cells, commitCells])
+  }, [cells, cellKeySet, commitCells])
 
   const extendRect = useCallback((from: CellBatchCellRef, to: CellBatchCellRef) => {
     commitCells(cellsInRect(from, to))
@@ -261,7 +263,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
     }
     const refs = columnCellRefs(elementIndex, tableData, col)
     const keys = new Set(refs.map(cellKey))
-    const allSelected = refs.every(ref => cells.some(candidate => cellKey(candidate) === cellKey(ref)))
+    const allSelected = refs.every(ref => cellKeySet.has(cellKey(ref)))
     const next = allSelected
       ? cells.filter(candidate => !keys.has(cellKey(candidate)))
       : dedupeCellRefs([...cells, ...refs])
@@ -271,7 +273,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
     } else {
       commitStagedCells(next, originRect)
     }
-  }, [cells, commitCells, commitStagedCells, documentElements])
+  }, [cells, cellKeySet, commitCells, commitStagedCells, documentElements])
 
   const selectRow = useCallback((elementIndex: number, row: number, originRect: CellBatchOriginRect | null = null) => {
     dragRef.current = null
@@ -296,7 +298,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
     }
     const refs = rowCellRefs(elementIndex, tableData, row)
     const keys = new Set(refs.map(cellKey))
-    const allSelected = refs.every(ref => cells.some(candidate => cellKey(candidate) === cellKey(ref)))
+    const allSelected = refs.every(ref => cellKeySet.has(cellKey(ref)))
     const next = allSelected
       ? cells.filter(candidate => !keys.has(cellKey(candidate)))
       : dedupeCellRefs([...cells, ...refs])
@@ -306,7 +308,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
     } else {
       commitStagedCells(next, originRect)
     }
-  }, [cells, commitCells, commitStagedCells, documentElements])
+  }, [cells, cellKeySet, commitCells, commitStagedCells, documentElements])
 
   const selectAll = useCallback((elementIndex: number, originRect: CellBatchOriginRect | null = null) => {
     dragRef.current = null
@@ -332,7 +334,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
     const refs = allCellRefs(elementIndex, tableData)
     const keys = new Set(refs.map(cellKey))
     const allSelected = refs.length > 0
-      && refs.every(ref => cells.some(candidate => cellKey(candidate) === cellKey(ref)))
+      && refs.every(ref => cellKeySet.has(cellKey(ref)))
     const next = allSelected
       ? cells.filter(candidate => !keys.has(cellKey(candidate)))
       : dedupeCellRefs([...cells, ...refs])
@@ -342,7 +344,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
     } else {
       commitStagedCells(next, originRect)
     }
-  }, [cells, commitCells, commitStagedCells, documentElements])
+  }, [cells, cellKeySet, commitCells, commitStagedCells, documentElements])
 
   const handleCellMouseDown = useCallback((cell: CellBatchCellRef, event: React.MouseEvent<HTMLElement>) => {
     if (event.button !== 0) {
@@ -439,7 +441,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
 
     if (!batchModeRef.current) {
       const clickedSelected = cell !== undefined
-        && cells.some(candidate => cellKey(candidate) === cellKey(cell))
+        && cellKeySet.has(cellKey(cell))
       if (clickedSelected) {
         setAnchorRect(getAnchorRectForCells(cells))
         return true
@@ -447,7 +449,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
       clearCells()
     }
     return false
-  }, [cells, clearCells, currentAnnotation, openBatchMode, setCellRole])
+  }, [cells, cellKeySet, clearCells, currentAnnotation, openBatchMode, setCellRole])
 
   const startPendingTouchGesture = useCallback((cell: CellBatchCellRef, event: React.PointerEvent<HTMLElement>) => {
     pendingTouchCleanupRef.current?.()
@@ -562,8 +564,8 @@ export function useCellBatch(options: UseCellBatchOptions) {
       return false
     }
     const refs = columnCellRefs(elementIndex, tableData, col)
-    return refs.length > 0 && refs.every(ref => cells.some(candidate => cellKey(candidate) === cellKey(ref)))
-  }, [cells, documentElements])
+    return refs.length > 0 && refs.every(ref => cellKeySet.has(cellKey(ref)))
+  }, [cellKeySet, documentElements])
 
   const isRowSelected = useCallback((elementIndex: number, row: number) => {
     const element = documentElements[elementIndex]
@@ -572,8 +574,8 @@ export function useCellBatch(options: UseCellBatchOptions) {
       return false
     }
     const refs = rowCellRefs(elementIndex, tableData, row)
-    return refs.length > 0 && refs.every(ref => cells.some(candidate => cellKey(candidate) === cellKey(ref)))
-  }, [cells, documentElements])
+    return refs.length > 0 && refs.every(ref => cellKeySet.has(cellKey(ref)))
+  }, [cellKeySet, documentElements])
 
   const isAllSelected = useCallback((elementIndex: number) => {
     const element = documentElements[elementIndex]
@@ -582,8 +584,8 @@ export function useCellBatch(options: UseCellBatchOptions) {
       return false
     }
     const refs = allCellRefs(elementIndex, tableData)
-    return refs.length > 0 && refs.every(ref => cells.some(candidate => cellKey(candidate) === cellKey(ref)))
-  }, [cells, documentElements])
+    return refs.length > 0 && refs.every(ref => cellKeySet.has(cellKey(ref)))
+  }, [cellKeySet, documentElements])
 
   const handleSelectColumn = useCallback((elementIndex: number, col: number, additive: boolean, originRect: CellBatchOriginRect | null = null) => {
     if (!additive && isColumnSelected(elementIndex, col)) {
@@ -727,7 +729,6 @@ export function useCellBatch(options: UseCellBatchOptions) {
       }
 
       exitBatchMode()
-      setCurrentAnnotation(null)
 
       const created = createdIds.length
       toast.success(`${created} annotation${created > 1 ? 's' : ''} created!`, {
@@ -755,7 +756,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
     } finally {
       setCreating(false)
     }
-  }, [selectedRole, preview, creating, currentAnnotation, cellEntities, exitBatchMode, setCurrentAnnotation, setDocumentAnnotations])
+  }, [selectedRole, preview, creating, currentAnnotation, cellEntities, exitBatchMode, setDocumentAnnotations])
 
   useEffect(() => {
     if (!dragging) {
