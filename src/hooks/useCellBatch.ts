@@ -719,8 +719,12 @@ export function useCellBatch(options: UseCellBatchOptions) {
         .map(row => buildItem(row))
 
       const createdIds = await addAnnotations(documentId, items)
-      const refreshed = await getAnnotations(documentId)
-      setDocumentAnnotations(refreshed)
+      try {
+        const refreshed = await getAnnotations(documentId)
+        setDocumentAnnotations(refreshed)
+      } catch {
+        // Creation succeeded
+      }
 
       exitBatchMode()
       setCurrentAnnotation(null)

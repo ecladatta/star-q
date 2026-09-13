@@ -8,7 +8,7 @@ import type {
   DocumentAnnotationQualifier,
   Entity,
 } from '@/types/types'
-import { and, asc, count, eq, getTableColumns, inArray } from 'drizzle-orm'
+import { and, asc, count, eq, getTableColumns, inArray, or } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { revalidatePath } from 'next/cache'
 import { db } from '@/db/drizzle'
@@ -337,9 +337,28 @@ export async function addAnnotations(
       values.push(...chunkValues)
     }
 
+    // Skip triples that already exist
+    const tripleKey = (value: { subjectId: string, predicateId: string, objectId: string }) =>
+      `${value.subjectId}|${value.predicateId}|${value.objectId}`
+    const uniqueValues = [...new Map(values.map(value => [tripleKey(value), value])).values()]
+    const existingTriples = uniqueValues.length > 0
+      ? new Set((
+          await trx.select({ subjectId: annotation.subjectId, predicateId: annotation.predicateId, objectId: annotation.objectId })
+            .from(annotation)
+            .where(and(
+              eq(annotation.documentId, documentId),
+              or(
+                ...uniqueValues.map(value =>
+                  and(eq(annotation.subjectId, value.subjectId), eq(annotation.predicateId, value.predicateId), eq(annotation.objectId, value.objectId))),
+              ),
+            ))
+        ).map(row => `${row.subjectId}|${row.predicateId}|${row.objectId}`))
+      : new Set<string>()
+    const insertable = uniqueValues.filter(value => !existingTriples.has(tripleKey(value)))
+
     const ids: string[] = []
-    for (let start = 0; start < values.length; start += ANNOTATION_INSERT_CHUNK) {
-      const chunk = values.slice(start, start + ANNOTATION_INSERT_CHUNK)
+    for (let start = 0; start < insertable.length; start += ANNOTATION_INSERT_CHUNK) {
+      const chunk = insertable.slice(start, start + ANNOTATION_INSERT_CHUNK)
       const inserted = await trx.insert(annotation).values(chunk).returning({ id: annotation.id })
       ids.push(...inserted.map(row => row.id))
     }
@@ -521,6 +540,7 @@ export async function deleteAnnotations(ids: string[]) {
 
   const uniqueAnnotationIds = [...new Set(ids)]
   const annotationsData = await db.select({
+    id: annotation.id,
     documentId: annotation.documentId,
     corpusId: document.corpusId,
     subjectId: annotation.subjectId,
@@ -531,9 +551,10 @@ export async function deleteAnnotations(ids: string[]) {
     .innerJoin(document, eq(document.id, annotation.documentId))
     .where(inArray(annotation.id, uniqueAnnotationIds))
 
-  if (annotationsData.length !== uniqueAnnotationIds.length) {
-    throw new NotFoundError('Annotation not found')
+  if (annotationsData.length === 0) {
+    return
   }
+  const deletableAnnotationIds = annotationsData.map(row => row.id)
 
   await Promise.all([...new Set(annotationsData.map(row => row.corpusId))].map(requireEditCorpus))
 
@@ -544,7 +565,7 @@ export async function deleteAnnotations(ids: string[]) {
   )]
 
   await db.transaction(async (trx) => {
-    const qualifierComponentIds = await getQualifierComponentIds(trx, uniqueAnnotationIds)
+    const qualifierComponentIds = await getQualifierComponentIds(trx, deletableAnnotationIds)
     const componentIds = annotationsData.flatMap(annotationData => [
       annotationData.subjectId,
       annotationData.predicateId,
@@ -552,7 +573,7 @@ export async function deleteAnnotations(ids: string[]) {
     ])
 
     // Delete all annotations
-    await trx.delete(annotation).where(inArray(annotation.id, uniqueAnnotationIds))
+    await trx.delete(annotation).where(inArray(annotation.id, deletableAnnotationIds))
 
     // Delete all associated components
     if (componentIds.length > 0 || qualifierComponentIds.length > 0) {
