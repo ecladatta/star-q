@@ -81,17 +81,32 @@ export function dedupeCellRefs(cells: CellBatchCellRef[]): CellBatchCellRef[] {
   return unique.sort(compareCellRefs)
 }
 
+function rectBounds(from: CellBatchCellRef, to: CellBatchCellRef) {
+  return {
+    rowStart: Math.min(from.row, to.row),
+    rowEnd: Math.max(from.row, to.row),
+    colStart: Math.min(from.col, to.col),
+    colEnd: Math.max(from.col, to.col),
+  }
+}
+
+export function rectContainsCell(from: CellBatchCellRef, to: CellBatchCellRef, cell: CellBatchCellRef): boolean {
+  const { rowStart, rowEnd, colStart, colEnd } = rectBounds(from, to)
+  return cell.elementIndex === from.elementIndex
+    && cell.elementIndex === to.elementIndex
+    && cell.row >= rowStart
+    && cell.row <= rowEnd
+    && cell.col >= colStart
+    && cell.col <= colEnd
+}
+
 export function cellsInRect(from: CellBatchCellRef, to: CellBatchCellRef): CellBatchCellRef[] {
   if (from.elementIndex !== to.elementIndex) {
     return []
   }
 
+  const { rowStart, rowEnd, colStart, colEnd } = rectBounds(from, to)
   const cells: CellBatchCellRef[] = []
-  const rowStart = Math.min(from.row, to.row)
-  const rowEnd = Math.max(from.row, to.row)
-  const colStart = Math.min(from.col, to.col)
-  const colEnd = Math.max(from.col, to.col)
-
   for (let row = rowStart; row <= rowEnd; row++) {
     for (let col = colStart; col <= colEnd; col++) {
       cells.push({ elementIndex: from.elementIndex, row, col })

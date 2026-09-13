@@ -10,6 +10,7 @@ import {
   cellsInRect,
   columnCellRefs,
   dedupeCellRefs,
+  rectContainsCell,
   rowCellRefs,
   trimmedCellValue,
 } from './cell-batch'
@@ -170,6 +171,20 @@ describe('trimmedCellValue', () => {
 
   it('returns null for empty results', () => {
     expect(trimmedCellValue('   ')).toBeNull()
+  })
+})
+
+describe('rectContainsCell', () => {
+  it('reports containment within the inclusive bounding rect of the same element', () => {
+    const from = { elementIndex: 0, row: 1, col: 1 }
+    const to = { elementIndex: 0, row: 3, col: 2 }
+
+    expect(rectContainsCell(from, to, { elementIndex: 0, row: 2, col: 2 })).toBe(true)
+    expect(rectContainsCell(from, to, { elementIndex: 0, row: 1, col: 2 })).toBe(true)
+    expect(rectContainsCell(from, to, { elementIndex: 0, row: 3, col: 1 })).toBe(true)
+    expect(rectContainsCell(from, to, { elementIndex: 0, row: 0, col: 1 })).toBe(false)
+    expect(rectContainsCell(from, to, { elementIndex: 0, row: 2, col: 3 })).toBe(false)
+    expect(rectContainsCell(from, to, { elementIndex: 1, row: 2, col: 2 })).toBe(false)
   })
 })
 

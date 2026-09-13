@@ -18,6 +18,7 @@ import {
   columnCellRefs,
   CONSTANT_ROLES,
   dedupeCellRefs,
+  rectContainsCell,
   rowCellRefs,
   trimmedCellValue,
 } from '@/lib/cell-batch'
@@ -140,7 +141,17 @@ export function useCellBatch(options: UseCellBatchOptions) {
   }, [])
 
   const anchorRef = useRef<CellBatchCellRef | null>(null)
-  const dragRef = useRef<{ origin: CellBatchCellRef, focus: CellBatchCellRef | null, active: boolean } | null>(null)
+
+  type DragState = {
+    origin: CellBatchCellRef
+    focus: CellBatchCellRef | null
+    active: boolean
+  } & (
+    | { mode: 'plain' }
+    | { mode: 'toggle', selecting: boolean }
+  )
+
+  const dragRef = useRef<DragState | null>(null)
   const modifierClickRef = useRef(false)
   const dragActiveInSequenceRef = useRef(false)
   const batchModeRef = useRef(false)
@@ -235,6 +246,19 @@ export function useCellBatch(options: UseCellBatchOptions) {
     anchorRef.current = cell
     commitCells(next, false)
   }, [cells, cellKeySet, commitCells])
+
+  // Ctrl/cmd+drag spreads the initial toggle across the dragged range:
+  // selecting unselected cells, or deselecting selected ones.
+  const spreadToggle = useCallback((from: CellBatchCellRef, to: CellBatchCellRef, selecting: boolean) => {
+    resetCellEntities()
+    setCells((prev) => {
+      if (!selecting) {
+        return prev.filter(candidate => !rectContainsCell(from, to, candidate))
+      }
+      return dedupeCellRefs([...prev, ...cellsInRect(from, to)])
+    })
+    setAnchorRect(null)
+  }, [resetCellEntities])
 
   const extendRect = useCallback((from: CellBatchCellRef, to: CellBatchCellRef) => {
     commitCells(cellsInRect(from, to))
@@ -377,16 +401,18 @@ export function useCellBatch(options: UseCellBatchOptions) {
     if (event.ctrlKey || event.metaKey) {
       event.preventDefault()
       popover.hidePopover()
+      const selecting = !cellKeySet.has(cellKey(cell))
       modifierClickRef.current = true
+      dragRef.current = { origin: cell, focus: null, active: false, mode: 'toggle', selecting }
       toggleCell(cell)
       return
     }
 
-    dragRef.current = { origin: cell, focus: null, active: false }
+    dragRef.current = { origin: cell, focus: null, active: false, mode: 'plain' }
     pointerRef.current = null
     viewportRef.current = null
     setAnchorRect(null)
-  }, [extendRect, toggleCell, popover])
+  }, [extendRect, toggleCell, popover, cellKeySet])
 
   const handleCellDragOver = useCallback((cell: CellBatchCellRef) => {
     const drag = dragRef.current
@@ -411,8 +437,12 @@ export function useCellBatch(options: UseCellBatchOptions) {
       clearBrowserSelection()
       popover.hidePopover()
     }
+    if (drag.mode === 'toggle') {
+      spreadToggle(drag.origin, cell, drag.selecting)
+      return
+    }
     extendRect(drag.origin, cell)
-  }, [extendRect, popover])
+  }, [extendRect, popover, spreadToggle])
 
   const handleCellMouseUp = useCallback((cell?: CellBatchCellRef): boolean => {
     if (dragActiveInSequenceRef.current) {
@@ -484,7 +514,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
       // loop hit-tests the pointer position) and touch scrolling is blocked
       // so the pan gesture belongs to the selection.
       activeTouchPointerIdRef.current = pointerId
-      dragRef.current = { origin: cell, focus: null, active: true }
+      dragRef.current = { origin: cell, focus: null, active: true, mode: 'plain' }
       pointerRef.current = { x: startX, y: startY }
       viewportRef.current = findViewportForOrigin(cell)
       setDragging(true)
@@ -878,16 +908,14 @@ export function useCellBatch(options: UseCellBatchOptions) {
       setDragging(false)
     }
 
-    const handleWindowMouseUp = () => {
-      finalizeDrag(false)
-    }
-
     const handleWindowPointerUp = (event: PointerEvent) => {
-      if (event.pointerType !== 'touch' || event.pointerId !== activeTouchPointerIdRef.current) {
+      // Ctrl/cmd drags suppress the compat mouseup, so pointerup is the
+      // single finalization path for every pointer type.
+      if (event.pointerType === 'touch' && event.pointerId !== activeTouchPointerIdRef.current) {
         return
       }
       activeTouchCleanupRef.current?.()
-      finalizeDrag(true)
+      finalizeDrag(event.pointerType === 'touch')
     }
 
     // The system claimed the touch (e.g. a system gesture): abort the
@@ -901,11 +929,9 @@ export function useCellBatch(options: UseCellBatchOptions) {
       clearCells()
     }
 
-    window.addEventListener('mouseup', handleWindowMouseUp, true)
     window.addEventListener('pointerup', handleWindowPointerUp, true)
     window.addEventListener('pointercancel', handleWindowPointerCancel, true)
     return () => {
-      window.removeEventListener('mouseup', handleWindowMouseUp, true)
       window.removeEventListener('pointerup', handleWindowPointerUp, true)
       window.removeEventListener('pointercancel', handleWindowPointerCancel, true)
     }
@@ -917,8 +943,6 @@ export function useCellBatch(options: UseCellBatchOptions) {
       activeTouchCleanupRef.current?.()
     }
   }, [])
-
-  const selectedKeys = useMemo(() => new Set(cells.map(cellKey)), [cells])
 
   const cellRows = useMemo(() => {
     return dedupeCellRefs(cells).map((cell) => {
@@ -937,7 +961,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
 
   return {
     cells,
-    selectedKeys,
+    selectedKeys: cellKeySet,
     dragging,
     batchMode,
     cellRole: selectedRole,
