@@ -2,18 +2,15 @@
 import type { CellBatchOriginRect } from '@/hooks/useCellBatch'
 import type { Offset } from '@/lib/utils'
 import type { AnnotationComponentRole, CurrentAnnotation, DocumentElement, EntityType } from '@/types/types'
-import { Check, Columns3Icon, Copy, Grid2x2Check, Rows3Icon } from 'lucide-react'
 import { createElement, useCallback, useEffect, useRef, useState } from 'react'
 
-import { createPortal } from 'react-dom'
 import { toast } from 'sonner'
-import { Button } from '@/components/ui/button'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { getAnnotationComponents } from '@/lib/annotation-roles'
 import { cn, splitWithOffsets } from '@/lib/utils'
 import Split from './split'
+import { TableBatchControls } from './table-batch-controls'
 
 const ROLE_COLOR_VAR: Record<AnnotationComponentRole, string> = {
   'subject': 'var(--subject-soft)',
@@ -761,140 +758,29 @@ function CombinedElement({
             <ScrollBar orientation="vertical" />
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
-          {!readOnly && onSelectColumn && tableData.length > 1 && hoveredCell && columnButtonPosition && tableWrapperRef.current && createPortal(
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  ref={columnButtonRef}
-                  type="button"
-                  tabIndex={-1}
-                  data-batch-select-trigger="column"
-                  className="absolute z-30 -translate-x-1/2 -translate-y-full rounded-md border bg-background/95 p-1 text-muted-foreground opacity-100 shadow-sm transition-opacity before:absolute before:-inset-3 before:content-[''] after:absolute after:inset-x-0 after:-bottom-4 after:h-4 after:content-[''] hover:text-foreground focus-visible:opacity-100"
-                  style={{ top: columnButtonPosition.top, left: columnButtonPosition.left }}
-                  onMouseDown={event => event.stopPropagation()}
-                  onPointerDown={event => event.stopPropagation()}
-                  onMouseUp={event => event.stopPropagation()}
-                  onClick={(event) => {
-                    const rect = event.currentTarget.getBoundingClientRect()
-                    onSelectColumn(hoveredCell.cell, event.ctrlKey || event.metaKey, {
-                      top: rect.top + window.scrollY,
-                      left: rect.left + window.scrollX,
-                      width: rect.width,
-                      height: rect.height,
-                    })
-                  }}
-                  aria-label={`Annotate column ${hoveredCell.cell + 1}`}
-                >
-                  <Columns3Icon className="size-3.5" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>
-                Annotate this column. Ctrl/Cmd-click to add another column.
-              </TooltipContent>
-            </Tooltip>,
-            tableWrapperRef.current,
-          )}
-          {!readOnly && onSelectRow && tableData.length > 1 && hoveredCell && rowButtonPosition && tableWrapperRef.current && createPortal(
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  ref={rowButtonRef}
-                  type="button"
-                  tabIndex={-1}
-                  data-batch-select-trigger="row"
-                  className="absolute z-30 rounded-md border bg-background/95 p-1 text-muted-foreground opacity-100 shadow-sm transition-opacity before:absolute before:-inset-3 before:content-[''] after:absolute after:inset-y-0 after:-right-4 after:w-4 after:content-[''] hover:text-foreground focus-visible:opacity-100"
-                  style={{ top: rowButtonPosition.top, left: rowButtonPosition.left }}
-                  onMouseDown={event => event.stopPropagation()}
-                  onPointerDown={event => event.stopPropagation()}
-                  onMouseUp={event => event.stopPropagation()}
-                  onMouseLeave={(event) => {
-                    if (!isInRowHoverZone(event)) {
-                      hoveredRowRef.current = null
-                      setHoveredCell(null)
-                      setRowButtonPosition(null)
-                    }
-                  }}
-                  onClick={(event) => {
-                    const rect = event.currentTarget.getBoundingClientRect()
-                    onSelectRow(hoveredCell.row, event.ctrlKey || event.metaKey, {
-                      top: rect.top + window.scrollY,
-                      left: rect.left + window.scrollX,
-                      width: rect.width,
-                      height: rect.height,
-                    })
-                  }}
-                  aria-label={`Annotate row ${hoveredCell.row + 1}`}
-                >
-                  <Rows3Icon className="size-3.5" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>
-                Annotate this row. Ctrl/Cmd-click to add another row.
-              </TooltipContent>
-            </Tooltip>,
-            tableWrapperRef.current,
-          )}
-          {tableActionRailPosition && (
-            <div
-              className="pointer-events-none absolute z-30 flex flex-col gap-1 rounded-md border bg-background/95 p-1 opacity-0 shadow-sm transition-opacity group-hover:pointer-events-auto group-hover:opacity-100"
-              style={{ top: tableActionRailPosition.top, left: tableActionRailPosition.left }}
-            >
-              {!readOnly && onSelectAll && tableData.length > 1 && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="size-7 p-1"
-                      onClick={(event) => {
-                        const rect = event.currentTarget.getBoundingClientRect()
-                        onSelectAll(event.ctrlKey || event.metaKey, {
-                          top: rect.top + window.scrollY,
-                          left: rect.left + window.scrollX,
-                          width: rect.width,
-                          height: rect.height,
-                        })
-                      }}
-                      tabIndex={-1}
-                      data-batch-select-trigger="all"
-                      aria-label="Select all table cells"
-                    >
-                      <Grid2x2Check className="size-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="left">
-                    Select all cells
-                  </TooltipContent>
-                </Tooltip>
-              )}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="size-7 p-1"
-                    onClick={() => copyTableAsMarkdown(tableData)}
-                    tabIndex={-1}
-                  >
-                    {copied
-                      ? (
-                          <>
-                            <Check className="size-4" />
-                          </>
-                        )
-                      : (
-                          <>
-                            <Copy className="size-4" />
-                          </>
-                        )}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="left">
-                  Copy table as Markdown
-                </TooltipContent>
-              </Tooltip>
-            </div>
-          )}
+          <TableBatchControls
+            readOnly={readOnly}
+            tableHasDataRows={tableData.length > 1}
+            hoveredCell={hoveredCell}
+            columnButtonPosition={columnButtonPosition}
+            rowButtonPosition={rowButtonPosition}
+            tableActionRailPosition={tableActionRailPosition}
+            copied={copied}
+            portalTarget={tableWrapperRef.current}
+            onSelectColumn={onSelectColumn}
+            onSelectRow={onSelectRow}
+            onSelectAll={onSelectAll}
+            onCopyTable={() => copyTableAsMarkdown(tableData)}
+            onColumnButtonRef={button => (columnButtonRef.current = button)}
+            onRowButtonRef={button => (rowButtonRef.current = button)}
+            onRowButtonLeave={(event) => {
+              if (!isInRowHoverZone(event)) {
+                hoveredRowRef.current = null
+                setHoveredCell(null)
+                setRowButtonPosition(null)
+              }
+            }}
+          />
         </div>
       </div>
     )

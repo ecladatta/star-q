@@ -202,7 +202,6 @@ function CellsSlotIndicator({
     >
       <button
         type="button"
-        tabIndex={-1}
         className="flex cursor-pointer items-center gap-1.5 truncate text-sm"
         onClick={onScrollToCells}
         aria-label={`Scroll to the selected cells, which fill the ${ROLE_LABEL[slotRole].toLowerCase()} slot`}
@@ -310,6 +309,7 @@ function SlotField({
               e.stopPropagation()
               onRemove()
             }}
+            aria-label={`Remove ${tag.annotationValue}`}
           >
             ✕
           </button>
