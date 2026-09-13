@@ -860,6 +860,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
   useEffect(() => {
     const finalizeDrag = (releasedOnTouch: boolean) => {
       const drag = dragRef.current
+      dragRef.current = null
       if (drag?.active) {
         anchorRef.current = drag.origin
         dragActiveInSequenceRef.current = true
@@ -874,7 +875,6 @@ export function useCellBatch(options: UseCellBatchOptions) {
         setAnchorRect(cells.length >= 2 ? getAnchorRectForCells(cells) : null)
         return
       }
-      dragRef.current = null
       setDragging(false)
     }
 
@@ -887,7 +887,6 @@ export function useCellBatch(options: UseCellBatchOptions) {
         return
       }
       activeTouchCleanupRef.current?.()
-      dragRef.current = null
       finalizeDrag(true)
     }
 
@@ -898,7 +897,6 @@ export function useCellBatch(options: UseCellBatchOptions) {
         return
       }
       activeTouchCleanupRef.current?.()
-      dragRef.current = null
       finalizeDrag(false)
       clearCells()
     }
