@@ -142,7 +142,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
   const anchorRef = useRef<CellBatchCellRef | null>(null)
   const dragRef = useRef<{ origin: CellBatchCellRef, focus: CellBatchCellRef | null, active: boolean } | null>(null)
   const modifierClickRef = useRef(false)
-  const touchReleaseRef = useRef(false)
+  const dragActiveInSequenceRef = useRef(false)
   const batchModeRef = useRef(false)
   const pointerRef = useRef<{ x: number, y: number } | null>(null)
   const viewportRef = useRef<HTMLElement | null>(null)
@@ -358,6 +358,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
       // or it would swallow this plain click.
       modifierClickRef.current = false
     }
+    dragActiveInSequenceRef.current = false
 
     const interactiveTarget = event.target instanceof Element
       && event.target.closest('[role="button"]')
@@ -414,23 +415,8 @@ export function useCellBatch(options: UseCellBatchOptions) {
   }, [extendRect, popover])
 
   const handleCellMouseUp = useCallback((cell?: CellBatchCellRef): boolean => {
-    const drag = dragRef.current
-    dragRef.current = null
-
-    if (drag?.active) {
-      anchorRef.current = drag.origin
-      setDragging(false)
-
-      if (touchReleaseRef.current) {
-        touchReleaseRef.current = false
-        if (cells.length === 1) {
-          setCellRole(nextEmptyRole(currentAnnotation))
-          openBatchMode()
-        }
-        return true
-      }
-
-      setAnchorRect(cells.length >= 2 ? getAnchorRectForCells(cells) : null)
+    if (dragActiveInSequenceRef.current) {
+      dragActiveInSequenceRef.current = false
       return true
     }
 
@@ -449,7 +435,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
       clearCells()
     }
     return false
-  }, [cells, cellKeySet, clearCells, currentAnnotation, openBatchMode, setCellRole])
+  }, [cells, cellKeySet, clearCells])
 
   const startPendingTouchGesture = useCallback((cell: CellBatchCellRef, event: React.PointerEvent<HTMLElement>) => {
     pendingTouchCleanupRef.current?.()
@@ -853,6 +839,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
       if (dragRef.current?.active) {
         activeTouchCleanupRef.current?.()
         dragRef.current = null
+        dragActiveInSequenceRef.current = false
         setDragging(false)
         clearBrowserSelection()
       }
@@ -871,18 +858,28 @@ export function useCellBatch(options: UseCellBatchOptions) {
   }, [cells.length, currentAnnotation, exitBatchMode])
 
   useEffect(() => {
-    const finalizeDrag = () => {
+    const finalizeDrag = (releasedOnTouch: boolean) => {
       const drag = dragRef.current
       if (drag?.active) {
         anchorRef.current = drag.origin
+        dragActiveInSequenceRef.current = true
+        setDragging(false)
+
+        if (releasedOnTouch && cells.length === 1) {
+          setCellRole(nextEmptyRole(currentAnnotation))
+          openBatchMode()
+          return
+        }
+
         setAnchorRect(cells.length >= 2 ? getAnchorRectForCells(cells) : null)
+        return
       }
       dragRef.current = null
       setDragging(false)
     }
 
     const handleWindowMouseUp = () => {
-      finalizeDrag()
+      finalizeDrag(false)
     }
 
     const handleWindowPointerUp = (event: PointerEvent) => {
@@ -890,8 +887,8 @@ export function useCellBatch(options: UseCellBatchOptions) {
         return
       }
       activeTouchCleanupRef.current?.()
-      touchReleaseRef.current = true
-      finalizeDrag()
+      dragRef.current = null
+      finalizeDrag(true)
     }
 
     // The system claimed the touch (e.g. a system gesture): abort the
@@ -901,7 +898,8 @@ export function useCellBatch(options: UseCellBatchOptions) {
         return
       }
       activeTouchCleanupRef.current?.()
-      finalizeDrag()
+      dragRef.current = null
+      finalizeDrag(false)
       clearCells()
     }
 
@@ -913,7 +911,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
       window.removeEventListener('pointerup', handleWindowPointerUp, true)
       window.removeEventListener('pointercancel', handleWindowPointerCancel, true)
     }
-  }, [cells, clearCells])
+  }, [cells, clearCells, currentAnnotation, openBatchMode, setCellRole])
 
   useEffect(() => {
     return () => {
