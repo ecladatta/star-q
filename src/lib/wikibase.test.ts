@@ -10,6 +10,28 @@ describe('wikibase config', () => {
   })
 })
 
+describe('wikibaseRdfNamespaces', () => {
+  it('derives scheme-true namespaces for arbitrary instances', async () => {
+    const { wikibaseRdfNamespaces } = await import('./wikibase')
+
+    expect(wikibaseRdfNamespaces('https://database.factgrid.de')).toEqual({
+      wd: 'https://database.factgrid.de/entity/',
+      wdt: 'https://database.factgrid.de/prop/direct/',
+      pq: 'https://database.factgrid.de/prop/qualifier/',
+    })
+  })
+
+  it('emits canonical http IRIs for Wikidata regardless of the registered scheme', async () => {
+    const { wikibaseRdfNamespaces } = await import('./wikibase')
+
+    expect(wikibaseRdfNamespaces('https://www.wikidata.org')).toEqual({
+      wd: 'http://www.wikidata.org/entity/',
+      wdt: 'http://www.wikidata.org/prop/direct/',
+      pq: 'http://www.wikidata.org/prop/qualifier/',
+    })
+  })
+})
+
 describe('resolveWikibase', () => {
   const entry = {
     label: 'Example',

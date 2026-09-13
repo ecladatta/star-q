@@ -84,6 +84,16 @@ export type WikibaseRdfNamespaces = {
 }
 
 export function wikibaseRdfNamespaces(instance: string): WikibaseRdfNamespaces {
+  // Wikidata's canonical RDF IRIs (dumps, WDQS) predate HTTPS and use http://.
+  // Every other instance keeps the scheme-true derivation.
+  const host = new URL(instance).host
+  if (host === 'www.wikidata.org') {
+    return {
+      wd: 'http://www.wikidata.org/entity/',
+      wdt: 'http://www.wikidata.org/prop/direct/',
+      pq: 'http://www.wikidata.org/prop/qualifier/',
+    }
+  }
   return {
     wd: `${instance}/entity/`,
     wdt: `${instance}/prop/direct/`,
