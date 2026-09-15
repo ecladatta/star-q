@@ -18,36 +18,124 @@ describe('wikibase config', () => {
     expect(wikiUrl('https://wikibase.example', 'Property:P31')).toBeNull()
   })
 
-  it('strips a single trailing slash from registered urls', async () => {
+  it('strips all trailing slashes from registered urls', async () => {
     const { parseWikibaseInstanceInput } = await import('./wikibase')
 
     expect(parseWikibaseInstanceInput({
       label: 'Example',
       instanceUrl: 'https://wikibase.example/',
       sparqlEndpoint: 'https://wikibase.example/query/sparql/',
+      conceptBaseUri: 'https://wikidata.example/',
     })).toEqual({
       label: 'Example',
       instanceUrl: 'https://wikibase.example',
       sparqlEndpoint: 'https://wikibase.example/query/sparql',
+      conceptBaseUri: 'https://wikidata.example',
     })
+    expect(parseWikibaseInstanceInput({
+      label: 'Example',
+      instanceUrl: 'https://wikibase.example//',
+      sparqlEndpoint: 'https://wikibase.example/query/sparql',
+      conceptBaseUri: 'https://wikidata.example//',
+    }).conceptBaseUri).toBe('https://wikidata.example')
+  })
+
+  it('derives the concept base uri from the instance url when absent or blank', async () => {
+    const { parseWikibaseInstanceInput } = await import('./wikibase')
+
+    expect(parseWikibaseInstanceInput({
+      label: 'Example',
+      instanceUrl: 'https://wikibase.example/',
+      sparqlEndpoint: 'https://wikibase.example/query/sparql',
+    }).conceptBaseUri).toBe('https://wikibase.example')
+    expect(parseWikibaseInstanceInput({
+      label: 'Example',
+      instanceUrl: 'https://wikibase.example',
+      sparqlEndpoint: 'https://wikibase.example/query/sparql',
+      conceptBaseUri: '   ',
+    }).conceptBaseUri).toBe('https://wikibase.example')
+  })
+
+  it('canonicalizes an explicit concept base uri through the same derive rule', async () => {
+    const { parseWikibaseInstanceInput } = await import('./wikibase')
+
+    expect(parseWikibaseInstanceInput({
+      label: 'Wikidata',
+      instanceUrl: 'https://www.wikidata.org',
+      sparqlEndpoint: 'https://query.wikidata.org/sparql',
+      conceptBaseUri: 'https://www.wikidata.org',
+    }).conceptBaseUri).toBe('http://www.wikidata.org')
+    expect(parseWikibaseInstanceInput({
+      label: 'FactGrid',
+      instanceUrl: 'https://database.factgrid.de',
+      sparqlEndpoint: 'https://database.factgrid.de/query/sparql',
+      conceptBaseUri: 'https://concepts.factgrid.de',
+    }).conceptBaseUri).toBe('https://concepts.factgrid.de')
+  })
+
+  it('rejects an invalid explicit concept base uri with the field name', async () => {
+    const { parseWikibaseInstanceInput } = await import('./wikibase')
+
+    expect(() => parseWikibaseInstanceInput({
+      label: 'Example',
+      instanceUrl: 'https://wikibase.example',
+      sparqlEndpoint: 'https://wikibase.example/query/sparql',
+      conceptBaseUri: 'ftp://wikibase.example',
+    })).toThrow(TypeError)
+    expect(() => parseWikibaseInstanceInput({
+      label: 'Example',
+      instanceUrl: 'https://wikibase.example',
+      sparqlEndpoint: 'https://wikibase.example/query/sparql',
+      conceptBaseUri: 'not a url',
+    })).toThrow(/conceptBaseUri/)
+  })
+
+  it('derives the canonical http base for newly registered wikidata instances, matching the migration backfill', async () => {
+    const { parseWikibaseInstanceInput } = await import('./wikibase')
+
+    expect(parseWikibaseInstanceInput({
+      label: 'Wikidata',
+      instanceUrl: 'https://www.wikidata.org',
+      sparqlEndpoint: 'https://query.wikidata.org/sparql',
+    }).conceptBaseUri).toBe('http://www.wikidata.org')
+    expect(parseWikibaseInstanceInput({
+      label: 'Wikidata apex',
+      instanceUrl: 'https://wikidata.org',
+      sparqlEndpoint: 'https://query.wikidata.org/sparql',
+    }).conceptBaseUri).toBe('http://wikidata.org')
+    expect(parseWikibaseInstanceInput({
+      label: 'Wikidata uppercase',
+      instanceUrl: 'https://WWW.Wikidata.ORG',
+      sparqlEndpoint: 'https://query.wikidata.org/sparql',
+    }).conceptBaseUri).toBe('http://WWW.Wikidata.ORG')
+    expect(parseWikibaseInstanceInput({
+      label: 'Wikidata with default port',
+      instanceUrl: 'https://wikidata.org:443',
+      sparqlEndpoint: 'https://query.wikidata.org/sparql',
+    }).conceptBaseUri).toBe('http://wikidata.org:443')
+    expect(parseWikibaseInstanceInput({
+      label: 'Not wikidata subdomain',
+      instanceUrl: 'https://subdomain.wikidata.org',
+      sparqlEndpoint: 'https://query.wikidata.org/sparql',
+    }).conceptBaseUri).toBe('https://subdomain.wikidata.org')
   })
 })
 
 describe('wikibaseRdfNamespaces', () => {
-  it('derives scheme-true namespaces for arbitrary instances', async () => {
-    const { wikibaseRdfNamespaces } = await import('./wikibase')
+  it('joins the stored concept base into namespace IRIs', async () => {
+    const { asConceptBaseUri, wikibaseRdfNamespaces } = await import('./wikibase')
 
-    expect(wikibaseRdfNamespaces('https://database.factgrid.de')).toEqual({
+    expect(wikibaseRdfNamespaces(asConceptBaseUri('https://database.factgrid.de'))).toEqual({
       wd: 'https://database.factgrid.de/entity/',
       wdt: 'https://database.factgrid.de/prop/direct/',
       pq: 'https://database.factgrid.de/prop/qualifier/',
     })
   })
 
-  it('emits canonical http IRIs for Wikidata regardless of the registered scheme', async () => {
-    const { wikibaseRdfNamespaces } = await import('./wikibase')
+  it('emits canonical http IRIs from the migrated Wikidata base without host sniffing', async () => {
+    const { asConceptBaseUri, wikibaseRdfNamespaces } = await import('./wikibase')
 
-    expect(wikibaseRdfNamespaces('https://www.wikidata.org')).toEqual({
+    expect(wikibaseRdfNamespaces(asConceptBaseUri('http://www.wikidata.org'))).toEqual({
       wd: 'http://www.wikidata.org/entity/',
       wdt: 'http://www.wikidata.org/prop/direct/',
       pq: 'http://www.wikidata.org/prop/qualifier/',
@@ -60,6 +148,7 @@ describe('resolveWikibase', () => {
     label: 'Example',
     instanceUrl: 'https://wikibase.example',
     sparqlEndpoint: 'https://wikibase.example/query/sparql',
+    conceptBaseUri: 'https://wikibase.example',
     enabled: true,
   }
   const instanceId = '123e4567-e89b-12d3-a456-426614174000'
@@ -71,6 +160,7 @@ describe('resolveWikibase', () => {
       label: 'Example',
       instance: 'https://wikibase.example',
       sparqlEndpoint: 'https://wikibase.example/query/sparql',
+      conceptBaseUri: 'https://wikibase.example',
     })
   })
 

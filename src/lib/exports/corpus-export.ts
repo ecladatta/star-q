@@ -15,7 +15,7 @@ export async function buildCorpusExportModel(corpusId: string): Promise<ExportMo
 
   return {
     exportMeta: {
-      version: '1.3',
+      version: '1.4',
       type: 'full-corpus-export',
     },
     id: corpus.id,
@@ -23,7 +23,11 @@ export async function buildCorpusExportModel(corpusId: string): Promise<ExportMo
     createdAt: corpus.createdAt ? corpus.createdAt.toISOString() : null,
     updatedAt: corpus.updatedAt ? corpus.updatedAt.toISOString() : null,
     wikibase: wikibase
-      ? { instance: wikibase.instance, sparqlEndpoint: wikibase.sparqlEndpoint }
+      ? {
+          instance: wikibase.instance,
+          sparqlEndpoint: wikibase.sparqlEndpoint,
+          conceptBaseUri: wikibase.conceptBaseUri,
+        }
       : null,
     documents: await Promise.all(documents.map(async (document) => {
       const [docAnnotations, rawContent] = await Promise.all([

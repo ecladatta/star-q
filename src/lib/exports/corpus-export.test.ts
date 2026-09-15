@@ -1,5 +1,6 @@
 import type { ExportModel } from '@/types/types'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { asConceptBaseUri } from '@/lib/wikibase'
 import { getCorpusExportFilename, resolveCorpusExportFormat } from './corpus-export'
 
 vi.mock('@/actions/annotation/annotationActions', () => ({ getAnnotations: vi.fn() }))
@@ -77,13 +78,17 @@ describe('resolveCorpusExportFormat', () => {
 describe('getCorpusExportFilename', () => {
   function model(title: string | null): ExportModel {
     return {
-      exportMeta: { version: '1.3', type: 'full-corpus-export' },
+      exportMeta: { version: '1.4', type: 'full-corpus-export' },
       id: 'corpus-1',
       title,
       createdAt: null,
       updatedAt: null,
       customEntities: [],
-      wikibase: { instance: 'https://wikibase.example', sparqlEndpoint: 'https://wikibase.example/query/sparql' },
+      wikibase: {
+        instance: 'https://wikibase.example',
+        sparqlEndpoint: 'https://wikibase.example/query/sparql',
+        conceptBaseUri: asConceptBaseUri('https://wikibase.example'),
+      },
       documents: [],
     }
   }

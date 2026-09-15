@@ -12,21 +12,36 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
+import { deriveConceptBaseUri, parseWikibaseInstanceInput } from '@/lib/wikibase'
 
 type InstanceDraft = {
   label: string
   instanceUrl: string
   sparqlEndpoint: string
+  conceptBaseUri: string
 }
 
-const EMPTY_DRAFT: InstanceDraft = { label: '', instanceUrl: '', sparqlEndpoint: '' }
+const EMPTY_DRAFT: InstanceDraft = { label: '', instanceUrl: '', sparqlEndpoint: '', conceptBaseUri: '' }
 
 function toDraft(instance: WikibaseInstance): InstanceDraft {
-  return { label: instance.label, instanceUrl: instance.instanceUrl, sparqlEndpoint: instance.sparqlEndpoint }
+  return {
+    label: instance.label,
+    instanceUrl: instance.instanceUrl,
+    sparqlEndpoint: instance.sparqlEndpoint,
+    conceptBaseUri: instance.conceptBaseUri === deriveConceptBaseUri(instance.instanceUrl) ? '' : instance.conceptBaseUri,
+  }
 }
 
 function draftComplete(draft: InstanceDraft): boolean {
   return Boolean(draft.label.trim() && draft.instanceUrl.trim() && draft.sparqlEndpoint.trim())
+}
+
+function previewConceptBaseUri(draft: InstanceDraft): string | null {
+  try {
+    return parseWikibaseInstanceInput(draft).conceptBaseUri
+  } catch {
+    return null
+  }
 }
 
 export function WikibaseInstanceManager({ instances }: { instances: WikibaseInstance[] }) {
@@ -42,6 +57,8 @@ export function WikibaseInstanceManager({ instances }: { instances: WikibaseInst
     (current, update: { id: string, enabled: boolean }) =>
       current.map(instance => (instance.id === update.id ? { ...instance, enabled: update.enabled } : instance)),
   )
+  const createConceptBasePreview = previewConceptBaseUri(newInstance)
+  const editConceptBasePreview = previewConceptBaseUri(editDraft)
 
   const handleCreate = async () => {
     if (!draftComplete(newInstance)) {
@@ -110,7 +127,7 @@ export function WikibaseInstanceManager({ instances }: { instances: WikibaseInst
     <div className="space-y-8">
       <section className="rounded-md border p-5">
         <h2 className="mb-4 text-lg font-semibold">Register instance</h2>
-        <div className="grid gap-3 md:grid-cols-4 md:items-end">
+        <div className="grid gap-3 md:grid-cols-5 md:items-end">
           <div className="space-y-2">
             <Label htmlFor="wikibase-label">Label</Label>
             <Input
@@ -138,6 +155,22 @@ export function WikibaseInstanceManager({ instances }: { instances: WikibaseInst
               placeholder="https://query.wikidata.org/sparql"
             />
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="wikibase-concept-base-uri">Concept base URI</Label>
+            <Input
+              id="wikibase-concept-base-uri"
+              value={newInstance.conceptBaseUri}
+              onChange={e => setNewInstance(prev => ({ ...prev, conceptBaseUri: e.target.value }))}
+              placeholder="Leave blank to use the instance URL"
+            />
+            {createConceptBasePreview && (
+              <p className="text-xs text-muted-foreground">
+                Preview
+                {' '}
+                <code className="rounded-sm bg-muted px-1 py-0.5 text-xs">{`${createConceptBasePreview}/entity/Q1`}</code>
+              </p>
+            )}
+          </div>
           <Button onClick={handleCreate} disabled={isCreating || !draftComplete(newInstance)}>
             {isCreating ? 'Registering…' : 'Register'}
           </Button>
@@ -159,6 +192,11 @@ export function WikibaseInstanceManager({ instances }: { instances: WikibaseInst
                 SPARQL
                 {' '}
                 <code className="rounded-sm bg-muted px-1 py-0.5 text-xs">{instance.sparqlEndpoint}</code>
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Concept base
+                {' '}
+                <code className="rounded-sm bg-muted px-1 py-0.5 text-xs">{instance.conceptBaseUri}</code>
               </p>
             </div>
             <Switch
@@ -244,6 +282,22 @@ export function WikibaseInstanceManager({ instances }: { instances: WikibaseInst
                 value={editDraft.sparqlEndpoint}
                 onChange={e => setEditDraft(prev => ({ ...prev, sparqlEndpoint: e.target.value }))}
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="wikibase-edit-concept-base-uri">Concept base URI</Label>
+              <Input
+                id="wikibase-edit-concept-base-uri"
+                value={editDraft.conceptBaseUri}
+                onChange={e => setEditDraft(prev => ({ ...prev, conceptBaseUri: e.target.value }))}
+                placeholder="Leave blank to use the instance URL"
+              />
+              {editConceptBasePreview && (
+                <p className="text-xs text-muted-foreground">
+                  Preview
+                  {' '}
+                  <code className="rounded-sm bg-muted px-1 py-0.5 text-xs">{`${editConceptBasePreview}/entity/Q1`}</code>
+                </p>
+              )}
             </div>
           </div>
           <DialogFooter>

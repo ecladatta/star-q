@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { asConceptBaseUri } from './wikibase'
 import { membershipKey } from './wikidata-constraints'
 import {
   classifyPredicateCandidatesViaWikidata,
@@ -10,7 +11,11 @@ import {
 } from './wikidata-sparql'
 
 const fetchMock = vi.fn()
-const config = { instance: 'https://wikibase.example', sparqlEndpoint: 'https://wikibase.example/query/sparql' }
+const config = {
+  instance: 'https://wikibase.example',
+  sparqlEndpoint: 'https://wikibase.example/query/sparql',
+  conceptBaseUri: asConceptBaseUri('https://wikibase.example'),
+}
 
 beforeEach(() => {
   vi.stubGlobal('fetch', fetchMock)
@@ -131,7 +136,7 @@ describe('cache keying', () => {
     await labelsForInstanceA(config, ['Q5'])
     expect(fetchMock).toHaveBeenCalledTimes(1)
 
-    await labelsForInstanceA({ instance: 'https://b.example', sparqlEndpoint: 'https://b.example/query/sparql' }, ['Q5'])
+    await labelsForInstanceA({ instance: 'https://b.example', sparqlEndpoint: 'https://b.example/query/sparql', conceptBaseUri: asConceptBaseUri('https://b.example') }, ['Q5'])
     expect(fetchMock).toHaveBeenCalledTimes(2)
 
     vi.resetModules()

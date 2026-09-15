@@ -57,7 +57,7 @@ export async function updateWikibaseInstance(id: string, input: WikibaseInstance
   try {
     const updated = await db.transaction(async (trx) => {
       const [previous] = await trx
-        .select({ label: wikibaseInstances.label, instanceUrl: wikibaseInstances.instanceUrl, sparqlEndpoint: wikibaseInstances.sparqlEndpoint })
+        .select({ label: wikibaseInstances.label, instanceUrl: wikibaseInstances.instanceUrl, sparqlEndpoint: wikibaseInstances.sparqlEndpoint, conceptBaseUri: wikibaseInstances.conceptBaseUri })
         .from(wikibaseInstances)
         .where(eq(wikibaseInstances.id, id))
         .limit(1)

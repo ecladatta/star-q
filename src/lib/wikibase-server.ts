@@ -1,5 +1,5 @@
 import type { ResolvedWikibase } from './wikibase'
-import { and, eq } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { cache } from 'react'
 import { db } from '@/db/drizzle'
 import { corpus, wikibaseInstances } from '@/db/schema'
@@ -27,10 +27,10 @@ export const loadCorpusWikibaseConfig = cache(async (corpusId: string): Promise<
   const [entry] = await db
     .select()
     .from(wikibaseInstances)
-    .where(and(eq(wikibaseInstances.isDefault, true), eq(wikibaseInstances.enabled, true)))
+    .where(eq(wikibaseInstances.isDefault, true))
     .limit(1)
   if (!entry) {
     return null
   }
-  return { label: entry.label, instance: entry.instanceUrl, sparqlEndpoint: entry.sparqlEndpoint }
+  return resolveWikibase({ wikibaseInstanceId: entry.id }, entry)
 })

@@ -4,9 +4,14 @@ import type {
   ExportModel,
 } from '@/types/types'
 import { describe, expect, it } from 'vitest'
+import { asConceptBaseUri } from '@/lib/wikibase'
 import { serializeRdfCorpusExport } from './rdf-corpus-export'
 
-const wikibaseConfig = { instance: 'https://wikibase.example', sparqlEndpoint: 'https://wikibase.example/sparql' }
+const wikibaseConfig = {
+  instance: 'https://wikibase.example',
+  sparqlEndpoint: 'https://wikibase.example/sparql',
+  conceptBaseUri: asConceptBaseUri('https://wikibase.example'),
+}
 
 function component(overrides: Partial<DocumentAnnotationComponent> = {}): DocumentAnnotationComponent {
   return {
@@ -78,7 +83,7 @@ function rawTable(): ExportModel['documents'][number]['raw'] {
 
 function model(annotations: AnnotationExport[], raw: ExportModel['documents'][number]['raw']): ExportModel {
   return {
-    exportMeta: { version: '1.3', type: 'full-corpus-export' },
+    exportMeta: { version: '1.4', type: 'full-corpus-export' },
     id: 'corpus-1',
     title: 'Test',
     createdAt: null,
@@ -150,15 +155,16 @@ describe('serializeRdfCorpusExport (truthy)', () => {
     expect(output).not.toContain('wdt:P1')
   })
 
-  it('resolves entity IRIs against the corpus wikibase instance', () => {
+  it('resolves entity IRIs against the stored concept base, not the instance URL', () => {
     const output = serializeRdfCorpusExport(
       withWikibase(model([annotation()], rawText()), {
         instance: 'https://other.example',
         sparqlEndpoint: 'https://other.example/sparql',
+        conceptBaseUri: asConceptBaseUri('https://concepts.other.example'),
       }),
       'truthy',
     )
-    expect(output).toContain('@prefix wd: <https://other.example/entity/>')
+    expect(output).toContain('@prefix wd: <https://concepts.other.example/entity/>')
     expect(output).toContain('wd:Q1 wdt:P1 wd:Q2.')
   })
 

@@ -5,6 +5,7 @@ import type {
   ExportModel,
 } from '@/types/types'
 import { expect, it } from 'vitest'
+import { asConceptBaseUri } from '@/lib/wikibase'
 import { serializeQuickStatementsCorpusExport } from './quickstatements-corpus-export'
 
 function component(overrides: Partial<DocumentAnnotationComponent>): DocumentAnnotationComponent {
@@ -52,13 +53,17 @@ function annotation(overrides: Partial<AnnotationExport> = {}): AnnotationExport
 
 function model(annotations: AnnotationExport[]): ExportModel {
   return {
-    exportMeta: { version: '1.3', type: 'full-corpus-export' },
+    exportMeta: { version: '1.4', type: 'full-corpus-export' },
     id: 'corpus-1',
     title: 'Test',
     createdAt: null,
     updatedAt: null,
     customEntities: [],
-    wikibase: { instance: 'https://wikibase.example', sparqlEndpoint: 'https://wikibase.example/query/sparql' },
+    wikibase: {
+      instance: 'https://wikibase.example',
+      sparqlEndpoint: 'https://wikibase.example/query/sparql',
+      conceptBaseUri: asConceptBaseUri('https://wikibase.example'),
+    },
     documents: [
       {
         id: 'doc-1',

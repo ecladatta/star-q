@@ -129,7 +129,7 @@ export function serializeRdfCorpusExport(
   if (!corpusData.wikibase) {
     throw new Error('No Wikibase instance is available for this corpus; RDF export requires one.')
   }
-  const wikibase = wikibaseRdfNamespaces(corpusData.wikibase.instance)
+  const wikibase = wikibaseRdfNamespaces(corpusData.wikibase.conceptBaseUri)
   const writer = createWriter(mode, wikibase)
 
   if (mode === 'full') {
