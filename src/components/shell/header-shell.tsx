@@ -34,7 +34,7 @@ export function MainNav({ items }: { items: NavItem[] }) {
   const pathname = usePathname()
 
   return (
-    <nav className="ml-4 hidden min-w-0 items-center gap-1 md:flex" aria-label="Main">
+    <nav className="ml-4 hidden min-w-0 items-center gap-1 self-stretch md:flex" aria-label="Main">
       {items.map((item) => {
         const active = isActive(pathname, item)
         return (
@@ -43,26 +43,25 @@ export function MainNav({ items }: { items: NavItem[] }) {
             href={item.href}
             aria-current={active ? 'page' : undefined}
             className={cn(
-              'flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-[13px] text-muted-foreground transition-colors hover:text-foreground',
-              active && 'bg-background font-medium text-foreground',
-              !active && 'hover:bg-border dark:hover:bg-background',
+              'flex h-full shrink-0 items-center border-b-2 border-transparent text-[13px] text-muted-foreground transition-colors hover:text-foreground',
+              active && 'border-foreground font-medium text-foreground',
             )}
           >
-            {item.label}
-            {item.badge
-              ? (
-                  <span
-                    className={cn(
-                      'min-w-5 rounded-full px-1.5 text-center text-[11px]/5 font-medium tabular-nums',
-                      active
-                        ? 'bg-background text-foreground ring-1 ring-border'
-                        : 'bg-secondary text-muted-foreground',
-                    )}
-                  >
-                    {item.badge}
-                  </span>
-                )
-              : null}
+            <span
+              className={cn(
+                'flex h-8 items-center gap-1.5 rounded-md px-2.5 transition-colors',
+                !active && 'hover:bg-border dark:hover:bg-background',
+              )}
+            >
+              {item.label}
+              {item.badge
+                ? (
+                    <span className="min-w-5 rounded-full bg-secondary px-1.5 text-center text-[11px]/5 font-medium text-muted-foreground tabular-nums">
+                      {item.badge}
+                    </span>
+                  )
+                : null}
+            </span>
           </Link>
         )
       })}
