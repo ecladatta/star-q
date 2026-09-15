@@ -184,11 +184,11 @@ function DataTablePagination<TData>({
   return (
     <div className="flex flex-col gap-2 px-2 sm:flex-row sm:items-center sm:justify-between">
       <div className="text-sm text-muted-foreground sm:flex-1">
-        {table.getFilteredSelectedRowModel().rows.length}
+        {table.getFilteredRowModel().rows.length}
         {' '}
         of
         {' '}
-        {table.getFilteredRowModel().rows.length}
+        {table.getPreFilteredRowModel().rows.length}
         {' '}
         row(s) shown.
       </div>
