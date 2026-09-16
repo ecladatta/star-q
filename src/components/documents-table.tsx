@@ -3,18 +3,28 @@ import type {
   Column,
   ColumnDef,
   ColumnFiltersState,
+  OnChangeFn,
+  ReactTable,
+  RowSelectionState,
   SortingState,
-  Table as TableType,
 } from '@tanstack/react-table'
 import type { HTMLAttributes } from 'react'
 import type { DocumentMetadata } from '@/actions/corpus/corpusActions'
 import {
+  columnFilteringFeature,
+  columnVisibilityFeature,
+  createFilteredRowModel,
+  createPaginatedRowModel,
+  createSortedRowModel,
+  filterFn_includesString,
   flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
+  globalFilteringFeature,
+  rowPaginationFeature,
+  rowSelectionFeature,
+  rowSortingFeature,
+  sortFn_alphanumeric,
+  tableFeatures,
+  useTable,
 } from '@tanstack/react-table'
 import {
   ArrowDownIcon,
@@ -32,7 +42,7 @@ import {
   Trash2Icon,
 } from 'lucide-react'
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { toast } from 'sonner'
 import {
   deleteDocuments,
@@ -74,13 +84,13 @@ import { downloadRawDocumentData } from '@/lib/download-document'
 import { cn } from '@/lib/utils'
 import { Label } from './ui/label'
 
-type DataTableColumnHeaderProps<TData, TValue> = {
-  column: Column<TData, TValue>
+type DataTableColumnHeaderProps<TValue> = {
+  column: Column<typeof features, DocumentMetadata, TValue>
   title: string
 } & HTMLAttributes<HTMLDivElement>
 
 type DataTableProps = {
-  columns: ColumnDef<DocumentMetadata, any>[]
+  columns: ColumnDef<typeof features, DocumentMetadata, any>[]
   data: DocumentMetadata[]
   filteredDocuments: DocumentMetadata[]
   setDocumentToDelete: (doc: DocumentMetadata) => void
@@ -94,8 +104,8 @@ type DataTableProps = {
   onBulkDelete: () => void
 }
 
-type DataTablePaginationProps<TData> = {
-  table: TableType<TData>
+type DataTablePaginationProps = {
+  table: ReactTable<typeof features, DocumentMetadata>
 }
 
 type DocumentTableMeta = {
@@ -105,6 +115,20 @@ type DocumentTableMeta = {
   loadingIds: string[]
   canEdit: boolean
 }
+
+const features = tableFeatures({
+  columnFilteringFeature,
+  globalFilteringFeature,
+  rowPaginationFeature,
+  rowSelectionFeature,
+  rowSortingFeature,
+  columnVisibilityFeature,
+  filteredRowModel: createFilteredRowModel(),
+  sortedRowModel: createSortedRowModel(),
+  paginatedRowModel: createPaginatedRowModel(),
+  filterFns: { includesString: filterFn_includesString },
+  sortFns: { alphanumeric: sortFn_alphanumeric },
+})
 
 function DataTable({
   columns,
@@ -125,15 +149,20 @@ function DataTable({
   const [globalFilter, setGlobalFilter] = useState('')
   const [rowSelection, setRowSelection] = useState({})
 
-  const table = useReactTable<DocumentMetadata>({
+  const handleRowSelectionChange: OnChangeFn<RowSelectionState> = (updater) => {
+    const next = typeof updater === 'function' ? updater(rowSelection) : updater
+    setRowSelection(next)
+    onSelectionChange(
+      data.filter(document => next[document.id]),
+    )
+  }
+
+  const table = useTable({
+    features,
     data,
     columns,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     onSortingChange: setSorting,
-    getSortedRowModel: getSortedRowModel(),
     onColumnFiltersChange: setColumnFilters,
-    getFilteredRowModel: getFilteredRowModel(),
     onGlobalFilterChange: setGlobalFilter,
     globalFilterFn: 'includesString',
     state: {
@@ -142,8 +171,9 @@ function DataTable({
       globalFilter,
       rowSelection,
     },
-    onRowSelectionChange: setRowSelection,
+    onRowSelectionChange: handleRowSelectionChange,
     enableRowSelection: canEdit,
+    getRowId: row => row.id,
     meta: {
       filteredDocuments,
       handleMarkCompleted,
@@ -152,15 +182,6 @@ function DataTable({
       canEdit,
     } satisfies DocumentTableMeta,
   })
-
-  // propagate selected rows back to parent
-  useEffect(() => {
-    const selected = table
-      .getSelectedRowModel()
-      .rows
-      .map(r => r.original)
-    onSelectionChange(selected)
-  }, [rowSelection, table, onSelectionChange])
 
   return (
     <div>
@@ -270,9 +291,9 @@ function DataTable({
   )
 }
 
-function DataTablePagination<TData>({
+function DataTablePagination({
   table,
-}: DataTablePaginationProps<TData>) {
+}: DataTablePaginationProps) {
   return (
     <div className="flex flex-col gap-2 px-2 sm:flex-row sm:items-center sm:justify-between">
       <div className="text-sm text-muted-foreground sm:flex-1">
@@ -289,13 +310,13 @@ function DataTablePagination<TData>({
           <p className="hidden text-sm font-medium sm:block">Rows per page</p>
           <Select
             aria-label="Rows per page"
-            value={`${table.getState().pagination.pageSize}`}
+            value={`${table.state.pagination.pageSize}`}
             onValueChange={(value) => {
               table.setPageSize(Number(value))
             }}
           >
             <SelectTrigger className="h-8 w-[70px]">
-              <SelectValue placeholder={table.getState().pagination.pageSize} />
+              <SelectValue placeholder={table.state.pagination.pageSize} />
             </SelectTrigger>
             <SelectContent side="top">
               {[10, 20, 30, 40, 50].map(pageSize => (
@@ -309,7 +330,7 @@ function DataTablePagination<TData>({
         <div className="flex w-[100px] items-center justify-center text-sm font-medium">
           Page
           {' '}
-          {table.getState().pagination.pageIndex + 1}
+          {table.state.pagination.pageIndex + 1}
           {' '}
           of
           {' '}
@@ -358,7 +379,7 @@ function DataTablePagination<TData>({
   )
 }
 
-const columns: ColumnDef<DocumentMetadata, any>[] = [
+const columns: ColumnDef<typeof features, DocumentMetadata, any>[] = [
   {
     id: 'select',
     header: ({ table }) => {
@@ -370,7 +391,7 @@ const columns: ColumnDef<DocumentMetadata, any>[] = [
         <Checkbox
           className="after:inset-[-15px]"
           checked={table.getIsAllRowsSelected()}
-          aria-checked={table.getIsSomeRowsSelected() ? 'mixed' : undefined}
+          aria-checked={table.getIsSomeRowsSelected() && !table.getIsAllRowsSelected() ? 'mixed' : undefined}
           onCheckedChange={checked => table.toggleAllRowsSelected(!!checked)}
         />
       )
@@ -534,11 +555,11 @@ const columns: ColumnDef<DocumentMetadata, any>[] = [
   },
 ]
 
-function DataTableColumnHeader<TData, TValue>({
+function DataTableColumnHeader<TValue>({
   column,
   title,
   className,
-}: DataTableColumnHeaderProps<TData, TValue>) {
+}: DataTableColumnHeaderProps<TValue>) {
   if (!column.getCanSort()) {
     return <div className={cn(className)}>{title}</div>
   }

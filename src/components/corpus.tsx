@@ -3,19 +3,26 @@ import type {
   Column,
   ColumnDef,
   ColumnFiltersState,
+  ReactTable,
   SortingState,
-  Table as TableType,
 } from '@tanstack/react-table'
 import type { ChangeEvent, HTMLAttributes } from 'react'
 import type { CorpusListItem, CorpusOwnerInput } from '@/actions/corpus/corpusActions'
 import type { CorpusImportFormat } from '@/lib/imports/import-format'
 import {
+  columnFilteringFeature,
+  columnVisibilityFeature,
+  createFilteredRowModel,
+  createPaginatedRowModel,
+  createSortedRowModel,
+  filterFn_includesString,
   flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
+  globalFilteringFeature,
+  rowPaginationFeature,
+  rowSortingFeature,
+  sortFn_alphanumeric,
+  tableFeatures,
+  useTable,
 } from '@tanstack/react-table'
 import {
   ArrowDownIcon,
@@ -70,19 +77,32 @@ export type CorporaProps = {
 
 type CorpusWithCounts = CorpusListItem
 
-type DataTableColumnHeaderProps<TData, TValue> = {
-  column: Column<TData, TValue>
+type DataTableColumnHeaderProps<TValue> = {
+  column: Column<typeof features, CorpusWithCounts, TValue>
   title: string
 } & HTMLAttributes<HTMLDivElement>
 
 type DataTableProps = {
-  columns: ColumnDef<CorpusWithCounts, any>[]
+  columns: ColumnDef<typeof features, CorpusWithCounts, any>[]
   data: CorpusWithCounts[]
 }
 
-type DataTablePaginationProps<TData> = {
-  table: TableType<TData>
+type DataTablePaginationProps = {
+  table: ReactTable<typeof features, CorpusWithCounts>
 }
+
+const features = tableFeatures({
+  columnFilteringFeature,
+  globalFilteringFeature,
+  rowPaginationFeature,
+  rowSortingFeature,
+  columnVisibilityFeature,
+  filteredRowModel: createFilteredRowModel(),
+  sortedRowModel: createSortedRowModel(),
+  paginatedRowModel: createPaginatedRowModel(),
+  filterFns: { includesString: filterFn_includesString },
+  sortFns: { alphanumeric: sortFn_alphanumeric },
+})
 
 function DataTable({
   columns,
@@ -92,15 +112,12 @@ function DataTable({
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [globalFilter, setGlobalFilter] = useState('')
 
-  const table = useReactTable<CorpusWithCounts>({
+  const table = useTable({
+    features,
     data,
     columns,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     onSortingChange: setSorting,
-    getSortedRowModel: getSortedRowModel(),
     onColumnFiltersChange: setColumnFilters,
-    getFilteredRowModel: getFilteredRowModel(),
     onGlobalFilterChange: setGlobalFilter,
     globalFilterFn: 'includesString',
     state: {
@@ -178,9 +195,9 @@ function DataTable({
   )
 }
 
-function DataTablePagination<TData>({
+function DataTablePagination({
   table,
-}: DataTablePaginationProps<TData>) {
+}: DataTablePaginationProps) {
   return (
     <div className="flex flex-col gap-2 px-2 sm:flex-row sm:items-center sm:justify-between">
       <div className="text-sm text-muted-foreground sm:flex-1">
@@ -197,13 +214,13 @@ function DataTablePagination<TData>({
           <p className="hidden text-sm font-medium sm:block">Rows per page</p>
           <Select
             aria-label="Rows per page"
-            value={`${table.getState().pagination.pageSize}`}
+            value={`${table.state.pagination.pageSize}`}
             onValueChange={(value) => {
               table.setPageSize(Number(value))
             }}
           >
             <SelectTrigger className="h-8 w-[70px]">
-              <SelectValue placeholder={table.getState().pagination.pageSize} />
+              <SelectValue placeholder={table.state.pagination.pageSize} />
             </SelectTrigger>
             <SelectContent side="top">
               {[5, 10, 20, 30, 40, 50].map(pageSize => (
@@ -217,7 +234,7 @@ function DataTablePagination<TData>({
         <div className="flex w-[100px] items-center justify-center text-sm font-medium">
           Page
           {' '}
-          {table.getState().pagination.pageIndex + 1}
+          {table.state.pagination.pageIndex + 1}
           {' '}
           of
           {' '}
@@ -266,11 +283,11 @@ function DataTablePagination<TData>({
   )
 }
 
-function DataTableColumnHeader<TData, TValue>({
+function DataTableColumnHeader<TValue>({
   column,
   title,
   className,
-}: DataTableColumnHeaderProps<TData, TValue>) {
+}: DataTableColumnHeaderProps<TValue>) {
   if (!column.getCanSort()) {
     return <div className={cn(className)}>{title}</div>
   }
@@ -312,7 +329,7 @@ function DataTableColumnHeader<TData, TValue>({
   )
 }
 
-function buildColumns(ownedTeams: { id: string, name: string, slug: string }[], canCopy: boolean): ColumnDef<CorpusWithCounts, any>[] {
+function buildColumns(ownedTeams: { id: string, name: string, slug: string }[], canCopy: boolean): ColumnDef<typeof features, CorpusWithCounts, any>[] {
   return [
     {
       accessorKey: 'title',
