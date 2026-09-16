@@ -17,9 +17,15 @@ type HeaderShellProps = {
 export function HeaderShell({ beforeLogo, children }: HeaderShellProps) {
   const pathname = usePathname()
   const hasCorpusNav = pathname.startsWith('/corpus/') || pathname.startsWith('/document/')
+  const isDocumentViewer = pathname.startsWith('/document/')
 
   return (
-    <header className={cn('flex h-14 shrink-0 items-center gap-2 bg-muted px-4 sm:px-6', !hasCorpusNav && 'border-b')}>
+    <header className={cn(
+      'flex h-14 shrink-0 items-center gap-2 bg-muted px-4 sm:px-6',
+      !hasCorpusNav && 'border-b',
+      !isDocumentViewer && 'sticky top-0 z-40',
+    )}
+    >
       {beforeLogo}
       <Link href="/" className="flex shrink-0 items-center gap-2 text-[15px] font-semibold tracking-tight hover:opacity-75">
         <Logo className="size-6 shrink-0" />
