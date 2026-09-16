@@ -1,6 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import type { UpdateInfo } from '@/lib/update-check'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
@@ -9,10 +10,11 @@ import { adminNav, isActive } from './nav-items'
 
 type AdminNavProps = {
   label: string
+  updateInfo: UpdateInfo
   children: ReactNode
 }
 
-export function AdminNav({ label, children }: AdminNavProps) {
+export function AdminNav({ label, updateInfo, children }: AdminNavProps) {
   const pathname = usePathname()
   const items = adminNav()
 
@@ -56,6 +58,26 @@ export function AdminNav({ label, children }: AdminNavProps) {
             })}
           </ul>
         </nav>
+        <div className="border-t p-3 text-[11px] text-muted-foreground">
+          {updateInfo.updateAvailable && updateInfo.releaseUrl
+            ? (
+                <Link
+                  href={updateInfo.releaseUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mb-1 flex items-center gap-1.5 rounded-md px-1.5 py-1 font-medium text-amber-600 transition-colors hover:bg-secondary hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300"
+                  title={`v${updateInfo.latestVersion} available (running v${updateInfo.currentVersion})`}
+                >
+                  <span className="size-1.5 shrink-0 rounded-full bg-amber-500" aria-hidden="true" />
+                  Update available
+                </Link>
+              )
+            : null}
+          <span className="px-1.5">
+            v
+            {updateInfo.currentVersion}
+          </span>
+        </div>
       </aside>
 
       <FadeNav
