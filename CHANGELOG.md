@@ -1,5 +1,29 @@
 # Changelog
 
+## [1.3.0](https://github.com/ecladatta/star-q/compare/v1.2.0...v1.3.0) (2026-09-15)
+
+
+### Features
+
+* **annotation:** ctrl/cmd+drag toggle-selects a cell range ([bb55ac4](https://github.com/ecladatta/star-q/commit/bb55ac422653f21b2ee1c22450bcee1aa414d739))
+* **wikibase:** store a concept base uri and derive rdf namespaces from it ([73b134b](https://github.com/ecladatta/star-q/commit/73b134b269ac1a985e20e66a2920cc3f6ee64f63))
+
+
+### Bug Fixes
+
+* **annotation:** cap batch size at 500 and chunk component inserts ([e8aaafd](https://github.com/ecladatta/star-q/commit/e8aaafda3ec3ac77dec8fab5161f4b31f5fc4787))
+* **annotation:** clear drag state after mouse-up so selection stops extending ([8367fce](https://github.com/ecladatta/star-q/commit/8367fce87c32bfc0918279689ab90dad2fd78580))
+* **annotation:** partial-safe batch refresh, undo intersection, server dup guard ([9728e36](https://github.com/ecladatta/star-q/commit/9728e36a39a4fc5d8f2b75e07e64900ea0881df6))
+* **annotation:** unify drag finalization and prevent selection wipes ([f0d22b2](https://github.com/ecladatta/star-q/commit/f0d22b2407bda0e5f352de651de6b274287d93f3))
+* **exports:** emit canonical http IRIs for Wikidata namespaces ([123030e](https://github.com/ecladatta/star-q/commit/123030e7591d471b8175fdaced05063b9ab5c1dd))
+* **header:** inline logo SVG so it adapts to dark mode ([054d0b5](https://github.com/ecladatta/star-q/commit/054d0b5c4c279a636191477b081a6c6c71b822e4))
+* **ui:** refresh nav edge fades on content resize ([eaf0168](https://github.com/ecladatta/star-q/commit/eaf016872acd328019dc25b4bc6afa8667da40a0))
+* **ui:** resolve stacking and mobile a11y regressions ([3aa7a7c](https://github.com/ecladatta/star-q/commit/3aa7a7c2f59da812f88e60de346bd0b7bde08a94))
+* **ui:** show filtered row count against the unfiltered total ([e1bdc50](https://github.com/ecladatta/star-q/commit/e1bdc503bdb33e9791651ca1009ae8e130b2f23c))
+* **ui:** underline the active item in the main nav ([1fb2b4a](https://github.com/ecladatta/star-q/commit/1fb2b4a816185e99bd170a3eb9c088862e4391e6))
+* **wikibase:** strict entity links, url normalization, and registry disclosure ([6dc9c7d](https://github.com/ecladatta/star-q/commit/6dc9c7da2a79f3e440f937311096ffdaadb0ece9))
+* **wikibase:** validate entity ids before SPARQL interpolation ([e047e9c](https://github.com/ecladatta/star-q/commit/e047e9cdb7b22459f73bf73dd34434a65d4a9792))
+
 ## [1.2.0](https://github.com/ecladatta/star-q/compare/v1.1.0...v1.2.0) (2026-09-11)
 
 
