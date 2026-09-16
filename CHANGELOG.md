@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.1](https://github.com/ecladatta/star-q/compare/v1.3.0...v1.3.1) (2026-09-16)
+
+
+### Bug Fixes
+
+* **docker:** keep public dir tracked ([70233fe](https://github.com/ecladatta/star-q/commit/70233fe6a72634de93338fea71aaf4de677c3c72))
+* **shell:** pin header everywhere except document viewer and size admin sidebar ([f6bd44c](https://github.com/ecladatta/star-q/commit/f6bd44c351e3ab98ca0c726709b77d7dce5e2b7d))
+
 ## [1.3.0](https://github.com/ecladatta/star-q/compare/v1.2.0...v1.3.0) (2026-09-15)
 
 
