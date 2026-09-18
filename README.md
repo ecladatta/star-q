@@ -140,3 +140,16 @@ curl \
 ## Export formats
 
 The JSON, RDF 1.2 Turtle, and QuickStatements 3.0 output shapes are documented in [docs/export-formats.md](docs/export-formats.md).
+
+## Citation
+
+If you use STAR-Q in your research, please cite our Wikidata'26 paper. The citation will be updated when the official CEUR Workshop Proceedings are published.
+
+```bibtex
+@inproceedings{ehrhart2026starq,
+  author    = {Thibault Ehrhart and Yoan Chabot and Raphael Troncy},
+  title     = {{STAR-Q}: A Web-Based Platform for Annotating Qualified Knowledge Graph Statements in Texts and Tables},
+  booktitle = {Wikidata'26: Wikidata Workshop at ISWC 2026},
+  year      = {2026}
+}
+```
