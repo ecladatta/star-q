@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/ecladatta/star-q/compare/v1.3.1...v1.4.0) (2026-09-18)
+
+
+### Features
+
+* **admin:** show app version and update availability in admin sidebar ([db21057](https://github.com/ecladatta/star-q/commit/db21057fa4938e8231c5d631f9b401b3555c1356))
+
 ## [1.3.1](https://github.com/ecladatta/star-q/compare/v1.3.0...v1.3.1) (2026-09-16)
 
 
