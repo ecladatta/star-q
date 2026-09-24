@@ -25,7 +25,7 @@ function normalizeTextValue(value: string | null | undefined): string {
 }
 
 function normalizeTableData(
-  tableData: Array<Array<string | null>> | null | undefined,
+  tableData: Array<Array<string | number | null>> | null | undefined,
 ): string[][] {
   if (!Array.isArray(tableData)) {
     return []
@@ -33,7 +33,7 @@ function normalizeTableData(
 
   return tableData.map(row =>
     Array.isArray(row)
-      ? row.map(cell => cell ?? '')
+      ? row.map(cell => (cell == null ? '' : String(cell)))
       : [],
   )
 }
