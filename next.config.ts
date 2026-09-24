@@ -3,9 +3,9 @@ import type { NextConfig } from 'next'
 const nextConfig: NextConfig = {
   output: 'standalone',
   experimental: {
-    proxyClientMaxBodySize: '100mb',
+    proxyClientMaxBodySize: '1gb',
     serverActions: {
-      bodySizeLimit: '100mb',
+      bodySizeLimit: '1gb',
     },
     useTypeScriptCli: true,
   },
