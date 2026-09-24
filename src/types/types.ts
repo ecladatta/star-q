@@ -166,7 +166,7 @@ export type DocumentElement = {
 export type DocumentExtractionMetadata = {
   technology?: string | null
   texts?: { index?: number, startOffset?: number, endOffset?: number, value: string | null }[]
-  tables?: { tableNum?: number, startOffset?: number, endOffset?: number, tableData: Array<Array<string | null>> }[]
+  tables?: { tableNum?: number, startOffset?: number, endOffset?: number, title?: string, tableData: Array<Array<string | null>> }[]
 }
 
 export type DocumentData = {
