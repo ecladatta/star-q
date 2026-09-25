@@ -692,64 +692,33 @@ export function EntitySelector({
               </>
             )}
 
-            {/* Current value if not in search results */}
+            {/* Current value if not in search results — status strip */}
             {value
               && !searchResults.some(entity =>
                 isSelectedEntity(value, entity),
               ) && (
-              <CommandGroup>
-                <CommandItem
-                  key={getEntityOptionKey(value, 'current', 0)}
-                  value={getEntityOptionValue(value, 'current', 0)}
-                  onSelect={() => {
-                    onValueChange(value)
-                    setOpen(false)
-                  }}
-                  className="items-start rounded-none border-b py-2"
-                >
-                  <CheckIcon className="size-3.5 text-muted-foreground" />
-                  <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                    <div className="min-w-0 leading-5">
-                      <span>{value.label}</span>
-                      <span
-                        className="ml-2 text-xs text-muted-foreground"
-                        title={value.value}
-                      >
-                        (
-                        {value.value}
-                        )
-                      </span>
-                    </div>
-                    {value.description && (
-                      <span className="line-clamp-2 text-xs text-muted-foreground">
-                        {value.description}
-                      </span>
-                    )}
-                    {resultStatus.get(value.value) === 'unverifiable' && (
-                      <Badge variant="secondary">
-                        type unknown
-                      </Badge>
-                    )}
-                    {Array.isArray(resultStatus.get(value.value)) && (
-                      <Badge variant="warning">
-                        <TriangleAlertIcon />
-                        doesn&apos;t match
-                        {' '}
-                        {formatFilteredSides(resultStatus.get(value.value) as ConstraintSide[])}
-                      </Badge>
-                    )}
-                  </div>
-                  {value.custom
-                    ? (
-                        <span className="ml-auto text-xs text-muted-foreground">
-                          Corpus
-                        </span>
+              <div
+                className={cn(
+                  'flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground',
+                  !createAvailable && 'border-b',
+                )}
+              >
+                <span className="min-w-0 flex-1 truncate">
+                  Currently set:
+                  {' '}
+                  <span className="font-medium text-foreground">{value.label}</span>
+                  {value.value !== value.label && (
+                    <span className="ml-1">
+                      (
+                      {value.value}
                       )
-                    : (
-                        <EntityViewLink value={value.value} />
-                      )}
-                </CommandItem>
-              </CommandGroup>
+                    </span>
+                  )}
+                </span>
+                {value.custom
+                  ? <span className="shrink-0">Corpus</span>
+                  : <EntityViewLink value={value.value} />}
+              </div>
             )}
 
             {/* Create new custom entity option */}
@@ -757,7 +726,7 @@ export function EntitySelector({
               && !searchResults.some(entity => entity.value === searchTerm)
               && corpusId && (
               <>
-                <CommandSeparator />
+                {value && <CommandSeparator />}
                 <CommandGroup>
                   <CommandItem
                     key="create-new"
@@ -800,12 +769,15 @@ export function EntitySelector({
                     }}
                     className="flex"
                   >
-                    <PlusIcon className="size-3.5 shrink-0 text-muted-foreground" />
-                    <span>
-                      Create "
-                      {searchTerm}
-                      "
-                    </span>
+                    <PlusIcon className="size-3.5 shrink-0 text-accent" />
+                    <div className="flex min-w-0 flex-1 flex-col">
+                      <span>
+                        Create "
+                        {searchTerm}
+                        "
+                      </span>
+                      <span className="text-xs text-muted-foreground">New corpus entity</span>
+                    </div>
                   </CommandItem>
                 </CommandGroup>
               </>
@@ -833,11 +805,13 @@ export function EntitySelector({
                     <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                       <div className="min-w-0 leading-5">
                         <span>{entity.label}</span>
-                        <span className="ml-2 text-xs text-muted-foreground">
-                          (
-                          {entity.value}
-                          )
-                        </span>
+                        {entity.value !== entity.label && (
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            (
+                            {entity.value}
+                            )
+                          </span>
+                        )}
                       </div>
                       {entity.description && (
                         <span className="line-clamp-2 text-xs text-muted-foreground">
