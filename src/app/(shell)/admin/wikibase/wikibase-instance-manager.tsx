@@ -180,7 +180,13 @@ export function WikibaseInstanceManager({ instances }: { instances: WikibaseInst
 
       <section className="w-full overflow-hidden rounded-lg border border-border">
         {displayedInstances.map(instance => (
-          <div key={instance.id} className="grid grid-cols-[1fr_auto_auto_auto_auto_auto] items-center gap-4 border-b border-border p-4 last:border-0">
+          <div key={instance.id} className="grid grid-cols-[auto_1fr_auto_auto_auto_auto] items-center gap-4 border-b border-border p-4 last:border-0">
+            <Switch
+              checked={instance.enabled}
+              disabled={Boolean(toggling[instance.id])}
+              onCheckedChange={checked => handleToggleEnabled(instance, checked)}
+              aria-label={`${instance.label} enabled`}
+            />
             <div>
               <p className="text-sm font-medium">
                 {instance.label}
@@ -200,12 +206,6 @@ export function WikibaseInstanceManager({ instances }: { instances: WikibaseInst
                 <code className="rounded-sm bg-muted px-1 py-0.5 text-xs">{instance.conceptBaseUri}</code>
               </p>
             </div>
-            <Switch
-              checked={instance.enabled}
-              disabled={Boolean(toggling[instance.id])}
-              onCheckedChange={checked => handleToggleEnabled(instance, checked)}
-              aria-label={`${instance.label} enabled`}
-            />
             <Button
               type="button"
               variant="outline"
