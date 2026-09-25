@@ -1,5 +1,28 @@
 # Changelog
 
+## [1.4.0](https://github.com/ecladatta/star-q/compare/v1.3.1...v1.4.0) (2026-09-25)
+
+
+### Features
+
+* **admin:** add wikibase connection test button ([13c57c1](https://github.com/ecladatta/star-q/commit/13c57c1815aae6912dd5282510f9526a56fce1f0))
+* **admin:** move wikibase enable switch to left of instance rows ([7d380fc](https://github.com/ecladatta/star-q/commit/7d380fcd51e32d5fccc9583612b48aca8d59e183))
+* **admin:** show app version and update availability in admin sidebar ([db21057](https://github.com/ecladatta/star-q/commit/db21057fa4938e8231c5d631f9b401b3555c1356))
+* **annotation:** move create option above results and pin highlight to first result ([c5cd0a4](https://github.com/ecladatta/star-q/commit/c5cd0a42773cc481446043c52fb28b7d26d712d8))
+* **annotation:** restyle entity selector status and create rows ([b9cb461](https://github.com/ecladatta/star-q/commit/b9cb461f53d2614b930cfb80b35ec7fe17f9d48a))
+* **corpus:** add archived read-only state with unarchive ([d5cef57](https://github.com/ecladatta/star-q/commit/d5cef5735fd3557f81425e275e4a2c35761babcf))
+* **import:** make import upload size configurable via MAX_IMPORT_FILE_SIZE_BYTES ([92e4e53](https://github.com/ecladatta/star-q/commit/92e4e53076cbbfa4e9fc81ebaec751ad396e6ef8))
+* **import:** raise upload size limit to 1gb ([b5e26a7](https://github.com/ecladatta/star-q/commit/b5e26a73bc4e0f86b12631a6dfcffa71aff9980e))
+* **types:** add optional table title to extraction metadata ([3fc585f](https://github.com/ecladatta/star-q/commit/3fc585f2e0b8255cac5fb245b140989e3153298c))
+
+
+### Bug Fixes
+
+* **annotation:** center selected-entity checkmark in result rows ([a04bf79](https://github.com/ecladatta/star-q/commit/a04bf79ea070256a0fa85e545c2a16674fc2932b))
+* **app:** navigate error page home via router instead of full reload ([b503124](https://github.com/ecladatta/star-q/commit/b5031249f4a00920de2165e00b6db0cd733d8bf9))
+* **corpus:** restrict my-corpora listing to owned and shared corpora ([59dffb6](https://github.com/ecladatta/star-q/commit/59dffb6e95fe9c033e7944bb0b12f7ee9969c30c))
+* **document-elements:** coerce numeric table cells to strings ([438d7a2](https://github.com/ecladatta/star-q/commit/438d7a20ec3f511c84cf15dc5071e61a6e166e10))
+
 ## [1.3.1](https://github.com/ecladatta/star-q/compare/v1.3.0...v1.3.1) (2026-09-16)
 
 
