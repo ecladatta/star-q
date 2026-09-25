@@ -31,6 +31,7 @@ import {
   GlobeIcon,
   HourglassIcon,
   LanguagesIcon,
+  PlusIcon,
   TextIcon,
   TimerIcon,
   ToggleLeftIcon,
@@ -359,6 +360,7 @@ export function EntitySelector({
   const [classificationSupport, setClassificationSupport] = useState<ConstraintModelSupport | null>(null)
   const [classifiedCandidates, setClassifiedCandidates] = useState<string[]>([])
   const [showAllResults, setShowAllResults] = useState(false)
+  const [selectedValue, setSelectedValue] = useState<string | undefined>(undefined)
 
   const searchSeqRef = useRef(0)
   const classificationSeqRef = useRef(0)
@@ -532,6 +534,24 @@ export function EntitySelector({
   )
   const constraintNoun = entityType === 'predicate' ? 'predicates' : 'entities'
 
+  const createAvailable = Boolean(
+    searchTerm
+    && !searchResults.some(entity => entity.value === searchTerm)
+    && corpusId,
+  )
+  const firstResultValue = customEntities.length > 0
+    ? getEntityOptionValue(customEntities[0], 'custom', 0)
+    : wikidataEntities.length > 0
+      ? getEntityOptionValue(wikidataEntities[0], 'wikidata', 0)
+      : undefined
+  const defaultSelectedValue = firstResultValue ?? (createAvailable ? 'create-new' : undefined)
+
+  const [prevDefaultSelectedValue, setPrevDefaultSelectedValue] = useState(defaultSelectedValue)
+  if (prevDefaultSelectedValue !== defaultSelectedValue) {
+    setPrevDefaultSelectedValue(defaultSelectedValue)
+    setSelectedValue(defaultSelectedValue)
+  }
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <div className="flex w-full min-w-0 items-center gap-1">
@@ -605,7 +625,11 @@ export function EntitySelector({
         )}
       </div>
       <PopoverContent className="w-80 p-0">
-        <Command shouldFilter={false}>
+        <Command
+          shouldFilter={false}
+          value={selectedValue ?? ''}
+          onValueChange={v => setSelectedValue(v || undefined)}
+        >
           <CommandInput
             placeholder="Search entity..."
             className="flex-1"
@@ -654,6 +678,7 @@ export function EntitySelector({
               <>
                 <CommandGroup>
                   <CommandItem
+                    value="clear-entity"
                     onSelect={() => {
                       onValueChange(null)
                       setOpen(false)
@@ -725,6 +750,65 @@ export function EntitySelector({
                       )}
                 </CommandItem>
               </CommandGroup>
+            )}
+
+            {/* Create new custom entity option */}
+            {searchTerm
+              && !searchResults.some(entity => entity.value === searchTerm)
+              && corpusId && (
+              <>
+                <CommandSeparator />
+                <CommandGroup>
+                  <CommandItem
+                    key="create-new"
+                    value="create-new"
+                    onSelect={async () => {
+                      try {
+                        // Create the entity in the database
+                        const customType: 'entity' | 'relation'
+                          = entityType === 'predicate' ? 'relation' : 'entity'
+                        const customId = await addCorpusCustomEntity(
+                          corpusId,
+                          searchTerm,
+                          searchTerm,
+                          'string', // Default datatype
+                          customType,
+                        )
+
+                        const newEntity: Entity = {
+                          label: searchTerm,
+                          value: searchTerm,
+                          custom: true,
+                          customId,
+                          datatype: 'string',
+                          type: entityType,
+                        }
+
+                        onValueChange(newEntity)
+                        toast.success('Custom entity created!')
+                      } catch (error) {
+                        console.error(
+                          'Failed to create custom entity:',
+                          error,
+                        )
+                        toast.error(
+                          'Failed to create custom entity. Please try again.',
+                        )
+                        return
+                      }
+                      setOpen(false)
+                    }}
+                    className="flex"
+                  >
+                    <PlusIcon className="size-3.5 shrink-0 text-muted-foreground" />
+                    <span>
+                      Create "
+                      {searchTerm}
+                      "
+                    </span>
+                  </CommandItem>
+                </CommandGroup>
+              </>
             )}
 
             {/* Custom entities */}
@@ -849,64 +933,6 @@ export function EntitySelector({
                           </span>
                         </CommandItem>
                       )}
-                </CommandGroup>
-              </>
-            )}
-
-            {/* Create new custom entity option */}
-            {searchTerm
-              && !searchResults.some(entity => entity.value === searchTerm)
-              && corpusId && (
-              <>
-                <CommandSeparator />
-                <CommandGroup>
-                  <CommandItem
-                    key="create-new"
-                    value="create-new"
-                    onSelect={async () => {
-                      try {
-                        // Create the entity in the database
-                        const customType: 'entity' | 'relation'
-                          = entityType === 'predicate' ? 'relation' : 'entity'
-                        const customId = await addCorpusCustomEntity(
-                          corpusId,
-                          searchTerm,
-                          searchTerm,
-                          'string', // Default datatype
-                          customType,
-                        )
-
-                        const newEntity: Entity = {
-                          label: searchTerm,
-                          value: searchTerm,
-                          custom: true,
-                          customId,
-                          datatype: 'string',
-                          type: entityType,
-                        }
-
-                        onValueChange(newEntity)
-                        toast.success('Custom entity created!')
-                      } catch (error) {
-                        console.error(
-                          'Failed to create custom entity:',
-                          error,
-                        )
-                        toast.error(
-                          'Failed to create custom entity. Please try again.',
-                        )
-                        return
-                      }
-                      setOpen(false)
-                    }}
-                    className="flex"
-                  >
-                    <span>
-                      Create "
-                      {searchTerm}
-                      "
-                    </span>
-                  </CommandItem>
                 </CommandGroup>
               </>
             )}
