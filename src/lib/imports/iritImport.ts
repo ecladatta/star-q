@@ -9,7 +9,8 @@ import { v4 as uuidv4 } from 'uuid'
 import { addAnnotation } from '@/actions/annotation/annotationActions'
 import { db } from '@/db/drizzle'
 import { document } from '@/db/schema'
-import { MAX_DOCUMENTS_PER_IMPORT, MAX_IMPORT_UNCOMPRESSED_BYTES } from '@/lib/constants'
+import { MAX_IMPORT_UNCOMPRESSED_BYTES } from '@/lib/config'
+import { MAX_DOCUMENTS_PER_IMPORT } from '@/lib/constants'
 import {
   extractEntitiesFromTriplet,
   findEntityPositionsInTable,
