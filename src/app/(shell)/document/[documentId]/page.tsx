@@ -9,7 +9,7 @@ import { auth } from '@/auth'
 import { DocumentViewer } from '@/components/document-viewer'
 import { WikidataWarningsSection, WikidataWarningsSkeleton } from '@/components/wikidata-warnings-section'
 import { getAppSettings } from '@/lib/app-settings'
-import { getCorpusAccess } from '@/lib/corpus-access'
+import { canEditCorpus, getCorpusAccess } from '@/lib/corpus-access'
 import { isConstraintWarningsEnabled } from '@/lib/corpus-settings'
 import { loadCorpusWikibaseConfig } from '@/lib/wikibase-server'
 
@@ -43,7 +43,7 @@ export default async function DocumentPage({ params }: { params: Promise<{ docum
 
   const corpus = await getCorpus(document.corpusId)
   const access = await getCorpusAccess(document.corpusId)
-  const edit = access === 'editor' || access === 'manager'
+  const edit = access !== null && !!corpus && canEditCorpus(access, corpus.status)
   const documentsList = await getDocumentsMetadata(document.corpusId)
   const annotations = await getAnnotations(documentId)
   const wikibase = await loadCorpusWikibaseConfig(document.corpusId)

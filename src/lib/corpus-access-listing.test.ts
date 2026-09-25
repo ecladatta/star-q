@@ -1,11 +1,12 @@
 import type { SQL } from 'drizzle-orm'
 import type { CorpusAccessResource } from './corpus-access'
 import type { CorpusListItem } from '@/actions/corpus/corpusActions'
+import type { CorpusStatus } from '@/db/schema'
 import { PgDialect } from 'drizzle-orm/pg-core'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { getMyCorpora } from '@/actions/corpus/corpusActions'
 import { corpus, corpusCollaboration, teamMembership } from '@/db/schema'
-import { getCorpusAccessForActor, resolveCorpusAccessForRow, resolveCorpusRelationAccess } from './corpus-access'
+import { getCorpusAccessForActor, requireEditCorpus, resolveCorpusAccessForRow, resolveCorpusRelationAccess } from './corpus-access'
 
 type Relations = { membership?: unknown[], direct?: unknown[], team?: unknown[] }
 
@@ -79,7 +80,7 @@ function routeRows(table: unknown, joined: boolean, cond: unknown) {
   return []
 }
 
-function corpusRow(id: string, partial: Partial<CorpusAccessResource> = {}): CorpusAccessResource {
+function corpusRow(id: string, partial: Partial<CorpusAccessResource & { status?: CorpusStatus }> = {}): CorpusAccessResource {
   return { id, ownerTeamId: `team-${id}`, visibility: 'private', ...partial }
 }
 
@@ -112,6 +113,20 @@ describe('full corpus access (authorization)', () => {
   it('resolves from the row the caller already holds, without re-fetching the corpus', async () => {
     await expect(resolveCorpusAccessForRow(corpusRow('c-1'), admin)).resolves.toBe('manager')
     expect(state.conditions.some(c => c.table === corpus)).toBe(false)
+  })
+})
+
+describe('requireEditCorpus', () => {
+  it('lets managers edit an active corpus', async () => {
+    state.getRequestActor.mockResolvedValue(admin)
+    state.corpusRows = [corpusRow('c-1')]
+    await expect(requireEditCorpus('c-1')).resolves.toBeUndefined()
+  })
+
+  it('refuses to edit an archived corpus', async () => {
+    state.getRequestActor.mockResolvedValue(admin)
+    state.corpusRows = [corpusRow('c-1', { status: 'archived' })]
+    await expect(requireEditCorpus('c-1')).rejects.toThrow('This corpus is archived and read-only.')
   })
 })
 

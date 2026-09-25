@@ -5,7 +5,7 @@ import { getDocumentsMetadata } from '@/actions/document/documentActions'
 import { CorpusNav } from '@/components/shell/corpus-nav'
 import { WikibaseInstanceProvider } from '@/components/wikibase-instance-provider'
 import { NotFoundError } from '@/lib/auth-utils'
-import { getCorpusAccess } from '@/lib/corpus-access'
+import { canEditCorpus, getCorpusAccess } from '@/lib/corpus-access'
 import { loadCorpusWikibaseConfig } from '@/lib/wikibase-server'
 
 export default async function CorpusLayout({
@@ -29,13 +29,13 @@ export default async function CorpusLayout({
 
   const access = await getCorpusAccess(corpusId)
   const canManage = access === 'manager'
-  const canEdit = access === 'editor' || access === 'manager'
+  const canEdit = access !== null && canEditCorpus(access, corpus.status)
   const documentCount = (await getDocumentsMetadata(corpusId)).length
   const wikibase = await loadCorpusWikibaseConfig(corpusId)
 
   return (
     <WikibaseInstanceProvider instance={wikibase?.instance ?? null}>
-      <CorpusNav corpusId={corpusId} corpusTitle={corpus.title} canManage={canManage} canEdit={canEdit} documentCount={documentCount}>
+      <CorpusNav corpusId={corpusId} corpusTitle={corpus.title} canManage={canManage} canEdit={canEdit} documentCount={documentCount} archived={corpus.status === 'archived'}>
         {children}
       </CorpusNav>
     </WikibaseInstanceProvider>

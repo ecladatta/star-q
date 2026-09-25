@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import { Library } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { FadeNav } from './fade-nav'
 import { corpusNav, isActive } from './nav-items'
@@ -14,10 +15,11 @@ type CorpusNavProps = {
   canManage: boolean
   canEdit: boolean
   documentCount: number
+  archived?: boolean
   children: ReactNode
 }
 
-export function CorpusNav({ corpusId, corpusTitle, canManage, canEdit, documentCount, children }: CorpusNavProps) {
+export function CorpusNav({ corpusId, corpusTitle, canManage, canEdit, documentCount, archived = false, children }: CorpusNavProps) {
   const pathname = usePathname()
   const items = corpusNav(corpusId, { canManage, canEdit }, documentCount)
   const title = corpusTitle ?? corpusId
@@ -38,6 +40,11 @@ export function CorpusNav({ corpusId, corpusTitle, canManage, canEdit, documentC
         >
           <Library className="size-4 shrink-0" strokeWidth={1.75} />
           <span className="max-w-56 truncate">{title}</span>
+          {archived && (
+            <Badge variant="secondary" className="shrink-0">
+              Archived
+            </Badge>
+          )}
         </Link>
         <div className="flex shrink-0 items-end">
           {items.map((item) => {

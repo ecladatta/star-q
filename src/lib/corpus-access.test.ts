@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { resolveCorpusAccess } from './corpus-access-policy'
+import { canEditCorpus, resolveCorpusAccess } from './corpus-access-policy'
 
 describe('corpus access policy', () => {
   it('limits anonymous visitors and the deployment key to read-only access', () => {
@@ -29,5 +29,14 @@ describe('corpus access policy', () => {
       directCollaborationRoles: ['viewer'],
       teamCollaborationRoles: ['editor'],
     })).toBe('editor')
+  })
+})
+
+describe('canEditCorpus', () => {
+  it('blocks editing while a corpus is archived', () => {
+    expect(canEditCorpus('editor', 'active')).toBe(true)
+    expect(canEditCorpus('editor', 'archived')).toBe(false)
+    expect(canEditCorpus('manager', 'archived')).toBe(false)
+    expect(canEditCorpus('viewer', 'active')).toBe(false)
   })
 })

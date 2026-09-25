@@ -54,6 +54,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { canEditCorpus } from '@/lib/corpus-access-policy'
 import {
   CORPUS_EXPORT_FORMAT_IDS,
   CORPUS_EXPORT_FORMATS,
@@ -76,7 +77,7 @@ type CorpusActionsProps = {
 }
 
 export function CorpusActions({ corpus, showOpenAction = true, access, triggerButton, ownedTeams = [], canCopy = true, rdfAvailable }: CorpusActionsProps) {
-  const canEdit = access === 'editor' || access === 'manager'
+  const canEdit = canEditCorpus(access, corpus.status)
   const canManage = access === 'manager'
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)

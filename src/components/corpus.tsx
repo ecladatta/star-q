@@ -45,6 +45,7 @@ import { addCorpus } from '@/actions/corpus/corpusActions'
 import { createCorpusWithDocumentsImport } from '@/actions/imports/importActions'
 import { CorpusActions } from '@/components/corpus-actions'
 import { Page, PageHeader } from '@/components/page'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -337,12 +338,19 @@ function buildColumns(ownedTeams: { id: string, name: string, slug: string }[], 
         <DataTableColumnHeader column={column} title="Corpus Name" />
       ),
       cell: ({ row }) => (
-        <Link
-          href={`/corpus/${row.original.id}`}
-          className="block font-medium text-foreground hover:text-accent hover:underline"
-        >
-          {row.original.title}
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/corpus/${row.original.id}`}
+            className="font-medium text-foreground hover:text-accent hover:underline"
+          >
+            {row.original.title}
+          </Link>
+          {row.original.status === 'archived' && (
+            <Badge variant="secondary">
+              Archived
+            </Badge>
+          )}
+        </div>
       ),
       filterFn: 'includesString',
     },

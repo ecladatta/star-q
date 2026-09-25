@@ -191,12 +191,17 @@ export const teamInvitation = pgTable(
 export const corpusVisibilityValues = ['private', 'public'] as const
 export type CorpusVisibility = (typeof corpusVisibilityValues)[number]
 
+export const corpusStatusValues = ['active', 'archived'] as const
+export type CorpusStatus = (typeof corpusStatusValues)[number]
+
 export const corpus = pgTable(
   'corpus',
   {
     id: uuid('id').primaryKey().$defaultFn(() => randomUUID()),
     title: text('title'),
     visibility: text('visibility').$type<CorpusVisibility>().notNull().default('private'),
+    status: text('status').$type<CorpusStatus>().notNull().default('active'),
+    archivedAt: timestamp('archived_at'),
     ownerTeamId: uuid('owner_team_id').references(() => team.id, { onDelete: 'cascade' }).notNull(),
     settings: jsonb('settings').$type<CorpusSettings>().notNull().default({}),
     createdAt: timestamp('created_at').defaultNow(),
@@ -205,6 +210,7 @@ export const corpus = pgTable(
   table => [
     index('corpus_owner_team_idx').on(table.ownerTeamId),
     check('corpus_visibility_check', sql`${table.visibility} IN (${sqlStringList(corpusVisibilityValues)})`),
+    check('corpus_status_check', sql`${table.status} IN (${sqlStringList(corpusStatusValues)})`),
   ],
 )
 export type Corpus = InferSelectModel<typeof corpus>

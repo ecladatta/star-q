@@ -14,7 +14,7 @@ import { Page, PageHeader } from '@/components/page'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { getAppSettings } from '@/lib/app-settings'
-import { getCorpusAccess } from '@/lib/corpus-access'
+import { canEditCorpus, getCorpusAccess } from '@/lib/corpus-access'
 import { loadCorpusWikibaseConfig } from '@/lib/wikibase-server'
 
 export default async function CorpusPage({ params }: { params: Promise<{ corpusId: string }> }) {
@@ -30,9 +30,9 @@ export default async function CorpusPage({ params }: { params: Promise<{ corpusI
   const signedIn = Boolean(session?.user?.valid)
   const ownedTeams = signedIn ? await getOwnedTeams() : []
   const access = await getCorpusAccess(corpusId)
-  const edit = access === 'editor' || access === 'manager'
   const documentsList = await getDocumentsMetadata(corpusId)
   const corpus = await getCorpus(corpusId)
+  const edit = access !== null && canEditCorpus(access, corpus.status)
   const owner = await getCorpusOwner(corpusId)
   const totalAnnotations = await getCorpusAnnotationsCount(corpusId)
   const analyticsPromise = getCorpusAnalytics(corpusId)
@@ -61,9 +61,16 @@ export default async function CorpusPage({ params }: { params: Promise<{ corpusI
       <PageHeader
         title={corpus.title ?? ''}
         titleBadge={(
-          <Badge variant="secondary" className="shrink-0">
-            {corpus.visibility === 'public' ? 'Public' : 'Private'}
-          </Badge>
+          <>
+            <Badge variant="secondary" className="shrink-0">
+              {corpus.visibility === 'public' ? 'Public' : 'Private'}
+            </Badge>
+            {corpus.status === 'archived' && (
+              <Badge variant="secondary" className="shrink-0">
+                Archived
+              </Badge>
+            )}
+          </>
         )}
         description={(
           <>

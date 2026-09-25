@@ -8,8 +8,8 @@ import { annotation, corpus, corpusCollaboration, corpusCustomEntity, document, 
 import { ForbiddenError, getRequestActor, NotFoundError } from '@/lib/auth-utils'
 import { hasMinimumCorpusAccess, resolveCorpusAccess } from '@/lib/corpus-access-policy'
 
-export type { CorpusAccess, CorpusAccessFacts } from '@/lib/corpus-access-policy'
-export { corpusAccessValues, hasMinimumCorpusAccess, resolveCorpusAccess } from '@/lib/corpus-access-policy'
+export type { CorpusAccess, CorpusAccessFacts, CorpusStatus } from '@/lib/corpus-access-policy'
+export { canEditCorpus, corpusAccessValues, hasMinimumCorpusAccess, resolveCorpusAccess } from '@/lib/corpus-access-policy'
 
 export type CorpusAccessResource = Pick<Corpus, 'id' | 'ownerTeamId' | 'visibility'>
 type CorpusRelationFacts = Pick<CorpusAccessFacts, 'owningTeamRole' | 'directCollaborationRoles' | 'teamCollaborationRoles'>
@@ -97,15 +97,24 @@ export async function getCorpusAccess(corpusId: string): Promise<CorpusAccess | 
   return getCorpusAccessForActor(corpusId, await getRequestActor())
 }
 
-export async function requireCorpusAccess(corpusId: string, minimum: CorpusAccess): Promise<CorpusAccess> {
+async function requireCorpusAccessWithResource(corpusId: string, minimum: CorpusAccess): Promise<{ resource: Corpus, access: CorpusAccess }> {
   const actor = await getRequestActor()
-  const access = await getCorpusAccessForActor(corpusId, actor)
+  const [resource] = await db.select().from(corpus).where(eq(corpus.id, corpusId)).limit(1)
+  if (!resource) {
+    throw new NotFoundError()
+  }
+  const access = await resolveCorpusAccessForRow(resource, actor)
   if (!access) {
     throw new NotFoundError()
   }
   if (!hasMinimumCorpusAccess(access, minimum)) {
     throw new ForbiddenError()
   }
+  return { resource, access }
+}
+
+export async function requireCorpusAccess(corpusId: string, minimum: CorpusAccess): Promise<CorpusAccess> {
+  const { access } = await requireCorpusAccessWithResource(corpusId, minimum)
   return access
 }
 
@@ -116,7 +125,10 @@ export async function requireViewCorpus(corpusId: string): Promise<string | null
 }
 
 export async function requireEditCorpus(corpusId: string): Promise<void> {
-  await requireCorpusAccess(corpusId, 'editor')
+  const { resource } = await requireCorpusAccessWithResource(corpusId, 'editor')
+  if (resource.status === 'archived') {
+    throw new ForbiddenError('This corpus is archived and read-only.')
+  }
 }
 
 export async function requireManageCorpus(corpusId: string): Promise<void> {
@@ -184,11 +196,6 @@ export async function requireEditAnnotation(annotationId: string): Promise<{ cor
   }
   await requireEditCorpus(row.corpusId)
   return row
-}
-
-export async function canEdit(corpusId: string): Promise<boolean> {
-  const access = await getCorpusAccess(corpusId)
-  return access === 'editor' || access === 'manager'
 }
 
 export async function isAnonymousViewer(): Promise<boolean> {

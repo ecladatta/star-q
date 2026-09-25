@@ -24,13 +24,14 @@ type CorpusSettingsPanelProps = {
   wikibaseInstances: WikibaseInstance[]
   onCorpusRenamed?: (newTitle: string) => void
   canManageVisibility?: boolean
+  canEdit?: boolean
   dangerZone?: ReactNode
 }
 
 const SERVER_DEFAULT_WIKIBASE = 'server-default'
 const NONE_SENTINELS = new Set([WIKIBASE_INSTANCE_NONE, SERVER_DEFAULT_WIKIBASE])
 
-export function CorpusSettingsPanel({ corpus, wikibaseInstances, onCorpusRenamed, canManageVisibility = false, dangerZone }: CorpusSettingsPanelProps) {
+export function CorpusSettingsPanel({ corpus, wikibaseInstances, onCorpusRenamed, canManageVisibility = false, canEdit = true, dangerZone }: CorpusSettingsPanelProps) {
   const [corpusTitle, setCorpusTitle] = useState(corpus.title)
   const [visibility, setVisibility] = useState<CorpusVisibility>(corpus.visibility ?? 'private')
   const [settings, setSettings] = useState<CorpusSettings>(corpus.settings ?? {})
@@ -300,7 +301,7 @@ export function CorpusSettingsPanel({ corpus, wikibaseInstances, onCorpusRenamed
             <Select
               value={settings.wikibaseInstanceId ?? SERVER_DEFAULT_WIKIBASE}
               onValueChange={handleSelectWikibaseInstance}
-              disabled={isSavingSettings}
+              disabled={!canEdit || isSavingSettings}
             >
               <SelectTrigger id="wikibase-instance" className="w-56">
                 <SelectValue />
@@ -333,7 +334,7 @@ export function CorpusSettingsPanel({ corpus, wikibaseInstances, onCorpusRenamed
             <Checkbox
               id="wikidata-constraint-warnings"
               checked={Boolean(settings.wikidataConstraintWarnings)}
-              disabled={isSavingSettings}
+              disabled={!canEdit || isSavingSettings}
               onCheckedChange={checked => handleToggleSetting('wikidataConstraintWarnings', Boolean(checked))}
             />
           </div>
@@ -349,7 +350,7 @@ export function CorpusSettingsPanel({ corpus, wikibaseInstances, onCorpusRenamed
             <Checkbox
               id="wikidata-predicate-filtering"
               checked={Boolean(settings.wikidataPredicateFiltering)}
-              disabled={isSavingSettings}
+              disabled={!canEdit || isSavingSettings}
               onCheckedChange={checked => handleToggleSetting('wikidataPredicateFiltering', Boolean(checked))}
             />
           </div>
@@ -405,7 +406,7 @@ export function CorpusSettingsPanel({ corpus, wikibaseInstances, onCorpusRenamed
               </SelectContent>
             </Select>
           </div>
-          <Button onClick={handleAddEntity} className="w-fit">
+          <Button onClick={handleAddEntity} className="w-fit" disabled={!canEdit}>
             <PlusIcon className="mr-2 size-4" />
             Add Entity
           </Button>
@@ -561,6 +562,7 @@ export function CorpusSettingsPanel({ corpus, wikibaseInstances, onCorpusRenamed
                                             <Button
                                               size="sm"
                                               variant="outline"
+                                              disabled={!canEdit}
                                               onClick={() => setEditingEntity(entity)}
                                             >
                                               <EditIcon className="size-3" />
@@ -568,6 +570,7 @@ export function CorpusSettingsPanel({ corpus, wikibaseInstances, onCorpusRenamed
                                             <Button
                                               size="sm"
                                               variant="destructive"
+                                              disabled={!canEdit}
                                               onClick={() => handleDeleteEntity(entity.id)}
                                             >
                                               <Trash2Icon className="size-3" />

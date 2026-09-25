@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { getAdminCorpora, getAdminTeams } from '@/actions/admin/adminActions'
 import { AdminCorpusActions } from '@/components/admin-corpus-actions'
 import { Page, PageHeader } from '@/components/page'
+import { Badge } from '@/components/ui/badge'
 import { Table } from '@/components/ui/table'
 
 export const dynamic = 'force-dynamic'
@@ -34,6 +35,7 @@ export default async function AdminCorporaPage() {
                   <Link href={`/corpus/${corpus.id}`} className="font-medium text-foreground hover:text-accent hover:underline">
                     {corpus.title ?? 'Untitled corpus'}
                   </Link>
+                  {corpus.status === 'archived' && <Badge variant="secondary" className="ml-2">Archived</Badge>}
                 </td>
                 <td className="px-3 py-2.5 text-[13px]">
                   <Link href={`/teams/${corpus.ownerIdentifier}`} className="text-muted-foreground hover:text-accent hover:underline">

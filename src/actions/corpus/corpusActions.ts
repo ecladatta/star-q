@@ -1,7 +1,7 @@
 'use server'
 import type { Column, SQL, SQLWrapper } from 'drizzle-orm'
 import type { DbExecutor, DbTransaction } from '@/db/drizzle'
-import type { Corpus, CorpusCustomEntity, CorpusVisibility, Document } from '@/db/schema'
+import type { Corpus, CorpusCustomEntity, CorpusStatus, CorpusVisibility, Document } from '@/db/schema'
 import type { AuthenticatedActor, RequestActor } from '@/lib/auth-utils'
 import type { CorpusAccess } from '@/lib/corpus-access'
 import type { CorpusSettingsPatch } from '@/lib/corpus-settings'
@@ -506,6 +506,26 @@ export async function updateCorpusVisibility(corpusId: string, visibility: Corpu
   })
   revalidatePath(`/corpus/${corpusId}`)
   revalidatePath('/')
+}
+
+export async function updateCorpusArchived(corpusId: string, archived: boolean) {
+  const actor = await getRequestActor()
+  if (actor.type !== 'user')
+    throw new ForbiddenError()
+
+  await db.transaction(async (trx) => {
+    const resource = await lockCorpusAndRequireManager(trx, corpusId, actor)
+    const status: CorpusStatus = archived ? 'archived' : 'active'
+    if (resource.status === status) {
+      return
+    }
+    const archivedAt = archived ? new Date() : null
+    await trx.update(corpus).set({ status, archivedAt, updatedAt: new Date() }).where(eq(corpus.id, corpusId))
+    await trx.insert(auditLog).values({ actorUserId: actor.userId, action: archived ? 'corpus.archived' : 'corpus.unarchived', targetType: 'corpus', targetId: corpusId, metadata: { archivedAt } })
+  })
+  revalidatePath('/')
+  revalidatePath(`/corpus/${corpusId}`)
+  revalidatePath(`/corpus/${corpusId}/settings`)
 }
 
 export async function getCorpusCustomEntities(corpusId: string): Promise<CorpusCustomEntity[]> {

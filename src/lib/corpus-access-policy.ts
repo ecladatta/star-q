@@ -1,3 +1,7 @@
+import type { CorpusStatus } from '@/db/schema'
+
+export type { CorpusStatus } from '@/db/schema'
+
 export const corpusAccessValues = ['viewer', 'editor', 'manager'] as const
 export type CorpusAccess = (typeof corpusAccessValues)[number]
 
@@ -28,6 +32,10 @@ function highestAccess(current: CorpusAccess | null, candidate: CorpusAccess | n
 
 export function hasMinimumCorpusAccess(access: CorpusAccess, minimum: CorpusAccess): boolean {
   return accessRank[access] >= accessRank[minimum]
+}
+
+export function canEditCorpus(access: CorpusAccess, status: CorpusStatus): boolean {
+  return status === 'active' && hasMinimumCorpusAccess(access, 'editor')
 }
 
 export function resolveCorpusAccess(facts: CorpusAccessFacts): CorpusAccess | null {
