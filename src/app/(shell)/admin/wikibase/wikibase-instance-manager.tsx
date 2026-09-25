@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { deriveConceptBaseUri, parseWikibaseInstanceInput } from '@/lib/wikibase'
+import { TestConnectionButton } from './test-connection-button'
 
 type InstanceDraft = {
   label: string
@@ -179,7 +180,7 @@ export function WikibaseInstanceManager({ instances }: { instances: WikibaseInst
 
       <section className="w-full overflow-hidden rounded-lg border border-border">
         {displayedInstances.map(instance => (
-          <div key={instance.id} className="grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-4 border-b border-border p-4 last:border-0">
+          <div key={instance.id} className="grid grid-cols-[1fr_auto_auto_auto_auto_auto] items-center gap-4 border-b border-border p-4 last:border-0">
             <div>
               <p className="text-sm font-medium">
                 {instance.label}
@@ -215,6 +216,7 @@ export function WikibaseInstanceManager({ instances }: { instances: WikibaseInst
             >
               Edit
             </Button>
+            <TestConnectionButton instanceUrl={instance.instanceUrl} sparqlEndpoint={instance.sparqlEndpoint} />
             {instance.isDefault
               ? <span />
               : (
@@ -301,6 +303,7 @@ export function WikibaseInstanceManager({ instances }: { instances: WikibaseInst
             </div>
           </div>
           <DialogFooter>
+            <TestConnectionButton instanceUrl={editDraft.instanceUrl} sparqlEndpoint={editDraft.sparqlEndpoint} />
             <Button variant="outline" onClick={() => setEditing(null)}>
               Cancel
             </Button>

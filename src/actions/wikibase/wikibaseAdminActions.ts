@@ -8,6 +8,7 @@ import { auditLog, corpus, wikibaseInstances } from '@/db/schema'
 import { NotFoundError, requireAdmin } from '@/lib/auth-utils'
 import { WIKIBASE_INSTANCE_NONE } from '@/lib/corpus-settings'
 import { parseWikibaseInstanceInput } from '@/lib/wikibase'
+import { probeWikibaseInstance } from '@/lib/wikibase-probe'
 
 const WIKIBASE_ADMIN_PATH = '/admin/wikibase'
 
@@ -172,4 +173,9 @@ export async function deleteWikibaseInstance(id: string) {
     })
   })
   revalidatePath(WIKIBASE_ADMIN_PATH)
+}
+
+export async function testWikibaseInstance(input: { instanceUrl: string, sparqlEndpoint: string }) {
+  await requireAdmin()
+  return probeWikibaseInstance(input)
 }
