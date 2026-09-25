@@ -8,6 +8,11 @@ describe('corpus access policy', () => {
     expect(resolveCorpusAccess({ actorType: 'admin-read-key', visibility: 'private' })).toBe('viewer')
   })
 
+  it('grants no visibility baseline when visibility is unknown', () => {
+    expect(resolveCorpusAccess({ actorType: 'user' })).toBeNull()
+    expect(resolveCorpusAccess({ actorType: 'anonymous' })).toBeNull()
+  })
+
   it('grants management to administrators and team owners', () => {
     expect(resolveCorpusAccess({ actorType: 'user', visibility: 'private', isAdmin: true })).toBe('manager')
     expect(resolveCorpusAccess({ actorType: 'user', visibility: 'private', owningTeamRole: 'owner' })).toBe('manager')

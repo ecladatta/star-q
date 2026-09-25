@@ -11,7 +11,7 @@ import { db } from '@/db/drizzle'
 import { annotation, annotationComponent, annotationQualifier, auditLog, corpus, corpusCollaboration, corpusCustomEntity, document, team, teamMembership } from '@/db/schema'
 import { ForbiddenError, getRequestActor, NotFoundError } from '@/lib/auth-utils'
 import { MAX_CORPORA_PER_TEAM, MAX_CUSTOM_ENTITIES_PER_CORPUS, MAX_OWNED_CORPORA_PER_USER } from '@/lib/constants'
-import { getCorpusAccessForActor, lockCorpusAndRequireManager, requireEditCorpus, requireEditCustomEntity, requireViewCorpus } from '@/lib/corpus-access'
+import { hasMinimumCorpusAccess, lockCorpusAndRequireManager, requireEditCorpus, requireEditCustomEntity, requireViewCorpus, resolveCorpusAccessForRow, resolveCorpusRelationAccess } from '@/lib/corpus-access'
 import { mergeCorpusSettings, sanitizeCorpusSettingsPatch } from '@/lib/corpus-settings'
 import { validateCorpusVisibility } from '@/lib/identity'
 import { assertTeamHasActiveOwner } from '@/lib/team-access'
@@ -43,20 +43,22 @@ async function resolveCorpusOwner(executor: DbExecutor, actor: AuthenticatedActo
   return { ownerTeamId: owner.teamId }
 }
 
+type CorpusAccessResolver = (resource: Corpus, actor: RequestActor) => Promise<CorpusAccess | null>
+
 export async function getCorpora(): Promise<CorpusListItem[]> {
-  return queryCorpora(await getRequestActor(), null)
+  return queryCorpora(await getRequestActor(), null, resolveCorpusAccessForRow)
 }
 
 export async function getMyCorpora(): Promise<CorpusListItem[]> {
-  const rows = await queryCorpora(await getRequestActor(), null)
-  return rows.filter(row => row.access === 'editor' || row.access === 'manager')
+  const rows = await queryCorpora(await getRequestActor(), null, resolveCorpusRelationAccess)
+  return rows.filter(row => hasMinimumCorpusAccess(row.access, 'editor'))
 }
 
 export async function getPublicCorpora(): Promise<CorpusListItem[]> {
-  return queryCorpora(await getRequestActor(), 'public')
+  return queryCorpora(await getRequestActor(), 'public', resolveCorpusAccessForRow)
 }
 
-async function queryCorpora(actor: RequestActor, visibility: CorpusVisibility | null): Promise<CorpusListItem[]> {
+async function queryCorpora(actor: RequestActor, visibility: CorpusVisibility | null, resolveAccess: CorpusAccessResolver): Promise<CorpusListItem[]> {
   const rows = await db.select({
     ...getTableColumns(corpus),
     documentsCount: countDistinct(document.id),
@@ -74,7 +76,7 @@ async function queryCorpora(actor: RequestActor, visibility: CorpusVisibility | 
 
   const withAccess = await Promise.all(rows.map(async row => ({
     ...row,
-    access: await getCorpusAccessForActor(row.id, actor),
+    access: await resolveAccess(row, actor),
   })))
   return withAccess.filter((row): row is typeof row & { access: CorpusAccess } => row.access !== null)
 }

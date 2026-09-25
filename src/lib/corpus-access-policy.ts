@@ -9,7 +9,7 @@ const accessRank: Record<CorpusAccess, number> = {
 
 export type CorpusAccessFacts = {
   actorType: 'user' | 'anonymous' | 'admin-read-key'
-  visibility: 'private' | 'public'
+  visibility?: 'private' | 'public'
   isAdmin?: boolean
   owningTeamRole?: 'owner' | 'member' | null
   directCollaborationRoles?: Array<'viewer' | 'editor'>

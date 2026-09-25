@@ -1,7 +1,7 @@
 import type { DbTransaction } from '@/db/drizzle'
 import type { Corpus } from '@/db/schema'
 import type { AuthenticatedActor, RequestActor } from '@/lib/auth-utils'
-import type { CorpusAccess } from '@/lib/corpus-access-policy'
+import type { CorpusAccess, CorpusAccessFacts } from '@/lib/corpus-access-policy'
 import { and, eq } from 'drizzle-orm'
 import { db } from '@/db/drizzle'
 import { annotation, corpus, corpusCollaboration, corpusCustomEntity, document, team, teamMembership } from '@/db/schema'
@@ -9,22 +9,50 @@ import { ForbiddenError, getRequestActor, NotFoundError } from '@/lib/auth-utils
 import { hasMinimumCorpusAccess, resolveCorpusAccess } from '@/lib/corpus-access-policy'
 
 export type { CorpusAccess, CorpusAccessFacts } from '@/lib/corpus-access-policy'
-export { corpusAccessValues, resolveCorpusAccess } from '@/lib/corpus-access-policy'
+export { corpusAccessValues, hasMinimumCorpusAccess, resolveCorpusAccess } from '@/lib/corpus-access-policy'
+
+export type CorpusAccessResource = Pick<Corpus, 'id' | 'ownerTeamId' | 'visibility'>
+type CorpusRelationFacts = Pick<CorpusAccessFacts, 'owningTeamRole' | 'directCollaborationRoles' | 'teamCollaborationRoles'>
 
 export async function getCorpusAccessForActor(corpusId: string, actor: RequestActor): Promise<CorpusAccess | null> {
   const [resource] = await db.select().from(corpus).where(eq(corpus.id, corpusId)).limit(1)
   if (!resource) {
     return null
   }
+  return resolveCorpusAccessForRow(resource, actor)
+}
 
-  if (actor.type !== 'user' || actor.role === 'admin') {
+export async function resolveCorpusAccessForRow(resource: CorpusAccessResource, actor: RequestActor): Promise<CorpusAccess | null> {
+  if (actor.type === 'user' && actor.role === 'admin') {
     return resolveCorpusAccess({
       actorType: actor.type,
       visibility: resource.visibility,
-      isAdmin: actor.type === 'user' && actor.role === 'admin',
+      isAdmin: true,
     })
   }
+  const relations = await collectCorpusRelations(resource, actor)
+  return resolveCorpusAccess({
+    actorType: actor.type,
+    visibility: resource.visibility,
+    ...relations,
+  })
+}
 
+export async function resolveCorpusRelationAccess(resource: CorpusAccessResource, actor: RequestActor): Promise<CorpusAccess | null> {
+  if (actor.type !== 'user') {
+    return null
+  }
+  const relations = await collectCorpusRelations(resource, actor)
+  return resolveCorpusAccess({
+    actorType: actor.type,
+    ...relations,
+  })
+}
+
+async function collectCorpusRelations(resource: CorpusAccessResource, actor: RequestActor): Promise<CorpusRelationFacts> {
+  if (actor.type !== 'user') {
+    return { owningTeamRole: null, directCollaborationRoles: [], teamCollaborationRoles: [] }
+  }
   let owningTeamRole: 'owner' | 'member' | null = null
 
   if (resource.ownerTeamId) {
@@ -45,7 +73,7 @@ export async function getCorpusAccessForActor(corpusId: string, actor: RequestAc
     .select({ role: corpusCollaboration.role })
     .from(corpusCollaboration)
     .where(and(
-      eq(corpusCollaboration.corpusId, corpusId),
+      eq(corpusCollaboration.corpusId, resource.id),
       eq(corpusCollaboration.targetUserId, actor.userId),
       eq(corpusCollaboration.status, 'accepted'),
     ))
@@ -54,17 +82,15 @@ export async function getCorpusAccessForActor(corpusId: string, actor: RequestAc
     .from(corpusCollaboration)
     .innerJoin(teamMembership, eq(teamMembership.teamId, corpusCollaboration.targetTeamId))
     .where(and(
-      eq(corpusCollaboration.corpusId, corpusId),
+      eq(corpusCollaboration.corpusId, resource.id),
       eq(corpusCollaboration.status, 'accepted'),
       eq(teamMembership.userId, actor.userId),
     ))
-  return resolveCorpusAccess({
-    actorType: actor.type,
-    visibility: resource.visibility,
+  return {
     owningTeamRole,
     directCollaborationRoles: directCollaborations.map(collaboration => collaboration.role),
     teamCollaborationRoles: teamCollaborations.map(collaboration => collaboration.role),
-  })
+  }
 }
 
 export async function getCorpusAccess(corpusId: string): Promise<CorpusAccess | null> {
