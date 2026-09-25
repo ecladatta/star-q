@@ -798,7 +798,7 @@ export function EntitySelector({
                   >
                     <CheckIcon
                       className={cn(
-                        'size-3.5 text-muted-foreground',
+                        'size-3.5 self-center text-muted-foreground',
                         isSelectedEntity(value, entity) ? '' : 'hidden',
                       )}
                     />
@@ -842,7 +842,7 @@ export function EntitySelector({
                   >
                     <CheckIcon
                       className={cn(
-                        'size-3.5 text-muted-foreground',
+                        'size-3.5 self-center text-muted-foreground',
                         isSelectedEntity(value, entity) ? '' : 'hidden',
                       )}
                     />
