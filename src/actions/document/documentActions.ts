@@ -2,7 +2,7 @@
 import type { DocumentMetadata } from '@/actions/corpus/corpusActions'
 import type { Document } from '@/db/schema'
 import type { DocumentData } from '@/types/types'
-import { count, eq, getTableColumns, inArray } from 'drizzle-orm'
+import { and, count, eq, getTableColumns, ilike, inArray } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 
 import { db } from '@/db/drizzle'
@@ -89,4 +89,21 @@ export async function deleteDocuments(ids: string[]) {
   revalidatePath('/')
   ids.forEach(id => revalidatePath(`/document/${id}`))
   uniqueCorpusIds.forEach(id => revalidatePath(`/corpus/${id}`))
+}
+
+export type DocumentSearchResult = Pick<DocumentMetadata, 'id' | 'title'>
+
+export async function searchDocumentsByTitle(corpusId: string, term: string, limit = 15): Promise<DocumentSearchResult[]> {
+  await requireViewCorpus(corpusId)
+
+  const trimmed = term.trim()
+  if (!trimmed)
+    return []
+
+  const pattern = `%${trimmed.replace(/[\\%_]/g, '\\$&')}%`
+  return db.select({ id: document.id, title: document.title })
+    .from(document)
+    .where(and(eq(document.corpusId, corpusId), ilike(document.title, pattern)))
+    .orderBy(document.order)
+    .limit(Math.min(Math.max(limit, 1), 50))
 }
