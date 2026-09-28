@@ -1,8 +1,10 @@
 'use client'
 
-import { Database, Moon, Search, Sun } from 'lucide-react'
-import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
+import type { DocumentSearchResult } from '@/actions/document/documentActions'
+import { Database, FileText, Loader2Icon, Moon, Search, Sun } from 'lucide-react'
+import { usePathname, useRouter } from 'next/navigation'
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react'
+import { searchDocumentsByTitle } from '@/actions/document/documentActions'
 import { Button } from '@/components/ui/button'
 import {
   Command,
@@ -29,6 +31,26 @@ export function CommandMenu({ isAdmin, invitationCount, corpora }: CommandMenuPr
   const dark = useRootTheme() === 'dark'
   const isMac = useSyncExternalStore(() => () => {}, () => /Mac/i.test(navigator.platform), () => true)
   const router = useRouter()
+  const pathname = usePathname()
+  const corpusId = useMemo(() => {
+    const match = pathname.match(/^\/corpus\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})(?:\/|$)/i)
+    return match?.[1] ?? null
+  }, [pathname])
+  const [search, setSearch] = useState<{ corpusId: string, term: string, documents: DocumentSearchResult[] } | null>(null)
+  const [term, setTerm] = useState('')
+  const trimmedTerm = term.trim()
+
+  useEffect(() => {
+    if (!corpusId || !trimmedTerm)
+      return
+
+    const timer = setTimeout(() => {
+      searchDocumentsByTitle(corpusId, trimmedTerm)
+        .then(documents => setSearch({ corpusId, term: trimmedTerm, documents }))
+        .catch(() => setSearch({ corpusId, term: trimmedTerm, documents: [] }))
+    }, 200)
+    return () => clearTimeout(timer)
+  }, [corpusId, trimmedTerm])
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -45,6 +67,13 @@ export function CommandMenu({ isAdmin, invitationCount, corpora }: CommandMenuPr
     setOpen(false)
     router.push(href)
   }, [router])
+
+  const result = search?.corpusId === corpusId ? search : null
+  const pending = Boolean(corpusId && trimmedTerm) && result?.term !== trimmedTerm
+  const refined = Boolean(result && trimmedTerm && (result.term.startsWith(trimmedTerm) || trimmedTerm.startsWith(result.term)))
+  const visibleDocuments = result && (result.term === trimmedTerm || refined)
+    ? result.documents
+    : []
 
   return (
     <>
@@ -65,9 +94,9 @@ export function CommandMenu({ isAdmin, invitationCount, corpora }: CommandMenuPr
 
       <CommandDialog open={open} onOpenChange={setOpen} className="h-auto w-full max-w-lg">
         <Command>
-          <CommandInput placeholder="Search corpora or jump to…" />
+          <CommandInput placeholder={corpusId ? 'Search documents, corpora or jump to…' : 'Search corpora or jump to…'} value={term} onValueChange={setTerm} />
           <CommandList>
-            <CommandEmpty>No results.</CommandEmpty>
+            {!pending && <CommandEmpty>No results.</CommandEmpty>}
             {groups.map(group => (
               <CommandGroup key={group.label} heading={group.label}>
                 {group.items.map((item) => {
@@ -94,6 +123,32 @@ export function CommandMenu({ isAdmin, invitationCount, corpora }: CommandMenuPr
                 })}
               </CommandGroup>
             ))}
+            {pending && visibleDocuments.length === 0 && (
+              <>
+                <CommandSeparator />
+                <div className="flex items-center gap-2 px-2 py-1.5 text-sm text-muted-foreground" role="status">
+                  <Loader2Icon className="size-4 animate-spin" />
+                  Searching documents…
+                </div>
+              </>
+            )}
+            {visibleDocuments.length > 0 && (
+              <>
+                <CommandSeparator />
+                <CommandGroup heading="Documents in this corpus">
+                  {visibleDocuments.map(doc => (
+                    <CommandItem
+                      key={doc.id}
+                      value={`${doc.title} ${doc.id}`}
+                      onSelect={() => navigate(`/document/${doc.id}`)}
+                    >
+                      <FileText className="size-4 text-muted-foreground" strokeWidth={1.75} />
+                      <span className="truncate">{doc.title}</span>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </>
+            )}
             {corpora.length > 0 && (
               <>
                 <CommandSeparator />
