@@ -2,6 +2,7 @@ import type { DbExecutor } from '@/db/drizzle'
 import type { Team } from '@/db/schema'
 import { and, eq, sql } from 'drizzle-orm'
 import { auditLog, team, teamMembership, users } from '@/db/schema'
+import { isUniqueViolation } from './identity'
 
 const TEAM_SLUG_PATTERN = /^[a-z0-9](?:[a-z0-9-]{1,46}[a-z0-9])?$/
 
@@ -54,7 +55,7 @@ export async function ensurePersonalTeam(executor: DbExecutor, userId: string): 
           createdByUserId: userId,
         }).returning()
       } catch (error) {
-        if ((error as { code?: string }).code !== '23505') {
+        if (!isUniqueViolation(error, 'team_slug_unique')) {
           throw error
         }
         continue

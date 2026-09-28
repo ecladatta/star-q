@@ -9,7 +9,7 @@ import { accounts, appSettings, auditLog, users } from '@/db/schema'
 import { APP_SETTINGS_ID, getAppSettings, isLocalCredentialsEnabled } from '@/lib/app-settings'
 import { ForbiddenError, getAuthenticatedUserForOnboarding } from '@/lib/auth-utils'
 import { getRequiredString } from '@/lib/form-data'
-import { validateDisplayName, validateOAuthProvider, validatePassword, validateUsername } from '@/lib/identity'
+import { validateDisplayName, validateOAuthProvider, validatePassword, validateUsername, withUsernameTakenError } from '@/lib/identity'
 import { hashPassword, verifyPassword } from '@/lib/password-auth'
 import { ensurePersonalTeam } from '@/lib/personal-team'
 
@@ -21,12 +21,12 @@ async function insertLocalUser(input: { username: string, name: string, password
   const username = validateUsername(input.username)
   const name = validateDisplayName(input.name)
   const passwordHash = await hashPassword(input.password)
-  const [user] = await db.insert(users).values({
+  const [user] = await withUsernameTakenError(() => db.insert(users).values({
     username,
     name,
     passwordHash,
     mustChangePassword: input.mustChangePassword ?? false,
-  }).returning()
+  }).returning())
   return user
 }
 
@@ -69,7 +69,7 @@ export async function setupLocalAdministrator(formData: FormData): Promise<void>
   }
   const passwordHash = await hashPassword(password)
 
-  await db.transaction(async (trx) => {
+  await withUsernameTakenError(() => db.transaction(async (trx) => {
     await trx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('star-q-initial-setup'))`)
     const [settings] = await trx.select().from(appSettings).where(eq(appSettings.id, APP_SETTINGS_ID)).limit(1)
     if (!settings || settings.setupCompletedAt) {
@@ -96,7 +96,7 @@ export async function setupLocalAdministrator(formData: FormData): Promise<void>
       targetId: APP_SETTINGS_ID,
       metadata: { provider: 'credentials' },
     })
-  })
+  }))
 
   await signIn('credentials', { username, password, redirect: false })
   redirect('/')
@@ -107,7 +107,7 @@ export async function completeSetupWithOAuth(formData: FormData): Promise<void> 
   const username = validateUsername(getRequiredString(formData, 'username'))
   const name = validateDisplayName(getRequiredString(formData, 'name'))
 
-  await db.transaction(async (trx) => {
+  await withUsernameTakenError(() => db.transaction(async (trx) => {
     await trx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('star-q-initial-setup'))`)
     const [settings] = await trx.select().from(appSettings).where(eq(appSettings.id, APP_SETTINGS_ID)).limit(1)
     if (!settings || settings.setupCompletedAt) {
@@ -129,7 +129,7 @@ export async function completeSetupWithOAuth(formData: FormData): Promise<void> 
       targetId: APP_SETTINGS_ID,
       metadata: { provider: 'oauth' },
     })
-  })
+  }))
 
   await signOut({ redirectTo: '/sign-in?setup=complete', redirect: false })
   redirect('/sign-in?setup=complete')
@@ -147,7 +147,7 @@ export async function completeOnboarding(formData: FormData): Promise<void> {
 
   const username = validateUsername(getRequiredString(formData, 'username'))
   const name = validateDisplayName(getRequiredString(formData, 'name'))
-  await db.transaction(async (trx) => {
+  await withUsernameTakenError(() => db.transaction(async (trx) => {
     await trx.update(users).set({ username, name, updatedAt: new Date() }).where(eq(users.id, currentUser.id))
     await ensurePersonalTeam(trx, currentUser.id)
     await trx.insert(auditLog).values({
@@ -156,7 +156,7 @@ export async function completeOnboarding(formData: FormData): Promise<void> {
       targetType: 'user',
       targetId: currentUser.id,
     })
-  })
+  }))
   redirect('/')
 }
 
@@ -164,7 +164,7 @@ export async function updateOwnProfile(formData: FormData): Promise<void> {
   const currentUser = await getAuthenticatedUserForOnboarding()
   const username = validateUsername(getRequiredString(formData, 'username'))
   const name = validateDisplayName(getRequiredString(formData, 'name'))
-  await db.transaction(async (trx) => {
+  await withUsernameTakenError(() => db.transaction(async (trx) => {
     await trx.update(users).set({ username, name, updatedAt: new Date() }).where(eq(users.id, currentUser.id))
     await trx.insert(auditLog).values({
       actorUserId: currentUser.id,
@@ -172,7 +172,7 @@ export async function updateOwnProfile(formData: FormData): Promise<void> {
       targetType: 'user',
       targetId: currentUser.id,
     })
-  })
+  }))
   revalidatePath('/account')
 }
 

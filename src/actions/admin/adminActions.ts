@@ -9,7 +9,7 @@ import { db } from '@/db/drizzle'
 import { appSettings, auditLog, corpus, team, teamMembership, users } from '@/db/schema'
 import { APP_SETTINGS_ID, getAppSettings, isLocalCredentialsEnabled } from '@/lib/app-settings'
 import { ForbiddenError, NotFoundError, requireAdmin } from '@/lib/auth-utils'
-import { validateDisplayName, validatePassword, validateUsername, validateUserRole } from '@/lib/identity'
+import { validateDisplayName, validatePassword, validateUsername, validateUserRole, withUsernameTakenError } from '@/lib/identity'
 import { hashPassword } from '@/lib/password-auth'
 import { ensurePersonalTeam } from '@/lib/personal-team'
 import { getSoleOwnedTeamIds } from '@/lib/team-access'
@@ -88,7 +88,7 @@ export async function createAdminManagedUser(input: { username: string, name: st
   const name = validateDisplayName(input.name)
   const role = validateUserRole(input.role)
   const passwordHash = await hashPassword(validatePassword(input.temporaryPassword))
-  const createdUser = await db.transaction(async (trx) => {
+  const createdUser = await withUsernameTakenError(() => db.transaction(async (trx) => {
     const [created] = await trx.insert(users).values({
       username,
       name,
@@ -99,7 +99,7 @@ export async function createAdminManagedUser(input: { username: string, name: st
     await trx.insert(auditLog).values({ actorUserId: actor.userId, action: 'admin.user_created', targetType: 'user', targetId: created.id, metadata: { role } })
     await ensurePersonalTeam(trx, created.id)
     return created
-  })
+  }))
   revalidatePath('/admin/users')
   return createdUser
 }
@@ -109,7 +109,7 @@ export async function updateAdminManagedUser(userId: string, input: { username: 
   const username = validateUsername(input.username)
   const name = validateDisplayName(input.name)
   const role = validateUserRole(input.role)
-  await db.transaction(async (trx) => {
+  await withUsernameTakenError(() => db.transaction(async (trx) => {
     await lockAdminInvariant(trx)
     const [existing] = await trx.select({ id: users.id, role: users.role }).from(users).where(eq(users.id, userId)).limit(1)
     if (!existing) {
@@ -120,7 +120,7 @@ export async function updateAdminManagedUser(userId: string, input: { username: 
     }
     await trx.update(users).set({ username, name, role, sessionVersion: sql`${users.sessionVersion} + 1`, updatedAt: new Date() }).where(eq(users.id, userId))
     await trx.insert(auditLog).values({ actorUserId: actor.userId, action: 'admin.user_updated', targetType: 'user', targetId: userId, metadata: { role } })
-  })
+  }))
   revalidatePath('/admin/users')
 }
 

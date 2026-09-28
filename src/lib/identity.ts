@@ -20,6 +20,45 @@ export function validateUsername(value: string): string {
   return username
 }
 
+// Drizzle's .unique() default naming; the database index for users.username.
+const USERNAME_UNIQUE_CONSTRAINT = 'user_username_unique'
+
+export class UsernameTakenError extends Error {
+  constructor() {
+    super('That username is already taken.')
+    this.name = 'UsernameTakenError'
+  }
+}
+
+// Postgres raises 23505 on both constraints and unique indexes, and drizzle
+// wraps the pg error as the cause of a DrizzleQueryError, so walk the chain.
+export function isUniqueViolation(error: unknown, constraint: string): boolean {
+  let current: unknown = error
+  while (typeof current === 'object' && current !== null) {
+    const candidate = current as { code?: string, constraint?: string, cause?: unknown }
+    if (candidate.code === '23505' && candidate.constraint === constraint) {
+      return true
+    }
+    current = candidate.cause
+  }
+  return false
+}
+
+export function isUsernameTakenError(error: unknown): boolean {
+  return isUniqueViolation(error, USERNAME_UNIQUE_CONSTRAINT)
+}
+
+export async function withUsernameTakenError<T>(write: () => Promise<T>): Promise<T> {
+  try {
+    return await write()
+  } catch (error) {
+    if (isUsernameTakenError(error)) {
+      throw new UsernameTakenError()
+    }
+    throw error
+  }
+}
+
 export function slugifyTeamName(value: string): string {
   return value
     .normalize('NFD')
