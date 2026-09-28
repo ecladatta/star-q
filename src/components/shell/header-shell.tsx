@@ -62,7 +62,7 @@ export function MainNav({ items }: { items: NavItem[] }) {
               {item.label}
               {item.badge
                 ? (
-                    <span className="min-w-5 rounded-full bg-secondary px-1.5 text-center text-[11px]/5 font-medium text-muted-foreground tabular-nums">
+                    <span className="min-w-5 rounded-full bg-destructive px-1.5 text-center text-[11px]/5 font-medium text-destructive-foreground tabular-nums">
                       {item.badge}
                     </span>
                   )

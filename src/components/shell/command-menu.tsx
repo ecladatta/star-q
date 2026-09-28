@@ -111,10 +111,8 @@ export function CommandMenu({ isAdmin, invitationCount, corpora }: CommandMenuPr
                       {item.label}
                       {item.badge
                         ? (
-                            <span className="ml-auto text-xs text-muted-foreground">
+                            <span className="ml-auto min-w-5 rounded-full bg-destructive px-1.5 text-center text-[11px]/5 font-medium text-destructive-foreground tabular-nums">
                               {item.badge}
-                              {' '}
-                              pending
                             </span>
                           )
                         : null}
