@@ -140,48 +140,9 @@ export async function searchWikibaseEntities(
 const UNIT_OF_MEASURE_CLASS = 'Q47574'
 const unitSearchCache = createTtlCache<WikibaseSearchResult[]>(CACHE_TTL_MS)
 
-// The term is interpolated into a SPARQL string literal; drop characters that
-// could break out of it. Unit words never need quotes or backslashes.
-function escapeSparqlStringLiteral(value: string): string {
-  return value.replace(/["\\]/g, '')
-}
-
-function unitLabelQuery(term: string, limit: number): string {
-  const escaped = escapeSparqlStringLiteral(term.toLowerCase())
-  return [
-    'SELECT DISTINCT ?item ?label ?description WHERE {',
-    '?item rdfs:label ?label .',
-    'FILTER(LANG(?label) = "en")',
-    `FILTER(CONTAINS(LCASE(?label), "${escaped}"))`,
-    `{ ?item wdt:P31/wdt:P279* wd:${UNIT_OF_MEASURE_CLASS} }`,
-    'UNION',
-    `{ ?item wdt:P279* wd:${UNIT_OF_MEASURE_CLASS} }`,
-    'OPTIONAL { ?item schema:description ?description . FILTER(LANG(?description) = "en") }',
-    '}',
-    'ORDER BY STRLEN(?label)',
-    `LIMIT ${limit}`,
-  ].join(' ')
-}
-
-async function runUnitLabelSearch(config: WikibaseConfig, term: string, limit: number): Promise<WikibaseSearchResult[]> {
-  const bindings = await runSparql(config, unitLabelQuery(term, limit))
-  const results: WikibaseSearchResult[] = []
-  for (const binding of bindings) {
-    const id = entityIdFromValue(binding.item.value)
-    if (id) {
-      results.push({
-        id,
-        label: binding.label.value,
-        description: binding.description?.value ?? null,
-      })
-    }
-  }
-  return results
-}
-
-// Wikidata label search handles plurals poorly; retry with the singular forms
-// when the plural term matches nothing. Best effort only — the picker stays
-// usable when no variant matches.
+// A label-scan SPARQL query over all items times out on public endpoints, so
+// search through the API index first and keep only results that actually sit
+// in the unit-of-measure tree via one bounded VALUES lookup.
 export async function searchWikibaseUnits(
   config: WikibaseConfig,
   search: string,
@@ -198,6 +159,9 @@ export async function searchWikibaseUnits(
     return cached
   }
 
+  // API search handles plurals poorly as well; retry with the singular forms
+  // when the plural term matches nothing. Best effort only — the picker stays
+  // usable when no variant matches.
   const strippedPlural = term.replace(/s$/, '')
   const strippedPluralEs = term.replace(/es$/, '')
   const candidates = [term]
@@ -208,16 +172,53 @@ export async function searchWikibaseUnits(
     candidates.push(strippedPluralEs)
   }
 
-  let results: WikibaseSearchResult[] = []
+  const searched: WikibaseSearchResult[] = []
+  const seen = new Set<string>()
   for (const candidate of candidates) {
-    results = await runUnitLabelSearch(config, candidate, limit)
-    if (results.length > 0) {
+    const found = await searchWikibaseEntities(config, candidate, 'item', limit)
+    for (const result of found) {
+      if (!seen.has(result.id)) {
+        seen.add(result.id)
+        searched.push(result)
+      }
+    }
+    if (searched.length >= limit) {
       break
     }
   }
 
+  const unitIds = searched.length > 0
+    ? await filterUnitIds(config, searched.map(result => result.id))
+    : new Set<string>()
+  const results = searched.filter(result => unitIds.has(result.id)).slice(0, limit)
+
   unitSearchCache.set(key, results)
   return results
+}
+
+// Unit membership for a fixed id list. Bounded lookups stay fast where open
+// label scans do not, since the endpoint only walks the tree for these items.
+async function filterUnitIds(config: WikibaseConfig, ids: string[]): Promise<Set<string>> {
+  const query = [
+    'SELECT ?item WHERE {',
+    `VALUES ?item { ${ids.map(id => `wd:${id}`).join(' ')} }`,
+    `?item wdt:P31/wdt:P279* wd:${UNIT_OF_MEASURE_CLASS} .`,
+    '}',
+  ].join(' ')
+  try {
+    const bindings = await runSparql(config, query)
+    const found = new Set<string>()
+    for (const binding of bindings) {
+      const id = entityIdFromValue(binding.item.value)
+      if (id) {
+        found.add(id)
+      }
+    }
+    return found
+  } catch (error) {
+    console.error('Wikibase unit filter error:', error)
+    return new Set()
+  }
 }
 
 async function runSparql(config: WikibaseConfig, query: string): Promise<Array<Record<string, { value: string }>>> {
