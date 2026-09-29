@@ -122,6 +122,19 @@ export function objectTerm(
     )
 }
 
+export function unitTerm(
+  component: DocumentAnnotationComponent,
+  corpusId: string,
+  wikibase: WikibaseRdfNamespaces,
+): RdfIri | null {
+  if (component.unitCustomId) {
+    return customResourceIri(corpusId, 'entity', component.unitCustomId)
+  }
+
+  const value = component.unitValue?.trim()
+  return value && /^Q\d+$/.test(value) ? iri(`${wikibase.wd}${value}`) : null
+}
+
 export function componentBodyTerm(
   component: DocumentAnnotationComponent,
   corpusId: string,

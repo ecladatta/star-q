@@ -123,19 +123,20 @@ function valueTerm(component: DocumentAnnotationComponent): string | null {
   }
 
   const lexicalValue = entityValue || component.annotationValue
-  return literalValue(lexicalValue, component.entityDatatype)
+  return literalValue(lexicalValue, component.entityDatatype, component)
 }
 
 function literalValue(
   value: string,
   datatype: EntityDatatype | null,
+  component: DocumentAnnotationComponent,
 ): string | null {
   if (value === '') {
     return null
   }
 
   if (datatype && NUMERIC_DATATYPES.has(datatype)) {
-    return quantityValue(value)
+    return quantityValue(value, unitSuffix(component))
   }
 
   if (datatype && TIME_DATATYPES.has(datatype)) {
@@ -145,7 +146,18 @@ function literalValue(
   return stringValue(value)
 }
 
-function quantityValue(value: string): string | null {
+// QuickStatements quantity syntax is `amount~toleranceUxx`. Only Wikidata unit
+// items can be expressed; custom corpus units export as bare amounts.
+function unitSuffix(component: DocumentAnnotationComponent): string {
+  if (component.unitCustom) {
+    return ''
+  }
+
+  const unitValue = component.unitValue?.trim()
+  return unitValue && /^Q\d+$/.test(unitValue) ? `U${unitValue.slice(1)}` : ''
+}
+
+function quantityValue(value: string, suffix: string): string | null {
   const trimmed = value.trim()
   if (!/^[+-]?(?:\d+(?:\.\d+)?|\.\d+)$/.test(trimmed)) {
     return null
@@ -153,7 +165,7 @@ function quantityValue(value: string): string | null {
 
   // QuickStatements quantity syntax does not accept a leading-dot decimal;
   // normalize `.5` / `-.5` to `0.5` / `-0.5`.
-  return trimmed.replace(/^([+-]?)\./, '$10.')
+  return `${trimmed.replace(/^([+-]?)\./, '$10.')}${suffix}`
 }
 
 const YEAR = '\\d{1,6}'

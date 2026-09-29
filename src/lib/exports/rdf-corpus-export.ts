@@ -33,6 +33,7 @@ import {
   tableColumnIri,
   textContextIri,
   textMentionIri,
+  unitTerm,
 } from './rdf/terms'
 
 const {
@@ -73,6 +74,7 @@ const CSVW_TITLE = namedNode(`${NAMESPACES.csvw}title`)
 
 const AT_COLUMN_INDEX = namedNode(`${NAMESPACES.at}columnIndex`)
 const AT_ROW_INDEX = namedNode(`${NAMESPACES.at}rowIndex`)
+const AT_UNIT = namedNode(`${NAMESPACES.at}unit`)
 
 const OA_ANNOTATION = namedNode(`${NAMESPACES.oa}Annotation`)
 const OA_HAS_BODY = namedNode(`${NAMESPACES.oa}hasBody`)
@@ -167,8 +169,11 @@ function addTruthyAnnotation(
   }
 
   writer.addQuad(statement.subject, statement.predicate, statement.object)
+  const unit = annotation.object
+    ? unitTerm(annotation.object, corpusId, wikibase)
+    : null
   const qualifiers = resolveQualifiers(wikibase, corpusId, annotation)
-  if (qualifiers.length === 0) {
+  if (qualifiers.length === 0 && !unit) {
     return
   }
 
@@ -178,6 +183,9 @@ function addTruthyAnnotation(
   addTripleTerm(writer, reifier, RDF_REIFIES, statement.triple)
   for (const qualifier of qualifiers) {
     writer.addQuad(reifier, qualifier.predicate, qualifier.value)
+  }
+  if (unit) {
+    writer.addQuad(reifier, AT_UNIT, unit)
   }
 }
 
@@ -291,6 +299,11 @@ function addFullAnnotation(
   addTripleTerm(writer, statementNode, RDF_REIFIES, statement.triple)
   for (const component of components) {
     writer.addQuad(statementNode, PROV_WAS_DERIVED_FROM, component.iri)
+  }
+
+  const unit = unitTerm(annotation.object, context.corpusId, context.wikibase)
+  if (unit) {
+    writer.addQuad(statementNode, AT_UNIT, unit)
   }
 
   for (const qualifier of sortedQualifiers(annotation)) {

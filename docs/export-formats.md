@@ -121,16 +121,22 @@ Annotations are stored as a triple of `subject`, `predicate`, and `object`, each
 
 - `id`: UUID of the annotation component
 - `entityLabel`: resolved label (custom labeling or inferred from extracted text)
-- `entityValue`: resolved value (often same as label)
+- `entityValue`: resolved value (often same as label); for objects with a confirmed unit, the extracted numeric part of the span
 - `entityCustom`: `true` if this value comes from a custom entity definition
 - `entityCustomId`: UUID of the custom entity (if `entityCustom`)
 - `entityDatatype`: one of: `integer`, `decimal`, `boolean`, `string`, `date`, `time`, `datetime`, `year`, `month`, `day`, `url`
+- `unitValue`: optional unit reference: a Wikidata item ID (e.g. `Q11573`) or a custom unit value; `null` when the object has no unit
+- `unitLabel`: display label of the unit (e.g. `metre`)
+- `unitCustom`: `true` if the unit comes from a custom corpus unit
+- `unitCustomId`: UUID of the custom unit (if `unitCustom`)
 - `annotationStart` / `annotationEnd`: character offsets into the source text
 - `annotationRow` / `annotationCell`: row/cell indices (for table annotations) or `null`
 - `annotationValue`: the extracted string value for the annotation
 - `annotationType`: `text` or `table`
 - `annotationTag`: component role; one of `subject`, `predicate`, `object`, `qualifier-predicate`, or `qualifier-value`
 - `elementIndex`: index of the text/table element this annotation belongs to
+
+The unit fields are optional in the data model: exports from before this feature omit them, and older exports without them import unchanged.
 
 Example:
 
@@ -153,6 +159,31 @@ Example:
 }
 ```
 
+An object annotated from the span "12 metres" with the Wikidata unit metre confirmed stores the numeric part in `entityValue` and the unit alongside it:
+
+```json
+{
+  "id": "<componentId>",
+  "entityLabel": null,
+  "entityValue": "12",
+  "entityCustom": false,
+  "entityCustomId": null,
+  "entityDatatype": "decimal",
+  "unitValue": "Q11573",
+  "unitLabel": "metre",
+  "unitCustom": false,
+  "unitCustomId": null,
+  "annotationStart": 0,
+  "annotationEnd": 9,
+  "annotationRow": null,
+  "annotationCell": null,
+  "annotationValue": "12 metres",
+  "annotationType": "text",
+  "annotationTag": "object",
+  "elementIndex": 0
+}
+```
+
 ### CorpusCustomEntity
 
 Custom entities are defined per corpus and used to pre-populate annotation values.
@@ -162,7 +193,7 @@ Custom entities are defined per corpus and used to pre-populate annotation value
 - `label`: display label for the entity
 - `value`: value stored on the entity
 - `datatype`: entity datatype (`string` by default)
-- `customType`: either `entity` or `relation`
+- `customType`: `entity`, `relation`, or `unit`
 - `createdAt` / `updatedAt`: timestamps
 
 Example:
