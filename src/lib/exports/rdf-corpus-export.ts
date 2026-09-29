@@ -75,6 +75,8 @@ const CSVW_TITLE = namedNode(`${NAMESPACES.csvw}title`)
 const AT_COLUMN_INDEX = namedNode(`${NAMESPACES.at}columnIndex`)
 const AT_ROW_INDEX = namedNode(`${NAMESPACES.at}rowIndex`)
 const AT_UNIT = namedNode(`${NAMESPACES.at}unit`)
+const AT_QUANTITY_LOWER_BOUND = namedNode(`${NAMESPACES.at}quantityLowerBound`)
+const AT_QUANTITY_UPPER_BOUND = namedNode(`${NAMESPACES.at}quantityUpperBound`)
 
 const OA_ANNOTATION = namedNode(`${NAMESPACES.oa}Annotation`)
 const OA_HAS_BODY = namedNode(`${NAMESPACES.oa}hasBody`)
@@ -172,8 +174,11 @@ function addTruthyAnnotation(
   const unit = annotation.object
     ? unitTerm(annotation.object, corpusId, wikibase)
     : null
+  const bounds = annotation.object
+    ? quantityBoundTerms(annotation.object)
+    : []
   const qualifiers = resolveQualifiers(wikibase, corpusId, annotation)
-  if (qualifiers.length === 0 && !unit) {
+  if (qualifiers.length === 0 && !unit && bounds.length === 0) {
     return
   }
 
@@ -186,6 +191,9 @@ function addTruthyAnnotation(
   }
   if (unit) {
     writer.addQuad(reifier, AT_UNIT, unit)
+  }
+  for (const [predicate, bound] of bounds) {
+    writer.addQuad(reifier, predicate, bound)
   }
 }
 
@@ -304,6 +312,9 @@ function addFullAnnotation(
   const unit = unitTerm(annotation.object, context.corpusId, context.wikibase)
   if (unit) {
     writer.addQuad(statementNode, AT_UNIT, unit)
+  }
+  for (const [predicate, bound] of quantityBoundTerms(annotation.object)) {
+    writer.addQuad(statementNode, predicate, bound)
   }
 
   for (const qualifier of sortedQualifiers(annotation)) {
@@ -526,6 +537,21 @@ function resolveQualifiers(
         ? [{ predicate, value: objectTerm(qualifier.value, corpusId, wikibase) }]
         : []
     })
+}
+
+// Quantity bounds sit next to at:unit on the statement node, as plain
+// literals; each bound is emitted independently.
+function quantityBoundTerms(
+  component: DocumentAnnotationComponent,
+): Array<[NamedNode, Literal]> {
+  const terms: Array<[NamedNode, Literal]> = []
+  if (component.quantityLowerBound) {
+    terms.push([AT_QUANTITY_LOWER_BOUND, literal(component.quantityLowerBound)])
+  }
+  if (component.quantityUpperBound) {
+    terms.push([AT_QUANTITY_UPPER_BOUND, literal(component.quantityUpperBound)])
+  }
+  return terms
 }
 
 function sortedQualifiers(annotation: AnnotationExport) {

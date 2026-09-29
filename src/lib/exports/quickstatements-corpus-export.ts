@@ -136,7 +136,7 @@ function literalValue(
   }
 
   if (datatype && NUMERIC_DATATYPES.has(datatype)) {
-    return quantityValue(value, unitSuffix(component))
+    return quantityValue(value, component)
   }
 
   if (datatype && TIME_DATATYPES.has(datatype)) {
@@ -146,8 +146,10 @@ function literalValue(
   return stringValue(value)
 }
 
-// QuickStatements quantity syntax is `amount~toleranceUxx`. Only Wikidata unit
-// items can be expressed; custom corpus units export as bare amounts.
+// QuickStatements quantity syntax is `amount[lower,upper]Uxx`: optional
+// closed bounds in brackets, and only Wikidata unit items after `U`; custom
+// corpus units export as bare amounts. Bounds are emitted only when both are
+// present and parse as plain decimals, since the bracket form needs both ends.
 function unitSuffix(component: DocumentAnnotationComponent): string {
   if (component.unitCustom) {
     return ''
@@ -157,15 +159,30 @@ function unitSuffix(component: DocumentAnnotationComponent): string {
   return unitValue && /^Q\d+$/.test(unitValue) ? `U${unitValue.slice(1)}` : ''
 }
 
-function quantityValue(value: string, suffix: string): string | null {
+function quantityValue(
+  value: string,
+  component: DocumentAnnotationComponent,
+): string | null {
+  const amount = normalizeQuantityAmount(value)
+  if (!amount) {
+    return null
+  }
+
+  const lower = normalizeQuantityAmount(component.quantityLowerBound ?? '')
+  const upper = normalizeQuantityAmount(component.quantityUpperBound ?? '')
+  const bounds = lower && upper ? `[${lower},${upper}]` : ''
+  return `${amount}${bounds}${unitSuffix(component)}`
+}
+
+// QuickStatements quantities take a plain decimal without a leading dot or an
+// exponent; `.5` / `-.5` normalize to `0.5` / `-0.5`.
+function normalizeQuantityAmount(value: string): string | null {
   const trimmed = value.trim()
   if (!/^[+-]?(?:\d+(?:\.\d+)?|\.\d+)$/.test(trimmed)) {
     return null
   }
 
-  // QuickStatements quantity syntax does not accept a leading-dot decimal;
-  // normalize `.5` / `-.5` to `0.5` / `-0.5`.
-  return `${trimmed.replace(/^([+-]?)\./, '$10.')}${suffix}`
+  return trimmed.replace(/^([+-]?)\./, '$10.')
 }
 
 const YEAR = '\\d{1,6}'

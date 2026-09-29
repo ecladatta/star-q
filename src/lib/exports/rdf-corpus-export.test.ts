@@ -188,6 +188,34 @@ describe('serializeRdfCorpusExport (truthy)', () => {
     )
   })
 
+  it('attaches quantity bounds as plain literals on the reified statement', () => {
+    const output = truthy([annotation({
+      object: component({
+        entityValue: '12',
+        entityDatatype: 'decimal',
+        quantityLowerBound: '12',
+        quantityUpperBound: '15',
+        annotationTag: 'object',
+      }),
+    })])
+    expect(output).toContain('rdf:reifies <<(wd:Q1 wdt:P1 "12"^^xsd:decimal)>>;')
+    expect(output).toContain(`<${RDF_NAMESPACE_BASE}/ontology#quantityLowerBound> "12";`)
+    expect(output).toContain(`<${RDF_NAMESPACE_BASE}/ontology#quantityUpperBound> "15".`)
+  })
+
+  it('emits an unmatched single bound on its own', () => {
+    const output = truthy([annotation({
+      object: component({
+        entityValue: '12',
+        entityDatatype: 'decimal',
+        quantityLowerBound: '10',
+        annotationTag: 'object',
+      }),
+    })])
+    expect(output).toContain(`<${RDF_NAMESPACE_BASE}/ontology#quantityLowerBound> "10".`)
+    expect(output).not.toContain('quantityUpperBound')
+  })
+
   it('emits unit-less quantities as plain triples without a reifier', () => {
     const output = truthy([annotation({
       object: component({ entityValue: '1360590', entityDatatype: 'integer', annotationTag: 'object' }),
@@ -290,6 +318,21 @@ describe('serializeRdfCorpusExport (full)', () => {
     expect(output).toContain(
       `at:unit <${RDF_NAMESPACE_BASE}/corpus/corpus-1/entity/00000000-0000-0000-0000-000000000001>.`,
     )
+  })
+
+  it('attaches quantity bounds as plain literals on the named statement', () => {
+    const output = serializeRdfCorpusExport(model([annotation({
+      object: component({
+        entityValue: '12',
+        entityDatatype: 'decimal',
+        quantityLowerBound: '12',
+        quantityUpperBound: '15',
+        annotationTag: 'object',
+      }),
+    })], rawText()), 'full')
+    expect(output).toContain('statement:a1 rdf:reifies <<(wd:Q1 wdt:P1 "12"^^xsd:decimal)>>;')
+    expect(output).toContain('at:quantityLowerBound "12";')
+    expect(output).toContain('at:quantityUpperBound "15".')
   })
 
   it('projects tables as csvw tables, columns and cells', () => {

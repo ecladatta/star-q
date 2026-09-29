@@ -172,6 +172,54 @@ it('exports custom units as bare amounts', () => {
   })])).toBe('Q1\tP1082\t1360590\n')
 })
 
+it('emits quantity bounds in bracket syntax with and without a unit', () => {
+  expect(body([annotation({
+    predicate: component({ entityValue: 'P1082', annotationTag: 'predicate' }),
+    object: component({
+      entityValue: '12',
+      entityDatatype: 'decimal',
+      quantityLowerBound: '12',
+      quantityUpperBound: '15',
+      unitValue: 'Q11573',
+      unitLabel: 'metre',
+      annotationTag: 'object',
+    }),
+  })])).toBe('Q1\tP1082\t12[12,15]U11573\n')
+  expect(body([annotation({
+    predicate: component({ entityValue: 'P1082', annotationTag: 'predicate' }),
+    object: component({
+      entityValue: '12',
+      entityDatatype: 'decimal',
+      quantityLowerBound: '12',
+      quantityUpperBound: '15',
+      annotationTag: 'object',
+    }),
+  })])).toBe('Q1\tP1082\t12[12,15]\n')
+})
+
+it('drops incomplete or non-decimal bounds from quantities', () => {
+  expect(body([annotation({
+    predicate: component({ entityValue: 'P1082', annotationTag: 'predicate' }),
+    object: component({
+      entityValue: '12',
+      entityDatatype: 'decimal',
+      quantityLowerBound: '12',
+      annotationTag: 'object',
+    }),
+  })])).toBe('Q1\tP1082\t12\n')
+  expect(body([annotation({
+    predicate: component({ entityValue: 'P1082', annotationTag: 'predicate' }),
+    object: component({
+      entityValue: '12',
+      entityDatatype: 'decimal',
+      quantityLowerBound: 'about 12',
+      quantityUpperBound: '15',
+      unitValue: 'Q11573',
+      annotationTag: 'object',
+    }),
+  })])).toBe('Q1\tP1082\t12U11573\n')
+})
+
 it('pads and signs gYear values', () => {
   expect(body([annotation({
     predicate: component({ entityValue: 'P569', annotationTag: 'predicate' }),

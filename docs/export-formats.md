@@ -121,7 +121,7 @@ Annotations are stored as a triple of `subject`, `predicate`, and `object`, each
 
 - `id`: UUID of the annotation component
 - `entityLabel`: resolved label (custom labeling or inferred from extracted text)
-- `entityValue`: resolved value (often same as label); for objects with a confirmed unit, the extracted numeric part of the span
+- `entityValue`: resolved value (often same as label); for object quantities, the annotator-owned amount (e.g. `12`)
 - `entityCustom`: `true` if this value comes from a custom entity definition
 - `entityCustomId`: UUID of the custom entity (if `entityCustom`)
 - `entityDatatype`: one of: `integer`, `decimal`, `boolean`, `string`, `date`, `time`, `datetime`, `year`, `month`, `day`, `url`
@@ -129,6 +129,8 @@ Annotations are stored as a triple of `subject`, `predicate`, and `object`, each
 - `unitLabel`: display label of the unit (e.g. `metre`)
 - `unitCustom`: `true` if the unit comes from a custom corpus unit
 - `unitCustomId`: UUID of the custom unit (if `unitCustom`)
+- `quantityLowerBound`: optional closed lower bound of the quantity amount (e.g. `12`), or `null`
+- `quantityUpperBound`: optional closed upper bound of the quantity amount (e.g. `15`), or `null`
 - `annotationStart` / `annotationEnd`: character offsets into the source text
 - `annotationRow` / `annotationCell`: row/cell indices (for table annotations) or `null`
 - `annotationValue`: the extracted string value for the annotation
@@ -136,7 +138,7 @@ Annotations are stored as a triple of `subject`, `predicate`, and `object`, each
 - `annotationTag`: component role; one of `subject`, `predicate`, `object`, `qualifier-predicate`, or `qualifier-value`
 - `elementIndex`: index of the text/table element this annotation belongs to
 
-The unit fields are optional in the data model: exports from before this feature omit them, and older exports without them import unchanged.
+The unit and quantity bound fields are optional in the data model: exports from before these features omit them, and older exports without them import unchanged. The surface span (`annotationValue`) is never modified by quantity editing.
 
 Example:
 
@@ -148,6 +150,8 @@ Example:
   "entityCustom": false,
   "entityCustomId": null,
   "entityDatatype": "string",
+  "quantityLowerBound": null,
+  "quantityUpperBound": null,
   "annotationStart": 123,
   "annotationEnd": 131,
   "annotationRow": null,
@@ -159,7 +163,7 @@ Example:
 }
 ```
 
-An object annotated from the span "12 metres" with the Wikidata unit metre confirmed stores the numeric part in `entityValue` and the unit alongside it:
+An object annotated from the span "12 to 15 metres" with the amount, bounds, and Wikidata unit metre set stores the amount in `entityValue` and the quantity alongside it. The annotator can edit all of these; the span itself is never rewritten:
 
 ```json
 {
@@ -173,11 +177,13 @@ An object annotated from the span "12 metres" with the Wikidata unit metre confi
   "unitLabel": "metre",
   "unitCustom": false,
   "unitCustomId": null,
+  "quantityLowerBound": "12",
+  "quantityUpperBound": "15",
   "annotationStart": 0,
-  "annotationEnd": 9,
+  "annotationEnd": 14,
   "annotationRow": null,
   "annotationCell": null,
-  "annotationValue": "12 metres",
+  "annotationValue": "12 to 15 metres",
   "annotationType": "text",
   "annotationTag": "object",
   "elementIndex": 0
@@ -227,7 +233,7 @@ _:truthy-statement-id
   pq:P69 wd:Q152838 .
 ```
 
-Statements without qualifiers are emitted as ordinary triples.
+Statements without qualifiers, units, or quantity bounds are emitted as ordinary triples. A statement that carries a unit or quantity bounds is reified so those facts can attach to it: `at:unit` holds the unit IRI, and `at:quantityLowerBound` / `at:quantityUpperBound` hold the bounds as plain literals (the `at:` prefix is not declared in truthy mode, so these serialize as absolute IRIs).
 
 ### Full mode
 
@@ -239,6 +245,7 @@ Full mode uses stable resources under a configurable base URI (`RDF_NAMESPACE_BA
 - Each grounded component is an [`oa:Annotation`](https://www.w3.org/TR/annotation-vocab/#annotation) whose target is its text range, table column, or table cell.
 - Main statements have named `statement:` reifiers whose [`prov:wasDerivedFrom`](https://www.w3.org/TR/prov-o/#wasDerivedFrom) values reference the three component annotations.
 - Qualifiers are statements about the named main statement. A blank reifier associates each qualifier triple term with its predicate/value provenance.
+- Units and quantity bounds are also statements about the named main statement: `at:unit` holds the unit IRI, and `at:quantityLowerBound` / `at:quantityUpperBound` hold the quantity bounds as plain literals.
 
 ```turtle
 wd:Q68550 wdt:P184 wd:Q7099 .
@@ -275,6 +282,8 @@ Q68550	P184	Q7099
 Q68550	P69	"University of Vienna"
 Q68550	P571	+1365-00-00T00:00:00Z/9	P585	+2019-01-01T00:00:00Z/11
 ```
+
+Numeric object values serialize as [QuickStatements 3.0 quantities](https://www.wikidata.org/wiki/Help:Data_type#Quantity): `amount`, `amountUunit` when a Wikidata unit is set, and `amount[lower,upper]Uunit` when both quantity bounds are also set, as in `12[12,15]U11573`. Custom corpus units cannot be expressed in QuickStatements and export as bare amounts, and a single missing or non-numeric bound drops the bracket pair.
 
 Only annotations that fully resolve to Wikidata are exported:
 
