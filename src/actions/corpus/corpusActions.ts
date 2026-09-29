@@ -373,12 +373,21 @@ export async function duplicateCorpus(id: string, owner: CorpusOwnerInput, newTi
                     mappedEntityCustomId = customEntityIdMap.get(comp.entityCustomId) ?? null
                   }
 
+                  let mappedUnitCustomId: string | null = null
+                  if (comp.unitCustomId) {
+                    mappedUnitCustomId = customEntityIdMap.get(comp.unitCustomId) ?? null
+                  }
+
                   return {
                     entityLabel: comp.entityLabel,
                     entityValue: comp.entityValue,
                     entityCustom: comp.entityCustom,
                     entityCustomId: mappedEntityCustomId,
                     entityDatatype: comp.entityDatatype,
+                    unitValue: comp.unitValue,
+                    unitLabel: comp.unitLabel,
+                    unitCustom: comp.unitCustom,
+                    unitCustomId: mappedUnitCustomId,
                     annotationStart: comp.annotationStart,
                     annotationEnd: comp.annotationEnd,
                     annotationRow: comp.annotationRow,

@@ -5,6 +5,7 @@ import { annotation, annotationComponent, annotationQualifier, corpusCustomEntit
 import { MAX_DOCUMENTS_PER_IMPORT } from '@/lib/constants'
 import { ENTITY_DATATYPES, normalizeDatatype } from '@/lib/datatypes'
 
+import { isUuid, normalizeCustomEntityFields } from './corpusImportNormalization'
 import { isFullCorpusExport } from './fullCorpusExport'
 
 const POSTGRES_INTEGER_MIN = -2_147_483_648
@@ -12,33 +13,6 @@ const POSTGRES_INTEGER_MAX = 2_147_483_647
 
 function isComponentRecord(value: unknown): value is Record<string, any> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
-function isUuid(value: unknown): value is string {
-  return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
-}
-
-function normalizeCustomEntityFields(
-  data: Record<string, any>,
-  customEntityIdMap: Record<string, string>,
-) {
-  const mappedCustomEntityId = typeof data.entityCustomId === 'string'
-    ? customEntityIdMap[data.entityCustomId]
-    : null
-
-  if (isUuid(mappedCustomEntityId)) {
-    data.entityCustomId = mappedCustomEntityId
-    data.entityLabel = null
-    data.entityValue = null
-    data.entityDatatype = null
-    return data
-  }
-
-  data.entityCustomId = null
-  if (data.entityCustom === true) {
-    data.entityCustom = false
-  }
-  return data
 }
 
 function isPostgresInteger(value: unknown): value is number {
@@ -125,7 +99,7 @@ function getInvalidCustomEntityFields(entity: Record<string, any>) {
   if (!ENTITY_DATATYPES.includes(entity.datatype) && !normalizeDatatype(entity.datatype)) {
     invalidFields.push('datatype')
   }
-  if (entity.customType !== 'entity' && entity.customType !== 'relation') {
+  if (entity.customType !== 'entity' && entity.customType !== 'relation' && entity.customType !== 'unit') {
     invalidFields.push('customType')
   }
   if (entity.createdAt && !normalizeDate(entity.createdAt)) {
