@@ -583,11 +583,15 @@ function levenshtein(
   return sql`levenshtein(${source}, ${text}, ${insCost}, ${delCost}, ${subCost})`
 }
 
-export async function searchCorpusCustomEntities(corpusId: string, searchTerm: string, entityType: 'subject' | 'predicate' | 'object') {
+export async function searchCorpusCustomEntities(
+  corpusId: string,
+  searchTerm: string,
+  entityType?: 'subject' | 'predicate' | 'object',
+  customType?: 'entity' | 'relation' | 'unit',
+) {
   await requireViewCorpus(corpusId)
 
-  // Map entityType to customType
-  const customType: 'entity' | 'relation' = entityType === 'predicate' ? 'relation' : 'entity'
+  const resolvedCustomType = customType ?? (entityType === 'predicate' ? 'relation' : 'entity')
 
   const searchPattern = `%${searchTerm}%`
 
@@ -596,7 +600,7 @@ export async function searchCorpusCustomEntities(corpusId: string, searchTerm: s
     .where(
       and(
         eq(corpusCustomEntity.corpusId, corpusId),
-        eq(corpusCustomEntity.customType, customType),
+        eq(corpusCustomEntity.customType, resolvedCustomType),
         sql`(${corpusCustomEntity.label} ILIKE ${searchPattern} OR ${corpusCustomEntity.value} ILIKE ${searchPattern})`,
       ),
     )

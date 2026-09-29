@@ -136,6 +136,90 @@ export async function searchWikibaseEntities(
   }
 }
 
+// Wikidata class for units of measure.
+const UNIT_OF_MEASURE_CLASS = 'Q47574'
+const unitSearchCache = createTtlCache<WikibaseSearchResult[]>(CACHE_TTL_MS)
+
+// The term is interpolated into a SPARQL string literal; drop characters that
+// could break out of it. Unit words never need quotes or backslashes.
+function escapeSparqlStringLiteral(value: string): string {
+  return value.replace(/["\\]/g, '')
+}
+
+function unitLabelQuery(term: string, limit: number): string {
+  const escaped = escapeSparqlStringLiteral(term.toLowerCase())
+  return [
+    'SELECT DISTINCT ?item ?label ?description WHERE {',
+    '?item rdfs:label ?label .',
+    'FILTER(LANG(?label) = "en")',
+    `FILTER(CONTAINS(LCASE(?label), "${escaped}"))`,
+    `{ ?item wdt:P31/wdt:P279* wd:${UNIT_OF_MEASURE_CLASS} }`,
+    'UNION',
+    `{ ?item wdt:P279* wd:${UNIT_OF_MEASURE_CLASS} }`,
+    'OPTIONAL { ?item schema:description ?description . FILTER(LANG(?description) = "en") }',
+    '}',
+    'ORDER BY STRLEN(?label)',
+    `LIMIT ${limit}`,
+  ].join(' ')
+}
+
+async function runUnitLabelSearch(config: WikibaseConfig, term: string, limit: number): Promise<WikibaseSearchResult[]> {
+  const bindings = await runSparql(config, unitLabelQuery(term, limit))
+  const results: WikibaseSearchResult[] = []
+  for (const binding of bindings) {
+    const id = entityIdFromValue(binding.item.value)
+    if (id) {
+      results.push({
+        id,
+        label: binding.label.value,
+        description: binding.description?.value ?? null,
+      })
+    }
+  }
+  return results
+}
+
+// Wikidata label search handles plurals poorly; retry with the singular forms
+// when the plural term matches nothing. Best effort only — the picker stays
+// usable when no variant matches.
+export async function searchWikibaseUnits(
+  config: WikibaseConfig,
+  search: string,
+  limit: number,
+): Promise<WikibaseSearchResult[]> {
+  const term = search.trim().toLowerCase()
+  if (!term) {
+    return []
+  }
+
+  const key = cacheKey(config, `unit-search:${term}:${limit}`)
+  const cached = unitSearchCache.get(key)
+  if (cached) {
+    return cached
+  }
+
+  const strippedPlural = term.replace(/s$/, '')
+  const strippedPluralEs = term.replace(/es$/, '')
+  const candidates = [term]
+  if (strippedPlural !== term) {
+    candidates.push(strippedPlural)
+  }
+  if (strippedPluralEs !== term && strippedPluralEs !== strippedPlural) {
+    candidates.push(strippedPluralEs)
+  }
+
+  let results: WikibaseSearchResult[] = []
+  for (const candidate of candidates) {
+    results = await runUnitLabelSearch(config, candidate, limit)
+    if (results.length > 0) {
+      break
+    }
+  }
+
+  unitSearchCache.set(key, results)
+  return results
+}
+
 async function runSparql(config: WikibaseConfig, query: string): Promise<Array<Record<string, { value: string }>>> {
   return withRequestTimeout(async (signal) => {
     const response = await fetch(config.sparqlEndpoint, {
