@@ -287,8 +287,10 @@ export function buildBatchAnnotationItem(input: {
   batchUnit?: UnitRef | null
 }): CellBatchAnnotationItem {
   const { row, cellRole, fixed, cellEntities, batchUnit } = input
-  const chosenComp = batchUnit ? withBatchUnit(row.component, batchUnit) : row.component
   const chosenEntity = cellEntities.get(cellKey(row.cell)) ?? null
+  // Same exclusivity as the form: a cell linked to an entity is not a
+  // quantity, so the batch unit applies only to plain value cells.
+  const chosenComp = batchUnit && !chosenEntity ? withBatchUnit(row.component, batchUnit) : row.component
   const subjectComp = cellRole === 'subject' ? chosenComp : fixed.subject
   const predicateComp = cellRole === 'predicate' ? chosenComp : fixed.predicate
   const objectComp = cellRole === 'object' ? chosenComp : fixed.object

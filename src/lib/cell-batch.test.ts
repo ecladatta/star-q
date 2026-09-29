@@ -415,6 +415,25 @@ describe('buildBatchAnnotationItem', () => {
     expect(item.object?.entityDatatype).toBeNull()
   })
 
+  it('skips the batch unit when the cell is linked to an entity', () => {
+    const cell = component({
+      annotationTag: 'object',
+      annotationValue: '512 MB',
+      annotationRow: 1,
+      annotationCell: 0,
+    })
+    const item = buildBatchAnnotationItem({
+      row: { ...row, component: cell },
+      cellRole: 'object',
+      fixed: { subject: component({ annotationTag: 'subject' }), predicate: component({ annotationTag: 'predicate' }), object: cell },
+      cellEntities: new Map([[cellKey(row.cell), { label: '512 MB', value: '512 MB', type: 'object', custom: true, customId: 'ce-1', datatype: null }]]),
+      batchUnit: { value: 'Q79735', label: 'megabyte', custom: false, customId: null },
+    })
+
+    expect(item.object?.unitValue).toBeNull()
+    expect(item.objectEntity?.value).toBe('512 MB')
+  })
+
   it('derives entities for the fixed roles from their components', () => {
     const rowComp = component({
       annotationTag: 'subject',

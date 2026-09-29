@@ -76,7 +76,7 @@ import { entityTypeForComponentRole } from '@/lib/annotation-roles'
 import { validateAnnotationQualifiers } from '@/lib/annotation-validation'
 import { cellKey } from '@/lib/cell-batch'
 import { isNumericEntityDatatype } from '@/lib/datatypes'
-import { isValidQuantityAmount, passesNumericUnitGate } from '@/lib/numeric-units'
+import { isValidQuantityAmount } from '@/lib/numeric-units'
 import { cn, isMac } from '@/lib/utils'
 import { WIKIDATA_ITEM_PATTERN, WIKIDATA_PROPERTY_PATTERN } from '@/lib/wikidata-constraints'
 import { buildUnitRef } from '@/types/types'
@@ -616,15 +616,14 @@ export function AnnotationForm({
         entityDatatype: newValue?.datatype || null,
       }
       if (type === 'object' && (updated.unitValue || updated.quantityLowerBound || updated.quantityUpperBound)) {
-        // A quantity is a fact about the object value. Linking a Wikidata
-        // entity overwrites the value with the QID, and picking an entity
-        // that leaves nothing numeric (a non-numeric datatype on a span
-        // without a leading number) drops the whole quantity. A valid
-        // decimal amount, a numeric span, or a numeric datatype keeps it.
-        const linked = updated.entityValue !== null && WIKIDATA_ITEM_PATTERN.test(updated.entityValue)
-        const quantityHolds = isValidQuantityAmount(updated.entityValue ?? '')
-          || passesNumericUnitGate(updated.annotationValue, { entityDatatype: updated.entityDatatype })
-        if (linked || !quantityHolds) {
+        // An object holds either an entity link or a quantity, never both.
+        // Changing the linked entity (picking one, swapping it, or clearing
+        // it) drops the quantity; a datatype-only adjustment keeps it.
+        const identityChanged = newValue === null
+          || newValue.value !== prev[type]!.entityValue
+          || newValue.customId !== prev[type]!.entityCustomId
+          || newValue.custom !== prev[type]!.entityCustom
+        if (identityChanged) {
           quantityDatatypeBumpRef.current.delete(updated.id)
           return {
             ...prev,

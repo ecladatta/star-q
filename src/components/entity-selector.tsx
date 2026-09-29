@@ -887,10 +887,15 @@ export function EntitySelector({
 
   // Objects only, and never on Wikidata entity links — a QID statement carries
   // no quantity of its own. Every other object slot can hold one.
+  // An object value is one of two things: an entity link or a quantity, never
+  // both (the Wikidata model the exporters target). The editor appears only
+  // when no entity is linked.
+  const hasEntityLink = Boolean(value?.custom)
+    || Boolean(value?.value && WIKIDATA_ITEM_PATTERN.test(value.value))
   const unitPickerVisible = Boolean(
     onUnitChange
     && type === 'object'
-    && !(value?.value && WIKIDATA_ITEM_PATTERN.test(value.value)),
+    && !hasEntityLink,
   )
 
   const createAvailable = Boolean(
