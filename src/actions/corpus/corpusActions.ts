@@ -534,7 +534,7 @@ export async function getCorpusCustomEntities(corpusId: string): Promise<CorpusC
   return db.select().from(corpusCustomEntity).where(eq(corpusCustomEntity.corpusId, corpusId))
 }
 
-export async function addCorpusCustomEntity(corpusId: string, label: string, value: string, datatype: string, customType: 'entity' | 'relation') {
+export async function addCorpusCustomEntity(corpusId: string, label: string, value: string, datatype: string, customType: 'entity' | 'relation' | 'unit') {
   await requireEditCorpus(corpusId)
 
   const [existing] = await db.select({ count: count() }).from(corpusCustomEntity).where(eq(corpusCustomEntity.corpusId, corpusId))
@@ -553,7 +553,7 @@ export async function addCorpusCustomEntity(corpusId: string, label: string, val
   return result.id
 }
 
-export async function updateCorpusCustomEntity(id: string, label: string, value: string, datatype: string, customType: 'entity' | 'relation') {
+export async function updateCorpusCustomEntity(id: string, label: string, value: string, datatype: string, customType: 'entity' | 'relation' | 'unit') {
   const corpusId = await requireEditCustomEntity(id)
 
   await db.update(corpusCustomEntity).set({

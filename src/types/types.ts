@@ -91,6 +91,10 @@ export type DocumentAnnotationComponent = {
   entityCustom: boolean | null
   entityCustomId: string | null
   entityDatatype: EntityDatatype | null
+  unitValue: string | null
+  unitLabel: string | null
+  unitCustom: boolean | null
+  unitCustomId: string | null
   annotationStart: number
   annotationEnd: number
   annotationRow: number | null
@@ -99,6 +103,29 @@ export type DocumentAnnotationComponent = {
   annotationType: 'text' | 'table'
   annotationTag: AnnotationComponentRole
   elementIndex: number
+}
+
+export type UnitRef = {
+  label: string
+  value: string
+  custom: boolean
+  customId: string | null
+}
+
+export function buildUnitRef(component: Pick<
+  DocumentAnnotationComponent,
+  'unitValue' | 'unitLabel' | 'unitCustom' | 'unitCustomId'
+>): UnitRef | null {
+  if (!component.unitValue) {
+    return null
+  }
+
+  return {
+    value: component.unitValue,
+    label: component.unitLabel ?? component.unitValue,
+    custom: component.unitCustom ?? false,
+    customId: component.unitCustomId ?? null,
+  }
 }
 
 export type DocumentAnnotationQualifierExport = {
