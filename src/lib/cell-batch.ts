@@ -256,19 +256,23 @@ export type BatchAnnotationItem = CellBatchAnnotationItem
 
 // One unit picker per batch: the confirmed unit lands on every cell component.
 // The numeric part of each cell text is extracted into entityValue so exports
-// see a clean quantity; cells that fail the parse keep their value untouched.
+// see a clean quantity. A cell whose text holds no number keeps its value and
+// gets no unit, since a unit is a fact about a quantity.
 function withBatchUnit(
   component: DocumentAnnotationComponent,
   unit: UnitRef,
 ): DocumentAnnotationComponent {
   const parsed = parseNumericSpan(component.annotationValue)
+  if (!parsed) {
+    return component
+  }
   return {
     ...component,
     unitValue: unit.value,
     unitLabel: unit.label,
     unitCustom: unit.custom,
     unitCustomId: unit.customId,
-    entityValue: parsed?.amount ?? component.entityValue,
+    entityValue: parsed.amount,
     entityDatatype: isNumericEntityDatatype(component.entityDatatype) ? component.entityDatatype : 'decimal',
   }
 }

@@ -799,12 +799,13 @@ export function EntitySelector({
   const constraintNoun = entityType === 'predicate' ? 'predicates' : 'entities'
 
   // Objects only for v1, never on Wikidata entity links, and only when the
-  // span starts with a number or the datatype is already numeric.
+  // span starts with a number, the datatype is already numeric, or a unit is
+  // already set — a set unit must stay reachable so it can be seen or cleared.
   const unitPickerVisible = Boolean(
     onUnitChange
     && type === 'object'
     && !(value?.value && WIKIDATA_ITEM_PATTERN.test(value.value))
-    && passesNumericUnitGate(text ?? '', { entityDatatype: value?.datatype ?? null }),
+    && (passesNumericUnitGate(text ?? '', { entityDatatype: value?.datatype ?? null }) || Boolean(unit)),
   )
   const unitSuggestTerm = parseNumericSpan(text ?? '')?.unitWord ?? null
 

@@ -372,6 +372,47 @@ describe('buildBatchAnnotationItem', () => {
     expect(item.subjectEntity).toBeNull()
   })
 
+  it('applies the batch unit to a numeric cell with the amount extracted', () => {
+    const cell = component({
+      annotationTag: 'object',
+      annotationValue: '32 megabytes',
+      annotationRow: 1,
+      annotationCell: 0,
+    })
+    const item = buildBatchAnnotationItem({
+      row: { ...row, component: cell },
+      cellRole: 'object',
+      fixed: { subject: component({ annotationTag: 'subject' }), predicate: component({ annotationTag: 'predicate' }), object: cell },
+      cellEntities: new Map(),
+      batchUnit: { value: 'Q79735', label: 'megabyte', custom: false, customId: null },
+    })
+
+    expect(item.object?.unitValue).toBe('Q79735')
+    expect(item.object?.unitLabel).toBe('megabyte')
+    expect(item.object?.entityValue).toBe('32')
+    expect(item.object?.entityDatatype).toBe('decimal')
+  })
+
+  it('skips the batch unit on a cell whose text holds no number', () => {
+    const cell = component({
+      annotationTag: 'object',
+      annotationValue: 'DDR SDRAM',
+      annotationRow: 1,
+      annotationCell: 0,
+    })
+    const item = buildBatchAnnotationItem({
+      row: { ...row, component: cell },
+      cellRole: 'object',
+      fixed: { subject: component({ annotationTag: 'subject' }), predicate: component({ annotationTag: 'predicate' }), object: cell },
+      cellEntities: new Map(),
+      batchUnit: { value: 'Q79735', label: 'megabyte', custom: false, customId: null },
+    })
+
+    expect(item.object?.unitValue).toBeNull()
+    expect(item.object?.entityValue).toBeNull()
+    expect(item.object?.entityDatatype).toBeNull()
+  })
+
   it('derives entities for the fixed roles from their components', () => {
     const rowComp = component({
       annotationTag: 'subject',

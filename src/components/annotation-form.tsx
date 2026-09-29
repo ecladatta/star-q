@@ -6,6 +6,7 @@ import type {
   CurrentAnnotation,
   DocumentAnnotationComponent,
   Entity,
+  EntityDatatype,
   EntityType,
   UnitRef,
 } from '@/types/types'
@@ -75,7 +76,7 @@ import { entityTypeForComponentRole } from '@/lib/annotation-roles'
 import { validateAnnotationQualifiers } from '@/lib/annotation-validation'
 import { cellKey } from '@/lib/cell-batch'
 import { isNumericEntityDatatype } from '@/lib/datatypes'
-import { parseNumericSpan } from '@/lib/numeric-units'
+import { parseNumericSpan, passesNumericUnitGate } from '@/lib/numeric-units'
 import { cn, isMac } from '@/lib/utils'
 import { WIKIDATA_ITEM_PATTERN, WIKIDATA_PROPERTY_PATTERN } from '@/lib/wikidata-constraints'
 import { buildUnitRef } from '@/types/types'
@@ -589,27 +590,46 @@ export function AnnotationForm({
     }
   }, [currentAnnotation, currentAnnotationSnapshot])
 
+  // Remembers what a unit confirmation changed so clearing the unit can undo
+  // it: the numeric-part extraction and the decimal datatype bump. Any manual
+  // entity or datatype choice afterwards cancels the rollback.
+  const unitOriginRef = useRef<Map<string, { mutated: boolean, priorEntityDatatype: EntityDatatype | null, priorEntityValue: string | null }>>(new Map())
+
   const handleEntityChange = (type: EntityType, newValue: Entity | null) => {
     setCurrentAnnotation((prev) => {
       if (!prev?.[type])
         return prev
+      const updated = {
+        ...prev[type]!,
+        entityLabel: newValue?.label || null,
+        entityValue: newValue?.value || null,
+        entityCustom: newValue?.custom || false,
+        entityCustomId: newValue?.customId || null,
+        entityDatatype: newValue?.datatype || null,
+      }
+      if (type === 'object' && updated.unitValue) {
+        // A unit is a fact about a quantity. Picking an entity that leaves the
+        // value non-numeric (a QID link, or a non-numeric datatype on a span
+        // without a leading number) drops the unit instead of hiding it.
+        const linked = updated.entityValue !== null && WIKIDATA_ITEM_PATTERN.test(updated.entityValue)
+        if (linked || !passesNumericUnitGate(updated.annotationValue, { entityDatatype: updated.entityDatatype })) {
+          unitOriginRef.current.delete(updated.id)
+          return {
+            ...prev,
+            [type]: { ...updated, unitValue: null, unitLabel: null, unitCustom: null, unitCustomId: null },
+          }
+        }
+        const origin = unitOriginRef.current.get(updated.id)
+        if (origin) {
+          unitOriginRef.current.set(updated.id, { ...origin, mutated: true })
+        }
+      }
       return {
         ...prev,
-        [type]: {
-          ...prev[type]!,
-          entityLabel: newValue?.label || null,
-          entityValue: newValue?.value || null,
-          entityCustom: newValue?.custom || false,
-          entityCustomId: newValue?.customId || null,
-          entityDatatype: newValue?.datatype || null,
-        },
+        [type]: updated,
       }
     })
   }
-
-  // Remembers what a unit confirmation changed so clearing the unit can undo
-  // it: the numeric-part extraction and the decimal datatype bump.
-  const unitOriginRef = useRef<Map<string, { datatypeFromUnit: boolean, priorEntityValue: string | null }>>(new Map())
 
   const handleUnitChange = (type: EntityType, unit: UnitRef | null) => {
     setCurrentAnnotation((prev) => {
@@ -629,15 +649,16 @@ export function AnnotationForm({
             unitLabel: null,
             unitCustom: null,
             unitCustomId: null,
-            entityValue: origin?.priorEntityValue ?? component.entityValue,
-            entityDatatype: origin?.datatypeFromUnit ? null : component.entityDatatype,
+            entityValue: origin && !origin.mutated ? origin.priorEntityValue : component.entityValue,
+            entityDatatype: origin && !origin.mutated ? origin.priorEntityDatatype : component.entityDatatype,
           },
         }
       }
 
       const origin = unitOriginRef.current.get(component.id)
       unitOriginRef.current.set(component.id, {
-        datatypeFromUnit: (origin?.datatypeFromUnit ?? false) || !isNumericEntityDatatype(component.entityDatatype),
+        mutated: origin?.mutated ?? false,
+        priorEntityDatatype: origin?.priorEntityDatatype ?? component.entityDatatype,
         priorEntityValue: origin?.priorEntityValue ?? component.entityValue,
       })
       const parsed = parseNumericSpan(component.annotationValue)
