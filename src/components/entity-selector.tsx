@@ -25,6 +25,7 @@ import {
   CalendarRangeIcon,
   CaseSensitiveIcon,
   CheckIcon,
+  ChevronRightIcon,
   ChevronsUpDownIcon,
   Clock3Icon,
   ClockIcon,
@@ -69,11 +70,12 @@ import {
 import { useWikibaseInstance } from '@/hooks/useWikibaseInstance'
 import { entityTypeForComponentRole } from '@/lib/annotation-roles'
 import { ENTITY_DATATYPE_GROUPS, ENTITY_DATATYPE_LABELS } from '@/lib/datatypes'
-import { parseNumericSpan, passesNumericUnitGate } from '@/lib/numeric-units'
+import { parseQuantityHint } from '@/lib/numeric-units'
 import { cn } from '@/lib/utils'
 import { WIKIDATA_ITEM_PATTERN, WIKIDATA_PROPERTY_PATTERN } from '@/lib/wikidata-constraints'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
+import { Input } from './ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
 import {
   Select,
@@ -342,23 +344,38 @@ function unitOptionValue(unit: UnitSearchResult, index: number): string {
   return unit.custom && unit.customId ? `custom:${unit.customId}` : `wikidata:${unit.value}:${index}`
 }
 
-export function UnitPicker({
+export type QuantityState = {
+  value: string
+  lowerBound: string
+  upperBound: string
+}
+
+// The quantity editor popover: a manual amount with optional bounds plus the
+// unit search. The surface span is never modified; the amount lives in the
+// component's entityValue and the bounds in the quantity columns. Without
+// quantity/onQuantityChange (batch mode) it degrades to a unit-only picker.
+export function QuantityPicker({
   value,
   onChange,
+  quantity,
+  onQuantityChange,
   corpusId,
-  suggestTerm,
+  text,
   disabled = false,
 }: {
   value: UnitRef | null
   onChange: (unit: UnitRef | null) => void
+  quantity?: QuantityState | null
+  onQuantityChange?: (quantity: QuantityState) => void
   corpusId: string
-  suggestTerm?: string | null
+  text?: string
   disabled?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [results, setResults] = useState<UnitSearchResult[]>([])
   const [isSearching, setIsSearching] = useState(false)
+  const [showRange, setShowRange] = useState(false)
   const searchSeqRef = useRef(0)
 
   useEffect(() => {
@@ -400,14 +417,28 @@ export function UnitPicker({
 
   const handleOpenChange = (nextOpen: boolean) => {
     setOpen(nextOpen)
-    if (nextOpen) {
-      // Pre-type the parsed unit word (or the selected unit) so confirming a
-      // suggestion is one click. Nothing stores until the human confirms.
-      setSearchTerm(value?.label ?? suggestTerm ?? '')
-      searchSeqRef.current += 1
-      setResults([])
-      setIsSearching(false)
+    if (!nextOpen) {
+      return
     }
+
+    const hint = parseQuantityHint(text ?? '')
+    setShowRange(Boolean(quantity?.lowerBound || quantity?.upperBound))
+    // Prefill the amount and bounds from the span while the component holds
+    // no amount yet. This replaces the old parse-on-confirm write; the unit
+    // confirmation no longer touches the value.
+    if (onQuantityChange && quantity && !quantity.value && (hint.amount || hint.lowerBound || hint.upperBound)) {
+      onQuantityChange({
+        value: hint.amount ?? '',
+        lowerBound: hint.lowerBound ?? '',
+        upperBound: hint.upperBound ?? '',
+      })
+    }
+    // Pre-type the parsed unit word (or the selected unit) so confirming a
+    // suggestion is one click. Nothing stores until the human confirms.
+    setSearchTerm(value?.label ?? hint.unitWord ?? '')
+    searchSeqRef.current += 1
+    setResults([])
+    setIsSearching(false)
   }
 
   const { wikidataUnits, corpusUnits } = partitionUnitResults(results)
@@ -443,6 +474,19 @@ export function UnitPicker({
     }
   }
 
+  const boundsSummary = quantity?.lowerBound && quantity?.upperBound
+    ? `[${quantity.lowerBound}-${quantity.upperBound}]`
+    : null
+  const quantitySummary = [quantity?.value, boundsSummary, value?.label]
+    .filter(part => Boolean(part))
+    .join(' ') || null
+
+  const updateQuantity = (patch: Partial<QuantityState>) => {
+    if (onQuantityChange && quantity) {
+      onQuantityChange({ ...quantity, ...patch })
+    }
+  }
+
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
@@ -452,11 +496,11 @@ export function UnitPicker({
           aria-expanded={open}
           disabled={disabled}
           className="size-8 shrink-0 justify-center gap-1 px-1.5"
-          aria-label={value ? `Unit: ${value.label}` : 'Set unit'}
+          aria-label={quantitySummary ? `Quantity: ${quantitySummary}` : 'Set quantity'}
         >
-          {value
+          {quantitySummary
             ? (
-                <span className="max-w-20 truncate text-xs">{value.label}</span>
+                <span className="max-w-20 truncate text-xs">{quantitySummary}</span>
               )
             : (
                 <RulerIcon className="size-4 opacity-50" />
@@ -464,6 +508,44 @@ export function UnitPicker({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-64 p-0" align="end">
+        {onQuantityChange && quantity && (
+          <div className="flex flex-col gap-2 border-b px-3 py-2">
+            <Input
+              value={quantity.value}
+              onChange={event => updateQuantity({ value: event.target.value })}
+              placeholder="Value"
+              className="h-7 text-sm"
+              aria-label="Quantity value"
+            />
+            <button
+              type="button"
+              className="flex w-fit items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => setShowRange(current => !current)}
+              aria-expanded={showRange}
+            >
+              <ChevronRightIcon className={cn('size-3.5 transition-transform', showRange && 'rotate-90')} />
+              Range
+            </button>
+            {showRange && (
+              <div className="flex gap-2">
+                <Input
+                  value={quantity.lowerBound}
+                  onChange={event => updateQuantity({ lowerBound: event.target.value })}
+                  placeholder="Min"
+                  className="h-7 text-sm"
+                  aria-label="Lower bound"
+                />
+                <Input
+                  value={quantity.upperBound}
+                  onChange={event => updateQuantity({ upperBound: event.target.value })}
+                  placeholder="Max"
+                  className="h-7 text-sm"
+                  aria-label="Upper bound"
+                />
+              </div>
+            )}
+          </div>
+        )}
         <Command shouldFilter={false}>
           <CommandInput
             placeholder="Search unit..."
@@ -480,6 +562,7 @@ export function UnitPicker({
                   <CommandItem
                     value="clear-unit"
                     onSelect={() => {
+                      // Only the unit fields drop; the amount and bounds stay.
                       onChange(null)
                       setOpen(false)
                     }}
@@ -596,6 +679,8 @@ export function EntitySelector({
   filteringEnabled = false,
   unit,
   onUnitChange,
+  quantity,
+  onQuantityChange,
 }: {
   type: AnnotationComponentRole
   value: Entity | null
@@ -609,6 +694,8 @@ export function EntitySelector({
   filteringEnabled?: boolean
   unit?: UnitRef | null
   onUnitChange?: (unit: UnitRef | null) => any
+  quantity?: QuantityState | null
+  onQuantityChange?: (quantity: QuantityState) => any
 }) {
   const entityType = entityTypeForComponentRole(type)
   const [open, setOpen] = useState(false)
@@ -798,16 +885,13 @@ export function EntitySelector({
   )
   const constraintNoun = entityType === 'predicate' ? 'predicates' : 'entities'
 
-  // Objects only for v1, never on Wikidata entity links, and only when the
-  // span starts with a number, the datatype is already numeric, or a unit is
-  // already set — a set unit must stay reachable so it can be seen or cleared.
+  // Objects only, and never on Wikidata entity links — a QID statement carries
+  // no quantity of its own. Every other object slot can hold one.
   const unitPickerVisible = Boolean(
     onUnitChange
     && type === 'object'
-    && !(value?.value && WIKIDATA_ITEM_PATTERN.test(value.value))
-    && (passesNumericUnitGate(text ?? '', { entityDatatype: value?.datatype ?? null }) || Boolean(unit)),
+    && !(value?.value && WIKIDATA_ITEM_PATTERN.test(value.value)),
   )
-  const unitSuggestTerm = parseNumericSpan(text ?? '')?.unitWord ?? null
 
   const createAvailable = Boolean(
     searchTerm
@@ -899,11 +983,13 @@ export function EntitySelector({
           </Select>
         )}
         {unitPickerVisible && onUnitChange && (
-          <UnitPicker
+          <QuantityPicker
             value={unit ?? null}
             onChange={onUnitChange}
+            quantity={quantity ?? null}
+            onQuantityChange={onQuantityChange}
             corpusId={corpusId}
-            suggestTerm={unitSuggestTerm}
+            text={text}
           />
         )}
       </div>

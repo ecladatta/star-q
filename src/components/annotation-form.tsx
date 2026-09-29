@@ -1,4 +1,5 @@
 import type { Dispatch, ReactNode, SetStateAction } from 'react'
+import type { QuantityState } from '@/components/entity-selector'
 import type { CellBatchCellRef } from '@/lib/cell-batch'
 import type { ConstraintEntityCheck, ConstraintSide, PropertyConstraints } from '@/lib/wikidata-constraints'
 import type {
@@ -6,7 +7,6 @@ import type {
   CurrentAnnotation,
   DocumentAnnotationComponent,
   Entity,
-  EntityDatatype,
   EntityType,
   UnitRef,
 } from '@/types/types'
@@ -29,7 +29,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { v4 as uuidv4 } from 'uuid'
 import { fetchWikibasePropertyConstraints } from '@/actions/wikibase/wikibaseActions'
-import { EntitySelector, UnitPicker } from '@/components/entity-selector'
+import { EntitySelector, QuantityPicker } from '@/components/entity-selector'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -76,7 +76,7 @@ import { entityTypeForComponentRole } from '@/lib/annotation-roles'
 import { validateAnnotationQualifiers } from '@/lib/annotation-validation'
 import { cellKey } from '@/lib/cell-batch'
 import { isNumericEntityDatatype } from '@/lib/datatypes'
-import { parseNumericSpan, passesNumericUnitGate } from '@/lib/numeric-units'
+import { isValidQuantityAmount, passesNumericUnitGate } from '@/lib/numeric-units'
 import { cn, isMac } from '@/lib/utils'
 import { WIKIDATA_ITEM_PATTERN, WIKIDATA_PROPERTY_PATTERN } from '@/lib/wikidata-constraints'
 import { buildUnitRef } from '@/types/types'
@@ -263,6 +263,8 @@ function SlotField({
   onEntityChange,
   unit,
   onUnitChange,
+  quantity,
+  onQuantityChange,
   scrollTo,
   onRemove,
   corpusId,
@@ -279,6 +281,8 @@ function SlotField({
   onEntityChange: (newValue: Entity | null) => void
   unit?: UnitRef | null
   onUnitChange?: (unit: UnitRef | null) => void
+  quantity?: QuantityState | null
+  onQuantityChange?: (quantity: QuantityState) => void
   scrollTo: () => void
   onRemove: () => void
   corpusId: string
@@ -347,6 +351,8 @@ function SlotField({
             filteringEnabled={filteringEnabled}
             unit={unit}
             onUnitChange={onUnitChange}
+            quantity={quantity}
+            onQuantityChange={onQuantityChange}
           />
         </div>
         {trailing}
@@ -592,10 +598,10 @@ export function AnnotationForm({
     }
   }, [currentAnnotation, currentAnnotationSnapshot])
 
-  // Remembers what a unit confirmation changed so clearing the unit can undo
-  // it: the numeric-part extraction and the decimal datatype bump. Any manual
-  // entity or datatype choice afterwards cancels the rollback.
-  const unitOriginRef = useRef<Map<string, { mutated: boolean, priorEntityDatatype: EntityDatatype | null, priorEntityValue: string | null }>>(new Map())
+  // One boolean per component id: whether the quantity editor bumped a
+  // non-numeric datatype up to decimal for the current value, so emptying the
+  // value again can revert the bump.
+  const quantityDatatypeBumpRef = useRef<Set<string>>(new Set())
 
   const handleEntityChange = (type: EntityType, newValue: Entity | null) => {
     setCurrentAnnotation((prev) => {
@@ -609,21 +615,29 @@ export function AnnotationForm({
         entityCustomId: newValue?.customId || null,
         entityDatatype: newValue?.datatype || null,
       }
-      if (type === 'object' && updated.unitValue) {
-        // A unit is a fact about a quantity. Picking an entity that leaves the
-        // value non-numeric (a QID link, or a non-numeric datatype on a span
-        // without a leading number) drops the unit instead of hiding it.
+      if (type === 'object' && (updated.unitValue || updated.quantityLowerBound || updated.quantityUpperBound)) {
+        // A quantity is a fact about the object value. Linking a Wikidata
+        // entity overwrites the value with the QID, and picking an entity
+        // that leaves nothing numeric (a non-numeric datatype on a span
+        // without a leading number) drops the whole quantity. A valid
+        // decimal amount, a numeric span, or a numeric datatype keeps it.
         const linked = updated.entityValue !== null && WIKIDATA_ITEM_PATTERN.test(updated.entityValue)
-        if (linked || !passesNumericUnitGate(updated.annotationValue, { entityDatatype: updated.entityDatatype })) {
-          unitOriginRef.current.delete(updated.id)
+        const quantityHolds = isValidQuantityAmount(updated.entityValue ?? '')
+          || passesNumericUnitGate(updated.annotationValue, { entityDatatype: updated.entityDatatype })
+        if (linked || !quantityHolds) {
+          quantityDatatypeBumpRef.current.delete(updated.id)
           return {
             ...prev,
-            [type]: { ...updated, unitValue: null, unitLabel: null, unitCustom: null, unitCustomId: null },
+            [type]: {
+              ...updated,
+              unitValue: null,
+              unitLabel: null,
+              unitCustom: null,
+              unitCustomId: null,
+              quantityLowerBound: null,
+              quantityUpperBound: null,
+            },
           }
-        }
-        const origin = unitOriginRef.current.get(updated.id)
-        if (origin) {
-          unitOriginRef.current.set(updated.id, { ...origin, mutated: true })
         }
       }
       return {
@@ -640,41 +654,48 @@ export function AnnotationForm({
         return prev
       }
 
-      if (!unit) {
-        const origin = unitOriginRef.current.get(component.id)
-        unitOriginRef.current.delete(component.id)
-        return {
-          ...prev,
-          [type]: {
-            ...component,
-            unitValue: null,
-            unitLabel: null,
-            unitCustom: null,
-            unitCustomId: null,
-            entityValue: origin && !origin.mutated ? origin.priorEntityValue : component.entityValue,
-            entityDatatype: origin && !origin.mutated ? origin.priorEntityDatatype : component.entityDatatype,
-          },
-        }
-      }
-
-      const origin = unitOriginRef.current.get(component.id)
-      unitOriginRef.current.set(component.id, {
-        mutated: origin?.mutated ?? false,
-        priorEntityDatatype: origin?.priorEntityDatatype ?? component.entityDatatype,
-        priorEntityValue: origin?.priorEntityValue ?? component.entityValue,
-      })
-      const parsed = parseNumericSpan(component.annotationValue)
+      // Clearing the unit keeps the value and bounds: the annotator owns the
+      // quantity and only removes the unit reference.
       return {
         ...prev,
         [type]: {
           ...component,
-          unitValue: unit.value,
-          unitLabel: unit.label,
-          unitCustom: unit.custom,
-          unitCustomId: unit.customId,
-          entityValue: parsed?.amount ?? component.entityValue,
-          entityDatatype: isNumericEntityDatatype(component.entityDatatype) ? component.entityDatatype : 'decimal',
+          unitValue: unit?.value ?? null,
+          unitLabel: unit?.label ?? null,
+          unitCustom: unit?.custom ?? null,
+          unitCustomId: unit?.customId ?? null,
         },
+      }
+    })
+  }
+
+  const handleQuantityChange = (type: EntityType, quantity: QuantityState) => {
+    setCurrentAnnotation((prev) => {
+      const component = prev?.[type]
+      if (!component) {
+        return prev
+      }
+
+      const updated = {
+        ...component,
+        entityValue: quantity.value || null,
+        quantityLowerBound: quantity.lowerBound || null,
+        quantityUpperBound: quantity.upperBound || null,
+      }
+      const bumped = quantityDatatypeBumpRef.current.has(component.id)
+      if (quantity.value && isValidQuantityAmount(quantity.value)) {
+        // A valid decimal amount is a quantity: make the datatype say so.
+        if (!isNumericEntityDatatype(updated.entityDatatype)) {
+          quantityDatatypeBumpRef.current.add(component.id)
+          updated.entityDatatype = 'decimal'
+        }
+      } else if (!quantity.value && !component.unitValue && bumped) {
+        quantityDatatypeBumpRef.current.delete(component.id)
+        updated.entityDatatype = null
+      }
+      return {
+        ...prev,
+        [type]: updated,
       }
     })
   }
@@ -1378,6 +1399,14 @@ export function AnnotationForm({
                       onEntityChange={newValue => handleEntityChange('object', newValue)}
                       unit={objectTag ? buildUnitRef(objectTag) : null}
                       onUnitChange={unit => handleUnitChange('object', unit)}
+                      quantity={objectTag
+                        ? {
+                            value: objectTag.entityValue ?? '',
+                            lowerBound: objectTag.quantityLowerBound ?? '',
+                            upperBound: objectTag.quantityUpperBound ?? '',
+                          }
+                        : null}
+                      onQuantityChange={quantity => handleQuantityChange('object', quantity)}
                       scrollTo={() => scrollToElement(objectTag)}
                       onRemove={() => removeTag('object')}
                       corpusId={corpusId}
@@ -1393,13 +1422,11 @@ export function AnnotationForm({
             <div className="mt-1 flex items-center gap-2 rounded-md bg-muted/40 px-2 py-1.5 pt-1">
               <span className="w-20 shrink-0 text-xs font-medium text-muted-foreground">Unit</span>
               <div className="min-w-0 flex-1">
-                <UnitPicker
+                <QuantityPicker
                   value={batchUnit ?? null}
                   onChange={unit => onBatchUnitChange?.(unit)}
                   corpusId={corpusId}
-                  suggestTerm={
-                    parseNumericSpan((batchCellRows ?? []).find(row => row.filled)?.text ?? '')?.unitWord ?? null
-                  }
+                  text={(batchCellRows ?? []).find(row => row.filled)?.text ?? ''}
                 />
               </div>
             </div>
