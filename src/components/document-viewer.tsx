@@ -511,6 +511,8 @@ export function DocumentViewer({
               batchCellsCount={cellBatch.cells.length}
               batchCellRows={cellBatch.cellRows}
               batchCellEntities={cellBatch.cellEntities}
+              batchUnit={cellBatch.batchUnit}
+              onBatchUnitChange={cellBatch.setBatchUnit}
               onBatchCellRoleChange={cellBatch.setCellRole}
               onBatchCellEntityChange={cellBatch.setCellEntity}
               batchReady={Boolean(

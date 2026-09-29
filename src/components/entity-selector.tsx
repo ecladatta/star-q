@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import type { UnitSearchResult } from '@/actions/wikibase/wikibaseActions'
 import type {
   ConstraintEntityCheck,
   ConstraintSide,
@@ -11,6 +12,7 @@ import type {
   Entity,
   EntityDatatype,
   EntityType,
+  UnitRef,
 } from '@/types/types'
 import {
   AtSignIcon,
@@ -32,6 +34,7 @@ import {
   HourglassIcon,
   LanguagesIcon,
   PlusIcon,
+  RulerIcon,
   TextIcon,
   TimerIcon,
   ToggleLeftIcon,
@@ -51,6 +54,7 @@ import {
 import {
   classifyWikibaseEntityCandidates,
   classifyWikibasePredicateCandidates,
+  searchUnits,
   searchWikibaseEntities,
 } from '@/actions/wikibase/wikibaseActions'
 import {
@@ -65,6 +69,7 @@ import {
 import { useWikibaseInstance } from '@/hooks/useWikibaseInstance'
 import { entityTypeForComponentRole } from '@/lib/annotation-roles'
 import { ENTITY_DATATYPE_GROUPS, ENTITY_DATATYPE_LABELS } from '@/lib/datatypes'
+import { parseNumericSpan, passesNumericUnitGate } from '@/lib/numeric-units'
 import { cn } from '@/lib/utils'
 import { WIKIDATA_ITEM_PATTERN, WIKIDATA_PROPERTY_PATTERN } from '@/lib/wikidata-constraints'
 import { Badge } from './ui/badge'
@@ -323,6 +328,261 @@ function EntityViewLink({ value }: { value: string }) {
   )
 }
 
+const UNIT_SEARCH_DEBOUNCE_MS = 200
+const UNIT_SEARCH_LIMIT = 5
+
+function partitionUnitResults(results: UnitSearchResult[]) {
+  return {
+    wikidataUnits: results.filter(result => !result.custom),
+    corpusUnits: results.filter(result => result.custom),
+  }
+}
+
+function unitOptionValue(unit: UnitSearchResult, index: number): string {
+  return unit.custom && unit.customId ? `custom:${unit.customId}` : `wikidata:${unit.value}:${index}`
+}
+
+export function UnitPicker({
+  value,
+  onChange,
+  corpusId,
+  suggestTerm,
+  disabled = false,
+}: {
+  value: UnitRef | null
+  onChange: (unit: UnitRef | null) => void
+  corpusId: string
+  suggestTerm?: string | null
+  disabled?: boolean
+}) {
+  const [open, setOpen] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [results, setResults] = useState<UnitSearchResult[]>([])
+  const [isSearching, setIsSearching] = useState(false)
+  const searchSeqRef = useRef(0)
+
+  useEffect(() => {
+    const term = searchTerm.trim()
+    if (!open || !term) {
+      return
+    }
+
+    const timer = setTimeout(() => {
+      const seq = ++searchSeqRef.current
+      setIsSearching(true)
+      searchUnits(corpusId, term, UNIT_SEARCH_LIMIT)
+        .then((found) => {
+          if (seq === searchSeqRef.current) {
+            setResults(found)
+            setIsSearching(false)
+          }
+        })
+        .catch((error) => {
+          console.error('Unit search error:', error)
+          if (seq === searchSeqRef.current) {
+            setResults([])
+            setIsSearching(false)
+          }
+        })
+    }, UNIT_SEARCH_DEBOUNCE_MS)
+
+    return () => clearTimeout(timer)
+  }, [open, searchTerm, corpusId])
+
+  const handleSearchChange = (term: string) => {
+    setSearchTerm(term)
+    if (!term.trim()) {
+      searchSeqRef.current += 1
+      setResults([])
+      setIsSearching(false)
+    }
+  }
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen)
+    if (nextOpen) {
+      // Pre-type the parsed unit word (or the selected unit) so confirming a
+      // suggestion is one click. Nothing stores until the human confirms.
+      setSearchTerm(value?.label ?? suggestTerm ?? '')
+      searchSeqRef.current += 1
+      setResults([])
+      setIsSearching(false)
+    }
+  }
+
+  const { wikidataUnits, corpusUnits } = partitionUnitResults(results)
+  const trimmedTerm = searchTerm.trim()
+  const createAvailable = Boolean(
+    trimmedTerm
+    && !results.some(
+      result =>
+        result.value === trimmedTerm
+        || result.label.toLowerCase() === trimmedTerm.toLowerCase(),
+    ),
+  )
+
+  const confirmUnit = (unit: UnitRef) => {
+    onChange(unit)
+    setOpen(false)
+  }
+
+  const handleCreateUnit = async () => {
+    try {
+      const customId = await addCorpusCustomEntity(
+        corpusId,
+        trimmedTerm,
+        trimmedTerm,
+        'string',
+        'unit',
+      )
+      toast.success('Custom unit created!')
+      confirmUnit({ value: trimmedTerm, label: trimmedTerm, custom: true, customId })
+    } catch (error) {
+      console.error('Failed to create custom unit:', error)
+      toast.error('Failed to create custom unit. Please try again.')
+    }
+  }
+
+  return (
+    <Popover open={open} onOpenChange={handleOpenChange}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          disabled={disabled}
+          className="size-8 shrink-0 justify-center gap-1 px-1.5"
+          aria-label={value ? `Unit: ${value.label}` : 'Set unit'}
+        >
+          {value
+            ? (
+                <span className="max-w-20 truncate text-xs">{value.label}</span>
+              )
+            : (
+                <RulerIcon className="size-4 opacity-50" />
+              )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-64 p-0" align="end">
+        <Command shouldFilter={false}>
+          <CommandInput
+            placeholder="Search unit..."
+            value={searchTerm}
+            onValueChange={handleSearchChange}
+          />
+          <CommandList className={cn('text-[13px]', isSearching && 'opacity-50')}>
+            <CommandEmpty>
+              {isSearching ? 'Searching…' : 'No units found.'}
+            </CommandEmpty>
+            {value && (
+              <>
+                <CommandGroup>
+                  <CommandItem
+                    value="clear-unit"
+                    onSelect={() => {
+                      onChange(null)
+                      setOpen(false)
+                    }}
+                  >
+                    <XIcon className="size-3.5" />
+                    <span>Clear unit</span>
+                  </CommandItem>
+                </CommandGroup>
+                <CommandSeparator />
+              </>
+            )}
+            {createAvailable && (
+              <CommandGroup>
+                <CommandItem
+                  key="create-unit"
+                  value="create-unit"
+                  onSelect={handleCreateUnit}
+                  className="flex"
+                >
+                  <PlusIcon className="size-3.5 shrink-0 text-accent" />
+                  <div className="flex min-w-0 flex-1 flex-col">
+                    <span>
+                      Create "
+                      {trimmedTerm}
+                      "
+                    </span>
+                    <span className="text-xs text-muted-foreground">New corpus unit</span>
+                  </div>
+                </CommandItem>
+              </CommandGroup>
+            )}
+            {wikidataUnits.length > 0 && (
+              <CommandGroup heading="Wikidata units">
+                {wikidataUnits.map((unit, index) => (
+                  <CommandItem
+                    key={unitOptionValue(unit, index)}
+                    value={unitOptionValue(unit, index)}
+                    onSelect={() => confirmUnit({
+                      value: unit.value,
+                      label: unit.label,
+                      custom: false,
+                      customId: null,
+                    })}
+                    className="items-start py-2"
+                  >
+                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                      <div className="min-w-0 leading-5">
+                        <span>{unit.label}</span>
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          (
+                          {unit.value}
+                          )
+                        </span>
+                      </div>
+                      {unit.description && (
+                        <span className="line-clamp-2 text-xs text-muted-foreground">
+                          {unit.description}
+                        </span>
+                      )}
+                    </div>
+                    <EntityViewLink value={unit.value} />
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+            {corpusUnits.length > 0 && (
+              <CommandGroup heading="Corpus units">
+                {corpusUnits.map((unit, index) => (
+                  <CommandItem
+                    key={unitOptionValue(unit, index)}
+                    value={unitOptionValue(unit, index)}
+                    onSelect={() => confirmUnit({
+                      value: unit.value,
+                      label: unit.label,
+                      custom: true,
+                      customId: unit.customId,
+                    })}
+                    className="items-start py-2"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="min-w-0 leading-5">
+                        <span>{unit.label}</span>
+                        {unit.value !== unit.label && (
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            (
+                            {unit.value}
+                            )
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <span className="ml-auto text-xs text-muted-foreground">Corpus</span>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            )}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
 export function EntitySelector({
   type,
   value,
@@ -334,6 +594,8 @@ export function EntitySelector({
   constraintPropertyLabel,
   constraintEntityChecks,
   filteringEnabled = false,
+  unit,
+  onUnitChange,
 }: {
   type: AnnotationComponentRole
   value: Entity | null
@@ -345,6 +607,8 @@ export function EntitySelector({
   constraintPropertyLabel?: string | null
   constraintEntityChecks?: Array<ConstraintEntityCheck & { label: string }> | null
   filteringEnabled?: boolean
+  unit?: UnitRef | null
+  onUnitChange?: (unit: UnitRef | null) => any
 }) {
   const entityType = entityTypeForComponentRole(type)
   const [open, setOpen] = useState(false)
@@ -534,6 +798,16 @@ export function EntitySelector({
   )
   const constraintNoun = entityType === 'predicate' ? 'predicates' : 'entities'
 
+  // Objects only for v1, never on Wikidata entity links, and only when the
+  // span starts with a number or the datatype is already numeric.
+  const unitPickerVisible = Boolean(
+    onUnitChange
+    && type === 'object'
+    && !(value?.value && WIKIDATA_ITEM_PATTERN.test(value.value))
+    && passesNumericUnitGate(text ?? '', { entityDatatype: value?.datatype ?? null }),
+  )
+  const unitSuggestTerm = parseNumericSpan(text ?? '')?.unitWord ?? null
+
   const createAvailable = Boolean(
     searchTerm
     && !searchResults.some(entity => entity.value === searchTerm)
@@ -622,6 +896,14 @@ export function EntitySelector({
               ))}
             </SelectContent>
           </Select>
+        )}
+        {unitPickerVisible && onUnitChange && (
+          <UnitPicker
+            value={unit ?? null}
+            onChange={onUnitChange}
+            corpusId={corpusId}
+            suggestTerm={unitSuggestTerm}
+          />
         )}
       </div>
       <PopoverContent className="w-80 p-0">

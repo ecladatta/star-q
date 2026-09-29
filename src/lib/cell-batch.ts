@@ -4,8 +4,11 @@ import type {
   DocumentElement,
   Entity,
   EntityType,
+  UnitRef,
 } from '@/types/types'
 import { createEntityFromComponent } from '@/lib/annotation-roles'
+import { isNumericEntityDatatype } from '@/lib/datatypes'
+import { parseNumericSpan } from '@/lib/numeric-units'
 
 export type CellBatchCellRef = {
   elementIndex: number
@@ -251,14 +254,34 @@ export type CellBatchAnnotationItem = {
 
 export type BatchAnnotationItem = CellBatchAnnotationItem
 
+// One unit picker per batch: the confirmed unit lands on every cell component.
+// The numeric part of each cell text is extracted into entityValue so exports
+// see a clean quantity; cells that fail the parse keep their value untouched.
+function withBatchUnit(
+  component: DocumentAnnotationComponent,
+  unit: UnitRef,
+): DocumentAnnotationComponent {
+  const parsed = parseNumericSpan(component.annotationValue)
+  return {
+    ...component,
+    unitValue: unit.value,
+    unitLabel: unit.label,
+    unitCustom: unit.custom,
+    unitCustomId: unit.customId,
+    entityValue: parsed?.amount ?? component.entityValue,
+    entityDatatype: isNumericEntityDatatype(component.entityDatatype) ? component.entityDatatype : 'decimal',
+  }
+}
+
 export function buildBatchAnnotationItem(input: {
   row: CellBatchPreviewRow & { component: DocumentAnnotationComponent }
   cellRole: EntityType
   fixed: CellBatchFixedSlots & Record<EntityType, DocumentAnnotationComponent>
   cellEntities: Map<string, Entity>
+  batchUnit?: UnitRef | null
 }): CellBatchAnnotationItem {
-  const { row, cellRole, fixed, cellEntities } = input
-  const chosenComp = row.component
+  const { row, cellRole, fixed, cellEntities, batchUnit } = input
+  const chosenComp = batchUnit ? withBatchUnit(row.component, batchUnit) : row.component
   const chosenEntity = cellEntities.get(cellKey(row.cell)) ?? null
   const subjectComp = cellRole === 'subject' ? chosenComp : fixed.subject
   const predicateComp = cellRole === 'predicate' ? chosenComp : fixed.predicate

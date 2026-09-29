@@ -7,6 +7,7 @@ import type {
   DocumentAnnotationComponent,
   Entity,
   EntityType,
+  UnitRef,
 } from '@/types/types'
 import {
   AlertTriangleIcon,
@@ -27,7 +28,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { v4 as uuidv4 } from 'uuid'
 import { fetchWikibasePropertyConstraints } from '@/actions/wikibase/wikibaseActions'
-import { EntitySelector } from '@/components/entity-selector'
+import { EntitySelector, UnitPicker } from '@/components/entity-selector'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -73,8 +74,11 @@ import {
 import { entityTypeForComponentRole } from '@/lib/annotation-roles'
 import { validateAnnotationQualifiers } from '@/lib/annotation-validation'
 import { cellKey } from '@/lib/cell-batch'
+import { isNumericEntityDatatype } from '@/lib/datatypes'
+import { parseNumericSpan } from '@/lib/numeric-units'
 import { cn, isMac } from '@/lib/utils'
 import { WIKIDATA_ITEM_PATTERN, WIKIDATA_PROPERTY_PATTERN } from '@/lib/wikidata-constraints'
+import { buildUnitRef } from '@/types/types'
 
 type QualifierSide = 'predicate' | 'value'
 
@@ -120,6 +124,8 @@ type AnnotationFormProps = {
   batchCellsCount?: number
   batchCellRows?: Array<{ cell: CellBatchCellRef, text: string, filled: boolean }> | null
   batchCellEntities?: Map<string, Entity>
+  batchUnit?: UnitRef | null
+  onBatchUnitChange?: (unit: UnitRef | null) => void
   onBatchCellRoleChange?: (role: EntityType) => void
   onBatchCellEntityChange?: (cell: CellBatchCellRef, entity: Entity | null) => void
   scrollToCells?: () => void
@@ -140,6 +146,10 @@ function normalizeComponentForDirtyCheck(
     entityCustom: component.entityCustom ?? null,
     entityCustomId: component.entityCustomId ?? null,
     entityDatatype: component.entityDatatype ?? null,
+    unitValue: component.unitValue ?? null,
+    unitLabel: component.unitLabel ?? null,
+    unitCustom: component.unitCustom ?? null,
+    unitCustomId: component.unitCustomId ?? null,
     annotationStart: component.annotationStart,
     annotationEnd: component.annotationEnd,
     annotationRow: component.annotationRow,
@@ -248,6 +258,8 @@ function SlotField({
   tag,
   entityValue,
   onEntityChange,
+  unit,
+  onUnitChange,
   scrollTo,
   onRemove,
   corpusId,
@@ -262,6 +274,8 @@ function SlotField({
   tag: DocumentAnnotationComponent | undefined
   entityValue: Entity | null
   onEntityChange: (newValue: Entity | null) => void
+  unit?: UnitRef | null
+  onUnitChange?: (unit: UnitRef | null) => void
   scrollTo: () => void
   onRemove: () => void
   corpusId: string
@@ -328,6 +342,8 @@ function SlotField({
             constraintPropertyLabel={constraintPropertyLabel}
             constraintEntityChecks={constraintEntityChecks}
             filteringEnabled={filteringEnabled}
+            unit={unit}
+            onUnitChange={onUnitChange}
           />
         </div>
         {trailing}
@@ -360,6 +376,8 @@ export function AnnotationForm({
   batchCellsCount,
   batchCellRows = null,
   batchCellEntities,
+  batchUnit,
+  onBatchUnitChange,
   onBatchCellRoleChange,
   onBatchCellEntityChange,
   scrollToCells,
@@ -584,6 +602,55 @@ export function AnnotationForm({
           entityCustom: newValue?.custom || false,
           entityCustomId: newValue?.customId || null,
           entityDatatype: newValue?.datatype || null,
+        },
+      }
+    })
+  }
+
+  // Remembers what a unit confirmation changed so clearing the unit can undo
+  // it: the numeric-part extraction and the decimal datatype bump.
+  const unitOriginRef = useRef<Map<string, { datatypeFromUnit: boolean, priorEntityValue: string | null }>>(new Map())
+
+  const handleUnitChange = (type: EntityType, unit: UnitRef | null) => {
+    setCurrentAnnotation((prev) => {
+      const component = prev?.[type]
+      if (!component) {
+        return prev
+      }
+
+      if (!unit) {
+        const origin = unitOriginRef.current.get(component.id)
+        unitOriginRef.current.delete(component.id)
+        return {
+          ...prev,
+          [type]: {
+            ...component,
+            unitValue: null,
+            unitLabel: null,
+            unitCustom: null,
+            unitCustomId: null,
+            entityValue: origin?.priorEntityValue ?? component.entityValue,
+            entityDatatype: origin?.datatypeFromUnit ? null : component.entityDatatype,
+          },
+        }
+      }
+
+      const origin = unitOriginRef.current.get(component.id)
+      unitOriginRef.current.set(component.id, {
+        datatypeFromUnit: (origin?.datatypeFromUnit ?? false) || !isNumericEntityDatatype(component.entityDatatype),
+        priorEntityValue: origin?.priorEntityValue ?? component.entityValue,
+      })
+      const parsed = parseNumericSpan(component.annotationValue)
+      return {
+        ...prev,
+        [type]: {
+          ...component,
+          unitValue: unit.value,
+          unitLabel: unit.label,
+          unitCustom: unit.custom,
+          unitCustomId: unit.customId,
+          entityValue: parsed?.amount ?? component.entityValue,
+          entityDatatype: isNumericEntityDatatype(component.entityDatatype) ? component.entityDatatype : 'decimal',
         },
       }
     })
@@ -1286,6 +1353,8 @@ export function AnnotationForm({
                       tag={objectTag}
                       entityValue={getEntityValue(currentAnnotation?.object, 'object')}
                       onEntityChange={newValue => handleEntityChange('object', newValue)}
+                      unit={objectTag ? buildUnitRef(objectTag) : null}
+                      onUnitChange={unit => handleUnitChange('object', unit)}
                       scrollTo={() => scrollToElement(objectTag)}
                       onRemove={() => removeTag('object')}
                       corpusId={corpusId}
@@ -1297,6 +1366,21 @@ export function AnnotationForm({
                   )}
             </div>
           </div>
+          {batchMode && batchCellRole === 'object' && (
+            <div className="mt-1 flex items-center gap-2 rounded-md bg-muted/40 px-2 py-1.5 pt-1">
+              <span className="w-20 shrink-0 text-xs font-medium text-muted-foreground">Unit</span>
+              <div className="min-w-0 flex-1">
+                <UnitPicker
+                  value={batchUnit ?? null}
+                  onChange={unit => onBatchUnitChange?.(unit)}
+                  corpusId={corpusId}
+                  suggestTerm={
+                    parseNumericSpan((batchCellRows ?? []).find(row => row.filled)?.text ?? '')?.unitWord ?? null
+                  }
+                />
+              </div>
+            </div>
+          )}
           {batchMode && (batchCellsCount ?? 0) > 1 && (
             <Collapsible className="pt-1">
               <CollapsibleTrigger

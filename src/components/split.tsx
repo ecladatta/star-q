@@ -12,10 +12,11 @@ function Split(props: {
   isCurrentAnnotation?: boolean
   className?: string
   componentId?: string
+  unitLabel?: string
   onClick: (anchorRect?: DOMRect) => void
 }) {
   if (props.mark) {
-    return <Mark {...props} />
+    return <Mark {...props} content={props.content} start={props.start} end={props.end} />
   }
 
   const handleClick = (e: MouseEvent) => {

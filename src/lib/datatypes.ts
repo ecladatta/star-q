@@ -113,6 +113,31 @@ export function isEntityDatatype(value: string): value is EntityDatatype {
   return (ENTITY_DATATYPES as readonly string[]).includes(value)
 }
 
+// Datatypes that serialize as quantities and can carry a unit. Mirrors the
+// QuickStatements quantity gate.
+export const NUMERIC_ENTITY_DATATYPES: ReadonlySet<EntityDatatype> = new Set<EntityDatatype>([
+  'decimal',
+  'integer',
+  'double',
+  'float',
+  'byte',
+  'short',
+  'int',
+  'long',
+  'unsignedByte',
+  'unsignedShort',
+  'unsignedInt',
+  'unsignedLong',
+  'positiveInteger',
+  'nonNegativeInteger',
+  'negativeInteger',
+  'nonPositiveInteger',
+])
+
+export function isNumericEntityDatatype(datatype: EntityDatatype | null | undefined): boolean {
+  return datatype != null && NUMERIC_ENTITY_DATATYPES.has(datatype)
+}
+
 /**
  * Aliases used by the pre-RDF-parity versions of the application. The database
  * backfill is handled by migrations/0014_rename_legacy_datatypes.sql; this map

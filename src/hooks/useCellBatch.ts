@@ -1,7 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react'
 import type { usePopoverState } from './useSelectionState'
 import type { BatchAnnotationItem, CellBatchCellRef, CellBatchPreview, CellBatchPreviewRow } from '@/lib/cell-batch'
-import type { CurrentAnnotation, DocumentAnnotation, DocumentAnnotationComponent, Entity, EntityType } from '@/types/types'
+import type { CurrentAnnotation, DocumentAnnotation, DocumentAnnotationComponent, Entity, EntityType, UnitRef } from '@/types/types'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import {
@@ -120,11 +120,13 @@ export function useCellBatch(options: UseCellBatchOptions) {
   const [creating, setCreating] = useState(false)
   const [anchorRect, setAnchorRect] = useState<AnchorRect | null>(null)
   const [cellEntities, setCellEntities] = useState<Map<string, Entity>>(() => new Map())
+  const [batchUnit, setBatchUnit] = useState<UnitRef | null>(null)
 
   const cellKeySet = useMemo(() => new Set(cells.map(cellKey)), [cells])
 
   const resetCellEntities = useCallback(() => {
     setCellEntities(new Map())
+    setBatchUnit(null)
   }, [])
 
   const setCellEntity = useCallback((cell: CellBatchCellRef, entity: Entity | null) => {
@@ -727,7 +729,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
     }
 
     const buildItem = (row: CellBatchPreviewRow & { component: DocumentAnnotationComponent }): BatchAnnotationItem =>
-      buildBatchAnnotationItem({ row, cellRole: selectedRole, fixed: slots, cellEntities })
+      buildBatchAnnotationItem({ row, cellRole: selectedRole, fixed: slots, cellEntities, batchUnit })
 
     setCreating(true)
     try {
@@ -772,7 +774,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
     } finally {
       setCreating(false)
     }
-  }, [selectedRole, preview, creating, currentAnnotation, cellEntities, exitBatchMode, setDocumentAnnotations])
+  }, [selectedRole, preview, creating, currentAnnotation, cellEntities, batchUnit, exitBatchMode, setDocumentAnnotations])
 
   useEffect(() => {
     if (!dragging) {
@@ -971,6 +973,8 @@ export function useCellBatch(options: UseCellBatchOptions) {
     anchorRect,
     cellEntities,
     setCellEntity,
+    batchUnit,
+    setBatchUnit,
     cellRows,
     openBatchMode,
     exitBatchMode,
