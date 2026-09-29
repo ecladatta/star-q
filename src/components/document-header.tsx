@@ -14,7 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { setFullWidth, useFullWidth } from '@/lib/display'
+import { setFullWidth, setShowUnits, useFullWidth, useShowUnits } from '@/lib/display'
 import { downloadRawDocumentData } from '@/lib/download-document'
 import { ShortcutsDialog } from './shortcuts-dialog'
 
@@ -40,6 +40,7 @@ export function DocumentHeader({
   const [isCompleted, setIsCompleted] = useState(!!document.completedAt)
   const [isPending, startTransition] = useTransition()
   const fullWidth = useFullWidth()
+  const showUnits = useShowUnits()
 
   const toggleCompletion = () => {
     startTransition(async () => {
@@ -92,6 +93,12 @@ export function DocumentHeader({
                 onCheckedChange={checked => setFullWidth(checked)}
               >
                 Full width
+              </DropdownMenuCheckboxItem>
+              <DropdownMenuCheckboxItem
+                checked={showUnits}
+                onCheckedChange={checked => setShowUnits(checked)}
+              >
+                Unit labels
               </DropdownMenuCheckboxItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={onCopyText}>

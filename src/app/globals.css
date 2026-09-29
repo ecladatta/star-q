@@ -264,3 +264,7 @@ html body[data-scroll-locked] {
 html.doc-full-width .document-container {
   max-width: none;
 }
+
+html.doc-units-hidden [data-unit-sup] {
+  display: none;
+}

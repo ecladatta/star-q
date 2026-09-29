@@ -64,7 +64,7 @@ function Mark(props: MarkProps) {
         <span className="ml-1.5 text-[0.7em] font-medium select-none">{props.tag}</span>
       )}
       {props.unitLabel && (
-        <sup className="ml-0.5 text-[0.65em] font-medium select-none">{props.unitLabel}</sup>
+        <sup data-unit-sup className="ml-0.5 text-[0.65em] font-medium select-none">{props.unitLabel}</sup>
       )}
     </span>
   )

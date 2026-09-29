@@ -26,3 +26,21 @@ export function setFullWidth(fullWidth: boolean) {
     localStorage.setItem(FULL_WIDTH_KEY, fullWidth ? '1' : '0')
   } catch {}
 }
+
+export const SHOW_UNITS_KEY = 'starq-show-units'
+const UNITS_HIDDEN_CLASS = 'doc-units-hidden'
+
+export function useShowUnits(): boolean {
+  return useSyncExternalStore(
+    subscribeFullWidth,
+    () => !document.documentElement.classList.contains(UNITS_HIDDEN_CLASS),
+    () => true,
+  )
+}
+
+export function setShowUnits(showUnits: boolean) {
+  document.documentElement.classList.toggle(UNITS_HIDDEN_CLASS, !showUnits)
+  try {
+    localStorage.setItem(SHOW_UNITS_KEY, showUnits ? '1' : '0')
+  } catch {}
+}
