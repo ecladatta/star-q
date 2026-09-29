@@ -95,6 +95,8 @@ export type DocumentAnnotationComponent = {
   unitLabel: string | null
   unitCustom: boolean | null
   unitCustomId: string | null
+  quantityLowerBound: string | null
+  quantityUpperBound: string | null
   annotationStart: number
   annotationEnd: number
   annotationRow: number | null

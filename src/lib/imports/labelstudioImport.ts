@@ -90,6 +90,8 @@ export async function importLabelStudioDocuments(
               unitLabel: null,
               unitCustom: null,
               unitCustomId: null,
+              quantityLowerBound: null,
+              quantityUpperBound: null,
               entityLabel: label.labels[0],
               entityValue: label.labels[0],
             }
@@ -111,6 +113,8 @@ export async function importLabelStudioDocuments(
               unitLabel: null,
               unitCustom: null,
               unitCustomId: null,
+              quantityLowerBound: null,
+              quantityUpperBound: null,
               entityLabel: label.labels[0],
               entityValue: label.labels[0],
             }
@@ -132,6 +136,8 @@ export async function importLabelStudioDocuments(
               unitLabel: null,
               unitCustom: null,
               unitCustomId: null,
+              quantityLowerBound: null,
+              quantityUpperBound: null,
               entityLabel: label.labels[0],
               entityValue: label.labels[0],
             }

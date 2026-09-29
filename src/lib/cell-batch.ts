@@ -215,6 +215,8 @@ export function buildCellBatchPreview(input: CellBatchPreviewInput): CellBatchPr
       unitLabel: null,
       unitCustom: null,
       unitCustomId: null,
+      quantityLowerBound: null,
+      quantityUpperBound: null,
       annotationStart: value.start,
       annotationEnd: value.end,
       annotationRow: cell.row,

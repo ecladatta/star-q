@@ -402,6 +402,8 @@ function createAnnotationComponent(
     unitLabel: null,
     unitCustom: null,
     unitCustomId: null,
+    quantityLowerBound: null,
+    quantityUpperBound: null,
     entityLabel: value,
     entityValue: value,
   }

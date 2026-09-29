@@ -72,6 +72,8 @@ function makeComponent(annotationTag: DocumentAnnotationComponent['annotationTag
     unitLabel: null,
     unitCustom: null,
     unitCustomId: null,
+    quantityLowerBound: null,
+    quantityUpperBound: null,
     annotationStart: 0,
     annotationEnd: 1,
     annotationRow: null,

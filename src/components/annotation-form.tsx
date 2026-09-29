@@ -151,6 +151,8 @@ function normalizeComponentForDirtyCheck(
     unitLabel: component.unitLabel ?? null,
     unitCustom: component.unitCustom ?? null,
     unitCustomId: component.unitCustomId ?? null,
+    quantityLowerBound: component.quantityLowerBound ?? null,
+    quantityUpperBound: component.quantityUpperBound ?? null,
     annotationStart: component.annotationStart,
     annotationEnd: component.annotationEnd,
     annotationRow: component.annotationRow,

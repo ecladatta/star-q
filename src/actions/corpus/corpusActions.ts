@@ -388,6 +388,8 @@ export async function duplicateCorpus(id: string, owner: CorpusOwnerInput, newTi
                     unitLabel: comp.unitLabel,
                     unitCustom: comp.unitCustom,
                     unitCustomId: mappedUnitCustomId,
+                    quantityLowerBound: comp.quantityLowerBound,
+                    quantityUpperBound: comp.quantityUpperBound,
                     annotationStart: comp.annotationStart,
                     annotationEnd: comp.annotationEnd,
                     annotationRow: comp.annotationRow,

@@ -104,4 +104,36 @@ describe('normalizeCustomEntityFields', () => {
     expect(result.unitValue).toBe('Q11573')
     expect(result.unitLabel).toBe('metre')
   })
+
+  it('keeps quantity bounds through normalization without remapping', () => {
+    const data = {
+      entityCustom: false,
+      entityValue: '12',
+      entityDatatype: 'decimal',
+      unitValue: 'Q11573',
+      unitCustom: false,
+      unitCustomId: null,
+      quantityLowerBound: '12',
+      quantityUpperBound: '15',
+    }
+
+    const result = normalizeCustomEntityFields(data, idMap)
+    expect(result.quantityLowerBound).toBe('12')
+    expect(result.quantityUpperBound).toBe('15')
+  })
+
+  it('tolerates pre-quantity exports with no bound fields', () => {
+    const data = {
+      entityCustom: false,
+      entityValue: '12',
+      entityDatatype: 'decimal',
+      unitValue: 'Q11573',
+      unitCustom: false,
+      unitCustomId: null,
+    }
+
+    const result = normalizeCustomEntityFields(data, idMap)
+    expect(result.quantityLowerBound).toBeUndefined()
+    expect(result.quantityUpperBound).toBeUndefined()
+  })
 })

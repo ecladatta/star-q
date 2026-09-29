@@ -310,6 +310,8 @@ export const annotationComponent = pgTable('annotation_component', {
   unitLabel: text('unit_label'),
   unitCustom: boolean('unit_custom'),
   unitCustomId: uuid('unit_custom_id').references(() => corpusCustomEntity.id, { onDelete: 'set null' }),
+  quantityLowerBound: text('quantity_lower_bound'),
+  quantityUpperBound: text('quantity_upper_bound'),
   annotationStart: integer('annotation_start').notNull(),
   annotationEnd: integer('annotation_end').notNull(),
   annotationRow: integer('annotation_row'),

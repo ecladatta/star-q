@@ -34,6 +34,8 @@ function component(overrides: Partial<DocumentAnnotationComponent> = {}): Docume
     unitLabel: null,
     unitCustom: null,
     unitCustomId: null,
+    quantityLowerBound: null,
+    quantityUpperBound: null,
     annotationStart: 0,
     annotationEnd: 1,
     annotationRow: null,
