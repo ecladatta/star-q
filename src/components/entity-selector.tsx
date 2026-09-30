@@ -264,7 +264,6 @@ const TYPES_ICONS: Record<EntityDatatype, ReactNode> = {
   NCName: <AtSignIcon className="size-5" />,
 }
 
-// Radix command items key off a string id; the same id doubles as the value.
 function entityOptionId(
   entity: Entity,
   source: 'current' | 'custom' | 'wikidata',
@@ -323,18 +322,6 @@ function EntityViewLink({ value }: { value: string }) {
 const UNIT_SEARCH_DEBOUNCE_MS = 200
 const UNIT_SEARCH_LIMIT = 5
 
-function unitAsResultList(unit: UnitRef | null): UnitSearchResult[] {
-  return unit
-    ? [{
-        value: unit.value,
-        label: unit.label,
-        custom: unit.custom,
-        customId: unit.customId,
-        description: null,
-      }]
-    : []
-}
-
 function partitionUnitResults(results: UnitSearchResult[]) {
   return {
     wikidataUnits: results.filter(result => !result.custom),
@@ -352,10 +339,6 @@ export type QuantityState = {
   upperBound: string
 }
 
-// The quantity editor popover: a manual amount with optional bounds plus the
-// unit search. The surface span is never modified; the amount lives in the
-// component's entityValue and the bounds in the quantity columns. Without
-// quantity/onQuantityChange (batch mode) it degrades to a unit-only picker.
 function QuantityEditorContent({
   quantity,
   onQuantityChange,
@@ -418,11 +401,7 @@ function QuantityEditorContent({
     }
   }
 
-  const resultsWithStored = results.some(result => result.value === unit?.value)
-    ? results
-    : [...unitAsResultList(unit), ...results]
-
-  const { wikidataUnits, corpusUnits } = partitionUnitResults(resultsWithStored)
+  const { wikidataUnits, corpusUnits } = partitionUnitResults(results)
   const trimmedTerm = searchTerm.trim()
 
   const confirmUnit = (picked: UnitRef) => {
@@ -432,7 +411,7 @@ function QuantityEditorContent({
   const createAvailable = Boolean(
     trimmedTerm
     && !isSearching
-    && !resultsWithStored.some(
+    && !results.some(
       result =>
         result.value === trimmedTerm
         || result.label.toLowerCase() === trimmedTerm.toLowerCase(),
@@ -618,6 +597,25 @@ function QuantityEditorContent({
                 </CommandItem>
               ))}
             </CommandGroup>
+          )}
+          {unit && !results.some(result => result.value === unit.value) && (
+            <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground">
+              <span className="min-w-0 flex-1 truncate">
+                Currently set:
+                {' '}
+                <span className="font-medium text-foreground">{unit.label}</span>
+                {unit.value !== unit.label && (
+                  <span className="ml-1">
+                    (
+                    {unit.value}
+                    )
+                  </span>
+                )}
+              </span>
+              {unit.custom
+                ? <span className="shrink-0">Corpus</span>
+                : <EntityViewLink value={unit.value} />}
+            </div>
           )}
         </CommandList>
       </Command>
@@ -971,10 +969,13 @@ export function EntitySelector({
         // this, the focus scope moves it to the first tabbable element.
         onOpenAutoFocus={event => event.preventDefault()}
       >
-        {isObjectSlot && quantityMode && onQuantityChange && quantity && onUnitChange
+        {isObjectSlot && quantityMode && onQuantityChange && onUnitChange
           ? (
               <QuantityEditorContent
-                quantity={quantity}
+                // An entity-linked object has no quantity state yet; the
+                // editor starts empty and confirming a quantity replaces the
+                // link.
+                quantity={quantity ?? { value: '', lowerBound: '', upperBound: '' }}
                 onQuantityChange={onQuantityChange}
                 unit={unit ?? null}
                 onUnitChange={onUnitChange}
@@ -1063,7 +1064,6 @@ export function EntitySelector({
                     </>
                   )}
 
-                  {/* Current value if not in search results — status strip */}
                   {value
                     && !searchResults.some(entity =>
                       isSelectedEntity(value, entity),
@@ -1092,7 +1092,6 @@ export function EntitySelector({
                     </div>
                   )}
 
-                  {/* Create new custom entity option */}
                   {searchTerm
                     && !searchResults.some(entity => entity.value === searchTerm)
                     && corpusId && (
@@ -1104,14 +1103,13 @@ export function EntitySelector({
                           value="create-new"
                           onSelect={async () => {
                             try {
-                              // Create the entity in the database
                               const customType: 'entity' | 'relation'
                                 = entityType === 'predicate' ? 'relation' : 'entity'
                               const customId = await addCorpusCustomEntity(
                                 corpusId,
                                 searchTerm,
                                 searchTerm,
-                                'string', // Default datatype
+                                'string',
                                 customType,
                               )
 
@@ -1154,7 +1152,6 @@ export function EntitySelector({
                     </>
                   )}
 
-                  {/* Custom entities */}
                   {customEntities.length > 0 && (
                     <CommandGroup heading="Corpus entities">
                       {customEntities.map((entity, index) => (
@@ -1198,7 +1195,6 @@ export function EntitySelector({
                     </CommandGroup>
                   )}
 
-                  {/* Wikidata entities */}
                   {wikidataEntities.length > 0 && (
                     <CommandGroup heading="Wikidata Entities">
                       {wikidataEntities.map((entity, index) => (
@@ -1251,7 +1247,6 @@ export function EntitySelector({
                     </CommandGroup>
                   )}
 
-                  {/* Constraint filtering escape hatch */}
                   {filteringEnabled && activeClassification && filteredOutCount > 0 && (
                     <>
                       <CommandGroup>

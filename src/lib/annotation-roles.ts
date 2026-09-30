@@ -6,6 +6,7 @@ import type {
   Entity,
   EntityType,
 } from '@/types/types'
+import { WIKIDATA_ITEM_PATTERN, WIKIDATA_PROPERTY_PATTERN } from '@/lib/wikidata-constraints'
 
 export function entityTypeForComponentRole(role: AnnotationComponentRole): EntityType {
   if (role === 'qualifier-predicate') {
@@ -17,7 +18,23 @@ export function entityTypeForComponentRole(role: AnnotationComponentRole): Entit
   return role
 }
 
-export function createEntityFromComponent(component: DocumentAnnotationComponent): Entity {
+export function hasEntityLink(component: DocumentAnnotationComponent): boolean {
+  if (component.entityCustom) {
+    return true
+  }
+  if (component.entityValue === null) {
+    return false
+  }
+  // Linked components hold a Wikidata Q-item or P-property; a quantity's
+  // amount matches neither.
+  return WIKIDATA_ITEM_PATTERN.test(component.entityValue)
+    || WIKIDATA_PROPERTY_PATTERN.test(component.entityValue)
+}
+
+export function createEntityFromComponent(component: DocumentAnnotationComponent): Entity | null {
+  if (!hasEntityLink(component)) {
+    return null
+  }
   return {
     label: component.entityLabel || '',
     value: component.entityValue || '',

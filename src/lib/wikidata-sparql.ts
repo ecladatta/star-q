@@ -66,7 +66,9 @@ function createTtlCache<T>(ttlMs: number) {
 const propertyConstraintsCache = createTtlCache<PropertyConstraints>(CACHE_TTL_MS)
 const membershipCache = createTtlCache<boolean>(CACHE_TTL_MS)
 const typeDataCache = createTtlCache<boolean>(CACHE_TTL_MS)
-const labelsCache = createTtlCache<string | null>(CACHE_TTL_MS)
+// Entry.label is null when the entity is known to have no label; a cache
+// miss is the only undefined.
+const labelsCache = createTtlCache<{ label: string | null }>(CACHE_TTL_MS)
 const constraintModelSupportCache = createTtlCache<ConstraintModelSupport>(CACHE_TTL_MS)
 
 type WbEntityIds = Parameters<ReturnType<typeof WBK>['getManyEntities']>[0]['ids']
@@ -437,13 +439,11 @@ export async function fetchEntityLabels(config: WikibaseConfig, ids: string[]): 
 
   const missing: string[] = []
   for (const id of validIds) {
-    // Cached values are string | null: null means "known to have no label",
-    // undefined means not cached.
     const cached = labelsCache.get(cacheKey(config, id))
     if (cached === undefined) {
       missing.push(id)
-    } else if (cached !== null) {
-      labels.set(id, cached)
+    } else if (cached.label !== null) {
+      labels.set(id, cached.label)
     }
   }
 
@@ -459,7 +459,7 @@ export async function fetchEntityLabels(config: WikibaseConfig, ids: string[]): 
     }
     for (const [id, entity] of Object.entries(data.entities)) {
       const label = entity.labels?.en?.value
-      labelsCache.set(cacheKey(config, id), label ?? null)
+      labelsCache.set(cacheKey(config, id), { label: label ?? null })
       if (label) {
         labels.set(id, label)
       }

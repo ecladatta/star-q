@@ -72,7 +72,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { entityTypeForComponentRole } from '@/lib/annotation-roles'
+import { entityTypeForComponentRole, hasEntityLink } from '@/lib/annotation-roles'
 import { validateAnnotationQualifiers } from '@/lib/annotation-validation'
 import { cellKey } from '@/lib/cell-batch'
 import { isNumericEntityDatatype } from '@/lib/datatypes'
@@ -553,8 +553,9 @@ export function AnnotationForm({
     component: DocumentAnnotationComponent | undefined,
     role: AnnotationComponentRole,
   ): Entity | null => {
-    if (!component?.entityValue)
+    if (!component || component.entityValue === null || !hasEntityLink(component)) {
       return null
+    }
 
     const entityType = entityTypeForComponentRole(role)
 
@@ -612,9 +613,8 @@ export function AnnotationForm({
     }
   }, [currentAnnotation, currentAnnotationSnapshot])
 
-  // One boolean per component id: whether the quantity editor bumped a
-  // non-numeric datatype up to decimal for the current value, so emptying the
-  // value again can revert the bump.
+  // Remembers which components the editor bumped to decimal, so clearing the
+  // quantity can revert the datatype.
   const quantityDatatypeBumpRef = useRef<Set<string>>(new Set())
 
   const handleEntityChange = (type: EntityType, newValue: Entity | null) => {
@@ -1431,7 +1431,7 @@ export function AnnotationForm({
                       onEntityChange={newValue => handleEntityChange('object', newValue)}
                       unit={objectTag ? buildUnitRef(objectTag) : null}
                       onUnitChange={unit => handleUnitChange('object', unit)}
-                      quantity={objectTag
+                      quantity={objectTag && !hasEntityLink(objectTag)
                         ? {
                             value: objectTag.entityValue ?? '',
                             lowerBound: objectTag.quantityLowerBound ?? '',
