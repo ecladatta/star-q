@@ -81,6 +81,26 @@ function getComponentRole(
   return component?.annotationTag
 }
 
+function getComponentUnitLabels(
+  element: DocumentElement,
+  currentAnnotation: CurrentAnnotation | null,
+): Map<string, string> {
+  const labels = new Map<string, string>()
+  for (const component of element.components) {
+    if (component.unitLabel) {
+      labels.set(component.id, component.unitLabel)
+    }
+  }
+  if (currentAnnotation) {
+    for (const component of getAnnotationComponents(currentAnnotation)) {
+      if (component.unitLabel) {
+        labels.set(component.id, component.unitLabel)
+      }
+    }
+  }
+  return labels
+}
+
 function CombinedElement({
   elementIndex,
   value,
@@ -245,6 +265,10 @@ function CombinedElement({
     return null
   }
 
+  const unitLabels = getComponentUnitLabels(element, currentAnnotation)
+  const unitLabelFor = (componentId: string | undefined) =>
+    componentId ? unitLabels.get(componentId) : undefined
+
   if (type === 'text') {
     const rawText = value as string
     const renderedText = normalizeRenderedWhitespace(rawText)
@@ -310,6 +334,7 @@ function CombinedElement({
               onClick={anchorRect => handleSplitClick(split, anchorRect)}
               role={getComponentRole(split.componentId, element, currentAnnotation)}
               isCurrentAnnotation={split.componentId ? isComponentFromCurrentAnnotation(split.componentId, currentAnnotation) : false}
+              unitLabel={unitLabelFor(split.componentId)}
             />
           ))
       : renderedTitle
@@ -333,6 +358,7 @@ function CombinedElement({
                 onClick={anchorRect => handleSplitClick(split, anchorRect)}
                 role={getComponentRole(split.componentId, element, currentAnnotation)}
                 isCurrentAnnotation={split.componentId ? isComponentFromCurrentAnnotation(split.componentId, currentAnnotation) : false}
+                unitLabel={unitLabelFor(split.componentId)}
               />
             ))}
         </div>
@@ -693,6 +719,7 @@ function CombinedElement({
                                 onClick={anchorRect => handleSplitClick(split, anchorRect)}
                                 role={getComponentRole(split.componentId, element, currentAnnotation)}
                                 isCurrentAnnotation={split.componentId ? isComponentFromCurrentAnnotation(split.componentId, currentAnnotation) : false}
+                                unitLabel={unitLabelFor(split.componentId)}
                               />
                             ))}
                           </TableHead>
@@ -745,6 +772,7 @@ function CombinedElement({
                                 onClick={anchorRect => handleSplitClick(split, anchorRect)}
                                 role={getComponentRole(split.componentId, element, currentAnnotation)}
                                 isCurrentAnnotation={split.componentId ? isComponentFromCurrentAnnotation(split.componentId, currentAnnotation) : false}
+                                unitLabel={unitLabelFor(split.componentId)}
                               />
                             ))}
                           </TableCell>

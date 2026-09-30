@@ -4,8 +4,11 @@ import type {
   DocumentElement,
   Entity,
   EntityType,
+  UnitRef,
 } from '@/types/types'
 import { createEntityFromComponent } from '@/lib/annotation-roles'
+import { isNumericEntityDatatype } from '@/lib/datatypes'
+import { isValidQuantityAmount, parseQuantityHint } from '@/lib/numeric-units'
 
 export type CellBatchCellRef = {
   elementIndex: number
@@ -208,6 +211,12 @@ export function buildCellBatchPreview(input: CellBatchPreviewInput): CellBatchPr
       entityCustom: null,
       entityCustomId: null,
       entityDatatype: null,
+      unitValue: null,
+      unitLabel: null,
+      unitCustom: null,
+      unitCustomId: null,
+      quantityLowerBound: null,
+      quantityUpperBound: null,
       annotationStart: value.start,
       annotationEnd: value.end,
       annotationRow: cell.row,
@@ -245,17 +254,65 @@ export type CellBatchAnnotationItem = {
   objectEntity: Entity | null
 }
 
-export type BatchAnnotationItem = CellBatchAnnotationItem
+export type BatchCellQuantity = {
+  value: string
+  lowerBound: string
+  upperBound: string
+  unit: UnitRef | null
+}
+
+export function materializeBatchCellQuantity(input: {
+  cellText: string
+  shared: BatchCellQuantity
+}): BatchCellQuantity {
+  const { cellText, shared } = input
+  if (shared.value.trim()) {
+    return shared
+  }
+  const hint = parseQuantityHint(cellText)
+  return {
+    value: hint.amount ?? '',
+    lowerBound: hint.lowerBound ?? '',
+    upperBound: hint.upperBound ?? '',
+    unit: shared.unit,
+  }
+}
+
+function withCellQuantity(
+  component: DocumentAnnotationComponent,
+  quantity: BatchCellQuantity,
+): DocumentAnnotationComponent {
+  return {
+    ...component,
+    entityValue: quantity.value || null,
+    quantityLowerBound: quantity.lowerBound || null,
+    quantityUpperBound: quantity.upperBound || null,
+    unitValue: quantity.unit?.value ?? null,
+    unitLabel: quantity.unit?.label ?? null,
+    unitCustom: quantity.unit?.custom ?? null,
+    unitCustomId: quantity.unit?.customId ?? null,
+    entityDatatype: quantity.value && isValidQuantityAmount(quantity.value)
+      ? (isNumericEntityDatatype(component.entityDatatype) ? component.entityDatatype : 'decimal')
+      : component.entityDatatype,
+  }
+}
 
 export function buildBatchAnnotationItem(input: {
   row: CellBatchPreviewRow & { component: DocumentAnnotationComponent }
   cellRole: EntityType
   fixed: CellBatchFixedSlots & Record<EntityType, DocumentAnnotationComponent>
   cellEntities: Map<string, Entity>
+  cellQuantities: Map<string, BatchCellQuantity>
 }): CellBatchAnnotationItem {
-  const { row, cellRole, fixed, cellEntities } = input
-  const chosenComp = row.component
-  const chosenEntity = cellEntities.get(cellKey(row.cell)) ?? null
+  const { row, cellRole, fixed, cellEntities, cellQuantities } = input
+  const key = cellKey(row.cell)
+  const chosenEntity = cellEntities.get(key) ?? null
+  const chosenQuantity = cellQuantities.get(key) ?? null
+  const chosenComp = chosenEntity
+    ? row.component
+    : chosenQuantity
+      ? withCellQuantity(row.component, chosenQuantity)
+      : row.component
   const subjectComp = cellRole === 'subject' ? chosenComp : fixed.subject
   const predicateComp = cellRole === 'predicate' ? chosenComp : fixed.predicate
   const objectComp = cellRole === 'object' ? chosenComp : fixed.object

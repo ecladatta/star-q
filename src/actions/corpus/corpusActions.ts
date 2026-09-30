@@ -373,12 +373,23 @@ export async function duplicateCorpus(id: string, owner: CorpusOwnerInput, newTi
                     mappedEntityCustomId = customEntityIdMap.get(comp.entityCustomId) ?? null
                   }
 
+                  let mappedUnitCustomId: string | null = null
+                  if (comp.unitCustomId) {
+                    mappedUnitCustomId = customEntityIdMap.get(comp.unitCustomId) ?? null
+                  }
+
                   return {
                     entityLabel: comp.entityLabel,
                     entityValue: comp.entityValue,
                     entityCustom: comp.entityCustom,
                     entityCustomId: mappedEntityCustomId,
                     entityDatatype: comp.entityDatatype,
+                    unitValue: comp.unitValue,
+                    unitLabel: comp.unitLabel,
+                    unitCustom: comp.unitCustom,
+                    unitCustomId: mappedUnitCustomId,
+                    quantityLowerBound: comp.quantityLowerBound,
+                    quantityUpperBound: comp.quantityUpperBound,
                     annotationStart: comp.annotationStart,
                     annotationEnd: comp.annotationEnd,
                     annotationRow: comp.annotationRow,
@@ -534,7 +545,7 @@ export async function getCorpusCustomEntities(corpusId: string): Promise<CorpusC
   return db.select().from(corpusCustomEntity).where(eq(corpusCustomEntity.corpusId, corpusId))
 }
 
-export async function addCorpusCustomEntity(corpusId: string, label: string, value: string, datatype: string, customType: 'entity' | 'relation') {
+export async function addCorpusCustomEntity(corpusId: string, label: string, value: string, datatype: string, customType: 'entity' | 'relation' | 'unit') {
   await requireEditCorpus(corpusId)
 
   const [existing] = await db.select({ count: count() }).from(corpusCustomEntity).where(eq(corpusCustomEntity.corpusId, corpusId))
@@ -553,7 +564,7 @@ export async function addCorpusCustomEntity(corpusId: string, label: string, val
   return result.id
 }
 
-export async function updateCorpusCustomEntity(id: string, label: string, value: string, datatype: string, customType: 'entity' | 'relation') {
+export async function updateCorpusCustomEntity(id: string, label: string, value: string, datatype: string, customType: 'entity' | 'relation' | 'unit') {
   const corpusId = await requireEditCustomEntity(id)
 
   await db.update(corpusCustomEntity).set({
@@ -583,11 +594,12 @@ function levenshtein(
   return sql`levenshtein(${source}, ${text}, ${insCost}, ${delCost}, ${subCost})`
 }
 
-export async function searchCorpusCustomEntities(corpusId: string, searchTerm: string, entityType: 'subject' | 'predicate' | 'object') {
+export async function searchCorpusCustomEntities(
+  corpusId: string,
+  searchTerm: string,
+  customType: 'entity' | 'relation' | 'unit',
+) {
   await requireViewCorpus(corpusId)
-
-  // Map entityType to customType
-  const customType: 'entity' | 'relation' = entityType === 'predicate' ? 'relation' : 'entity'
 
   const searchPattern = `%${searchTerm}%`
 

@@ -2,6 +2,7 @@
 import type { ConstraintEntityCheck, ConstraintSide, EntityCandidateClassification, PropertyConstraints } from '@/lib/wikidata-constraints'
 import type { ConstraintModelSupport } from '@/lib/wikidata-sparql'
 import { eq } from 'drizzle-orm'
+import { searchCorpusCustomEntities } from '@/actions/corpus/corpusActions'
 import { db } from '@/db/drizzle'
 import { wikibaseInstances } from '@/db/schema'
 import { requireViewCorpus } from '@/lib/corpus-access'
@@ -13,6 +14,7 @@ import {
   fetchConstraintModelSupport,
   fetchPropertyConstraints,
   searchWikibaseEntities as searchWikibaseEntitiesLib,
+  searchWikibaseUnits as searchWikibaseUnitsLib,
 } from '@/lib/wikidata-sparql'
 
 const MAX_SEARCH_LENGTH = 200
@@ -77,6 +79,62 @@ export async function searchWikibaseEntities(corpusId: string, search: string, t
     return []
   }
   return searchWikibaseEntitiesLib(config, truncateSearch(search), type, clampLimit(limit))
+}
+
+export type UnitSearchResult = {
+  label: string
+  value: string
+  custom: boolean
+  customId: string | null
+  description: string | null
+}
+
+export async function searchUnits(corpusId: string, search: string, limit = 5): Promise<UnitSearchResult[]> {
+  await requireViewCorpus(corpusId)
+  const term = truncateSearch(search).trim()
+  if (!term) {
+    return []
+  }
+
+  const [wikidataUnits, corpusUnits] = await Promise.all([
+    (async () => {
+      try {
+        const config = await loadCorpusWikibaseConfig(corpusId)
+        if (!config) {
+          return []
+        }
+        return await searchWikibaseUnitsLib(config, term, clampLimit(limit))
+      } catch (error) {
+        console.error('Wikibase unit search error:', error)
+        return []
+      }
+    })(),
+    searchCorpusCustomEntities(corpusId, term, 'unit').catch((error) => {
+      console.error('Custom unit search error:', error)
+      return []
+    }),
+  ])
+
+  const results: UnitSearchResult[] = wikidataUnits.map(unit => ({
+    label: unit.label,
+    value: unit.id,
+    custom: false,
+    customId: null,
+    description: unit.description,
+  }))
+  const seenLabels = new Set(wikidataUnits.map(unit => unit.label.toLowerCase()))
+  for (const entity of corpusUnits) {
+    if (!seenLabels.has(entity.label.toLowerCase())) {
+      results.push({
+        label: entity.label,
+        value: entity.value,
+        custom: true,
+        customId: entity.id,
+        description: null,
+      })
+    }
+  }
+  return results.slice(0, clampLimit(limit) * 2)
 }
 
 export async function fetchWikibasePropertyConstraints(corpusId: string, propertyIds: string[]) {

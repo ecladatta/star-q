@@ -12,6 +12,7 @@ function Split(props: {
   isCurrentAnnotation?: boolean
   className?: string
   componentId?: string
+  unitLabel?: string
   onClick: (anchorRect?: DOMRect) => void
 }) {
   if (props.mark) {

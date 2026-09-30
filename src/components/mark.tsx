@@ -7,6 +7,7 @@ export type MarkProps = {
   start: number
   end: number
   tag?: string
+  unitLabel?: string
   role?: AnnotationComponentRole
   isCurrentAnnotation?: boolean
   className?: string
@@ -61,6 +62,9 @@ function Mark(props: MarkProps) {
       {props.content}
       {props.tag && (
         <span className="ml-1.5 text-[0.7em] font-medium select-none">{props.tag}</span>
+      )}
+      {props.unitLabel && (
+        <sup data-unit-sup className="ml-0.5 text-[0.65em] font-medium select-none">{props.unitLabel}</sup>
       )}
     </span>
   )

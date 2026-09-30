@@ -16,7 +16,7 @@ RDF exports have two modes:
 ```json
 {
   "exportMeta": {
-    "version": "1.3",
+    "version": "1.4",
     "type": "full-corpus-export"
   },
   "id": "<corpusId>",
@@ -121,10 +121,16 @@ Annotations are stored as a triple of `subject`, `predicate`, and `object`, each
 
 - `id`: UUID of the annotation component
 - `entityLabel`: resolved label (custom labeling or inferred from extracted text)
-- `entityValue`: resolved value (often same as label)
+- `entityValue`: resolved value (often same as label); for object quantities, the annotator-owned amount (e.g. `12`)
 - `entityCustom`: `true` if this value comes from a custom entity definition
 - `entityCustomId`: UUID of the custom entity (if `entityCustom`)
 - `entityDatatype`: one of: `integer`, `decimal`, `boolean`, `string`, `date`, `time`, `datetime`, `year`, `month`, `day`, `url`
+- `unitValue`: optional unit reference: a Wikidata item ID (e.g. `Q11573`) or a custom unit value; `null` when the object has no unit
+- `unitLabel`: display label of the unit (e.g. `metre`)
+- `unitCustom`: `true` if the unit comes from a custom corpus unit
+- `unitCustomId`: UUID of the custom unit (if `unitCustom`)
+- `quantityLowerBound`: optional closed lower bound of the quantity amount (e.g. `12`), or `null`
+- `quantityUpperBound`: optional closed upper bound of the quantity amount (e.g. `15`), or `null`
 - `annotationStart` / `annotationEnd`: character offsets into the source text
 - `annotationRow` / `annotationCell`: row/cell indices (for table annotations) or `null`
 - `annotationValue`: the extracted string value for the annotation
@@ -142,6 +148,8 @@ Example:
   "entityCustom": false,
   "entityCustomId": null,
   "entityDatatype": "string",
+  "quantityLowerBound": null,
+  "quantityUpperBound": null,
   "annotationStart": 123,
   "annotationEnd": 131,
   "annotationRow": null,
@@ -162,7 +170,7 @@ Custom entities are defined per corpus and used to pre-populate annotation value
 - `label`: display label for the entity
 - `value`: value stored on the entity
 - `datatype`: entity datatype (`string` by default)
-- `customType`: either `entity` or `relation`
+- `customType`: `entity`, `relation`, or `unit`
 - `createdAt` / `updatedAt`: timestamps
 
 Example:
@@ -196,7 +204,7 @@ _:truthy-statement-id
   pq:P69 wd:Q152838 .
 ```
 
-Statements without qualifiers are emitted as ordinary triples.
+Statements without qualifiers, units, or quantity bounds are emitted as ordinary triples. A statement that carries a unit or quantity bounds is reified so those facts can attach to it: `at:unit` holds the unit IRI, and `at:quantityLowerBound` / `at:quantityUpperBound` hold the bounds as plain literals (the `at:` prefix is not declared in truthy mode, so these serialize as absolute IRIs).
 
 ### Full mode
 
@@ -208,6 +216,7 @@ Full mode uses stable resources under a configurable base URI (`RDF_NAMESPACE_BA
 - Each grounded component is an [`oa:Annotation`](https://www.w3.org/TR/annotation-vocab/#annotation) whose target is its text range, table column, or table cell.
 - Main statements have named `statement:` reifiers whose [`prov:wasDerivedFrom`](https://www.w3.org/TR/prov-o/#wasDerivedFrom) values reference the three component annotations.
 - Qualifiers are statements about the named main statement. A blank reifier associates each qualifier triple term with its predicate/value provenance.
+- Units and quantity bounds are also statements about the named main statement: `at:unit` holds the unit IRI, and `at:quantityLowerBound` / `at:quantityUpperBound` hold the quantity bounds as plain literals.
 
 ```turtle
 wd:Q68550 wdt:P184 wd:Q7099 .
@@ -244,6 +253,8 @@ Q68550	P184	Q7099
 Q68550	P69	"University of Vienna"
 Q68550	P571	+1365-00-00T00:00:00Z/9	P585	+2019-01-01T00:00:00Z/11
 ```
+
+Numeric object values serialize as [QuickStatements 3.0 quantities](https://www.wikidata.org/wiki/Help:Data_type#Quantity): `amount`, `amountUunit` when a Wikidata unit is set, and `amount[lower,upper]Uunit` when both quantity bounds are also set, as in `12[12,15]U11573`. A custom corpus unit cannot be referenced in QuickStatements, so the amount exports without a unit. Quantity bounds export only as a pair: a missing or non-numeric bound drops the brackets rather than exporting one side.
 
 Only annotations that fully resolve to Wikidata are exported:
 

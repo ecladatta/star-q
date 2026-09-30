@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   description: 'A web-based tool for annotating texts and tables',
 }
 
-const themeScript = `(function(){try{var t=localStorage.getItem('starq-theme');var d=t?t==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;if(d){document.documentElement.classList.add('dark')}if(localStorage.getItem('starq-full-width')==='1'){document.documentElement.classList.add('doc-full-width')}}catch(e){}})()`
+const themeScript = `(function(){try{var t=localStorage.getItem('starq-theme');var d=t?t==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;if(d){document.documentElement.classList.add('dark')}if(localStorage.getItem('starq-full-width')==='1'){document.documentElement.classList.add('doc-full-width')}if(localStorage.getItem('starq-show-units')==='0'){document.documentElement.classList.add('doc-units-hidden')}}catch(e){}})()`
 
 export default function RootLayout({
   children,

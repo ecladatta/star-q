@@ -398,6 +398,12 @@ function createAnnotationComponent(
     entityCustom: true,
     entityCustomId: null,
     entityDatatype: 'string',
+    unitValue: null,
+    unitLabel: null,
+    unitCustom: null,
+    unitCustomId: null,
+    quantityLowerBound: null,
+    quantityUpperBound: null,
     entityLabel: value,
     entityValue: value,
   }

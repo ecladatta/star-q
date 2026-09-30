@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import type { UnitSearchResult } from '@/actions/wikibase/wikibaseActions'
 import type {
   ConstraintEntityCheck,
   ConstraintSide,
@@ -11,8 +12,10 @@ import type {
   Entity,
   EntityDatatype,
   EntityType,
+  UnitRef,
 } from '@/types/types'
 import {
+  ArrowLeftIcon,
   AtSignIcon,
   BinaryIcon,
   Calendar1Icon,
@@ -23,6 +26,7 @@ import {
   CalendarRangeIcon,
   CaseSensitiveIcon,
   CheckIcon,
+  ChevronRightIcon,
   ChevronsUpDownIcon,
   Clock3Icon,
   ClockIcon,
@@ -32,6 +36,7 @@ import {
   HourglassIcon,
   LanguagesIcon,
   PlusIcon,
+  RulerIcon,
   TextIcon,
   TimerIcon,
   ToggleLeftIcon,
@@ -51,6 +56,7 @@ import {
 import {
   classifyWikibaseEntityCandidates,
   classifyWikibasePredicateCandidates,
+  searchUnits,
   searchWikibaseEntities,
 } from '@/actions/wikibase/wikibaseActions'
 import {
@@ -65,10 +71,12 @@ import {
 import { useWikibaseInstance } from '@/hooks/useWikibaseInstance'
 import { entityTypeForComponentRole } from '@/lib/annotation-roles'
 import { ENTITY_DATATYPE_GROUPS, ENTITY_DATATYPE_LABELS } from '@/lib/datatypes'
+import { normalizeQuantityAmount, parseQuantityHint } from '@/lib/numeric-units'
 import { cn } from '@/lib/utils'
 import { WIKIDATA_ITEM_PATTERN, WIKIDATA_PROPERTY_PATTERN } from '@/lib/wikidata-constraints'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
+import { Input } from './ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover'
 import {
   Select,
@@ -124,7 +132,7 @@ async function searchEntities(
         const results = await searchCorpusCustomEntities(
           corpusId,
           searchTerm,
-          type,
+          type === 'predicate' ? 'relation' : 'entity',
         )
         return results.map(entity => ({
           label: entity.label,
@@ -256,19 +264,7 @@ const TYPES_ICONS: Record<EntityDatatype, ReactNode> = {
   NCName: <AtSignIcon className="size-5" />,
 }
 
-function getEntityOptionKey(
-  entity: Entity,
-  source: 'current' | 'custom' | 'wikidata',
-  index: number,
-): string {
-  if (entity.custom && entity.customId) {
-    return `${source}:${entity.customId}`
-  }
-
-  return `${source}:${entity.value}:${index}`
-}
-
-function getEntityOptionValue(
+function entityOptionId(
   entity: Entity,
   source: 'current' | 'custom' | 'wikidata',
   index: number,
@@ -323,6 +319,316 @@ function EntityViewLink({ value }: { value: string }) {
   )
 }
 
+const UNIT_SEARCH_DEBOUNCE_MS = 200
+const UNIT_SEARCH_LIMIT = 5
+
+function partitionUnitResults(results: UnitSearchResult[]) {
+  return {
+    wikidataUnits: results.filter(result => !result.custom),
+    corpusUnits: results.filter(result => result.custom),
+  }
+}
+
+function unitOptionValue(unit: UnitSearchResult, index: number): string {
+  return unit.custom && unit.customId ? `custom:${unit.customId}` : `wikidata:${unit.value}:${index}`
+}
+
+export type QuantityState = {
+  value: string
+  lowerBound: string
+  upperBound: string
+}
+
+function QuantityEditorContent({
+  quantity,
+  onQuantityChange,
+  unit,
+  onUnitChange,
+  corpusId,
+  initialSearchTerm,
+  onClose,
+  header,
+}: {
+  quantity?: QuantityState | null
+  onQuantityChange?: (quantity: QuantityState) => void
+  unit: UnitRef | null
+  onUnitChange: (unit: UnitRef | null) => void
+  corpusId: string
+  initialSearchTerm: string
+  onClose: () => void
+  header?: ReactNode
+}) {
+  const [searchTerm, setSearchTerm] = useState(initialSearchTerm)
+  const [results, setResults] = useState<UnitSearchResult[]>([])
+  const [isSearching, setIsSearching] = useState(false)
+  const [showRange, setShowRange] = useState(Boolean(quantity?.lowerBound || quantity?.upperBound))
+  const searchSeqRef = useRef(0)
+
+  useEffect(() => {
+    const term = searchTerm.trim()
+    if (!term) {
+      return
+    }
+
+    const timer = setTimeout(() => {
+      const seq = ++searchSeqRef.current
+      setIsSearching(true)
+      searchUnits(corpusId, term, UNIT_SEARCH_LIMIT)
+        .then((found) => {
+          if (seq === searchSeqRef.current) {
+            setResults(found)
+            setIsSearching(false)
+          }
+        })
+        .catch((error) => {
+          console.error('Unit search error:', error)
+          if (seq === searchSeqRef.current) {
+            setResults([])
+            setIsSearching(false)
+          }
+        })
+    }, UNIT_SEARCH_DEBOUNCE_MS)
+
+    return () => clearTimeout(timer)
+  }, [searchTerm, corpusId])
+
+  const handleSearchChange = (term: string) => {
+    setSearchTerm(term)
+    if (!term.trim()) {
+      searchSeqRef.current += 1
+      setResults([])
+      setIsSearching(false)
+    }
+  }
+
+  const { wikidataUnits, corpusUnits } = partitionUnitResults(results)
+  const trimmedTerm = searchTerm.trim()
+
+  const confirmUnit = (picked: UnitRef) => {
+    onUnitChange(picked)
+    onClose()
+  }
+  const createAvailable = Boolean(
+    trimmedTerm
+    && !isSearching
+    && !results.some(
+      result =>
+        result.value === trimmedTerm
+        || result.label.toLowerCase() === trimmedTerm.toLowerCase(),
+    ),
+  )
+
+  const handleCreateUnit = async () => {
+    try {
+      const customId = await addCorpusCustomEntity(
+        corpusId,
+        trimmedTerm,
+        trimmedTerm,
+        'string',
+        'unit',
+      )
+      toast.success('Custom unit created!')
+      confirmUnit({ value: trimmedTerm, label: trimmedTerm, custom: true, customId })
+    } catch (error) {
+      console.error('Failed to create custom unit:', error)
+      toast.error('Failed to create custom unit. Please try again.')
+    }
+  }
+
+  const updateQuantity = (patch: Partial<QuantityState>) => {
+    if (onQuantityChange && quantity) {
+      onQuantityChange({
+        ...quantity,
+        ...patch,
+        ...(patch.value !== undefined ? { value: normalizeQuantityAmount(patch.value) } : {}),
+        ...(patch.lowerBound !== undefined ? { lowerBound: normalizeQuantityAmount(patch.lowerBound) } : {}),
+        ...(patch.upperBound !== undefined ? { upperBound: normalizeQuantityAmount(patch.upperBound) } : {}),
+      })
+    }
+  }
+
+  return (
+    <div className="flex flex-col">
+      {header}
+      {onQuantityChange && quantity && (
+        <div className="flex flex-col gap-2 border-b px-3 py-2">
+          <Input
+            value={quantity.value}
+            onChange={event => updateQuantity({ value: event.target.value })}
+            placeholder="Value"
+            className="h-7 text-sm"
+            aria-label="Quantity value"
+            // eslint-disable-next-line jsx-a11y/no-autofocus -- focus follows the user opening the popover, not page load
+            autoFocus={!quantity.value}
+          />
+          <button
+            type="button"
+            className="flex w-fit items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+            onClick={() => setShowRange(current => !current)}
+            aria-expanded={showRange}
+          >
+            <ChevronRightIcon className={cn('size-3.5 transition-transform', showRange && 'rotate-90')} />
+            Range
+          </button>
+          {showRange && (
+            <div className="flex gap-2">
+              <Input
+                value={quantity.lowerBound}
+                onChange={event => updateQuantity({ lowerBound: event.target.value })}
+                placeholder="Min"
+                className="h-7 text-sm"
+                aria-label="Lower bound"
+              />
+              <Input
+                value={quantity.upperBound}
+                onChange={event => updateQuantity({ upperBound: event.target.value })}
+                placeholder="Max"
+                className="h-7 text-sm"
+                aria-label="Upper bound"
+              />
+            </div>
+          )}
+        </div>
+      )}
+      <Command shouldFilter={false}>
+        <CommandInput
+          // eslint-disable-next-line jsx-a11y/no-autofocus -- focus follows the user opening the popover, not page load
+          autoFocus={!onQuantityChange || Boolean(quantity?.value)}
+          placeholder="Search unit..."
+          value={searchTerm}
+          onValueChange={handleSearchChange}
+        />
+        <CommandList className={cn('text-[13px]', isSearching && 'opacity-50')}>
+          <CommandEmpty>
+            {isSearching ? 'Searching…' : 'No units found.'}
+          </CommandEmpty>
+          {unit && (
+            <>
+              <CommandGroup>
+                <CommandItem
+                  value="clear-unit"
+                  onSelect={() => {
+                    onUnitChange(null)
+                    onClose()
+                  }}
+                >
+                  <XIcon className="size-3.5" />
+                  <span>Clear unit</span>
+                </CommandItem>
+              </CommandGroup>
+              <CommandSeparator />
+            </>
+          )}
+          {createAvailable && (
+            <CommandGroup>
+              <CommandItem
+                key="create-unit"
+                value="create-unit"
+                onSelect={handleCreateUnit}
+                className="flex"
+              >
+                <PlusIcon className="size-3.5 shrink-0 text-accent" />
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <span>
+                    Create "
+                    {trimmedTerm}
+                    "
+                  </span>
+                  <span className="text-xs text-muted-foreground">New corpus unit</span>
+                </div>
+              </CommandItem>
+            </CommandGroup>
+          )}
+          {wikidataUnits.length > 0 && (
+            <CommandGroup heading="Wikidata units">
+              {wikidataUnits.map((unit, index) => (
+                <CommandItem
+                  key={unitOptionValue(unit, index)}
+                  value={unitOptionValue(unit, index)}
+                  onSelect={() => confirmUnit({
+                    value: unit.value,
+                    label: unit.label,
+                    custom: false,
+                    customId: null,
+                  })}
+                  className="items-start py-2"
+                >
+                  <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                    <div className="min-w-0 leading-5">
+                      <span>{unit.label}</span>
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        (
+                        {unit.value}
+                        )
+                      </span>
+                    </div>
+                    {unit.description && (
+                      <span className="line-clamp-2 text-xs text-muted-foreground">
+                        {unit.description}
+                      </span>
+                    )}
+                  </div>
+                  <EntityViewLink value={unit.value} />
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          )}
+          {corpusUnits.length > 0 && (
+            <CommandGroup heading="Corpus units">
+              {corpusUnits.map((unit, index) => (
+                <CommandItem
+                  key={unitOptionValue(unit, index)}
+                  value={unitOptionValue(unit, index)}
+                  onSelect={() => confirmUnit({
+                    value: unit.value,
+                    label: unit.label,
+                    custom: true,
+                    customId: unit.customId,
+                  })}
+                  className="items-start py-2"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="min-w-0 leading-5">
+                      <span>{unit.label}</span>
+                      {unit.value !== unit.label && (
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          (
+                          {unit.value}
+                          )
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <span className="ml-auto text-xs text-muted-foreground">Corpus</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          )}
+          {unit && !results.some(result => result.value === unit.value) && (
+            <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground">
+              <span className="min-w-0 flex-1 truncate">
+                Currently set:
+                {' '}
+                <span className="font-medium text-foreground">{unit.label}</span>
+                {unit.value !== unit.label && (
+                  <span className="ml-1">
+                    (
+                    {unit.value}
+                    )
+                  </span>
+                )}
+              </span>
+              {unit.custom
+                ? <span className="shrink-0">Corpus</span>
+                : <EntityViewLink value={unit.value} />}
+            </div>
+          )}
+        </CommandList>
+      </Command>
+    </div>
+  )
+}
+
 export function EntitySelector({
   type,
   value,
@@ -334,6 +640,10 @@ export function EntitySelector({
   constraintPropertyLabel,
   constraintEntityChecks,
   filteringEnabled = false,
+  unit,
+  onUnitChange,
+  quantity,
+  onQuantityChange,
 }: {
   type: AnnotationComponentRole
   value: Entity | null
@@ -345,6 +655,10 @@ export function EntitySelector({
   constraintPropertyLabel?: string | null
   constraintEntityChecks?: Array<ConstraintEntityCheck & { label: string }> | null
   filteringEnabled?: boolean
+  unit?: UnitRef | null
+  onUnitChange?: (unit: UnitRef | null) => any
+  quantity?: QuantityState | null
+  onQuantityChange?: (quantity: QuantityState) => any
 }) {
   const entityType = entityTypeForComponentRole(type)
   const [open, setOpen] = useState(false)
@@ -534,15 +848,36 @@ export function EntitySelector({
   )
   const constraintNoun = entityType === 'predicate' ? 'predicates' : 'entities'
 
+  const isObjectSlot = type === 'object'
+  const [quantityMode, setQuantityMode] = useState(false)
+  const [quantitySearchSeed, setQuantitySearchSeed] = useState('')
+  const boundsSummary = quantity?.lowerBound && quantity?.upperBound
+    ? `[${quantity.lowerBound}-${quantity.upperBound}]`
+    : null
+  const quantitySummary = isObjectSlot
+    ? [quantity?.value, boundsSummary, unit?.label].filter(part => Boolean(part)).join(' ') || null
+    : null
+  const quantityIsSet = Boolean(quantitySummary)
+
+  const enterQuantityMode = () => {
+    const hint = parseQuantityHint(text ?? '')
+    const hasLink = Boolean(value?.custom) || Boolean(value?.value && WIKIDATA_ITEM_PATTERN.test(value.value))
+    if (onQuantityChange && quantity && !hasLink && !quantity.value && (hint.amount || hint.lowerBound || hint.upperBound)) {
+      onQuantityChange({ value: hint.amount ?? '', lowerBound: hint.lowerBound ?? '', upperBound: hint.upperBound ?? '' })
+    }
+    setQuantitySearchSeed(unit ? '' : hint.unitWord ?? '')
+    setQuantityMode(true)
+  }
+
   const createAvailable = Boolean(
     searchTerm
     && !searchResults.some(entity => entity.value === searchTerm)
     && corpusId,
   )
   const firstResultValue = customEntities.length > 0
-    ? getEntityOptionValue(customEntities[0], 'custom', 0)
+    ? entityOptionId(customEntities[0], 'custom', 0)
     : wikidataEntities.length > 0
-      ? getEntityOptionValue(wikidataEntities[0], 'wikidata', 0)
+      ? entityOptionId(wikidataEntities[0], 'wikidata', 0)
       : undefined
   const defaultSelectedValue = firstResultValue ?? (createAvailable ? 'create-new' : undefined)
 
@@ -553,7 +888,16 @@ export function EntitySelector({
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen)
+        if (nextOpen && isObjectSlot) {
+          setQuantityMode(quantityIsSet)
+          setQuantitySearchSeed(unit ? '' : parseQuantityHint(text ?? '').unitWord ?? '')
+        }
+      }}
+    >
       <div className="flex w-full min-w-0 items-center gap-1">
         <PopoverTrigger asChild>
           <Button
@@ -578,13 +922,13 @@ export function EntitySelector({
                 </Tooltip>
               )}
               <div className="flex-1 truncate">
-                {value
+                {quantitySummary || (value
                   ? (
                       value.label
                     )
                   : (
                       <span className="text-muted-foreground">Search entity...</span>
-                    )}
+                    ))}
               </div>
             </div>
             <ChevronsUpDownIcon className="ml-2 size-3.5 shrink-0 opacity-50" />
@@ -623,295 +967,332 @@ export function EntitySelector({
             </SelectContent>
           </Select>
         )}
+
       </div>
-      <PopoverContent className="w-80 p-0">
-        <Command
-          shouldFilter={false}
-          value={selectedValue ?? ''}
-          onValueChange={v => setSelectedValue(v || undefined)}
-        >
-          <CommandInput
-            placeholder="Search entity..."
-            className="flex-1"
-            onValueChange={(value) => {
-              setSearchTerm(value)
-              handleSearch(value)
-            }}
-          />
-          <CommandList className={cn('text-[13px]', isSearching ? 'opacity-50' : '')}>
-            <CommandEmpty>
-              {filteringActive && !showAllResults
-                ? (constraintEntityChecks?.length
-                    ? `No ${constraintNoun} match the selected entities' constraints. Use "Show all results" to see everything.`
-                    : 'No entities match the property constraints. Use "Show all results" to see everything.')
-                : 'No entities found.'}
-            </CommandEmpty>
-            {classificationSupport?.status === 'unavailable' && classificationSupport.reason !== 'no-instance' && (
-              <div className="border-b px-3 py-2 text-[11px] text-muted-foreground">
-                Constraint filtering is unavailable on this Wikibase instance. All candidates are shown.
-              </div>
-            )}
-            {filteringActive && !showAllResults && (
-              <div className="border-b px-3 py-2 text-[11px] text-muted-foreground">
-                <>
-                  Filtered to match
-                  {' '}
-                  the
-                  {' '}
-                  {constraintSide === 'domain' ? 'domain' : 'range'}
-                  {' '}
-                  of
-                  {' '}
-                  {constraintPropertyLabel
-                    ? (
-                        <span className="font-semibold">
-                          {constraintPropertyLabel}
-                        </span>
-                      )
-                    : (
-                        <span>the selected property</span>
-                      )}
-                </>
-              </div>
-            )}
-            {value && (
-              <>
-                <CommandGroup>
-                  <CommandItem
-                    value="clear-entity"
-                    onSelect={() => {
-                      onValueChange(null)
-                      setOpen(false)
-                    }}
+      <PopoverContent
+        className="w-80 p-0"
+        // The view's search input takes focus (autoFocus). Without this,
+        // the focus scope moves focus to the first tabbable element.
+        onOpenAutoFocus={event => event.preventDefault()}
+      >
+        {isObjectSlot && quantityMode && onQuantityChange && onUnitChange
+          ? (
+              <QuantityEditorContent
+                // An entity-linked object has no quantity state yet; the
+                // editor starts empty and confirming a quantity replaces the
+                // link.
+                quantity={quantity ?? { value: '', lowerBound: '', upperBound: '' }}
+                onQuantityChange={onQuantityChange}
+                unit={unit ?? null}
+                onUnitChange={onUnitChange}
+                corpusId={corpusId}
+                initialSearchTerm={quantitySearchSeed}
+                onClose={() => setOpen(false)}
+                header={(
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 border-b px-3 py-2 text-sm hover:bg-muted"
+                    onClick={() => setQuantityMode(false)}
                   >
-                    <XIcon className="size-3.5" />
-                    <span>Clear entity</span>
-                  </CommandItem>
-                </CommandGroup>
-                <CommandSeparator />
-              </>
-            )}
-
-            {/* Current value if not in search results — status strip */}
-            {value
-              && !searchResults.some(entity =>
-                isSelectedEntity(value, entity),
-              ) && (
-              <div
-                className={cn(
-                  'flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground',
-                  !createAvailable && 'border-b',
+                    <ArrowLeftIcon className="size-3.5" />
+                    <span>Use an entity instead</span>
+                  </button>
                 )}
+              />
+            )
+          : (
+              <Command
+                shouldFilter={false}
+                value={selectedValue ?? ''}
+                onValueChange={v => setSelectedValue(v || undefined)}
               >
-                <span className="min-w-0 flex-1 truncate">
-                  Currently set:
-                  {' '}
-                  <span className="font-medium text-foreground">{value.label}</span>
-                  {value.value !== value.label && (
-                    <span className="ml-1">
-                      (
-                      {value.value}
-                      )
-                    </span>
-                  )}
-                </span>
-                {value.custom
-                  ? <span className="shrink-0">Corpus</span>
-                  : <EntityViewLink value={value.value} />}
-              </div>
-            )}
-
-            {/* Create new custom entity option */}
-            {searchTerm
-              && !searchResults.some(entity => entity.value === searchTerm)
-              && corpusId && (
-              <>
-                {value && <CommandSeparator />}
-                <CommandGroup>
-                  <CommandItem
-                    key="create-new"
-                    value="create-new"
-                    onSelect={async () => {
-                      try {
-                        // Create the entity in the database
-                        const customType: 'entity' | 'relation'
-                          = entityType === 'predicate' ? 'relation' : 'entity'
-                        const customId = await addCorpusCustomEntity(
-                          corpusId,
-                          searchTerm,
-                          searchTerm,
-                          'string', // Default datatype
-                          customType,
-                        )
-
-                        const newEntity: Entity = {
-                          label: searchTerm,
-                          value: searchTerm,
-                          custom: true,
-                          customId,
-                          datatype: 'string',
-                          type: entityType,
-                        }
-
-                        onValueChange(newEntity)
-                        toast.success('Custom entity created!')
-                      } catch (error) {
-                        console.error(
-                          'Failed to create custom entity:',
-                          error,
-                        )
-                        toast.error(
-                          'Failed to create custom entity. Please try again.',
-                        )
-                        return
-                      }
-                      setOpen(false)
-                    }}
-                    className="flex"
-                  >
-                    <PlusIcon className="size-3.5 shrink-0 text-accent" />
-                    <div className="flex min-w-0 flex-1 flex-col">
-                      <span>
-                        Create "
-                        {searchTerm}
-                        "
-                      </span>
-                      <span className="text-xs text-muted-foreground">New corpus entity</span>
+                <CommandInput
+                  // eslint-disable-next-line jsx-a11y/no-autofocus -- focus follows the user opening the popover, not page load
+                  autoFocus
+                  placeholder="Search entity..."
+                  className="flex-1"
+                  onValueChange={(value) => {
+                    setSearchTerm(value)
+                    handleSearch(value)
+                  }}
+                />
+                <CommandList className={cn('text-[13px]', isSearching ? 'opacity-50' : '')}>
+                  <CommandEmpty>
+                    {filteringActive && !showAllResults
+                      ? (constraintEntityChecks?.length
+                          ? `No ${constraintNoun} match the selected entities' constraints. Use "Show all results" to see everything.`
+                          : 'No entities match the property constraints. Use "Show all results" to see everything.')
+                      : 'No entities found.'}
+                  </CommandEmpty>
+                  {classificationSupport?.status === 'unavailable' && classificationSupport.reason !== 'no-instance' && (
+                    <div className="border-b px-3 py-2 text-[11px] text-muted-foreground">
+                      Constraint filtering is unavailable on this Wikibase instance. All candidates are shown.
                     </div>
-                  </CommandItem>
-                </CommandGroup>
-              </>
-            )}
+                  )}
+                  {filteringActive && !showAllResults && (
+                    <div className="border-b px-3 py-2 text-[11px] text-muted-foreground">
+                      <>
+                        Filtered to match
+                        {' '}
+                        the
+                        {' '}
+                        {constraintSide === 'domain' ? 'domain' : 'range'}
+                        {' '}
+                        of
+                        {' '}
+                        {constraintPropertyLabel
+                          ? (
+                              <span className="font-semibold">
+                                {constraintPropertyLabel}
+                              </span>
+                            )
+                          : (
+                              <span>the selected property</span>
+                            )}
+                      </>
+                    </div>
+                  )}
+                  {value && (
+                    <>
+                      <CommandGroup>
+                        <CommandItem
+                          value="clear-entity"
+                          onSelect={() => {
+                            onValueChange(null)
+                            setOpen(false)
+                          }}
+                        >
+                          <XIcon className="size-3.5" />
+                          <span>Clear entity</span>
+                        </CommandItem>
+                      </CommandGroup>
+                      <CommandSeparator />
+                    </>
+                  )}
 
-            {/* Custom entities */}
-            {customEntities.length > 0 && (
-              <CommandGroup heading="Corpus entities">
-                {customEntities.map((entity, index) => (
-                  <CommandItem
-                    key={getEntityOptionKey(entity, 'custom', index)}
-                    value={getEntityOptionValue(entity, 'custom', index)}
-                    onSelect={() => {
-                      onValueChange(entity)
-                      setOpen(false)
-                    }}
-                    className="items-start py-2"
-                  >
-                    <CheckIcon
+                  {value
+                    && !searchResults.some(entity =>
+                      isSelectedEntity(value, entity),
+                    ) && (
+                    <div
                       className={cn(
-                        'size-3.5 self-center text-muted-foreground',
-                        isSelectedEntity(value, entity) ? '' : 'hidden',
+                        'flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground',
+                        !createAvailable && 'border-b',
                       )}
-                    />
-                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                      <div className="min-w-0 leading-5">
-                        <span>{entity.label}</span>
-                        {entity.value !== entity.label && (
-                          <span className="ml-2 text-xs text-muted-foreground">
+                    >
+                      <span className="min-w-0 flex-1 truncate">
+                        Currently set:
+                        {' '}
+                        <span className="font-medium text-foreground">{value.label}</span>
+                        {value.value !== value.label && (
+                          <span className="ml-1">
                             (
-                            {entity.value}
+                            {value.value}
                             )
                           </span>
                         )}
-                      </div>
-                      {entity.description && (
-                        <span className="line-clamp-2 text-xs text-muted-foreground">
-                          {entity.description}
-                        </span>
-                      )}
+                      </span>
+                      {value.custom
+                        ? <span className="shrink-0">Corpus</span>
+                        : <EntityViewLink value={value.value} />}
                     </div>
-                    <span className="ml-auto text-xs text-muted-foreground">
-                      Corpus
-                    </span>
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            )}
+                  )}
 
-            {/* Wikidata entities */}
-            {wikidataEntities.length > 0 && (
-              <CommandGroup heading="Wikidata Entities">
-                {wikidataEntities.map((entity, index) => (
-                  <CommandItem
-                    key={getEntityOptionKey(entity, 'wikidata', index)}
-                    value={getEntityOptionValue(entity, 'wikidata', index)}
-                    onSelect={() => {
-                      onValueChange(entity)
-                      setOpen(false)
-                    }}
-                    className="items-start py-2"
-                  >
-                    <CheckIcon
-                      className={cn(
-                        'size-3.5 self-center text-muted-foreground',
-                        isSelectedEntity(value, entity) ? '' : 'hidden',
-                      )}
-                    />
-                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                      <div className="min-w-0 leading-5">
-                        <span>{entity.label}</span>
-                        <span className="ml-2 text-xs text-muted-foreground">
-                          (
-                          {entity.value}
-                          )
-                        </span>
-                      </div>
-                      {entity.description && (
-                        <span className="line-clamp-2 text-xs text-muted-foreground">
-                          {entity.description}
-                        </span>
-                      )}
-                      {resultStatus.get(entity.value) === 'unverifiable' && (
-                        <Badge variant="secondary">
-                          type unknown
-                        </Badge>
-                      )}
-                      {Array.isArray(resultStatus.get(entity.value)) && (
-                        <Badge variant="warning">
-                          <TriangleAlertIcon />
-                          doesn&apos;t match
-                          {' '}
-                          {formatFilteredSides(resultStatus.get(entity.value) as ConstraintSide[])}
-                        </Badge>
-                      )}
-                    </div>
-                    <EntityViewLink value={entity.value} />
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            )}
-
-            {/* Constraint filtering escape hatch */}
-            {filteringEnabled && activeClassification && filteredOutCount > 0 && (
-              <>
-                <CommandGroup>
-                  {showAllResults
-                    ? (
+                  {searchTerm
+                    && !searchResults.some(entity => entity.value === searchTerm)
+                    && corpusId && (
+                    <>
+                      {value && <CommandSeparator />}
+                      <CommandGroup>
                         <CommandItem
-                          value="hide-filtered-results"
-                          onSelect={() => setShowAllResults(false)}
+                          key="create-new"
+                          value="create-new"
+                          onSelect={async () => {
+                            try {
+                              const customType: 'entity' | 'relation'
+                                = entityType === 'predicate' ? 'relation' : 'entity'
+                              const customId = await addCorpusCustomEntity(
+                                corpusId,
+                                searchTerm,
+                                searchTerm,
+                                'string',
+                                customType,
+                              )
+
+                              const newEntity: Entity = {
+                                label: searchTerm,
+                                value: searchTerm,
+                                custom: true,
+                                customId,
+                                datatype: 'string',
+                                type: entityType,
+                              }
+
+                              onValueChange(newEntity)
+                              toast.success('Custom entity created!')
+                            } catch (error) {
+                              console.error(
+                                'Failed to create custom entity:',
+                                error,
+                              )
+                              toast.error(
+                                'Failed to create custom entity. Please try again.',
+                              )
+                              return
+                            }
+                            setOpen(false)
+                          }}
+                          className="flex"
                         >
-                          <span>Hide incompatible results</span>
+                          <PlusIcon className="size-3.5 shrink-0 text-accent" />
+                          <div className="flex min-w-0 flex-1 flex-col">
+                            <span>
+                              Create "
+                              {searchTerm}
+                              "
+                            </span>
+                            <span className="text-xs text-muted-foreground">New corpus entity</span>
+                          </div>
                         </CommandItem>
-                      )
-                    : (
+                      </CommandGroup>
+                    </>
+                  )}
+
+                  {customEntities.length > 0 && (
+                    <CommandGroup heading="Corpus entities">
+                      {customEntities.map((entity, index) => (
                         <CommandItem
-                          value="show-all-results"
-                          onSelect={() => setShowAllResults(true)}
+                          key={entityOptionId(entity, 'custom', index)}
+                          value={entityOptionId(entity, 'custom', index)}
+                          onSelect={() => {
+                            onValueChange(entity)
+                            setOpen(false)
+                          }}
+                          className="items-start py-2"
                         >
-                          <span>
-                            Show
-                            {' '}
-                            {filteredOutCount}
-                            {' '}
-                            more (may not match constraints)
+                          <CheckIcon
+                            className={cn(
+                              'size-3.5 self-center text-muted-foreground',
+                              isSelectedEntity(value, entity) ? '' : 'hidden',
+                            )}
+                          />
+                          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                            <div className="min-w-0 leading-5">
+                              <span>{entity.label}</span>
+                              {entity.value !== entity.label && (
+                                <span className="ml-2 text-xs text-muted-foreground">
+                                  (
+                                  {entity.value}
+                                  )
+                                </span>
+                              )}
+                            </div>
+                            {entity.description && (
+                              <span className="line-clamp-2 text-xs text-muted-foreground">
+                                {entity.description}
+                              </span>
+                            )}
+                          </div>
+                          <span className="ml-auto text-xs text-muted-foreground">
+                            Corpus
                           </span>
                         </CommandItem>
-                      )}
-                </CommandGroup>
-              </>
+                      ))}
+                    </CommandGroup>
+                  )}
+
+                  {wikidataEntities.length > 0 && (
+                    <CommandGroup heading="Wikidata Entities">
+                      {wikidataEntities.map((entity, index) => (
+                        <CommandItem
+                          key={entityOptionId(entity, 'wikidata', index)}
+                          value={entityOptionId(entity, 'wikidata', index)}
+                          onSelect={() => {
+                            onValueChange(entity)
+                            setOpen(false)
+                          }}
+                          className="items-start py-2"
+                        >
+                          <CheckIcon
+                            className={cn(
+                              'size-3.5 self-center text-muted-foreground',
+                              isSelectedEntity(value, entity) ? '' : 'hidden',
+                            )}
+                          />
+                          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                            <div className="min-w-0 leading-5">
+                              <span>{entity.label}</span>
+                              <span className="ml-2 text-xs text-muted-foreground">
+                                (
+                                {entity.value}
+                                )
+                              </span>
+                            </div>
+                            {entity.description && (
+                              <span className="line-clamp-2 text-xs text-muted-foreground">
+                                {entity.description}
+                              </span>
+                            )}
+                            {resultStatus.get(entity.value) === 'unverifiable' && (
+                              <Badge variant="secondary">
+                                type unknown
+                              </Badge>
+                            )}
+                            {Array.isArray(resultStatus.get(entity.value)) && (
+                              <Badge variant="warning">
+                                <TriangleAlertIcon />
+                                doesn&apos;t match
+                                {' '}
+                                {formatFilteredSides(resultStatus.get(entity.value) as ConstraintSide[])}
+                              </Badge>
+                            )}
+                          </div>
+                          <EntityViewLink value={entity.value} />
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  )}
+
+                  {filteringEnabled && activeClassification && filteredOutCount > 0 && (
+                    <>
+                      <CommandGroup>
+                        {showAllResults
+                          ? (
+                              <CommandItem
+                                value="hide-filtered-results"
+                                onSelect={() => setShowAllResults(false)}
+                              >
+                                <span>Hide incompatible results</span>
+                              </CommandItem>
+                            )
+                          : (
+                              <CommandItem
+                                value="show-all-results"
+                                onSelect={() => setShowAllResults(true)}
+                              >
+                                <span>
+                                  Show
+                                  {' '}
+                                  {filteredOutCount}
+                                  {' '}
+                                  more (may not match constraints)
+                                </span>
+                              </CommandItem>
+                            )}
+                      </CommandGroup>
+                    </>
+                  )}
+                </CommandList>
+                {isObjectSlot && (
+                  <CommandGroup>
+                    <CommandItem value="set-quantity" onSelect={enterQuantityMode}>
+                      <RulerIcon className="size-3.5" />
+                      <span>Set quantity…</span>
+                    </CommandItem>
+                  </CommandGroup>
+                )}
+              </Command>
             )}
-          </CommandList>
-        </Command>
       </PopoverContent>
     </Popover>
   )

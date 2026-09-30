@@ -66,7 +66,9 @@ function createTtlCache<T>(ttlMs: number) {
 const propertyConstraintsCache = createTtlCache<PropertyConstraints>(CACHE_TTL_MS)
 const membershipCache = createTtlCache<boolean>(CACHE_TTL_MS)
 const typeDataCache = createTtlCache<boolean>(CACHE_TTL_MS)
-const labelsCache = createTtlCache<string | null>(CACHE_TTL_MS)
+// Entry.label is null when the entity is known to have no label; a cache
+// miss is the only undefined.
+const labelsCache = createTtlCache<{ label: string | null }>(CACHE_TTL_MS)
 const constraintModelSupportCache = createTtlCache<ConstraintModelSupport>(CACHE_TTL_MS)
 
 type WbEntityIds = Parameters<ReturnType<typeof WBK>['getManyEntities']>[0]['ids']
@@ -133,6 +135,90 @@ export async function searchWikibaseEntities(
   } catch (error) {
     console.error('Wikibase search error:', error)
     return []
+  }
+}
+
+const UNIT_OF_MEASURE_CLASS = 'Q47574'
+const unitSearchCache = createTtlCache<WikibaseSearchResult[]>(CACHE_TTL_MS)
+
+// A label-scan SPARQL query over all items times out on public endpoints, so
+// search through the API index first and keep only results that sit
+// in the unit-of-measure tree via one bounded VALUES lookup.
+export async function searchWikibaseUnits(
+  config: WikibaseConfig,
+  search: string,
+  limit: number,
+): Promise<WikibaseSearchResult[]> {
+  const term = search.trim().toLowerCase()
+  if (!term) {
+    return []
+  }
+
+  const key = cacheKey(config, `unit-search:${term}:${limit}`)
+  const cached = unitSearchCache.get(key)
+  if (cached) {
+    return cached
+  }
+
+  // API search handles plurals poorly as well; retry with the singular forms
+  // when the plural term matches nothing. Best effort only. The picker stays
+  // usable when no variant matches.
+  const strippedPlural = term.replace(/s$/, '')
+  const strippedPluralEs = term.replace(/es$/, '')
+  const candidates = [term]
+  if (strippedPlural !== term) {
+    candidates.push(strippedPlural)
+  }
+  if (strippedPluralEs !== term && strippedPluralEs !== strippedPlural) {
+    candidates.push(strippedPluralEs)
+  }
+
+  const searched: WikibaseSearchResult[] = []
+  const seen = new Set<string>()
+  for (const candidate of candidates) {
+    const found = await searchWikibaseEntities(config, candidate, 'item', limit)
+    for (const result of found) {
+      if (!seen.has(result.id)) {
+        seen.add(result.id)
+        searched.push(result)
+      }
+    }
+    if (searched.length >= limit) {
+      break
+    }
+  }
+
+  const unitIds = searched.length > 0
+    ? await filterUnitIds(config, searched.map(result => result.id))
+    : new Set<string>()
+  const results = searched.filter(result => unitIds.has(result.id)).slice(0, limit)
+
+  unitSearchCache.set(key, results)
+  return results
+}
+
+// Unit membership for a fixed id list. Bounded lookups stay fast where open
+// label scans do not, since the endpoint only walks the tree for these items.
+async function filterUnitIds(config: WikibaseConfig, ids: string[]): Promise<Set<string>> {
+  const query = [
+    'SELECT ?item WHERE {',
+    `VALUES ?item { ${ids.map(id => `wd:${id}`).join(' ')} }`,
+    `?item wdt:P31/wdt:P279* wd:${UNIT_OF_MEASURE_CLASS} .`,
+    '}',
+  ].join(' ')
+  try {
+    const bindings = await runSparql(config, query)
+    const found = new Set<string>()
+    for (const binding of bindings) {
+      const id = entityIdFromValue(binding.item.value)
+      if (id) {
+        found.add(id)
+      }
+    }
+    return found
+  } catch (error) {
+    console.error('Wikibase unit filter error:', error)
+    return new Set()
   }
 }
 
@@ -353,14 +439,11 @@ export async function fetchEntityLabels(config: WikibaseConfig, ids: string[]): 
 
   const missing: string[] = []
   for (const id of validIds) {
-    const key = cacheKey(config, id)
-    if (labelsCache.has(key)) {
-      const cached = labelsCache.get(key)
-      if (cached != null) {
-        labels.set(id, cached)
-      }
-    } else {
+    const cached = labelsCache.get(cacheKey(config, id))
+    if (cached === undefined) {
       missing.push(id)
+    } else if (cached.label !== null) {
+      labels.set(id, cached.label)
     }
   }
 
@@ -376,7 +459,7 @@ export async function fetchEntityLabels(config: WikibaseConfig, ids: string[]): 
     }
     for (const [id, entity] of Object.entries(data.entities)) {
       const label = entity.labels?.en?.value
-      labelsCache.set(cacheKey(config, id), label ?? null)
+      labelsCache.set(cacheKey(config, id), { label: label ?? null })
       if (label) {
         labels.set(id, label)
       }

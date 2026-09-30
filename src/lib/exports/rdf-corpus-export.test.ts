@@ -4,6 +4,7 @@ import type {
   ExportModel,
 } from '@/types/types'
 import { describe, expect, it } from 'vitest'
+import { RDF_NAMESPACE_BASE } from '@/lib/config'
 import { asConceptBaseUri } from '@/lib/wikibase'
 import { serializeRdfCorpusExport } from './rdf-corpus-export'
 
@@ -21,6 +22,12 @@ function component(overrides: Partial<DocumentAnnotationComponent> = {}): Docume
     entityCustom: false,
     entityCustomId: null,
     entityDatatype: null,
+    unitValue: null,
+    unitLabel: null,
+    unitCustom: null,
+    unitCustomId: null,
+    quantityLowerBound: null,
+    quantityUpperBound: null,
     annotationStart: 0,
     annotationEnd: 1,
     annotationRow: null,
@@ -148,6 +155,74 @@ describe('serializeRdfCorpusExport (truthy)', () => {
     expect(output).toContain('pq:P585 "2000-08-01"^^xsd:date.')
   })
 
+  it('attaches a wikidata unit to the reified statement', () => {
+    const output = truthy([annotation({
+      object: component({
+        entityValue: '1360590',
+        entityDatatype: 'integer',
+        unitValue: 'Q11573',
+        unitLabel: 'metre',
+        annotationTag: 'object',
+      }),
+    })])
+    expect(output).toContain('rdf:reifies <<(wd:Q1 wdt:P1 1360590)>>;')
+    expect(output).toContain(`<${RDF_NAMESPACE_BASE}/ontology#unit> wd:Q11573.`)
+  })
+
+  it('attaches a custom unit as a corpus-local IRI', () => {
+    const output = truthy([annotation({
+      object: component({
+        entityValue: '1360590',
+        entityDatatype: 'integer',
+        unitValue: 'bottle',
+        unitLabel: 'bottle',
+        unitCustom: true,
+        unitCustomId: '00000000-0000-0000-0000-000000000001',
+        annotationTag: 'object',
+      }),
+    })])
+    expect(output).toContain(
+      `<${RDF_NAMESPACE_BASE}/ontology#unit> <${RDF_NAMESPACE_BASE}/corpus/corpus-1/entity/00000000-0000-0000-0000-000000000001>.`,
+    )
+  })
+
+  it('attaches quantity bounds as plain literals on the reified statement', () => {
+    const output = truthy([annotation({
+      object: component({
+        entityValue: '12',
+        entityDatatype: 'decimal',
+        quantityLowerBound: '12',
+        quantityUpperBound: '15',
+        annotationTag: 'object',
+      }),
+    })])
+    expect(output).toContain('rdf:reifies <<(wd:Q1 wdt:P1 "12"^^xsd:decimal)>>;')
+    expect(output).toContain(`<${RDF_NAMESPACE_BASE}/ontology#quantityLowerBound> "12";`)
+    expect(output).toContain(`<${RDF_NAMESPACE_BASE}/ontology#quantityUpperBound> "15".`)
+  })
+
+  it('emits an unmatched single bound on its own', () => {
+    const output = truthy([annotation({
+      object: component({
+        entityValue: '12',
+        entityDatatype: 'decimal',
+        quantityLowerBound: '10',
+        annotationTag: 'object',
+      }),
+    })])
+    expect(output).toContain(`<${RDF_NAMESPACE_BASE}/ontology#quantityLowerBound> "10".`)
+    expect(output).not.toContain('quantityUpperBound')
+  })
+
+  it('emits unit-less quantities as plain triples without a reifier', () => {
+    const output = truthy([annotation({
+      object: component({ entityValue: '1360590', entityDatatype: 'integer', annotationTag: 'object' }),
+    })])
+    expect(output).toContain('wd:Q1 wdt:P1 1360590.')
+    expect(output).not.toContain('rdf:reifies')
+    expect(output).not.toContain('at:unit')
+  })
+
   it('skips statements whose subject cannot be resolved to an IRI', () => {
     const output = truthy([annotation({
       subject: component({ entityValue: 'Not an ID' }),
@@ -210,6 +285,52 @@ describe('serializeRdfCorpusExport (full)', () => {
     const output = serializeRdfCorpusExport(model([annotation()], rawText()), 'full')
     expect(output).toContain('statement:a1 rdf:reifies <<(wd:Q1 wdt:P1 wd:Q2)>>;')
     expect(output).toContain('prov:wasDerivedFrom annotation:c1')
+  })
+
+  it('attaches a wikidata unit to the named statement', () => {
+    const output = serializeRdfCorpusExport(model([annotation({
+      object: component({
+        entityValue: '1360590',
+        entityDatatype: 'integer',
+        unitValue: 'Q11573',
+        unitLabel: 'metre',
+        annotationTag: 'object',
+      }),
+    })], rawText()), 'full')
+    expect(output).toContain('statement:a1 rdf:reifies <<(wd:Q1 wdt:P1 1360590)>>;')
+    expect(output).toContain('at:unit wd:Q11573.')
+  })
+
+  it('attaches a custom unit to the named statement as a corpus-local IRI', () => {
+    const output = serializeRdfCorpusExport(model([annotation({
+      object: component({
+        entityValue: '1360590',
+        entityDatatype: 'integer',
+        unitValue: 'bottle',
+        unitLabel: 'bottle',
+        unitCustom: true,
+        unitCustomId: '00000000-0000-0000-0000-000000000001',
+        annotationTag: 'object',
+      }),
+    })], rawText()), 'full')
+    expect(output).toContain(
+      `at:unit <${RDF_NAMESPACE_BASE}/corpus/corpus-1/entity/00000000-0000-0000-0000-000000000001>.`,
+    )
+  })
+
+  it('attaches quantity bounds as plain literals on the named statement', () => {
+    const output = serializeRdfCorpusExport(model([annotation({
+      object: component({
+        entityValue: '12',
+        entityDatatype: 'decimal',
+        quantityLowerBound: '12',
+        quantityUpperBound: '15',
+        annotationTag: 'object',
+      }),
+    })], rawText()), 'full')
+    expect(output).toContain('statement:a1 rdf:reifies <<(wd:Q1 wdt:P1 "12"^^xsd:decimal)>>;')
+    expect(output).toContain('at:quantityLowerBound "12";')
+    expect(output).toContain('at:quantityUpperBound "15".')
   })
 
   it('projects tables as csvw tables, columns and cells', () => {

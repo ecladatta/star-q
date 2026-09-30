@@ -13,6 +13,7 @@ import type {
 import { DataFactory, Writer } from 'n3'
 import { buildDocumentElements } from '@/lib/document-elements'
 import { wikibaseRdfNamespaces } from '@/lib/wikibase'
+import { sortedQualifiers } from './qualifiers'
 import {
   FULL_PREFIXES,
   NAMESPACES,
@@ -33,6 +34,7 @@ import {
   tableColumnIri,
   textContextIri,
   textMentionIri,
+  unitTerm,
 } from './rdf/terms'
 
 const {
@@ -73,6 +75,9 @@ const CSVW_TITLE = namedNode(`${NAMESPACES.csvw}title`)
 
 const AT_COLUMN_INDEX = namedNode(`${NAMESPACES.at}columnIndex`)
 const AT_ROW_INDEX = namedNode(`${NAMESPACES.at}rowIndex`)
+const AT_UNIT = namedNode(`${NAMESPACES.at}unit`)
+const AT_QUANTITY_LOWER_BOUND = namedNode(`${NAMESPACES.at}quantityLowerBound`)
+const AT_QUANTITY_UPPER_BOUND = namedNode(`${NAMESPACES.at}quantityUpperBound`)
 
 const OA_ANNOTATION = namedNode(`${NAMESPACES.oa}Annotation`)
 const OA_HAS_BODY = namedNode(`${NAMESPACES.oa}hasBody`)
@@ -167,8 +172,14 @@ function addTruthyAnnotation(
   }
 
   writer.addQuad(statement.subject, statement.predicate, statement.object)
+  const unit = annotation.object
+    ? unitTerm(annotation.object, corpusId, wikibase)
+    : null
+  const bounds = annotation.object
+    ? quantityBoundTerms(annotation.object)
+    : []
   const qualifiers = resolveQualifiers(wikibase, corpusId, annotation)
-  if (qualifiers.length === 0) {
+  if (qualifiers.length === 0 && !unit && bounds.length === 0) {
     return
   }
 
@@ -178,6 +189,12 @@ function addTruthyAnnotation(
   addTripleTerm(writer, reifier, RDF_REIFIES, statement.triple)
   for (const qualifier of qualifiers) {
     writer.addQuad(reifier, qualifier.predicate, qualifier.value)
+  }
+  if (unit) {
+    writer.addQuad(reifier, AT_UNIT, unit)
+  }
+  for (const [predicate, bound] of bounds) {
+    writer.addQuad(reifier, predicate, bound)
   }
 }
 
@@ -291,6 +308,14 @@ function addFullAnnotation(
   addTripleTerm(writer, statementNode, RDF_REIFIES, statement.triple)
   for (const component of components) {
     writer.addQuad(statementNode, PROV_WAS_DERIVED_FROM, component.iri)
+  }
+
+  const unit = unitTerm(annotation.object, context.corpusId, context.wikibase)
+  if (unit) {
+    writer.addQuad(statementNode, AT_UNIT, unit)
+  }
+  for (const [predicate, bound] of quantityBoundTerms(annotation.object)) {
+    writer.addQuad(statementNode, predicate, bound)
   }
 
   for (const qualifier of sortedQualifiers(annotation)) {
@@ -515,9 +540,17 @@ function resolveQualifiers(
     })
 }
 
-function sortedQualifiers(annotation: AnnotationExport) {
-  return (annotation.qualifiers ?? [])
-    .toSorted((left, right) => left.position - right.position)
+function quantityBoundTerms(
+  component: DocumentAnnotationComponent,
+): Array<[NamedNode, Literal]> {
+  const terms: Array<[NamedNode, Literal]> = []
+  if (component.quantityLowerBound) {
+    terms.push([AT_QUANTITY_LOWER_BOUND, literal(component.quantityLowerBound)])
+  }
+  if (component.quantityUpperBound) {
+    terms.push([AT_QUANTITY_UPPER_BOUND, literal(component.quantityUpperBound)])
+  }
+  return terms
 }
 
 function addOntology(writer: Writer) {

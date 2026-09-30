@@ -10,6 +10,7 @@ import {
   cellsInRect,
   columnCellRefs,
   dedupeCellRefs,
+  materializeBatchCellQuantity,
   rectContainsCell,
   rowCellRefs,
   trimmedCellValue,
@@ -30,6 +31,12 @@ function component(overrides: Partial<DocumentAnnotationComponent> = {}): Docume
     entityCustom: null,
     entityCustomId: null,
     entityDatatype: null,
+    unitValue: null,
+    unitLabel: null,
+    unitCustom: null,
+    unitCustomId: null,
+    quantityLowerBound: null,
+    quantityUpperBound: null,
     annotationStart: 0,
     annotationEnd: 1,
     annotationRow: null,
@@ -333,6 +340,38 @@ describe('buildCellBatchPreview', () => {
   })
 })
 
+describe('materializeBatchCellQuantity', () => {
+  const unit = { value: 'Q79735', label: 'megabyte', custom: false, customId: null }
+
+  it('extracts the amount and bounds from the cell text', () => {
+    expect(materializeBatchCellQuantity({
+      cellText: '0.576–1.152',
+      shared: { value: '', lowerBound: '', upperBound: '', unit },
+    })).toEqual({ value: '0.576', lowerBound: '0.576', upperBound: '1.152', unit })
+  })
+
+  it('a typed amount wins over the cell text', () => {
+    expect(materializeBatchCellQuantity({
+      cellText: '6.0000',
+      shared: { value: '6', lowerBound: '', upperBound: '', unit },
+    })).toEqual({ value: '6', lowerBound: '', upperBound: '', unit })
+  })
+
+  it('a typed amount fills a cell whose text has no number', () => {
+    expect(materializeBatchCellQuantity({
+      cellText: 'DDR SDRAM',
+      shared: { value: '6', lowerBound: '', upperBound: '', unit },
+    })).toEqual({ value: '6', lowerBound: '', upperBound: '', unit })
+  })
+
+  it('assigns a unit-only quantity to a cell whose text has no number', () => {
+    expect(materializeBatchCellQuantity({
+      cellText: 'DDR SDRAM',
+      shared: { value: '', lowerBound: '', upperBound: '', unit },
+    })).toEqual({ value: '', lowerBound: '', upperBound: '', unit })
+  })
+})
+
 describe('buildBatchAnnotationItem', () => {
   const row = {
     cell: { elementIndex: 0, row: 1, col: 0 },
@@ -351,6 +390,7 @@ describe('buildBatchAnnotationItem', () => {
       cellRole: 'subject',
       fixed: { subject: row.component, predicate: component({ annotationTag: 'predicate' }), object: component({ annotationTag: 'object' }) },
       cellEntities: new Map([[cellKey(row.cell), { label: 'Ada Lovelace', value: 'Q7254', type: 'subject', custom: false, customId: null, datatype: null }]]),
+      cellQuantities: new Map(),
     })
 
     expect(item.subject).toBe(row.component)
@@ -363,9 +403,107 @@ describe('buildBatchAnnotationItem', () => {
       cellRole: 'subject',
       fixed: { subject: row.component, predicate: component({ annotationTag: 'predicate' }), object: component({ annotationTag: 'object' }) },
       cellEntities: new Map(),
+      cellQuantities: new Map(),
     })
 
     expect(item.subjectEntity).toBeNull()
+  })
+
+  it('applies a per-cell quantity with amount, bounds and unit', () => {
+    const cell = component({
+      annotationTag: 'object',
+      annotationValue: '0.576–1.152',
+      annotationRow: 1,
+      annotationCell: 0,
+    })
+    const item = buildBatchAnnotationItem({
+      row: { ...row, component: cell },
+      cellRole: 'object',
+      fixed: { subject: component({ annotationTag: 'subject' }), predicate: component({ annotationTag: 'predicate' }), object: cell },
+      cellEntities: new Map(),
+      cellQuantities: new Map([[cellKey(row.cell), {
+        value: '0.576',
+        lowerBound: '0.576',
+        upperBound: '1.152',
+        unit: { value: 'Q11573', label: 'metre', custom: false, customId: null },
+      }]]),
+    })
+
+    expect(item.object?.entityValue).toBe('0.576')
+    expect(item.object?.quantityLowerBound).toBe('0.576')
+    expect(item.object?.quantityUpperBound).toBe('1.152')
+    expect(item.object?.unitValue).toBe('Q11573')
+    expect(item.object?.unitLabel).toBe('metre')
+    expect(item.object?.entityDatatype).toBe('decimal')
+  })
+
+  it('keeps a per-cell unit without an amount untyped', () => {
+    const cell = component({
+      annotationTag: 'object',
+      annotationValue: '32',
+      annotationRow: 1,
+      annotationCell: 0,
+    })
+    const item = buildBatchAnnotationItem({
+      row: { ...row, component: cell },
+      cellRole: 'object',
+      fixed: { subject: component({ annotationTag: 'subject' }), predicate: component({ annotationTag: 'predicate' }), object: cell },
+      cellEntities: new Map(),
+      cellQuantities: new Map([[cellKey(row.cell), {
+        value: '',
+        lowerBound: '',
+        upperBound: '',
+        unit: { value: 'Q79735', label: 'megabyte', custom: false, customId: null },
+      }]]),
+    })
+
+    expect(item.object?.entityValue).toBeNull()
+    expect(item.object?.unitValue).toBe('Q79735')
+    expect(item.object?.entityDatatype).toBeNull()
+  })
+
+  it('the per-cell entity wins over a per-cell quantity', () => {
+    const cell = component({
+      annotationTag: 'object',
+      annotationValue: '512 MB',
+      annotationRow: 1,
+      annotationCell: 0,
+    })
+    const item = buildBatchAnnotationItem({
+      row: { ...row, component: cell },
+      cellRole: 'object',
+      fixed: { subject: component({ annotationTag: 'subject' }), predicate: component({ annotationTag: 'predicate' }), object: cell },
+      cellEntities: new Map([[cellKey(row.cell), { label: '512 MB', value: '512 MB', type: 'object', custom: true, customId: 'ce-1', datatype: null }]]),
+      cellQuantities: new Map([[cellKey(row.cell), {
+        value: '512',
+        lowerBound: '',
+        upperBound: '',
+        unit: { value: 'Q79735', label: 'megabyte', custom: false, customId: null },
+      }]]),
+    })
+
+    expect(item.object?.unitValue).toBeNull()
+    expect(item.object?.entityValue).toBeNull()
+    expect(item.objectEntity?.value).toBe('512 MB')
+  })
+
+  it('a cell with neither entity nor quantity stays untouched', () => {
+    const cell = component({
+      annotationTag: 'object',
+      annotationValue: '6.0000',
+      annotationRow: 1,
+      annotationCell: 0,
+    })
+    const item = buildBatchAnnotationItem({
+      row: { ...row, component: cell },
+      cellRole: 'object',
+      fixed: { subject: component({ annotationTag: 'subject' }), predicate: component({ annotationTag: 'predicate' }), object: cell },
+      cellEntities: new Map(),
+      cellQuantities: new Map(),
+    })
+
+    expect(item.object?.unitValue).toBeNull()
+    expect(item.object?.entityValue).toBeNull()
   })
 
   it('derives entities for the fixed roles from their components', () => {
@@ -386,6 +524,7 @@ describe('buildBatchAnnotationItem', () => {
         object: rowComp,
       },
       cellEntities: new Map(),
+      cellQuantities: new Map(),
     })
 
     expect(item.subjectEntity?.value).toBe('Q7254')

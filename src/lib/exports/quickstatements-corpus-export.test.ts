@@ -16,6 +16,12 @@ function component(overrides: Partial<DocumentAnnotationComponent>): DocumentAnn
     entityCustom: false,
     entityCustomId: null,
     entityDatatype: null,
+    unitValue: null,
+    unitLabel: null,
+    unitCustom: null,
+    unitCustomId: null,
+    quantityLowerBound: null,
+    quantityUpperBound: null,
     annotationStart: 0,
     annotationEnd: 1,
     annotationRow: null,
@@ -126,6 +132,92 @@ it('normalizes leading-dot decimals', () => {
     predicate: component({ entityValue: 'P1082', annotationTag: 'predicate' }),
     object: component({ entityValue: '-.5', entityDatatype: 'decimal', annotationTag: 'object' }),
   })])).toBe('Q1\tP1082\t-0.5\n')
+})
+
+it('appends a wikidata unit suffix to quantities', () => {
+  expect(body([annotation({
+    predicate: component({ entityValue: 'P1082', annotationTag: 'predicate' }),
+    object: component({
+      entityValue: '1360590',
+      entityDatatype: 'integer',
+      unitValue: 'Q11573',
+      unitLabel: 'metre',
+      annotationTag: 'object',
+    }),
+  })])).toBe('Q1\tP1082\t1360590U11573\n')
+  expect(body([annotation({
+    predicate: component({ entityValue: 'P1082', annotationTag: 'predicate' }),
+    object: component({
+      entityValue: '-3.5',
+      entityDatatype: 'decimal',
+      unitValue: 'Q11573',
+      unitLabel: 'metre',
+      annotationTag: 'object',
+    }),
+  })])).toBe('Q1\tP1082\t-3.5U11573\n')
+})
+
+it('exports custom units as bare amounts', () => {
+  expect(body([annotation({
+    predicate: component({ entityValue: 'P1082', annotationTag: 'predicate' }),
+    object: component({
+      entityValue: '1360590',
+      entityDatatype: 'integer',
+      unitValue: 'bottle',
+      unitLabel: 'bottle',
+      unitCustom: true,
+      unitCustomId: '00000000-0000-0000-0000-000000000001',
+      annotationTag: 'object',
+    }),
+  })])).toBe('Q1\tP1082\t1360590\n')
+})
+
+it('emits quantity bounds in bracket syntax with and without a unit', () => {
+  expect(body([annotation({
+    predicate: component({ entityValue: 'P1082', annotationTag: 'predicate' }),
+    object: component({
+      entityValue: '12',
+      entityDatatype: 'decimal',
+      quantityLowerBound: '12',
+      quantityUpperBound: '15',
+      unitValue: 'Q11573',
+      unitLabel: 'metre',
+      annotationTag: 'object',
+    }),
+  })])).toBe('Q1\tP1082\t12[12,15]U11573\n')
+  expect(body([annotation({
+    predicate: component({ entityValue: 'P1082', annotationTag: 'predicate' }),
+    object: component({
+      entityValue: '12',
+      entityDatatype: 'decimal',
+      quantityLowerBound: '12',
+      quantityUpperBound: '15',
+      annotationTag: 'object',
+    }),
+  })])).toBe('Q1\tP1082\t12[12,15]\n')
+})
+
+it('drops incomplete or non-decimal bounds from quantities', () => {
+  expect(body([annotation({
+    predicate: component({ entityValue: 'P1082', annotationTag: 'predicate' }),
+    object: component({
+      entityValue: '12',
+      entityDatatype: 'decimal',
+      quantityLowerBound: '12',
+      annotationTag: 'object',
+    }),
+  })])).toBe('Q1\tP1082\t12\n')
+  expect(body([annotation({
+    predicate: component({ entityValue: 'P1082', annotationTag: 'predicate' }),
+    object: component({
+      entityValue: '12',
+      entityDatatype: 'decimal',
+      quantityLowerBound: 'about 12',
+      quantityUpperBound: '15',
+      unitValue: 'Q11573',
+      annotationTag: 'object',
+    }),
+  })])).toBe('Q1\tP1082\t12U11573\n')
 })
 
 it('pads and signs gYear values', () => {

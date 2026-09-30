@@ -1,29 +1,11 @@
 import type {
   AnnotationExport,
   DocumentAnnotationComponent,
-  DocumentAnnotationQualifierExport,
   EntityDatatype,
   ExportModel,
 } from '@/types/types'
-
-const NUMERIC_DATATYPES = new Set<EntityDatatype>([
-  'integer',
-  'decimal',
-  'double',
-  'float',
-  'byte',
-  'short',
-  'int',
-  'long',
-  'unsignedByte',
-  'unsignedShort',
-  'unsignedInt',
-  'unsignedLong',
-  'positiveInteger',
-  'nonNegativeInteger',
-  'negativeInteger',
-  'nonPositiveInteger',
-])
+import { NUMERIC_ENTITY_DATATYPES } from '@/lib/datatypes'
+import { sortedQualifiers } from './qualifiers'
 
 const TIME_DATATYPES = new Set<EntityDatatype>([
   'date',
@@ -87,13 +69,6 @@ function renderAnnotation(annotation: AnnotationExport): string | null {
   return parts.join('\t')
 }
 
-function sortedQualifiers(
-  annotation: AnnotationExport,
-): DocumentAnnotationQualifierExport[] {
-  return (annotation.qualifiers ?? [])
-    .toSorted((left, right) => left.position - right.position)
-}
-
 function entityId(component: DocumentAnnotationComponent): string | null {
   if (component.entityCustom) {
     return null
@@ -123,19 +98,20 @@ function valueTerm(component: DocumentAnnotationComponent): string | null {
   }
 
   const lexicalValue = entityValue || component.annotationValue
-  return literalValue(lexicalValue, component.entityDatatype)
+  return literalValue(lexicalValue, component.entityDatatype, component)
 }
 
 function literalValue(
   value: string,
   datatype: EntityDatatype | null,
+  component: DocumentAnnotationComponent,
 ): string | null {
   if (value === '') {
     return null
   }
 
-  if (datatype && NUMERIC_DATATYPES.has(datatype)) {
-    return quantityValue(value)
+  if (datatype && NUMERIC_ENTITY_DATATYPES.has(datatype)) {
+    return quantityValue(value, component)
   }
 
   if (datatype && TIME_DATATYPES.has(datatype)) {
@@ -145,14 +121,42 @@ function literalValue(
   return stringValue(value)
 }
 
-function quantityValue(value: string): string | null {
+// QuickStatements quantity syntax is `amount[lower,upper]Uxx`: optional
+// closed bounds in brackets, and only Wikidata unit items after `U`; custom
+// corpus units export as bare amounts. Bounds are emitted only when both are
+// present and parse as plain decimals, since the bracket form needs both ends.
+function unitSuffix(component: DocumentAnnotationComponent): string {
+  if (component.unitCustom) {
+    return ''
+  }
+
+  const unitValue = component.unitValue?.trim()
+  return unitValue && /^Q\d+$/.test(unitValue) ? `U${unitValue.slice(1)}` : ''
+}
+
+function quantityValue(
+  value: string,
+  component: DocumentAnnotationComponent,
+): string | null {
+  const amount = normalizeQuantityAmount(value)
+  if (!amount) {
+    return null
+  }
+
+  const lower = normalizeQuantityAmount(component.quantityLowerBound ?? '')
+  const upper = normalizeQuantityAmount(component.quantityUpperBound ?? '')
+  const bounds = lower && upper ? `[${lower},${upper}]` : ''
+  return `${amount}${bounds}${unitSuffix(component)}`
+}
+
+// QuickStatements quantities take a plain decimal without a leading dot or an
+// exponent; `.5` / `-.5` normalize to `0.5` / `-0.5`.
+function normalizeQuantityAmount(value: string): string | null {
   const trimmed = value.trim()
   if (!/^[+-]?(?:\d+(?:\.\d+)?|\.\d+)$/.test(trimmed)) {
     return null
   }
 
-  // QuickStatements quantity syntax does not accept a leading-dot decimal;
-  // normalize `.5` / `-.5` to `0.5` / `-0.5`.
   return trimmed.replace(/^([+-]?)\./, '$10.')
 }
 
