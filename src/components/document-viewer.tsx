@@ -511,8 +511,12 @@ export function DocumentViewer({
               batchCellsCount={cellBatch.cells.length}
               batchCellRows={cellBatch.cellRows}
               batchCellEntities={cellBatch.cellEntities}
-              batchUnit={cellBatch.batchUnit}
-              onBatchUnitChange={cellBatch.setBatchUnit}
+              batchCellQuantities={cellBatch.cellQuantities}
+              batchQuantity={cellBatch.batchQuantity}
+              onBatchQuantityApply={cellBatch.applyBatchQuantity}
+              onBatchQuantityClear={cellBatch.clearBatchQuantity}
+              onBatchCellQuantityChange={cellBatch.setCellQuantity}
+              onBatchCellUnitChange={cellBatch.setCellUnit}
               onBatchCellRoleChange={cellBatch.setCellRole}
               onBatchCellEntityChange={cellBatch.setCellEntity}
               batchReady={Boolean(

@@ -8,7 +8,7 @@ import type {
 } from '@/types/types'
 import { createEntityFromComponent } from '@/lib/annotation-roles'
 import { isNumericEntityDatatype } from '@/lib/datatypes'
-import { parseNumericSpan } from '@/lib/numeric-units'
+import { isValidQuantityAmount, parseQuantityHint } from '@/lib/numeric-units'
 
 export type CellBatchCellRef = {
   elementIndex: number
@@ -256,26 +256,58 @@ export type CellBatchAnnotationItem = {
 
 export type BatchAnnotationItem = CellBatchAnnotationItem
 
-// One unit picker per batch: the confirmed unit lands on every cell component.
-// The numeric part of each cell text is extracted into entityValue so exports
-// see a clean quantity. A cell whose text holds no number keeps its value and
-// gets no unit, since a unit is a fact about a quantity.
-function withBatchUnit(
-  component: DocumentAnnotationComponent,
-  unit: UnitRef,
-): DocumentAnnotationComponent {
-  const parsed = parseNumericSpan(component.annotationValue)
-  if (!parsed) {
-    return component
+// One merged combobox per cell (and one for "apply to all"): a cell object
+// holds either an entity or a quantity, mirroring the single-annotation flow.
+// A quantity carries the amount and optional bounds plus one unit.
+export type BatchCellQuantity = {
+  value: string
+  lowerBound: string
+  upperBound: string
+  unit: UnitRef | null
+}
+
+// Resolve the quantity a cell receives from an "apply to all" write. A typed
+// amount wins; otherwise the amount and bounds come from the cell's own text.
+// Cells whose text holds no number and no typed amount stay untouched, since
+// a unit is a fact about a quantity.
+export function materializeBatchCellQuantity(input: {
+  cellText: string
+  shared: BatchCellQuantity
+}): BatchCellQuantity {
+  const { cellText, shared } = input
+  if (shared.value.trim()) {
+    return shared
   }
+  // A cell whose text holds no number still gets the unit as an amount-less
+  // quantity: the annotator applied the unit to the column and can fill the
+  // amount in per cell.
+  const hint = parseQuantityHint(cellText)
+  return {
+    value: hint.amount ?? '',
+    lowerBound: hint.lowerBound ?? '',
+    upperBound: hint.upperBound ?? '',
+    unit: shared.unit,
+  }
+}
+
+// The numeric part of each cell text is extracted into entityValue so exports
+// see a clean quantity.
+function withCellQuantity(
+  component: DocumentAnnotationComponent,
+  quantity: BatchCellQuantity,
+): DocumentAnnotationComponent {
   return {
     ...component,
-    unitValue: unit.value,
-    unitLabel: unit.label,
-    unitCustom: unit.custom,
-    unitCustomId: unit.customId,
-    entityValue: parsed.amount,
-    entityDatatype: isNumericEntityDatatype(component.entityDatatype) ? component.entityDatatype : 'decimal',
+    entityValue: quantity.value || null,
+    quantityLowerBound: quantity.lowerBound || null,
+    quantityUpperBound: quantity.upperBound || null,
+    unitValue: quantity.unit?.value ?? null,
+    unitLabel: quantity.unit?.label ?? null,
+    unitCustom: quantity.unit?.custom ?? null,
+    unitCustomId: quantity.unit?.customId ?? null,
+    entityDatatype: quantity.value && isValidQuantityAmount(quantity.value)
+      ? (isNumericEntityDatatype(component.entityDatatype) ? component.entityDatatype : 'decimal')
+      : component.entityDatatype,
   }
 }
 
@@ -284,13 +316,19 @@ export function buildBatchAnnotationItem(input: {
   cellRole: EntityType
   fixed: CellBatchFixedSlots & Record<EntityType, DocumentAnnotationComponent>
   cellEntities: Map<string, Entity>
-  batchUnit?: UnitRef | null
+  cellQuantities: Map<string, BatchCellQuantity>
 }): CellBatchAnnotationItem {
-  const { row, cellRole, fixed, cellEntities, batchUnit } = input
-  const chosenEntity = cellEntities.get(cellKey(row.cell)) ?? null
+  const { row, cellRole, fixed, cellEntities, cellQuantities } = input
+  const key = cellKey(row.cell)
+  const chosenEntity = cellEntities.get(key) ?? null
+  const chosenQuantity = cellQuantities.get(key) ?? null
   // Same exclusivity as the form: a cell linked to an entity is not a
-  // quantity, so the batch unit applies only to plain value cells.
-  const chosenComp = batchUnit && !chosenEntity ? withBatchUnit(row.component, batchUnit) : row.component
+  // quantity, and a cell with a quantity has no entity link.
+  const chosenComp = chosenEntity
+    ? row.component
+    : chosenQuantity
+      ? withCellQuantity(row.component, chosenQuantity)
+      : row.component
   const subjectComp = cellRole === 'subject' ? chosenComp : fixed.subject
   const predicateComp = cellRole === 'predicate' ? chosenComp : fixed.predicate
   const objectComp = cellRole === 'object' ? chosenComp : fixed.object

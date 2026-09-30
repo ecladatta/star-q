@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from 'react'
 import type { usePopoverState } from './useSelectionState'
-import type { BatchAnnotationItem, CellBatchCellRef, CellBatchPreview, CellBatchPreviewRow } from '@/lib/cell-batch'
+import type { BatchAnnotationItem, BatchCellQuantity, CellBatchCellRef, CellBatchPreview, CellBatchPreviewRow } from '@/lib/cell-batch'
 import type { CurrentAnnotation, DocumentAnnotation, DocumentAnnotationComponent, Entity, EntityType, UnitRef } from '@/types/types'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
@@ -18,6 +18,7 @@ import {
   columnCellRefs,
   CONSTANT_ROLES,
   dedupeCellRefs,
+  materializeBatchCellQuantity,
   rectContainsCell,
   rowCellRefs,
   trimmedCellValue,
@@ -120,13 +121,15 @@ export function useCellBatch(options: UseCellBatchOptions) {
   const [creating, setCreating] = useState(false)
   const [anchorRect, setAnchorRect] = useState<AnchorRect | null>(null)
   const [cellEntities, setCellEntities] = useState<Map<string, Entity>>(() => new Map())
-  const [batchUnit, setBatchUnit] = useState<UnitRef | null>(null)
+  const [cellQuantities, setCellQuantities] = useState<Map<string, BatchCellQuantity>>(() => new Map())
+  const [batchQuantity, setBatchQuantity] = useState<BatchCellQuantity | null>(null)
 
   const cellKeySet = useMemo(() => new Set(cells.map(cellKey)), [cells])
 
-  const resetCellEntities = useCallback(() => {
+  const resetCellValues = useCallback(() => {
     setCellEntities(new Map())
-    setBatchUnit(null)
+    setCellQuantities(new Map())
+    setBatchQuantity(null)
   }, [])
 
   const setCellEntity = useCallback((cell: CellBatchCellRef, entity: Entity | null) => {
@@ -140,6 +143,77 @@ export function useCellBatch(options: UseCellBatchOptions) {
       }
       return next
     })
+    // Same exclusivity as the form: linking an entity clears the cell's
+    // quantity.
+    if (entity) {
+      setCellQuantities((prev) => {
+        if (!prev.has(key)) {
+          return prev
+        }
+        const next = new Map(prev)
+        next.delete(key)
+        return next
+      })
+    }
+  }, [])
+
+  const setCellQuantity = useCallback((cell: CellBatchCellRef, quantity: { value: string, lowerBound: string, upperBound: string } | null) => {
+    const key = cellKey(cell)
+    if (quantity) {
+      setCellQuantities((prev) => {
+        const next = new Map(prev)
+        next.set(key, { ...quantity, unit: prev.get(key)?.unit ?? null })
+        return next
+      })
+      // A quantity replaces any entity link on the cell.
+      setCellEntities((prev) => {
+        if (!prev.has(key)) {
+          return prev
+        }
+        const next = new Map(prev)
+        next.delete(key)
+        return next
+      })
+    } else {
+      setCellQuantities((prev) => {
+        if (!prev.has(key)) {
+          return prev
+        }
+        const next = new Map(prev)
+        next.delete(key)
+        return next
+      })
+    }
+  }, [])
+
+  const setCellUnit = useCallback((cell: CellBatchCellRef, unit: UnitRef | null) => {
+    const key = cellKey(cell)
+    setCellQuantities((prev) => {
+      const next = new Map(prev)
+      const existing = prev.get(key)
+      if (!existing && !unit) {
+        return prev
+      }
+      next.set(key, {
+        value: existing?.value ?? '',
+        lowerBound: existing?.lowerBound ?? '',
+        upperBound: existing?.upperBound ?? '',
+        unit,
+      })
+      return next
+    })
+    // Setting a unit on an entity-linked cell replaces the link with a
+    // quantity in progress.
+    if (unit) {
+      setCellEntities((prev) => {
+        if (!prev.has(key)) {
+          return prev
+        }
+        const next = new Map(prev)
+        next.delete(key)
+        return next
+      })
+    }
   }, [])
 
   const anchorRef = useRef<CellBatchCellRef | null>(null)
@@ -183,7 +257,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
   }, [dragging])
 
   const commitCells = useCallback((next: CellBatchCellRef[], showAnchor = true) => {
-    resetCellEntities()
+    resetCellValues()
     setCells(next)
     if (dragRef.current?.active || next.length < 2) {
       setAnchorRect(null)
@@ -192,17 +266,17 @@ export function useCellBatch(options: UseCellBatchOptions) {
     } else {
       setAnchorRect(prev => (prev === null ? null : getAnchorRectForCells(next)))
     }
-  }, [resetCellEntities])
+  }, [resetCellValues])
 
   const commitStagedCells = useCallback((next: CellBatchCellRef[], originRect: CellBatchOriginRect | null) => {
-    resetCellEntities()
+    resetCellValues()
     setCells(next)
     if (dragRef.current?.active || next.length < 2) {
       setAnchorRect(null)
       return
     }
     setAnchorRect(originRect ?? getAnchorRectForCells(next))
-  }, [resetCellEntities])
+  }, [resetCellValues])
 
   const clearCells = useCallback(() => {
     if (cells.length === 0) {
@@ -210,8 +284,8 @@ export function useCellBatch(options: UseCellBatchOptions) {
     }
     anchorRef.current = null
     commitCells([])
-    resetCellEntities()
-  }, [cells, commitCells, resetCellEntities])
+    resetCellValues()
+  }, [cells, commitCells, resetCellValues])
 
   const exitBatchMode = useCallback(() => {
     setBatchMode(false)
@@ -224,8 +298,8 @@ export function useCellBatch(options: UseCellBatchOptions) {
     setBatchMode(false)
     setSelectedRole('subject')
     clearCells()
-    resetCellEntities()
-  }, [clearCells, resetCellEntities])
+    resetCellValues()
+  }, [clearCells, resetCellValues])
 
   const setCellRole = useCallback((type: EntityType) => {
     setSelectedRole(type)
@@ -252,7 +326,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
   // Ctrl/cmd+drag spreads the initial toggle across the dragged range:
   // selecting unselected cells, or deselecting selected ones.
   const spreadToggle = useCallback((from: CellBatchCellRef, to: CellBatchCellRef, selecting: boolean) => {
-    resetCellEntities()
+    resetCellValues()
     setCells((prev) => {
       if (!selecting) {
         return prev.filter(candidate => !rectContainsCell(from, to, candidate))
@@ -260,7 +334,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
       return dedupeCellRefs([...prev, ...cellsInRect(from, to)])
     })
     setAnchorRect(null)
-  }, [resetCellEntities])
+  }, [resetCellValues])
 
   const extendRect = useCallback((from: CellBatchCellRef, to: CellBatchCellRef) => {
     commitCells(cellsInRect(from, to))
@@ -729,7 +803,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
     }
 
     const buildItem = (row: CellBatchPreviewRow & { component: DocumentAnnotationComponent }): BatchAnnotationItem =>
-      buildBatchAnnotationItem({ row, cellRole: selectedRole, fixed: slots, cellEntities, batchUnit })
+      buildBatchAnnotationItem({ row, cellRole: selectedRole, fixed: slots, cellEntities, cellQuantities })
 
     setCreating(true)
     try {
@@ -774,7 +848,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
     } finally {
       setCreating(false)
     }
-  }, [selectedRole, preview, creating, currentAnnotation, cellEntities, batchUnit, exitBatchMode, setDocumentAnnotations])
+  }, [selectedRole, preview, creating, currentAnnotation, cellEntities, cellQuantities, exitBatchMode, setDocumentAnnotations])
 
   useEffect(() => {
     if (!dragging) {
@@ -961,6 +1035,41 @@ export function useCellBatch(options: UseCellBatchOptions) {
     })
   }, [cells, documentElements])
 
+  // "Apply to all" quantity write: store the shared quantity for display and
+  // materialize it per filled cell — the unit applies to every plain cell,
+  // each cell keeps the amount auto-extracted from its own text unless the
+  // annotator typed one.
+  const applyBatchQuantity = useCallback((shared: BatchCellQuantity) => {
+    setBatchQuantity(shared)
+    setCellQuantities((prev) => {
+      const next = new Map(prev)
+      for (const row of cellRows) {
+        if (!row.filled) {
+          continue
+        }
+        next.set(cellKey(row.cell), materializeBatchCellQuantity({ cellText: row.text, shared }))
+      }
+      return next
+    })
+    // The quantity replaces any entity link on the cells.
+    setCellEntities((prev) => {
+      if (cellRows.every(row => !row.filled || !prev.has(cellKey(row.cell)))) {
+        return prev
+      }
+      const next = new Map(prev)
+      for (const row of cellRows) {
+        if (row.filled) {
+          next.delete(cellKey(row.cell))
+        }
+      }
+      return next
+    })
+  }, [cellRows])
+
+  const clearBatchQuantity = useCallback(() => {
+    setBatchQuantity(null)
+  }, [])
+
   return {
     cells,
     selectedKeys: cellKeySet,
@@ -973,8 +1082,12 @@ export function useCellBatch(options: UseCellBatchOptions) {
     anchorRect,
     cellEntities,
     setCellEntity,
-    batchUnit,
-    setBatchUnit,
+    cellQuantities,
+    setCellQuantity,
+    setCellUnit,
+    batchQuantity,
+    applyBatchQuantity,
+    clearBatchQuantity,
     cellRows,
     openBatchMode,
     exitBatchMode,

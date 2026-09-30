@@ -1,6 +1,6 @@
 import type { Dispatch, ReactNode, SetStateAction } from 'react'
 import type { QuantityState } from '@/components/entity-selector'
-import type { CellBatchCellRef } from '@/lib/cell-batch'
+import type { BatchCellQuantity, CellBatchCellRef } from '@/lib/cell-batch'
 import type { ConstraintEntityCheck, ConstraintSide, PropertyConstraints } from '@/lib/wikidata-constraints'
 import type {
   AnnotationComponentRole,
@@ -29,7 +29,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { v4 as uuidv4 } from 'uuid'
 import { fetchWikibasePropertyConstraints } from '@/actions/wikibase/wikibaseActions'
-import { EntitySelector, QuantityPicker } from '@/components/entity-selector'
+import { EntitySelector } from '@/components/entity-selector'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -125,8 +125,12 @@ type AnnotationFormProps = {
   batchCellsCount?: number
   batchCellRows?: Array<{ cell: CellBatchCellRef, text: string, filled: boolean }> | null
   batchCellEntities?: Map<string, Entity>
-  batchUnit?: UnitRef | null
-  onBatchUnitChange?: (unit: UnitRef | null) => void
+  batchCellQuantities?: Map<string, BatchCellQuantity>
+  batchQuantity?: BatchCellQuantity | null
+  onBatchQuantityApply?: (quantity: BatchCellQuantity) => void
+  onBatchQuantityClear?: () => void
+  onBatchCellQuantityChange?: (cell: CellBatchCellRef, quantity: { value: string, lowerBound: string, upperBound: string } | null) => void
+  onBatchCellUnitChange?: (cell: CellBatchCellRef, unit: UnitRef | null) => void
   onBatchCellRoleChange?: (role: EntityType) => void
   onBatchCellEntityChange?: (cell: CellBatchCellRef, entity: Entity | null) => void
   scrollToCells?: () => void
@@ -385,8 +389,12 @@ export function AnnotationForm({
   batchCellsCount,
   batchCellRows = null,
   batchCellEntities,
-  batchUnit,
-  onBatchUnitChange,
+  batchCellQuantities,
+  batchQuantity,
+  onBatchQuantityApply,
+  onBatchQuantityClear,
+  onBatchCellQuantityChange,
+  onBatchCellUnitChange,
   onBatchCellRoleChange,
   onBatchCellEntityChange,
   scrollToCells,
@@ -514,6 +522,14 @@ export function AnnotationForm({
   const singleBatchCell = batchCellsCount === 1 ? batchCellRows?.[0] ?? null : null
   const singleBatchCellEntity = singleBatchCell
     ? batchCellEntities?.get(cellKey(singleBatchCell.cell)) ?? null
+    : null
+  const singleBatchCellQuantity = singleBatchCell
+    ? batchCellQuantities?.get(cellKey(singleBatchCell.cell)) ?? null
+    : null
+  // A cell combobox receives the shared "apply to all" quantity as its
+  // starting point; the same merged popover then edits that cell directly.
+  const batchQuantityFields = batchQuantity
+    ? { value: batchQuantity.value, lowerBound: batchQuantity.lowerBound, upperBound: batchQuantity.upperBound }
     : null
 
   // undefined auto-opens the first useful row; null means the user collapsed all qualifier editors.
@@ -654,7 +670,10 @@ export function AnnotationForm({
       }
 
       // Clearing the unit keeps the value and bounds: the annotator owns the
-      // quantity and only removes the unit reference.
+      // quantity and only removes the unit reference. Setting a unit on an
+      // entity-linked object replaces the link with a quantity in progress.
+      const hadLink = type === 'object'
+        && (component.entityCustom || (component.entityValue !== null && WIKIDATA_ITEM_PATTERN.test(component.entityValue)))
       return {
         ...prev,
         [type]: {
@@ -663,6 +682,15 @@ export function AnnotationForm({
           unitLabel: unit?.label ?? null,
           unitCustom: unit?.custom ?? null,
           unitCustomId: unit?.customId ?? null,
+          ...(hadLink && unit !== null
+            ? {
+                entityLabel: null,
+                entityValue: null,
+                entityCustom: false,
+                entityCustomId: null,
+                entityDatatype: null,
+              }
+            : {}),
         },
       }
     })
@@ -680,6 +708,12 @@ export function AnnotationForm({
         entityValue: quantity.value || null,
         quantityLowerBound: quantity.lowerBound || null,
         quantityUpperBound: quantity.upperBound || null,
+      }
+      // Exclusivity: a quantity replaces any entity link on the object.
+      if (type === 'object' && (component.entityCustom || WIKIDATA_ITEM_PATTERN.test(component.entityValue ?? ''))) {
+        updated.entityLabel = null
+        updated.entityCustom = false
+        updated.entityCustomId = null
       }
       const bumped = quantityDatatypeBumpRef.current.has(component.id)
       if (quantity.value && isValidQuantityAmount(quantity.value)) {
@@ -1379,6 +1413,14 @@ export function AnnotationForm({
                             type="object"
                             value={singleBatchCellEntity}
                             onValueChange={newValue => onBatchCellEntityChange?.(singleBatchCell.cell, newValue)}
+                            quantity={{
+                              value: singleBatchCellQuantity?.value ?? '',
+                              lowerBound: singleBatchCellQuantity?.lowerBound ?? '',
+                              upperBound: singleBatchCellQuantity?.upperBound ?? '',
+                            }}
+                            unit={singleBatchCellQuantity?.unit ?? null}
+                            onQuantityChange={quantity => onBatchCellQuantityChange?.(singleBatchCell.cell, quantity)}
+                            onUnitChange={unit => onBatchCellUnitChange?.(singleBatchCell.cell, unit)}
                             text={singleBatchCell.text}
                             corpusId={corpusId}
                             constraints={objectConstraintSide ? effectivePredicateConstraints : null}
@@ -1417,38 +1459,29 @@ export function AnnotationForm({
                   )}
             </div>
           </div>
-          {batchMode && batchCellRole === 'object' && (
-            <div className="mt-1 flex items-center gap-2 rounded-md bg-muted/40 px-2 py-1.5 pt-1">
-              <span className="w-20 shrink-0 text-xs font-medium text-muted-foreground">Unit</span>
-              <div className="min-w-0 flex-1">
-                <QuantityPicker
-                  value={batchUnit ?? null}
-                  onChange={unit => onBatchUnitChange?.(unit)}
-                  corpusId={corpusId}
-                  text={(batchCellRows ?? []).find(row => row.filled)?.text ?? ''}
-                />
-              </div>
-            </div>
-          )}
           {batchMode && (batchCellsCount ?? 0) > 1 && (
             <Collapsible className="pt-1">
               <CollapsibleTrigger
                 className="group flex w-full items-center gap-1.5 rounded-md border border-dashed px-2 py-1.5 text-sm font-medium text-muted-foreground hover:bg-foreground/5"
               >
                 <ChevronRightIcon className="size-3.5 transition-transform group-data-[state=open]:rotate-90" />
-                Per-cell entities
+                {batchCellRole === 'subject' ? 'Per-cell subjects' : batchCellRole === 'predicate' ? 'Per-cell predicates' : 'Per-cell objects'}
                 <Badge variant="secondary" className="ml-auto font-normal">
                   {(() => {
                     const filled = (batchCellRows ?? []).filter(row => row.filled)
-                    const withEntity = filled.filter(row => batchCellEntities?.has(cellKey(row.cell))).length
-                    return `${withEntity} of ${filled.length} set`
+                    const withValue = filled.filter(row =>
+                      batchCellEntities?.has(cellKey(row.cell))
+                      || batchCellQuantities?.has(cellKey(row.cell))).length
+                    return `${withValue} of ${filled.length} set`
                   })()}
                 </Badge>
               </CollapsibleTrigger>
               <CollapsibleContent>
                 {(() => {
                   const filledRows = (batchCellRows ?? []).filter(row => row.filled)
-                  const anySet = filledRows.some(row => batchCellEntities?.has(cellKey(row.cell)))
+                  const anySet = filledRows.some(row =>
+                    batchCellEntities?.has(cellKey(row.cell))
+                    || batchCellQuantities?.has(cellKey(row.cell)))
 
                   return (
                     <div className="mt-2 flex items-center gap-2 rounded-md bg-muted/40 px-2 py-1.5">
@@ -1461,10 +1494,25 @@ export function AnnotationForm({
                             if (!newValue) {
                               return
                             }
+                            // Same exclusivity as the form: linking an entity
+                            // on every cell clears the shared quantity.
                             for (const row of filledRows) {
                               onBatchCellEntityChange?.(row.cell, newValue)
                             }
+                            onBatchQuantityClear?.()
                           }}
+                          quantity={batchQuantityFields ?? { value: '', lowerBound: '', upperBound: '' }}
+                          unit={batchQuantity?.unit ?? null}
+                          onQuantityChange={quantity => onBatchQuantityApply?.({
+                            ...quantity,
+                            unit: batchQuantity?.unit ?? null,
+                          })}
+                          onUnitChange={unit => onBatchQuantityApply?.({
+                            value: batchQuantity?.value ?? '',
+                            lowerBound: batchQuantity?.lowerBound ?? '',
+                            upperBound: batchQuantity?.upperBound ?? '',
+                            unit,
+                          })}
                           text=""
                           corpusId={corpusId}
                           constraints={cellConstraintSide ? effectivePredicateConstraints : null}
@@ -1481,9 +1529,11 @@ export function AnnotationForm({
                           onClick={() => {
                             for (const row of filledRows) {
                               onBatchCellEntityChange?.(row.cell, null)
+                              onBatchCellQuantityChange?.(row.cell, null)
                             }
+                            onBatchQuantityClear?.()
                           }}
-                          aria-label="Clear entities for all cells"
+                          aria-label="Clear entities and quantities for all cells"
                         >
                           <Trash2Icon className="size-3.5" />
                         </Button>
@@ -1515,6 +1565,19 @@ export function AnnotationForm({
                             type={batchCellRole ?? 'subject'}
                             value={batchCellEntities?.get(cellKey(row.cell)) ?? null}
                             onValueChange={newValue => onBatchCellEntityChange?.(row.cell, newValue)}
+                            quantity={(() => {
+                              const cellQuantity = batchCellQuantities?.get(cellKey(row.cell))
+                              // Always a state object (possibly empty): the
+                              // quantity view renders only when non-null.
+                              return {
+                                value: cellQuantity?.value ?? '',
+                                lowerBound: cellQuantity?.lowerBound ?? '',
+                                upperBound: cellQuantity?.upperBound ?? '',
+                              }
+                            })()}
+                            unit={batchCellQuantities?.get(cellKey(row.cell))?.unit ?? null}
+                            onQuantityChange={quantity => onBatchCellQuantityChange?.(row.cell, quantity)}
+                            onUnitChange={unit => onBatchCellUnitChange?.(row.cell, unit)}
                             text={row.text}
                             corpusId={corpusId}
                             constraints={cellConstraintSide ? effectivePredicateConstraints : null}

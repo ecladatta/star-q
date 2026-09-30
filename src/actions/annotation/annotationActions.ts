@@ -210,14 +210,26 @@ async function upsertAnnotationComponent(
     unitValue = component.unitValue
   }
 
+  // Entity fields follow the link when one exists. With no link the
+  // component's own fields stand: a quantity object carries its amount and
+  // datatype without an entity, and they must survive the save.
+  const hasEntityLink = Boolean(
+    (entity?.custom && entity.label && entity.value && entity.datatype)
+    || (entity && !entity.custom),
+  )
+
   const values = {
     ...component,
     id: undefined,
-    entityLabel,
-    entityValue,
+    ...(hasEntityLink
+      ? {
+          entityLabel,
+          entityValue,
+          entityDatatype: entity?.datatype,
+        }
+      : {}),
     entityCustom: entity?.custom,
     entityCustomId,
-    entityDatatype: entity?.datatype,
     unitValue,
     unitLabel,
     unitCustom,
