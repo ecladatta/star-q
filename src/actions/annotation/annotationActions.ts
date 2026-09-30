@@ -225,7 +225,10 @@ async function upsertAnnotationComponent(
     entityLabel: hasEntityLink ? entityLabel : component.entityLabel,
     entityValue: hasEntityLink ? entityValue : component.entityValue,
     entityDatatype: hasEntityLink ? (entity?.datatype ?? null) : component.entityDatatype,
-    entityCustom: entity?.custom,
+    // Explicit so an update always overwrites a stale link flag: with no
+    // entity, drizzle would skip an undefined column and leave the old
+    // entity_custom behind.
+    entityCustom: entity?.custom ?? false,
     entityCustomId,
     unitValue,
     unitLabel,
