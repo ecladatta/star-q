@@ -1,8 +1,8 @@
-const NUMERIC_PREFIX = /^[+-]?(?:\d+(?:\.\d+)?|\.\d+)(?:e[+-]?\d+)?/i
+const NUMERIC_PREFIX = /^[+-]?(?:\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:\.\d+)?|\.\d+)(?:e[+-]?\d+)?/i
 
 const ONE_TRAILING_WORD = /^\s+(\S+)$/
 
-const NUMERIC_SOURCE = '[+-]?(?:\\d+(?:\\.\\d+)?|\\.\\d+)(?:e[+-]?\\d+)?'
+const NUMERIC_SOURCE = '[+-]?(?:\\d{1,3}(?:,\\d{3})+(?:\\.\\d+)?|\\d+(?:\\.\\d+)?|\\.\\d+)(?:e[+-]?\\d+)?'
 
 const QUANTITY_RANGE = new RegExp(
   `^(${NUMERIC_SOURCE})\\s*(?:to|[-–])\\s*(${NUMERIC_SOURCE})(?:\\s+(\\S+))?$`,
@@ -21,13 +21,20 @@ export function parseNumericSpan(text: string): NumericSpanParse | null {
     return null
   }
 
+  const amount = normalizeQuantityAmount(prefix)
   const rest = trimmed.slice(prefix.length)
   if (rest === '') {
-    return { amount: prefix, unitWord: null }
+    return { amount, unitWord: null }
   }
 
   const unitWord = ONE_TRAILING_WORD.exec(rest)?.[1]
-  return unitWord ? { amount: prefix, unitWord } : null
+  return unitWord ? { amount, unitWord } : null
+}
+
+export function normalizeQuantityAmount(value: string): string {
+  return /^-?\d{1,3}(?:,\d{3})+(?:\.\d+)?$/.test(value.trim())
+    ? value.trim().replace(/,/g, '')
+    : value
 }
 
 export type QuantityHint = {
@@ -53,7 +60,13 @@ export function parseQuantityHint(text: string): QuantityHint {
   const range = QUANTITY_RANGE.exec(trimmed)
   if (range) {
     const [, lower, upper, unitWord] = range
-    return { amount: lower, unitWord: unitWord ?? null, lowerBound: lower, upperBound: upper }
+    const amount = normalizeQuantityAmount(lower)
+    return {
+      amount,
+      unitWord: unitWord ?? null,
+      lowerBound: normalizeQuantityAmount(lower),
+      upperBound: normalizeQuantityAmount(upper),
+    }
   }
 
   const strict = parseNumericSpan(trimmed)

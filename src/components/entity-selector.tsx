@@ -71,7 +71,7 @@ import {
 import { useWikibaseInstance } from '@/hooks/useWikibaseInstance'
 import { entityTypeForComponentRole } from '@/lib/annotation-roles'
 import { ENTITY_DATATYPE_GROUPS, ENTITY_DATATYPE_LABELS } from '@/lib/datatypes'
-import { parseQuantityHint } from '@/lib/numeric-units'
+import { normalizeQuantityAmount, parseQuantityHint } from '@/lib/numeric-units'
 import { cn } from '@/lib/utils'
 import { WIKIDATA_ITEM_PATTERN, WIKIDATA_PROPERTY_PATTERN } from '@/lib/wikidata-constraints'
 import { Badge } from './ui/badge'
@@ -437,7 +437,13 @@ function QuantityEditorContent({
 
   const updateQuantity = (patch: Partial<QuantityState>) => {
     if (onQuantityChange && quantity) {
-      onQuantityChange({ ...quantity, ...patch })
+      onQuantityChange({
+        ...quantity,
+        ...patch,
+        ...(patch.value !== undefined ? { value: normalizeQuantityAmount(patch.value) } : {}),
+        ...(patch.lowerBound !== undefined ? { lowerBound: normalizeQuantityAmount(patch.lowerBound) } : {}),
+        ...(patch.upperBound !== undefined ? { upperBound: normalizeQuantityAmount(patch.upperBound) } : {}),
+      })
     }
   }
 
