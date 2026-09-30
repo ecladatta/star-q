@@ -74,7 +74,6 @@ function computeAutoScrollRate(distance: number): number {
   return Math.round((1 - clamped / AUTO_SCROLL_EDGE) * AUTO_SCROLL_MAX_RATE)
 }
 
-// Copy-on-write delete for the per-cell Maps in the batch state.
 function withoutKey<K, V>(map: Map<K, V>, key: K): Map<K, V> {
   if (!map.has(key)) {
     return map
@@ -153,8 +152,6 @@ export function useCellBatch(options: UseCellBatchOptions) {
       }
       return next
     })
-    // Same exclusivity as the form: linking an entity clears the cell's
-    // quantity.
     if (entity) {
       setCellQuantities(prev => withoutKey(prev, key))
     }
@@ -168,7 +165,6 @@ export function useCellBatch(options: UseCellBatchOptions) {
         next.set(key, { ...quantity, unit: prev.get(key)?.unit ?? null })
         return next
       })
-      // A quantity replaces any entity link on the cell.
       setCellEntities(prev => withoutKey(prev, key))
     } else {
       setCellQuantities(prev => withoutKey(prev, key))
@@ -191,8 +187,6 @@ export function useCellBatch(options: UseCellBatchOptions) {
       })
       return next
     })
-    // Setting a unit on an entity-linked cell replaces the link with a
-    // quantity in progress.
     if (unit) {
       setCellEntities(prev => withoutKey(prev, key))
     }
@@ -265,7 +259,6 @@ export function useCellBatch(options: UseCellBatchOptions) {
       return
     }
     anchorRef.current = null
-    // commitCells([]) already resets the per-cell values.
     commitCells([])
   }, [cells, commitCells])
 
@@ -1017,10 +1010,6 @@ export function useCellBatch(options: UseCellBatchOptions) {
     })
   }, [cells, documentElements])
 
-  // "Apply to all" quantity write: store the shared quantity for display and
-  // materialize it per filled cell — the unit applies to every plain cell,
-  // each cell keeps the amount auto-extracted from its own text unless the
-  // annotator typed one.
   const applyBatchQuantity = useCallback((shared: BatchCellQuantity) => {
     setBatchQuantity(shared)
     setCellQuantities((prev) => {
@@ -1033,7 +1022,6 @@ export function useCellBatch(options: UseCellBatchOptions) {
       }
       return next
     })
-    // The quantity replaces any entity link on the cells.
     setCellEntities((prev) => {
       if (cellRows.every(row => !row.filled || !prev.has(cellKey(row.cell)))) {
         return prev

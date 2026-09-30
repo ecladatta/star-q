@@ -113,8 +113,6 @@ export function isEntityDatatype(value: string): value is EntityDatatype {
   return (ENTITY_DATATYPES as readonly string[]).includes(value)
 }
 
-// Datatypes that serialize as quantities and can carry a unit. The
-// QuickStatements exporter emits a unit suffix only for these.
 export const NUMERIC_ENTITY_DATATYPES: ReadonlySet<EntityDatatype> = new Set<EntityDatatype>([
   'decimal',
   'integer',

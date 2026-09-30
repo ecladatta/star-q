@@ -1,13 +1,9 @@
-// Leading numeric token: optional sign, digits with optional decimal part or a
-// leading-dot decimal, optional exponent.
 const NUMERIC_PREFIX = /^[+-]?(?:\d+(?:\.\d+)?|\.\d+)(?:e[+-]?\d+)?/i
 
 const ONE_TRAILING_WORD = /^\s+(\S+)$/
 
 const NUMERIC_SOURCE = '[+-]?(?:\\d+(?:\\.\\d+)?|\\.\\d+)(?:e[+-]?\\d+)?'
 
-// `12 to 15 metres`, `12-15 metres`, `12–15 metres`: two numbers separated by
-// "to" or a dash, with an optional trailing unit word.
 const QUANTITY_RANGE = new RegExp(
   `^(${NUMERIC_SOURCE})\\s*(?:to|[-–])\\s*(${NUMERIC_SOURCE})(?:\\s+(\\S+))?$`,
   'i',
@@ -18,9 +14,6 @@ export type NumericSpanParse = {
   unitWord: string | null
 }
 
-// Bounded parser: a leading signed decimal with optional exponent followed by
-// at most one trailing unit word. Anything else (prose, ranges, mixed
-// expressions) returns null so the picker opens empty with no guess.
 export function parseNumericSpan(text: string): NumericSpanParse | null {
   const trimmed = text.trim()
   const prefix = NUMERIC_PREFIX.exec(trimmed)?.[0]
@@ -51,12 +44,6 @@ const NO_QUANTITY_HINT: QuantityHint = {
   upperBound: null,
 }
 
-// Best-effort prefill for the quantity editor, strictly bounded so it never
-// guesses: a leading numeric token becomes the amount, a `<num> to <num>`
-// (or dash) range becomes the bounds with the first number as the amount, and
-// a trailing word becomes the unit suggestion. The trailing-word rule only
-// fires on exactly two words so a hedged or compound phrase like "about 12
-// metres" or "1 m 50" yields nothing at all.
 export function parseQuantityHint(text: string): QuantityHint {
   const trimmed = text.trim()
   if (!trimmed) {
@@ -84,8 +71,6 @@ export function parseQuantityHint(text: string): QuantityHint {
 
 const FULL_NUMERIC = new RegExp(`^${NUMERIC_SOURCE}$`, 'i')
 
-// Full-string signed decimal with optional exponent, mirroring the
-// NUMERIC_PREFIX semantics anchored at both ends.
 export function isValidQuantityAmount(value: string): boolean {
   return FULL_NUMERIC.test(value.trim())
 }

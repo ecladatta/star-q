@@ -136,7 +136,6 @@ export async function searchWikibaseEntities(
   }
 }
 
-// Wikidata class for units of measure.
 const UNIT_OF_MEASURE_CLASS = 'Q47574'
 const unitSearchCache = createTtlCache<WikibaseSearchResult[]>(CACHE_TTL_MS)
 

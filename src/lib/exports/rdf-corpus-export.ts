@@ -540,8 +540,6 @@ function resolveQualifiers(
     })
 }
 
-// Quantity bounds sit next to at:unit on the statement node, as plain
-// literals; each bound is emitted independently.
 function quantityBoundTerms(
   component: DocumentAnnotationComponent,
 ): Array<[NamedNode, Literal]> {

@@ -254,9 +254,6 @@ export type CellBatchAnnotationItem = {
   objectEntity: Entity | null
 }
 
-// One merged combobox per cell (and one for "apply to all"): a cell object
-// holds either an entity or a quantity, mirroring the single-annotation flow.
-// A quantity carries the amount and optional bounds plus one unit.
 export type BatchCellQuantity = {
   value: string
   lowerBound: string
@@ -264,11 +261,6 @@ export type BatchCellQuantity = {
   unit: UnitRef | null
 }
 
-// Resolve the quantity a cell receives from an "apply to all" write. A typed
-// amount wins; otherwise the amount and bounds come from the cell's own text.
-// A cell whose text holds no number still gets the unit as an amount-less
-// quantity: the annotator applied the unit to the column and can fill the
-// amount in per cell.
 export function materializeBatchCellQuantity(input: {
   cellText: string
   shared: BatchCellQuantity
@@ -277,9 +269,6 @@ export function materializeBatchCellQuantity(input: {
   if (shared.value.trim()) {
     return shared
   }
-  // A cell whose text holds no number still gets the unit as an amount-less
-  // quantity: the annotator applied the unit to the column and can fill the
-  // amount in per cell.
   const hint = parseQuantityHint(cellText)
   return {
     value: hint.amount ?? '',
@@ -289,8 +278,6 @@ export function materializeBatchCellQuantity(input: {
   }
 }
 
-// The numeric part of each cell text is extracted into entityValue so exports
-// see a clean quantity.
 function withCellQuantity(
   component: DocumentAnnotationComponent,
   quantity: BatchCellQuantity,
@@ -321,8 +308,6 @@ export function buildBatchAnnotationItem(input: {
   const key = cellKey(row.cell)
   const chosenEntity = cellEntities.get(key) ?? null
   const chosenQuantity = cellQuantities.get(key) ?? null
-  // Same exclusivity as the form: a cell linked to an entity is not a
-  // quantity, and a cell with a quantity has no entity link.
   const chosenComp = chosenEntity
     ? row.component
     : chosenQuantity

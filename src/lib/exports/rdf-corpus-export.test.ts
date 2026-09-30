@@ -166,8 +166,6 @@ describe('serializeRdfCorpusExport (truthy)', () => {
       }),
     })])
     expect(output).toContain('rdf:reifies <<(wd:Q1 wdt:P1 1360590)>>;')
-    // The ontology prefix is not declared in truthy mode, so the predicate
-    // serializes as an absolute IRI.
     expect(output).toContain(`<${RDF_NAMESPACE_BASE}/ontology#unit> wd:Q11573.`)
   })
 

@@ -526,8 +526,6 @@ export function AnnotationForm({
   const singleBatchCellQuantity = singleBatchCell
     ? batchCellQuantities?.get(cellKey(singleBatchCell.cell)) ?? null
     : null
-  // A cell combobox receives the shared "apply to all" quantity as its
-  // starting point; the same merged popover then edits that cell directly.
   const batchQuantityFields = batchQuantity
     ? { value: batchQuantity.value, lowerBound: batchQuantity.lowerBound, upperBound: batchQuantity.upperBound }
     : null
@@ -633,8 +631,6 @@ export function AnnotationForm({
       }
       if (type === 'object' && (updated.unitValue || updated.quantityLowerBound || updated.quantityUpperBound)) {
         // An object holds either an entity link or a quantity, never both.
-        // Changing the linked entity (picking one, swapping it, or clearing
-        // it) drops the quantity; a datatype-only adjustment keeps it.
         const identityChanged = newValue === null
           || newValue.value !== prev[type]!.entityValue
           || newValue.customId !== prev[type]!.entityCustomId
@@ -669,9 +665,6 @@ export function AnnotationForm({
         return prev
       }
 
-      // Clearing the unit keeps the value and bounds: the annotator owns the
-      // quantity and only removes the unit reference. Setting a unit on an
-      // entity-linked object replaces the link with a quantity in progress.
       const hadLink = type === 'object'
         && (component.entityCustom || (component.entityValue !== null && WIKIDATA_ITEM_PATTERN.test(component.entityValue)))
       return {
@@ -709,7 +702,6 @@ export function AnnotationForm({
         quantityLowerBound: quantity.lowerBound || null,
         quantityUpperBound: quantity.upperBound || null,
       }
-      // Exclusivity: a quantity replaces any entity link on the object.
       if (type === 'object' && (component.entityCustom || WIKIDATA_ITEM_PATTERN.test(component.entityValue ?? ''))) {
         updated.entityLabel = null
         updated.entityCustom = false
@@ -717,7 +709,6 @@ export function AnnotationForm({
       }
       const bumped = quantityDatatypeBumpRef.current.has(component.id)
       if (quantity.value && isValidQuantityAmount(quantity.value)) {
-        // A valid decimal amount is a quantity: make the datatype say so.
         if (!isNumericEntityDatatype(updated.entityDatatype)) {
           quantityDatatypeBumpRef.current.add(component.id)
           updated.entityDatatype = 'decimal'
@@ -1494,8 +1485,6 @@ export function AnnotationForm({
                             if (!newValue) {
                               return
                             }
-                            // Same exclusivity as the form: linking an entity
-                            // on every cell clears the shared quantity.
                             for (const row of filledRows) {
                               onBatchCellEntityChange?.(row.cell, newValue)
                             }

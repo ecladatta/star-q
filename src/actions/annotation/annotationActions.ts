@@ -67,8 +67,6 @@ function resolveComponentCustomUnit<T extends ComponentWithUnit>(
   }
 }
 
-// Read-time resolution for any component: its custom-entity row wins for the
-// entity fields, then its custom-unit row for the unit fields.
 function resolveComponentCustomRefs<T extends ComponentWithCustomEntity & ComponentWithUnit>(
   component: T,
   customEntity: CustomEntityLike,
@@ -200,8 +198,6 @@ async function upsertAnnotationComponent(
     entityValue = entity.value
   }
 
-  // Units mirror the entity handling: custom units are resolved at read time
-  // from the referenced corpus row, Wikidata units store their label/value.
   let unitCustomId: string | null = null
   let unitLabel: string | null = null
   let unitValue: string | null = null
@@ -221,22 +217,14 @@ async function upsertAnnotationComponent(
     unitValue = component.unitValue
   }
 
-  // Entity fields follow the link when one exists — the branches above filled
-  // entityLabel (Wikidata) or entityCustomId (custom). With no link the
-  // component's own fields stand: a quantity object carries its amount and
-  // datatype without an entity, and they must survive the save.
   const hasEntityLink = entityLabel !== null || entityCustomId !== null
 
   const values = {
     ...component,
     id: undefined,
-    ...(hasEntityLink
-      ? {
-          entityLabel,
-          entityValue,
-          entityDatatype: entity?.datatype,
-        }
-      : {}),
+    entityLabel: hasEntityLink ? entityLabel : component.entityLabel,
+    entityValue: hasEntityLink ? entityValue : component.entityValue,
+    entityDatatype: hasEntityLink ? (entity?.datatype ?? null) : component.entityDatatype,
     entityCustom: entity?.custom,
     entityCustomId,
     unitValue,
@@ -529,9 +517,6 @@ export async function updateAnnotation(
   revalidatePath(`/document/${annotationData.documentId}`)
 }
 
-// The shared read path behind every annotation lookup: three component
-// columns, each with its custom-entity and custom-unit rows joined for
-// read-time resolution, plus the annotation's qualifiers.
 async function fetchAnnotations(where: SQL): Promise<DocumentAnnotation[]> {
   const component1 = alias(annotationComponent, 'component1')
   const component2 = alias(annotationComponent, 'component2')

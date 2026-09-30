@@ -1,6 +1,5 @@
 import type { AnnotationExport, DocumentAnnotationQualifierExport } from '@/types/types'
 
-// Every export format renders qualifiers in fixed position order.
 export function sortedQualifiers(
   annotation: AnnotationExport,
 ): DocumentAnnotationQualifierExport[] {

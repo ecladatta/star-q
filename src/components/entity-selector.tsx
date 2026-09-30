@@ -323,8 +323,6 @@ function EntityViewLink({ value }: { value: string }) {
 const UNIT_SEARCH_DEBOUNCE_MS = 200
 const UNIT_SEARCH_LIMIT = 5
 
-// The stored unit as a search-result row, so an already-set unit renders in
-// the usual sections from props while the search is in flight.
 function unitAsResultList(unit: UnitRef | null): UnitSearchResult[] {
   return unit
     ? [{
@@ -378,7 +376,7 @@ function QuantityEditorContent({
   header?: ReactNode
 }) {
   const [searchTerm, setSearchTerm] = useState(initialSearchTerm)
-  const [results, setResults] = useState<UnitSearchResult[]>(() => unitAsResultList(unit))
+  const [results, setResults] = useState<UnitSearchResult[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [showRange, setShowRange] = useState(Boolean(quantity?.lowerBound || quantity?.upperBound))
   const searchSeqRef = useRef(0)
@@ -395,9 +393,7 @@ function QuantityEditorContent({
       searchUnits(corpusId, term, UNIT_SEARCH_LIMIT)
         .then((found) => {
           if (seq === searchSeqRef.current) {
-            setResults(found.some(result => result.value === unit?.value)
-              ? found
-              : [...unitAsResultList(unit), ...found])
+            setResults(found)
             setIsSearching(false)
           }
         })
@@ -411,34 +407,32 @@ function QuantityEditorContent({
     }, UNIT_SEARCH_DEBOUNCE_MS)
 
     return () => clearTimeout(timer)
-    // `unit` is read at resolve time to merge the stored unit back in; it is
-    // stable while the popover is open, so the term is the only trigger.
-    // eslint-disable-next-line react/exhaustive-deps
   }, [searchTerm, corpusId])
 
   const handleSearchChange = (term: string) => {
     setSearchTerm(term)
     if (!term.trim()) {
       searchSeqRef.current += 1
-      setResults(unitAsResultList(unit))
+      setResults([])
       setIsSearching(false)
     }
   }
 
-  const { wikidataUnits, corpusUnits } = partitionUnitResults(results)
+  const resultsWithStored = results.some(result => result.value === unit?.value)
+    ? results
+    : [...unitAsResultList(unit), ...results]
+
+  const { wikidataUnits, corpusUnits } = partitionUnitResults(resultsWithStored)
   const trimmedTerm = searchTerm.trim()
 
   const confirmUnit = (picked: UnitRef) => {
     onUnitChange(picked)
     onClose()
   }
-  // The stored unit is seeded into the results, so a reopen renders it in the
-  // usual sections immediately; the in-flight search only adds the missing
-  // description when it lands.
   const createAvailable = Boolean(
     trimmedTerm
     && !isSearching
-    && !results.some(
+    && !resultsWithStored.some(
       result =>
         result.value === trimmedTerm
         || result.label.toLowerCase() === trimmedTerm.toLowerCase(),
@@ -529,7 +523,6 @@ function QuantityEditorContent({
                 <CommandItem
                   value="clear-unit"
                   onSelect={() => {
-                    // Only the unit fields drop; the amount and bounds stay.
                     onUnitChange(null)
                     onClose()
                   }}
@@ -851,11 +844,6 @@ export function EntitySelector({
   )
   const constraintNoun = entityType === 'predicate' ? 'predicates' : 'entities'
 
-  // Objects only, and never on Wikidata entity links — a QID statement carries
-  // no quantity of its own. Every other object slot can hold one.
-  // An object value is one of two things: an entity link or a quantity, never
-  // both (the Wikidata model the exporters target). The object popover holds
-  // both paths; entering one clears the other on write.
   const isObjectSlot = type === 'object'
   const [quantityMode, setQuantityMode] = useState(false)
   const [quantitySearchSeed, setQuantitySearchSeed] = useState('')
@@ -870,8 +858,6 @@ export function EntitySelector({
   const enterQuantityMode = () => {
     const hint = parseQuantityHint(text ?? '')
     const hasLink = Boolean(value?.custom) || Boolean(value?.value && WIKIDATA_ITEM_PATTERN.test(value.value))
-    // Prefill writes only on a plain value: with an entity linked nothing
-    // stores until the annotator types, so abandoning keeps the link.
     if (onQuantityChange && quantity && !hasLink && !quantity.value && (hint.amount || hint.lowerBound || hint.upperBound)) {
       onQuantityChange({ value: hint.amount ?? '', lowerBound: hint.lowerBound ?? '', upperBound: hint.upperBound ?? '' })
     }
@@ -903,9 +889,6 @@ export function EntitySelector({
       onOpenChange={(nextOpen) => {
         setOpen(nextOpen)
         if (nextOpen && isObjectSlot) {
-        // Reopen in the view matching what is set. With a unit already
-        // chosen the search stays empty: the stored unit renders from
-        // props and no search request fires.
           setQuantityMode(quantityIsSet)
           setQuantitySearchSeed(unit ? '' : parseQuantityHint(text ?? '').unitWord ?? '')
         }

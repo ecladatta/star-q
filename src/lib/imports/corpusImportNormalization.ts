@@ -29,11 +29,6 @@ export function normalizeCustomEntityFields(
   return data
 }
 
-// Unit references mirror the entity handling: a resolved custom unit keeps
-// only its remapped id (label/value are resolved at read time), a Wikidata
-// unit keeps its value/label, and an unresolvable reference degrades to no
-// unit. Exports from before this feature have no unit fields at all and
-// simply normalize to a null unit.
 export function normalizeCustomUnitFields(
   data: Record<string, any>,
   customEntityIdMap: Record<string, string>,

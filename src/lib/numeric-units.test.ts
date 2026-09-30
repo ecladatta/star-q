@@ -126,7 +126,6 @@ describe('parseQuantityHint', () => {
   })
 
   it('suggests the trailing word of any two-word span, prose included', () => {
-    // The unit search is only pre-typed; nothing stores without a confirm.
     expect(parseQuantityHint('the government')).toEqual({
       amount: null,
       unitWord: 'government',

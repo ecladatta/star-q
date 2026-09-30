@@ -89,9 +89,6 @@ export type UnitSearchResult = {
   description: string | null
 }
 
-// Merges Wikidata unit items (SPARQL, unit-of-measure tree) with the corpus's
-// custom units. Wikidata results come first so the best SPARQL match for the
-// parsed unit word leads the list.
 export async function searchUnits(corpusId: string, search: string, limit = 5): Promise<UnitSearchResult[]> {
   await requireViewCorpus(corpusId)
   const term = truncateSearch(search).trim()

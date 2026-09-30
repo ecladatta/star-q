@@ -25,8 +25,6 @@ describe('normalizeCustomEntityFields', () => {
     const result = normalizeCustomEntityFields(data, idMap)
     expect(result.entityValue).toBe('12')
     expect(result.entityDatatype).toBe('decimal')
-    // The unit fields are absent in pre-feature exports and stay absent; the
-    // nullable columns default to null on insert.
     expect(result.unitValue).toBeUndefined()
     expect(result.unitLabel).toBeUndefined()
     expect(result.unitCustom).toBeUndefined()
