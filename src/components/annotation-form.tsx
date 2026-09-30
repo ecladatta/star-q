@@ -613,7 +613,7 @@ export function AnnotationForm({
     }
   }, [currentAnnotation, currentAnnotationSnapshot])
 
-  // Remembers which components the editor bumped to decimal, so clearing the
+  // Tracks which components the editor bumped to decimal, so clearing the
   // quantity can revert the datatype.
   const quantityDatatypeBumpRef = useRef<Set<string>>(new Set())
 
@@ -1556,7 +1556,7 @@ export function AnnotationForm({
                             onValueChange={newValue => onBatchCellEntityChange?.(row.cell, newValue)}
                             quantity={(() => {
                               const cellQuantity = batchCellQuantities?.get(cellKey(row.cell))
-                              // Always a state object (possibly empty): the
+                              // Always a state object (possibly empty). The
                               // quantity view renders only when non-null.
                               return {
                                 value: cellQuantity?.value ?? '',

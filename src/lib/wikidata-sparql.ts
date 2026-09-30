@@ -142,7 +142,7 @@ const UNIT_OF_MEASURE_CLASS = 'Q47574'
 const unitSearchCache = createTtlCache<WikibaseSearchResult[]>(CACHE_TTL_MS)
 
 // A label-scan SPARQL query over all items times out on public endpoints, so
-// search through the API index first and keep only results that actually sit
+// search through the API index first and keep only results that sit
 // in the unit-of-measure tree via one bounded VALUES lookup.
 export async function searchWikibaseUnits(
   config: WikibaseConfig,
@@ -161,7 +161,7 @@ export async function searchWikibaseUnits(
   }
 
   // API search handles plurals poorly as well; retry with the singular forms
-  // when the plural term matches nothing. Best effort only — the picker stays
+  // when the plural term matches nothing. Best effort only. The picker stays
   // usable when no variant matches.
   const strippedPlural = term.replace(/s$/, '')
   const strippedPluralEs = term.replace(/es$/, '')

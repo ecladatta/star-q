@@ -458,7 +458,7 @@ function QuantityEditorContent({
             placeholder="Value"
             className="h-7 text-sm"
             aria-label="Quantity value"
-            // eslint-disable-next-line jsx-a11y/no-autofocus -- focus follows the user's popover open, not page load
+            // eslint-disable-next-line jsx-a11y/no-autofocus -- focus follows the user opening the popover, not page load
             autoFocus={!quantity.value}
           />
           <button
@@ -492,7 +492,7 @@ function QuantityEditorContent({
       )}
       <Command shouldFilter={false}>
         <CommandInput
-          // eslint-disable-next-line jsx-a11y/no-autofocus -- focus follows the user's popover open, not page load
+          // eslint-disable-next-line jsx-a11y/no-autofocus -- focus follows the user opening the popover, not page load
           autoFocus={!onQuantityChange || Boolean(quantity?.value)}
           placeholder="Search unit..."
           value={searchTerm}
@@ -971,8 +971,8 @@ export function EntitySelector({
       </div>
       <PopoverContent
         className="w-80 p-0"
-        // Focus is owned by the view's search input (autoFocus); without
-        // this, the focus scope moves it to the first tabbable element.
+        // The view's search input takes focus (autoFocus). Without this,
+        // the focus scope moves focus to the first tabbable element.
         onOpenAutoFocus={event => event.preventDefault()}
       >
         {isObjectSlot && quantityMode && onQuantityChange && onUnitChange
@@ -1007,7 +1007,7 @@ export function EntitySelector({
                 onValueChange={v => setSelectedValue(v || undefined)}
               >
                 <CommandInput
-                  // eslint-disable-next-line jsx-a11y/no-autofocus -- focus follows the user's popover open, not page load
+                  // eslint-disable-next-line jsx-a11y/no-autofocus -- focus follows the user opening the popover, not page load
                   autoFocus
                   placeholder="Search entity..."
                   className="flex-1"
