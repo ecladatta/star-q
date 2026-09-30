@@ -264,19 +264,8 @@ const TYPES_ICONS: Record<EntityDatatype, ReactNode> = {
   NCName: <AtSignIcon className="size-5" />,
 }
 
-function getEntityOptionKey(
-  entity: Entity,
-  source: 'current' | 'custom' | 'wikidata',
-  index: number,
-): string {
-  if (entity.custom && entity.customId) {
-    return `${source}:${entity.customId}`
-  }
-
-  return `${source}:${entity.value}:${index}`
-}
-
-function getEntityOptionValue(
+// Radix command items key off a string id; the same id doubles as the value.
+function entityOptionId(
   entity: Entity,
   source: 'current' | 'custom' | 'wikidata',
   index: number,
@@ -896,9 +885,9 @@ export function EntitySelector({
     && corpusId,
   )
   const firstResultValue = customEntities.length > 0
-    ? getEntityOptionValue(customEntities[0], 'custom', 0)
+    ? entityOptionId(customEntities[0], 'custom', 0)
     : wikidataEntities.length > 0
-      ? getEntityOptionValue(wikidataEntities[0], 'wikidata', 0)
+      ? entityOptionId(wikidataEntities[0], 'wikidata', 0)
       : undefined
   const defaultSelectedValue = firstResultValue ?? (createAvailable ? 'create-new' : undefined)
 
@@ -1187,8 +1176,8 @@ export function EntitySelector({
                     <CommandGroup heading="Corpus entities">
                       {customEntities.map((entity, index) => (
                         <CommandItem
-                          key={getEntityOptionKey(entity, 'custom', index)}
-                          value={getEntityOptionValue(entity, 'custom', index)}
+                          key={entityOptionId(entity, 'custom', index)}
+                          value={entityOptionId(entity, 'custom', index)}
                           onSelect={() => {
                             onValueChange(entity)
                             setOpen(false)
@@ -1231,8 +1220,8 @@ export function EntitySelector({
                     <CommandGroup heading="Wikidata Entities">
                       {wikidataEntities.map((entity, index) => (
                         <CommandItem
-                          key={getEntityOptionKey(entity, 'wikidata', index)}
-                          value={getEntityOptionValue(entity, 'wikidata', index)}
+                          key={entityOptionId(entity, 'wikidata', index)}
+                          value={entityOptionId(entity, 'wikidata', index)}
                           onSelect={() => {
                             onValueChange(entity)
                             setOpen(false)

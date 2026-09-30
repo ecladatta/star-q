@@ -16,7 +16,7 @@ function Split(props: {
   onClick: (anchorRect?: DOMRect) => void
 }) {
   if (props.mark) {
-    return <Mark {...props} content={props.content} start={props.start} end={props.end} />
+    return <Mark {...props} />
   }
 
   const handleClick = (e: MouseEvent) => {

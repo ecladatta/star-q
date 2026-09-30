@@ -1,6 +1,3 @@
-import type { DocumentAnnotationComponent } from '@/types/types'
-import { isNumericEntityDatatype } from '@/lib/datatypes'
-
 // Leading numeric token: optional sign, digits with optional decimal part or a
 // leading-dot decimal, optional exponent.
 const NUMERIC_PREFIX = /^[+-]?(?:\d+(?:\.\d+)?|\.\d+)(?:e[+-]?\d+)?/i
@@ -19,15 +16,6 @@ const QUANTITY_RANGE = new RegExp(
 export type NumericSpanParse = {
   amount: string
   unitWord: string | null
-}
-
-// The unit gate: the span starts with a number, or the component already has a
-// numeric datatype. Never satisfied by entity links — callers exclude those.
-export function passesNumericUnitGate(
-  text: string,
-  component: Pick<DocumentAnnotationComponent, 'entityDatatype'> | null | undefined,
-): boolean {
-  return NUMERIC_PREFIX.test(text.trim()) || isNumericEntityDatatype(component?.entityDatatype)
 }
 
 // Bounded parser: a leading signed decimal with optional exponent followed by

@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from 'react'
 import type { usePopoverState } from './useSelectionState'
-import type { BatchAnnotationItem, BatchCellQuantity, CellBatchCellRef, CellBatchPreview, CellBatchPreviewRow } from '@/lib/cell-batch'
+import type { BatchCellQuantity, CellBatchAnnotationItem, CellBatchCellRef, CellBatchPreview, CellBatchPreviewRow } from '@/lib/cell-batch'
 import type { CurrentAnnotation, DocumentAnnotation, DocumentAnnotationComponent, Entity, EntityType, UnitRef } from '@/types/types'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
@@ -72,6 +72,16 @@ const TOUCH_SLOP = 12
 function computeAutoScrollRate(distance: number): number {
   const clamped = Math.max(Math.min(distance, AUTO_SCROLL_EDGE), 0)
   return Math.round((1 - clamped / AUTO_SCROLL_EDGE) * AUTO_SCROLL_MAX_RATE)
+}
+
+// Copy-on-write delete for the per-cell Maps in the batch state.
+function withoutKey<K, V>(map: Map<K, V>, key: K): Map<K, V> {
+  if (!map.has(key)) {
+    return map
+  }
+  const next = new Map(map)
+  next.delete(key)
+  return next
 }
 
 function getAnchorRectForCells(cells: CellBatchCellRef[]): AnchorRect | null {
@@ -146,14 +156,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
     // Same exclusivity as the form: linking an entity clears the cell's
     // quantity.
     if (entity) {
-      setCellQuantities((prev) => {
-        if (!prev.has(key)) {
-          return prev
-        }
-        const next = new Map(prev)
-        next.delete(key)
-        return next
-      })
+      setCellQuantities(prev => withoutKey(prev, key))
     }
   }, [])
 
@@ -166,23 +169,9 @@ export function useCellBatch(options: UseCellBatchOptions) {
         return next
       })
       // A quantity replaces any entity link on the cell.
-      setCellEntities((prev) => {
-        if (!prev.has(key)) {
-          return prev
-        }
-        const next = new Map(prev)
-        next.delete(key)
-        return next
-      })
+      setCellEntities(prev => withoutKey(prev, key))
     } else {
-      setCellQuantities((prev) => {
-        if (!prev.has(key)) {
-          return prev
-        }
-        const next = new Map(prev)
-        next.delete(key)
-        return next
-      })
+      setCellQuantities(prev => withoutKey(prev, key))
     }
   }, [])
 
@@ -205,14 +194,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
     // Setting a unit on an entity-linked cell replaces the link with a
     // quantity in progress.
     if (unit) {
-      setCellEntities((prev) => {
-        if (!prev.has(key)) {
-          return prev
-        }
-        const next = new Map(prev)
-        next.delete(key)
-        return next
-      })
+      setCellEntities(prev => withoutKey(prev, key))
     }
   }, [])
 
@@ -283,9 +265,9 @@ export function useCellBatch(options: UseCellBatchOptions) {
       return
     }
     anchorRef.current = null
+    // commitCells([]) already resets the per-cell values.
     commitCells([])
-    resetCellValues()
-  }, [cells, commitCells, resetCellValues])
+  }, [cells, commitCells])
 
   const exitBatchMode = useCallback(() => {
     setBatchMode(false)
@@ -802,7 +784,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
       return
     }
 
-    const buildItem = (row: CellBatchPreviewRow & { component: DocumentAnnotationComponent }): BatchAnnotationItem =>
+    const buildItem = (row: CellBatchPreviewRow & { component: DocumentAnnotationComponent }): CellBatchAnnotationItem =>
       buildBatchAnnotationItem({ row, cellRole: selectedRole, fixed: slots, cellEntities, cellQuantities })
 
     setCreating(true)

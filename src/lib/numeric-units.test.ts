@@ -3,7 +3,6 @@ import {
   isValidQuantityAmount,
   parseNumericSpan,
   parseQuantityHint,
-  passesNumericUnitGate,
 } from './numeric-units'
 
 describe('parseNumericSpan', () => {
@@ -53,28 +52,6 @@ describe('parseNumericSpan', () => {
 
   it('trims surrounding whitespace', () => {
     expect(parseNumericSpan('  12 kg  ')).toEqual({ amount: '12', unitWord: 'kg' })
-  })
-})
-
-describe('passesNumericUnitGate', () => {
-  it('passes when the span starts with a number', () => {
-    expect(passesNumericUnitGate('12 metres', null)).toBe(true)
-  })
-
-  it('passes for a signed decimal start', () => {
-    expect(passesNumericUnitGate('-3.5e2', null)).toBe(true)
-  })
-
-  it('passes when the datatype is numeric even for prose', () => {
-    expect(passesNumericUnitGate('twelve metres', { entityDatatype: 'integer' })).toBe(true)
-  })
-
-  it('fails for prose with a non-numeric datatype', () => {
-    expect(passesNumericUnitGate('about 12 metres', { entityDatatype: 'string' })).toBe(false)
-  })
-
-  it('fails for prose with no datatype', () => {
-    expect(passesNumericUnitGate('twelve metres', null)).toBe(false)
   })
 })
 

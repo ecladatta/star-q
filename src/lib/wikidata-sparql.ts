@@ -438,14 +438,13 @@ export async function fetchEntityLabels(config: WikibaseConfig, ids: string[]): 
 
   const missing: string[] = []
   for (const id of validIds) {
-    const key = cacheKey(config, id)
-    if (labelsCache.has(key)) {
-      const cached = labelsCache.get(key)
-      if (cached != null) {
-        labels.set(id, cached)
-      }
-    } else {
+    // Cached values are string | null: null means "known to have no label",
+    // undefined means not cached.
+    const cached = labelsCache.get(cacheKey(config, id))
+    if (cached === undefined) {
       missing.push(id)
+    } else if (cached !== null) {
+      labels.set(id, cached)
     }
   }
 

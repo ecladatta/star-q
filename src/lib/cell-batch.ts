@@ -254,8 +254,6 @@ export type CellBatchAnnotationItem = {
   objectEntity: Entity | null
 }
 
-export type BatchAnnotationItem = CellBatchAnnotationItem
-
 // One merged combobox per cell (and one for "apply to all"): a cell object
 // holds either an entity or a quantity, mirroring the single-annotation flow.
 // A quantity carries the amount and optional bounds plus one unit.
@@ -268,8 +266,9 @@ export type BatchCellQuantity = {
 
 // Resolve the quantity a cell receives from an "apply to all" write. A typed
 // amount wins; otherwise the amount and bounds come from the cell's own text.
-// Cells whose text holds no number and no typed amount stay untouched, since
-// a unit is a fact about a quantity.
+// A cell whose text holds no number still gets the unit as an amount-less
+// quantity: the annotator applied the unit to the column and can fill the
+// amount in per cell.
 export function materializeBatchCellQuantity(input: {
   cellText: string
   shared: BatchCellQuantity
