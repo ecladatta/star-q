@@ -37,6 +37,8 @@ export function normalizeQuantityAmount(value: string): string {
     : value
 }
 
+export const STORED_AMOUNT_PATTERN = '^[+-]?([0-9]+([.][0-9]+)?|[.][0-9]+)([eE][+-]?[0-9]+)?$'
+
 export type QuantityHint = {
   amount: string | null
   unitWord: string | null
