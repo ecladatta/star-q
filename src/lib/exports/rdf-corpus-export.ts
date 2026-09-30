@@ -13,6 +13,7 @@ import type {
 import { DataFactory, Writer } from 'n3'
 import { buildDocumentElements } from '@/lib/document-elements'
 import { wikibaseRdfNamespaces } from '@/lib/wikibase'
+import { sortedQualifiers } from './qualifiers'
 import {
   FULL_PREFIXES,
   NAMESPACES,
@@ -552,11 +553,6 @@ function quantityBoundTerms(
     terms.push([AT_QUANTITY_UPPER_BOUND, literal(component.quantityUpperBound)])
   }
   return terms
-}
-
-function sortedQualifiers(annotation: AnnotationExport) {
-  return (annotation.qualifiers ?? [])
-    .toSorted((left, right) => left.position - right.position)
 }
 
 function addOntology(writer: Writer) {

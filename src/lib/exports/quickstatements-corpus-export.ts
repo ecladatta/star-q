@@ -1,29 +1,11 @@
 import type {
   AnnotationExport,
   DocumentAnnotationComponent,
-  DocumentAnnotationQualifierExport,
   EntityDatatype,
   ExportModel,
 } from '@/types/types'
-
-const NUMERIC_DATATYPES = new Set<EntityDatatype>([
-  'integer',
-  'decimal',
-  'double',
-  'float',
-  'byte',
-  'short',
-  'int',
-  'long',
-  'unsignedByte',
-  'unsignedShort',
-  'unsignedInt',
-  'unsignedLong',
-  'positiveInteger',
-  'nonNegativeInteger',
-  'negativeInteger',
-  'nonPositiveInteger',
-])
+import { NUMERIC_ENTITY_DATATYPES } from '@/lib/datatypes'
+import { sortedQualifiers } from './qualifiers'
 
 const TIME_DATATYPES = new Set<EntityDatatype>([
   'date',
@@ -87,13 +69,6 @@ function renderAnnotation(annotation: AnnotationExport): string | null {
   return parts.join('\t')
 }
 
-function sortedQualifiers(
-  annotation: AnnotationExport,
-): DocumentAnnotationQualifierExport[] {
-  return (annotation.qualifiers ?? [])
-    .toSorted((left, right) => left.position - right.position)
-}
-
 function entityId(component: DocumentAnnotationComponent): string | null {
   if (component.entityCustom) {
     return null
@@ -135,7 +110,7 @@ function literalValue(
     return null
   }
 
-  if (datatype && NUMERIC_DATATYPES.has(datatype)) {
+  if (datatype && NUMERIC_ENTITY_DATATYPES.has(datatype)) {
     return quantityValue(value, component)
   }
 

@@ -16,7 +16,7 @@ RDF exports have two modes:
 ```json
 {
   "exportMeta": {
-    "version": "1.3",
+    "version": "1.4",
     "type": "full-corpus-export"
   },
   "id": "<corpusId>",
