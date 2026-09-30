@@ -8,13 +8,14 @@ import type { CorpusSettingsPatch } from '@/lib/corpus-settings'
 import { and, count, countDistinct, desc, eq, getTableColumns, inArray, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { db } from '@/db/drizzle'
-import { annotation, annotationComponent, annotationQualifier, auditLog, corpus, corpusCollaboration, corpusCustomEntity, document, team, teamMembership } from '@/db/schema'
+import { annotation, annotationComponent, annotationQualifier, auditLog, corpus, corpusCollaboration, corpusCustomEntity, document, team, teamMembership, unit } from '@/db/schema'
 import { ForbiddenError, getRequestActor, NotFoundError } from '@/lib/auth-utils'
 import { MAX_CORPORA_PER_TEAM, MAX_CUSTOM_ENTITIES_PER_CORPUS, MAX_OWNED_CORPORA_PER_USER } from '@/lib/constants'
 import { hasMinimumCorpusAccess, lockCorpusAndRequireManager, requireEditCorpus, requireEditCustomEntity, requireViewCorpus, resolveCorpusAccessForRow, resolveCorpusRelationAccess } from '@/lib/corpus-access'
 import { mergeCorpusSettings, sanitizeCorpusSettingsPatch } from '@/lib/corpus-settings'
 import { validateCorpusVisibility } from '@/lib/identity'
 import { assertTeamHasActiveOwner } from '@/lib/team-access'
+import { findOrCreateUnit } from '@/lib/units/server'
 
 export type DocumentMetadata = Omit<Document, 'raw'> & { annotationsCount: number }
 export type CorpusOwnerInput = { teamId: string }
@@ -295,6 +296,19 @@ export async function duplicateCorpus(id: string, owner: CorpusOwnerInput, newTi
       })
     }
 
+    // Units belong to the source corpus, so the copy gets its own rows under
+    // the same (wikidataId ?? label) identity.
+    const sourceUnits = await trx.select().from(unit).where(eq(unit.corpusId, id))
+    const unitIdMap = new Map<string, string>()
+    for (const sourceUnit of sourceUnits) {
+      const newUnitId = await findOrCreateUnit(trx, newCorpus.id, {
+        id: null,
+        label: sourceUnit.label,
+        wikidataId: sourceUnit.wikidataId,
+      })
+      unitIdMap.set(sourceUnit.id, newUnitId)
+    }
+
     const documents = await trx.select().from(document).where(eq(document.corpusId, id)).orderBy(document.order)
 
     // Create a mapping from old document IDs to new document IDs to link annotations
@@ -373,21 +387,13 @@ export async function duplicateCorpus(id: string, owner: CorpusOwnerInput, newTi
                     mappedEntityCustomId = customEntityIdMap.get(comp.entityCustomId) ?? null
                   }
 
-                  let mappedUnitCustomId: string | null = null
-                  if (comp.unitCustomId) {
-                    mappedUnitCustomId = customEntityIdMap.get(comp.unitCustomId) ?? null
-                  }
-
                   return {
                     entityLabel: comp.entityLabel,
                     entityValue: comp.entityValue,
                     entityCustom: comp.entityCustom,
                     entityCustomId: mappedEntityCustomId,
                     entityDatatype: comp.entityDatatype,
-                    unitValue: comp.unitValue,
-                    unitLabel: comp.unitLabel,
-                    unitCustom: comp.unitCustom,
-                    unitCustomId: mappedUnitCustomId,
+                    unitId: comp.unitId ? unitIdMap.get(comp.unitId) ?? null : null,
                     quantityLowerBound: comp.quantityLowerBound,
                     quantityUpperBound: comp.quantityUpperBound,
                     annotationStart: comp.annotationStart,
@@ -545,7 +551,7 @@ export async function getCorpusCustomEntities(corpusId: string): Promise<CorpusC
   return db.select().from(corpusCustomEntity).where(eq(corpusCustomEntity.corpusId, corpusId))
 }
 
-export async function addCorpusCustomEntity(corpusId: string, label: string, value: string, datatype: string, customType: 'entity' | 'relation' | 'unit') {
+export async function addCorpusCustomEntity(corpusId: string, label: string, value: string, datatype: string, customType: 'entity' | 'relation') {
   await requireEditCorpus(corpusId)
 
   const [existing] = await db.select({ count: count() }).from(corpusCustomEntity).where(eq(corpusCustomEntity.corpusId, corpusId))
@@ -564,7 +570,7 @@ export async function addCorpusCustomEntity(corpusId: string, label: string, val
   return result.id
 }
 
-export async function updateCorpusCustomEntity(id: string, label: string, value: string, datatype: string, customType: 'entity' | 'relation' | 'unit') {
+export async function updateCorpusCustomEntity(id: string, label: string, value: string, datatype: string, customType: 'entity' | 'relation') {
   const corpusId = await requireEditCustomEntity(id)
 
   await db.update(corpusCustomEntity).set({
@@ -597,7 +603,7 @@ function levenshtein(
 export async function searchCorpusCustomEntities(
   corpusId: string,
   searchTerm: string,
-  customType: 'entity' | 'relation' | 'unit',
+  customType: 'entity' | 'relation',
 ) {
   await requireViewCorpus(corpusId)
 

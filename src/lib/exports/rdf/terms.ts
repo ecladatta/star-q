@@ -127,12 +127,16 @@ export function unitTerm(
   corpusId: string,
   wikibase: WikibaseRdfNamespaces,
 ): RdfIri | null {
-  if (component.unitCustomId) {
-    return customResourceIri(corpusId, 'entity', component.unitCustomId)
+  const unit = component.unit
+  if (!unit) {
+    return null
   }
 
-  const value = component.unitValue?.trim()
-  return value && /^Q\d+$/.test(value) ? iri(`${wikibase.wd}${value}`) : null
+  return unit.wikidataId
+    ? iri(`${wikibase.wd}${unit.wikidataId}`)
+    : unit.id
+      ? customResourceIri(corpusId, 'unit', unit.id)
+      : null
 }
 
 export function componentBodyTerm(
@@ -187,7 +191,7 @@ function propertyTerm(
 
 function customResourceIri(
   corpusId: string,
-  kind: 'entity' | 'relation',
+  kind: 'entity' | 'relation' | 'unit',
   resourceId: string,
 ): RdfIri {
   return iri(

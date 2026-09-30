@@ -91,10 +91,7 @@ export type DocumentAnnotationComponent = {
   entityCustom: boolean | null
   entityCustomId: string | null
   entityDatatype: EntityDatatype | null
-  unitValue: string | null
-  unitLabel: string | null
-  unitCustom: boolean | null
-  unitCustomId: string | null
+  unit: UnitRef | null
   quantityLowerBound: string | null
   quantityUpperBound: string | null
   annotationStart: number
@@ -107,28 +104,19 @@ export type DocumentAnnotationComponent = {
   elementIndex: number
 }
 
-export type UnitRef = {
+// UI + wire shape for a unit reference. `id` is the persisted unit row id
+// and may be null while the reference only exists in the annotation form;
+// `wikidataId` is set only for units backed by a Wikidata item.
+export type UnitRef = { id: string | null, label: string, wikidataId: string | null }
+
+export type UnitRecord = {
+  id: string
+  corpusId: string
   label: string
-  value: string
-  custom: boolean
-  customId: string | null
+  wikidataId: string | null
 }
 
-export function buildUnitRef(component: Pick<
-  DocumentAnnotationComponent,
-  'unitValue' | 'unitLabel' | 'unitCustom' | 'unitCustomId'
->): UnitRef | null {
-  if (!component.unitValue) {
-    return null
-  }
-
-  return {
-    value: component.unitValue,
-    label: component.unitLabel ?? component.unitValue,
-    custom: component.unitCustom ?? false,
-    customId: component.unitCustomId ?? null,
-  }
-}
+export type UnitCandidate = UnitRef & { description: string | null }
 
 export type DocumentAnnotationQualifierExport = {
   id: string
@@ -249,6 +237,7 @@ export type ExportModel = {
   createdAt: string | null
   updatedAt: string | null
   documents: DocumentExport[]
+  units: UnitRecord[]
   customEntities: CorpusCustomEntity[]
   wikibase: WikibaseConfig | null
 }

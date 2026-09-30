@@ -561,8 +561,8 @@ export async function AnalyticsContent({ corpusId, analyticsPromise, warningsPro
                           </TableHeader>
                           <TableBody>
                             {analytics.unitStats.map((stat) => {
-                              const unitKey = `${stat.label || 'null'}:${stat.value || 'null'}`
-                              const unitUrl = stat.value && !stat.isCustom ? wikiUrlFor(stat.value) : null
+                              const unitKey = `${stat.label}:${stat.wikidataId ?? ''}`
+                              const unitUrl = stat.wikidataId ? wikiUrlFor(stat.wikidataId) : null
 
                               return (
                                 <TableRow key={unitKey} className="border-t border-border hover:bg-muted/30">
@@ -570,7 +570,7 @@ export async function AnalyticsContent({ corpusId, analyticsPromise, warningsPro
                                     {stat.label || <span className="text-muted-foreground">—</span>}
                                   </TableCell>
                                   <TableCell className="px-3 py-2.5 text-[13px]">
-                                    {stat.value
+                                    {stat.wikidataId
                                       ? unitUrl
                                         ? (
                                             <Link
@@ -579,10 +579,10 @@ export async function AnalyticsContent({ corpusId, analyticsPromise, warningsPro
                                               rel="noopener noreferrer"
                                               className="text-accent underline hover:opacity-80"
                                             >
-                                              {stat.value}
+                                              {stat.wikidataId}
                                             </Link>
                                           )
-                                        : stat.value
+                                        : stat.wikidataId
                                       : <span className="text-muted-foreground">—</span>}
                                   </TableCell>
                                   <TableCell className="px-3 py-2.5 text-right font-mono text-[13px] text-muted-foreground tabular-nums">{stat.count}</TableCell>

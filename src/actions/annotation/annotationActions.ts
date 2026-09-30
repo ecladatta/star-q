@@ -6,6 +6,7 @@ import type {
   AnnotationComponentRole,
   AnnotationQualifierInput,
   DocumentAnnotation,
+  DocumentAnnotationComponent,
   DocumentAnnotationQualifier,
   Entity,
 } from '@/types/types'
@@ -18,7 +19,7 @@ import { entityTypeForComponentRole } from '@/lib/annotation-roles'
 import { NotFoundError, requireAuth } from '@/lib/auth-utils'
 import { MAX_ANNOTATIONS_PER_BATCH, MAX_ANNOTATIONS_PER_DOCUMENT } from '@/lib/constants'
 import { requireEditAnnotation, requireEditCorpus, requireEditDocument, requireViewDocument } from '@/lib/corpus-access'
-import { findOrCreateUnit, WIKIDATA_ID_PATTERN } from '@/lib/units/server'
+import { findOrCreateUnit } from '@/lib/units/server'
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0]
 type DbExecutor = typeof db | Transaction
@@ -31,12 +32,6 @@ type ComponentWithCustomEntity = {
   entityLabel: string | null
   entityValue: string | null
   entityDatatype: DocumentAnnotation['subject']['entityDatatype']
-}
-
-type ComponentWithUnit = {
-  unitCustom: boolean | null
-  unitLabel: string | null
-  unitValue: string | null
 }
 
 type CustomEntityLike = {
@@ -57,23 +52,18 @@ function resolveComponentCustomEntity<T extends ComponentWithCustomEntity>(
   }
 }
 
-function resolveComponentCustomUnit<T extends ComponentWithUnit>(
-  component: T,
-  customUnit: CustomEntityLike,
-): T {
+// Folds the aliased unit join into the component's `unit` ref. A missed left
+// join arrives as a null nested selection; a matched unit row always has a
+// non-null label.
+function withComponentUnit(
+  component: AnnotationComponent,
+  unitRef: { id: string | null, label: string | null, wikidataId: string | null } | null,
+): DocumentAnnotationComponent {
+  const { unitId: _unitId, ...rest } = component
   return {
-    ...component,
-    unitLabel: component.unitCustom && customUnit ? customUnit.label : component.unitLabel,
-    unitValue: component.unitCustom && customUnit ? customUnit.value : component.unitValue,
+    ...rest,
+    unit: unitRef?.label == null ? null : { id: unitRef.id, label: unitRef.label, wikidataId: unitRef.wikidataId },
   }
-}
-
-function resolveComponentCustomRefs<T extends ComponentWithCustomEntity & ComponentWithUnit>(
-  component: T,
-  customEntity: CustomEntityLike,
-  customUnit: CustomEntityLike,
-): T {
-  return resolveComponentCustomUnit(resolveComponentCustomEntity(component, customEntity), customUnit)
 }
 
 function customTypeForComponentRole(role: AnnotationComponentRole): 'entity' | 'relation' {
@@ -128,51 +118,8 @@ async function findOrCreateAnnotationCustomEntity(
   return result.id
 }
 
-async function findOrCreateAnnotationCustomUnit(
-  executor: DbExecutor,
-  corpusId: string,
-  label: string,
-  value: string,
-): Promise<string> {
-  const [existing] = await executor.select({
-    id: corpusCustomEntity.id,
-    label: corpusCustomEntity.label,
-  })
-    .from(corpusCustomEntity)
-    .where(
-      and(
-        eq(corpusCustomEntity.corpusId, corpusId),
-        eq(corpusCustomEntity.value, value),
-        eq(corpusCustomEntity.customType, 'unit'),
-      ),
-    )
-    .limit(1)
-
-  if (existing) {
-    if (existing.label !== label) {
-      await executor.update(corpusCustomEntity)
-        .set({
-          label,
-          updatedAt: new Date(),
-        })
-        .where(eq(corpusCustomEntity.id, existing.id))
-    }
-    return existing.id
-  }
-
-  const [result] = await executor.insert(corpusCustomEntity).values({
-    corpusId,
-    label,
-    value,
-    datatype: 'string',
-    customType: 'unit',
-  }).returning({ id: corpusCustomEntity.id })
-
-  return result.id
-}
-
 async function upsertAnnotationComponent(
-  component: AnnotationComponent,
+  component: DocumentAnnotationComponent,
   entity: Entity | null,
   corpusId: string,
   existingId?: string,
@@ -199,50 +146,8 @@ async function upsertAnnotationComponent(
     entityValue = entity.value
   }
 
-  let unitCustomId: string | null = null
-  let unitLabel: string | null = null
-  let unitValue: string | null = null
-  let unitCustom: boolean | null = null
-  let unitId: string | null = null
-
-  if (component.unitCustom && component.unitLabel && component.unitValue) {
-    unitCustom = true
-    unitCustomId = await findOrCreateAnnotationCustomUnit(
-      executor,
-      corpusId,
-      component.unitLabel,
-      component.unitValue,
-    )
-    // The unit table mirrors unit registry rows under the same UUID, so
-    // rows created before this request already exist (the migration
-    // backfill kept the registry UUIDs); brand-new registry rows don't.
-    const [existingUnit] = await executor.select({ id: unit.id }).from(unit).where(eq(unit.id, unitCustomId)).limit(1)
-    if (existingUnit) {
-      unitId = existingUnit.id
-    } else {
-      await executor.insert(unit).values({
-        id: unitCustomId,
-        corpusId,
-        label: component.unitLabel,
-        wikidataId: null,
-      }).onConflictDoNothing()
-      unitId = unitCustomId
-    }
-  } else if (!component.unitCustom && component.unitValue) {
-    unitCustom = false
-    unitLabel = component.unitLabel ?? null
-    unitValue = component.unitValue
-
-    if (WIKIDATA_ID_PATTERN.test(unitValue)) {
-      unitId = await findOrCreateUnit(executor, corpusId, {
-        label: unitLabel ?? unitValue,
-        value: unitValue,
-        custom: false,
-        customId: null,
-      })
-    }
-    // Non-Q legacy unit values (none in practice) keep unit_id null.
-  }
+  // Identity is re-derived here instead of trusting the client-sent unit id.
+  const unitId = component.unit ? await findOrCreateUnit(executor, corpusId, component.unit) : null
 
   // Explicit so an update always overwrites a stale link flag. With no
   // entity, drizzle would skip an undefined column and leave the old
@@ -251,18 +156,22 @@ async function upsertAnnotationComponent(
   const hasEntityLink = entityLabel !== null || entityCustomId !== null
 
   const values = {
-    ...component,
-    id: undefined,
     entityLabel: hasEntityLink ? entityLabel : component.entityLabel,
     entityValue: hasEntityLink ? entityValue : component.entityValue,
     entityDatatype: hasEntityLink ? (entity?.datatype ?? null) : component.entityDatatype,
     entityCustom,
     entityCustomId,
-    unitValue,
-    unitLabel,
-    unitCustom,
-    unitCustomId,
     unitId,
+    quantityLowerBound: component.quantityLowerBound,
+    quantityUpperBound: component.quantityUpperBound,
+    annotationStart: component.annotationStart,
+    annotationEnd: component.annotationEnd,
+    annotationRow: component.annotationRow,
+    annotationCell: component.annotationCell,
+    annotationValue: component.annotationValue,
+    annotationType: component.annotationType,
+    annotationTag: component.annotationTag,
+    elementIndex: component.elementIndex,
   }
 
   if (existingId) {
@@ -334,8 +243,8 @@ async function getQualifiersForAnnotations(annotationIds: string[]): Promise<Map
   const qualifierValue = alias(annotationComponent, 'qualifierValue')
   const qualifierPredicateCustomEntity = alias(corpusCustomEntity, 'qualifierPredicateCustomEntity')
   const qualifierValueCustomEntity = alias(corpusCustomEntity, 'qualifierValueCustomEntity')
-  const qualifierPredicateCustomUnit = alias(corpusCustomEntity, 'qualifierPredicateCustomUnit')
-  const qualifierValueCustomUnit = alias(corpusCustomEntity, 'qualifierValueCustomUnit')
+  const qualifierPredicateUnit = alias(unit, 'qualifierPredicateUnit')
+  const qualifierValueUnit = alias(unit, 'qualifierValueUnit')
 
   const rows = await db.select({
     ...getTableColumns(annotationQualifier),
@@ -343,16 +252,16 @@ async function getQualifiersForAnnotations(annotationIds: string[]): Promise<Map
     value: getTableColumns(qualifierValue),
     predicateCustomEntity: getTableColumns(qualifierPredicateCustomEntity),
     valueCustomEntity: getTableColumns(qualifierValueCustomEntity),
-    predicateCustomUnit: getTableColumns(qualifierPredicateCustomUnit),
-    valueCustomUnit: getTableColumns(qualifierValueCustomUnit),
+    predicateUnit: { id: qualifierPredicateUnit.id, label: qualifierPredicateUnit.label, wikidataId: qualifierPredicateUnit.wikidataId },
+    valueUnit: { id: qualifierValueUnit.id, label: qualifierValueUnit.label, wikidataId: qualifierValueUnit.wikidataId },
   })
     .from(annotationQualifier)
     .innerJoin(qualifierPredicate, eq(qualifierPredicate.id, annotationQualifier.predicateId))
     .innerJoin(qualifierValue, eq(qualifierValue.id, annotationQualifier.valueId))
     .leftJoin(qualifierPredicateCustomEntity, eq(qualifierPredicateCustomEntity.id, qualifierPredicate.entityCustomId))
     .leftJoin(qualifierValueCustomEntity, eq(qualifierValueCustomEntity.id, qualifierValue.entityCustomId))
-    .leftJoin(qualifierPredicateCustomUnit, eq(qualifierPredicateCustomUnit.id, qualifierPredicate.unitCustomId))
-    .leftJoin(qualifierValueCustomUnit, eq(qualifierValueCustomUnit.id, qualifierValue.unitCustomId))
+    .leftJoin(qualifierPredicateUnit, eq(qualifierPredicateUnit.id, qualifierPredicate.unitId))
+    .leftJoin(qualifierValueUnit, eq(qualifierValueUnit.id, qualifierValue.unitId))
     .where(inArray(annotationQualifier.annotationId, annotationIds))
     .orderBy(asc(annotationQualifier.annotationId), asc(annotationQualifier.position))
 
@@ -363,8 +272,8 @@ async function getQualifiersForAnnotations(annotationIds: string[]): Promise<Map
       predicateId: row.predicateId,
       valueId: row.valueId,
       position: row.position,
-      predicate: resolveComponentCustomRefs(row.predicate, row.predicateCustomEntity, row.predicateCustomUnit),
-      value: resolveComponentCustomRefs(row.value, row.valueCustomEntity, row.valueCustomUnit),
+      predicate: withComponentUnit(resolveComponentCustomEntity(row.predicate, row.predicateCustomEntity), row.predicateUnit),
+      value: withComponentUnit(resolveComponentCustomEntity(row.value, row.valueCustomEntity), row.valueUnit),
     }
 
     const existing = qualifiersByAnnotation.get(row.annotationId) ?? []
@@ -377,11 +286,11 @@ async function getQualifiersForAnnotations(annotationIds: string[]): Promise<Map
 
 export async function addAnnotation(
   documentId: string,
-  subjectAnnotation: AnnotationComponent,
+  subjectAnnotation: DocumentAnnotationComponent,
   subjectEntity: Entity | null,
-  predicateAnnotation: AnnotationComponent,
+  predicateAnnotation: DocumentAnnotationComponent,
   predicateEntity: Entity | null,
-  objectAnnotation: AnnotationComponent,
+  objectAnnotation: DocumentAnnotationComponent,
   objectEntity: Entity | null,
   qualifiers: AnnotationQualifierInput[] = [],
 ) {
@@ -507,11 +416,11 @@ export async function addAnnotations(
 
 export async function updateAnnotation(
   id: string,
-  subjectAnnotation: AnnotationComponent,
+  subjectAnnotation: DocumentAnnotationComponent,
   subjectEntity: Entity | null,
-  predicateAnnotation: AnnotationComponent,
+  predicateAnnotation: DocumentAnnotationComponent,
   predicateEntity: Entity | null,
-  objectAnnotation: AnnotationComponent,
+  objectAnnotation: DocumentAnnotationComponent,
   objectEntity: Entity | null,
   qualifiers?: AnnotationQualifierInput[],
 ) {
@@ -556,9 +465,9 @@ async function fetchAnnotations(where: SQL): Promise<DocumentAnnotation[]> {
   const customEntity1 = alias(corpusCustomEntity, 'customEntity1')
   const customEntity2 = alias(corpusCustomEntity, 'customEntity2')
   const customEntity3 = alias(corpusCustomEntity, 'customEntity3')
-  const customUnit1 = alias(corpusCustomEntity, 'customUnit1')
-  const customUnit2 = alias(corpusCustomEntity, 'customUnit2')
-  const customUnit3 = alias(corpusCustomEntity, 'customUnit3')
+  const unit1 = alias(unit, 'unit1')
+  const unit2 = alias(unit, 'unit2')
+  const unit3 = alias(unit, 'unit3')
 
   const results = await db.select({
     ...getTableColumns(annotation),
@@ -568,9 +477,9 @@ async function fetchAnnotations(where: SQL): Promise<DocumentAnnotation[]> {
     subjectCustomEntity: getTableColumns(customEntity1),
     predicateCustomEntity: getTableColumns(customEntity2),
     objectCustomEntity: getTableColumns(customEntity3),
-    subjectCustomUnit: getTableColumns(customUnit1),
-    predicateCustomUnit: getTableColumns(customUnit2),
-    objectCustomUnit: getTableColumns(customUnit3),
+    subjectUnit: { id: unit1.id, label: unit1.label, wikidataId: unit1.wikidataId },
+    predicateUnit: { id: unit2.id, label: unit2.label, wikidataId: unit2.wikidataId },
+    objectUnit: { id: unit3.id, label: unit3.label, wikidataId: unit3.wikidataId },
     annotationId: annotation.id,
     documentId: annotation.documentId,
     corpusId: document.corpusId,
@@ -583,18 +492,18 @@ async function fetchAnnotations(where: SQL): Promise<DocumentAnnotation[]> {
     .leftJoin(customEntity1, eq(customEntity1.id, component1.entityCustomId))
     .leftJoin(customEntity2, eq(customEntity2.id, component2.entityCustomId))
     .leftJoin(customEntity3, eq(customEntity3.id, component3.entityCustomId))
-    .leftJoin(customUnit1, eq(customUnit1.id, component1.unitCustomId))
-    .leftJoin(customUnit2, eq(customUnit2.id, component2.unitCustomId))
-    .leftJoin(customUnit3, eq(customUnit3.id, component3.unitCustomId))
+    .leftJoin(unit1, eq(unit1.id, component1.unitId))
+    .leftJoin(unit2, eq(unit2.id, component2.unitId))
+    .leftJoin(unit3, eq(unit3.id, component3.unitId))
     .where(where)
 
   const qualifiersByAnnotation = await getQualifiersForAnnotations(results.map(result => result.id))
 
   return results.map(result => ({
     ...result,
-    subject: resolveComponentCustomRefs(result.subject, result.subjectCustomEntity, result.subjectCustomUnit),
-    predicate: resolveComponentCustomRefs(result.predicate, result.predicateCustomEntity, result.predicateCustomUnit),
-    object: resolveComponentCustomRefs(result.object, result.objectCustomEntity, result.objectCustomUnit),
+    subject: withComponentUnit(resolveComponentCustomEntity(result.subject, result.subjectCustomEntity), result.subjectUnit),
+    predicate: withComponentUnit(resolveComponentCustomEntity(result.predicate, result.predicateCustomEntity), result.predicateUnit),
+    object: withComponentUnit(resolveComponentCustomEntity(result.object, result.objectCustomEntity), result.objectUnit),
     qualifiers: qualifiersByAnnotation.get(result.id) ?? [],
   }))
 }

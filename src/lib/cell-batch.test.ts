@@ -31,10 +31,7 @@ function component(overrides: Partial<DocumentAnnotationComponent> = {}): Docume
     entityCustom: null,
     entityCustomId: null,
     entityDatatype: null,
-    unitValue: null,
-    unitLabel: null,
-    unitCustom: null,
-    unitCustomId: null,
+    unit: null,
     quantityLowerBound: null,
     quantityUpperBound: null,
     annotationStart: 0,
@@ -341,7 +338,7 @@ describe('buildCellBatchPreview', () => {
 })
 
 describe('materializeBatchCellQuantity', () => {
-  const unit = { value: 'Q79735', label: 'megabyte', custom: false, customId: null }
+  const unit = { id: null, label: 'megabyte', wikidataId: 'Q79735' }
 
   it('extracts the amount and bounds from the cell text', () => {
     expect(materializeBatchCellQuantity({
@@ -425,15 +422,14 @@ describe('buildBatchAnnotationItem', () => {
         value: '0.576',
         lowerBound: '0.576',
         upperBound: '1.152',
-        unit: { value: 'Q11573', label: 'metre', custom: false, customId: null },
+        unit: { id: null, label: 'metre', wikidataId: 'Q11573' },
       }]]),
     })
 
     expect(item.object?.entityValue).toBe('0.576')
     expect(item.object?.quantityLowerBound).toBe('0.576')
     expect(item.object?.quantityUpperBound).toBe('1.152')
-    expect(item.object?.unitValue).toBe('Q11573')
-    expect(item.object?.unitLabel).toBe('metre')
+    expect(item.object?.unit).toEqual({ id: null, label: 'metre', wikidataId: 'Q11573' })
     expect(item.object?.entityDatatype).toBe('decimal')
   })
 
@@ -453,12 +449,12 @@ describe('buildBatchAnnotationItem', () => {
         value: '',
         lowerBound: '',
         upperBound: '',
-        unit: { value: 'Q79735', label: 'megabyte', custom: false, customId: null },
+        unit: { id: null, label: 'megabyte', wikidataId: 'Q79735' },
       }]]),
     })
 
     expect(item.object?.entityValue).toBeNull()
-    expect(item.object?.unitValue).toBe('Q79735')
+    expect(item.object?.unit).toEqual({ id: null, label: 'megabyte', wikidataId: 'Q79735' })
     expect(item.object?.entityDatatype).toBeNull()
   })
 
@@ -478,11 +474,11 @@ describe('buildBatchAnnotationItem', () => {
         value: '512',
         lowerBound: '',
         upperBound: '',
-        unit: { value: 'Q79735', label: 'megabyte', custom: false, customId: null },
+        unit: { id: null, label: 'megabyte', wikidataId: 'Q79735' },
       }]]),
     })
 
-    expect(item.object?.unitValue).toBeNull()
+    expect(item.object?.unit).toBeNull()
     expect(item.object?.entityValue).toBeNull()
     expect(item.objectEntity?.value).toBe('512 MB')
   })
@@ -502,7 +498,7 @@ describe('buildBatchAnnotationItem', () => {
       cellQuantities: new Map(),
     })
 
-    expect(item.object?.unitValue).toBeNull()
+    expect(item.object?.unit).toBeNull()
     expect(item.object?.entityValue).toBeNull()
   })
 

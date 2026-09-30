@@ -281,7 +281,7 @@ export const corpusCustomEntity = pgTable('corpus_custom_entity', {
   label: text('label').notNull(),
   value: text('value').notNull(),
   datatype: text('datatype').$type<EntityDatatype>().notNull().default('string'),
-  customType: text('custom_type').$type<'entity' | 'relation' | 'unit'>().notNull(),
+  customType: text('custom_type').$type<'entity' | 'relation'>().notNull(),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 })
@@ -321,10 +321,6 @@ export const annotationComponent = pgTable('annotation_component', {
   entityCustom: boolean('entity_custom'),
   entityCustomId: uuid('entity_custom_id').references(() => corpusCustomEntity.id, { onDelete: 'set null' }),
   entityDatatype: text('entity_datatype').$type<EntityDatatype>(),
-  unitValue: text('unit_value'),
-  unitLabel: text('unit_label'),
-  unitCustom: boolean('unit_custom'),
-  unitCustomId: uuid('unit_custom_id').references(() => corpusCustomEntity.id, { onDelete: 'set null' }),
   unitId: uuid('unit_id').references(() => unit.id, { onDelete: 'set null' }),
   quantityLowerBound: text('quantity_lower_bound'),
   quantityUpperBound: text('quantity_upper_bound'),
@@ -337,9 +333,7 @@ export const annotationComponent = pgTable('annotation_component', {
   annotationTag: text('annotation_tag').$type<AnnotationComponentRole>().notNull(),
   elementIndex: integer('element_index').notNull(),
 })
-// unit_id stays optional on the input side: callers still speak the
-// DocumentAnnotationComponent shape until the readers unify on it.
-export type AnnotationComponent = Omit<InferSelectModel<typeof annotationComponent>, 'unitId'> & { unitId?: string | null }
+export type AnnotationComponent = InferSelectModel<typeof annotationComponent>
 
 export const annotation = pgTable('annotation', {
   id: uuid('id').defaultRandom().primaryKey(),

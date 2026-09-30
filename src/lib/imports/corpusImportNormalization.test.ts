@@ -1,18 +1,17 @@
+import type { UnitRef } from '@/types/types'
 import { describe, expect, it } from 'vitest'
-import { normalizeCustomEntityFields } from './corpusImportNormalization'
+import { normalizeCustomEntityFields, takeImportedUnitRef } from './corpusImportNormalization'
 
 const OLD_CUSTOM_ID = '11111111-1111-4111-8111-111111111111'
 const NEW_CUSTOM_ID = '22222222-2222-4222-8222-222222222222'
 const OLD_UNIT_ID = '33333333-3333-4333-8333-333333333333'
-const NEW_UNIT_ID = '44444444-4444-4444-8444-444444444444'
 
 const idMap = {
   [OLD_CUSTOM_ID]: NEW_CUSTOM_ID,
-  [OLD_UNIT_ID]: NEW_UNIT_ID,
 }
 
 describe('normalizeCustomEntityFields', () => {
-  it('imports an export without unit fields unchanged, with no unit reference', () => {
+  it('imports an export without custom entity references unchanged', () => {
     const data = {
       entityCustom: false,
       entityCustomId: null,
@@ -25,113 +24,63 @@ describe('normalizeCustomEntityFields', () => {
     const result = normalizeCustomEntityFields(data, idMap)
     expect(result.entityValue).toBe('12')
     expect(result.entityDatatype).toBe('decimal')
-    expect(result.unitValue).toBeUndefined()
-    expect(result.unitLabel).toBeUndefined()
-    expect(result.unitCustom).toBeUndefined()
-    expect(result.unitCustomId).toBeNull()
+    expect(result.entityCustomId).toBeNull()
   })
 
-  it('keeps a wikidata unit through normalization', () => {
-    const data = {
-      entityCustom: false,
-      entityValue: '12',
-      entityDatatype: 'decimal',
-      unitValue: 'Q11573',
-      unitLabel: 'metre',
-      unitCustom: false,
-      unitCustomId: null,
-    }
-
-    const result = normalizeCustomEntityFields(data, idMap)
-    expect(result.unitValue).toBe('Q11573')
-    expect(result.unitLabel).toBe('metre')
-    expect(result.unitCustom).toBe(false)
-    expect(result.unitCustomId).toBeNull()
-  })
-
-  it('remaps a custom unit id and defers label and value to read time', () => {
-    const data = {
-      entityCustom: false,
-      entityValue: '12',
-      entityDatatype: 'decimal',
-      unitValue: 'bottle',
-      unitLabel: 'bottle',
-      unitCustom: true,
-      unitCustomId: OLD_UNIT_ID,
-    }
-
-    const result = normalizeCustomEntityFields(data, idMap)
-    expect(result.unitCustomId).toBe(NEW_UNIT_ID)
-    expect(result.unitValue).toBeNull()
-    expect(result.unitLabel).toBeNull()
-    expect(result.unitCustom).toBe(true)
-  })
-
-  it('degrades an unresolvable custom unit reference to no unit', () => {
-    const data = {
-      entityCustom: false,
-      entityValue: '12',
-      entityDatatype: 'decimal',
-      unitValue: 'bottle',
-      unitLabel: 'bottle',
-      unitCustom: true,
-      unitCustomId: '55555555-5555-4555-8555-555555555555',
-    }
-
-    const result = normalizeCustomEntityFields(data, idMap)
-    expect(result.unitCustomId).toBeNull()
-    expect(result.unitCustom).toBe(false)
-  })
-
-  it('still resolves custom entity references alongside units', () => {
+  it('remaps a custom entity id and defers label and value to read time', () => {
     const data = {
       entityCustom: true,
       entityCustomId: OLD_CUSTOM_ID,
       entityLabel: 'label',
       entityValue: 'value',
       entityDatatype: 'string',
-      unitValue: 'Q11573',
-      unitLabel: 'metre',
-      unitCustom: false,
-      unitCustomId: null,
     }
 
     const result = normalizeCustomEntityFields(data, idMap)
     expect(result.entityCustomId).toBe(NEW_CUSTOM_ID)
     expect(result.entityValue).toBeNull()
-    expect(result.unitValue).toBe('Q11573')
-    expect(result.unitLabel).toBe('metre')
+    expect(result.entityLabel).toBeNull()
   })
 
-  it('keeps quantity bounds through normalization without remapping', () => {
+  it('degrades an unresolvable custom entity reference to no entity', () => {
     const data = {
-      entityCustom: false,
-      entityValue: '12',
-      entityDatatype: 'decimal',
-      unitValue: 'Q11573',
-      unitCustom: false,
-      unitCustomId: null,
-      quantityLowerBound: '12',
-      quantityUpperBound: '15',
+      entityCustom: true,
+      entityCustomId: '55555555-5555-4555-8555-555555555555',
+      entityLabel: 'label',
+      entityValue: 'value',
+      entityDatatype: 'string',
     }
 
     const result = normalizeCustomEntityFields(data, idMap)
-    expect(result.quantityLowerBound).toBe('12')
-    expect(result.quantityUpperBound).toBe('15')
+    expect(result.entityCustomId).toBeNull()
+    expect(result.entityCustom).toBe(false)
   })
+})
 
-  it('tolerates pre-quantity exports with no bound fields', () => {
-    const data = {
-      entityCustom: false,
+describe('takeImportedUnitRef', () => {
+  function extract(data: Record<string, any>): { ref: UnitRef | null, data: Record<string, any> } {
+    const clone = { ...data }
+    const ref = takeImportedUnitRef(clone)
+    return { ref, data: clone }
+  }
+
+  it('accepts a component with a unit ref', () => {
+    const { ref, data } = extract({
       entityValue: '12',
       entityDatatype: 'decimal',
-      unitValue: 'Q11573',
-      unitCustom: false,
-      unitCustomId: null,
-    }
+      unit: { id: OLD_UNIT_ID, label: 'metre', wikidataId: 'Q11573' },
+    })
+    expect(ref).toEqual({ id: OLD_UNIT_ID, label: 'metre', wikidataId: 'Q11573' })
+    expect(data.unit).toBeNull()
+  })
 
-    const result = normalizeCustomEntityFields(data, idMap)
-    expect(result.quantityLowerBound).toBeUndefined()
-    expect(result.quantityUpperBound).toBeUndefined()
+  it('drops a unit ref without label or wikidata id', () => {
+    const { ref } = extract({ unit: { id: OLD_UNIT_ID, label: '', wikidataId: null } })
+    expect(ref).toBeNull()
+  })
+
+  it('drops a component without any unit field', () => {
+    const { ref } = extract({ entityValue: '12', entityDatatype: 'decimal' })
+    expect(ref).toBeNull()
   })
 })

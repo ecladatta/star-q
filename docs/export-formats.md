@@ -24,6 +24,7 @@ RDF exports have two modes:
   "createdAt": "<ISO 8601 timestamp>",
   "updatedAt": "<ISO 8601 timestamp>",
   "documents": [ /* DocumentExport[] */ ],
+  "units": [ /* UnitRecord[] */ ],
   "customEntities": [ /* CorpusCustomEntity[] */ ]
 }
 ```
@@ -125,10 +126,10 @@ Annotations are stored as a triple of `subject`, `predicate`, and `object`, each
 - `entityCustom`: `true` if this value comes from a custom entity definition
 - `entityCustomId`: UUID of the custom entity (if `entityCustom`)
 - `entityDatatype`: one of: `integer`, `decimal`, `boolean`, `string`, `date`, `time`, `datetime`, `year`, `month`, `day`, `url`
-- `unitValue`: optional unit reference: a Wikidata item ID (e.g. `Q11573`) or a custom unit value; `null` when the object has no unit
-- `unitLabel`: display label of the unit (e.g. `metre`)
-- `unitCustom`: `true` if the unit comes from a custom corpus unit
-- `unitCustomId`: UUID of the custom unit (if `unitCustom`)
+- `unit`: optional unit reference object, `null` when the object has no unit:
+  - `id`: UUID of the corpus unit row (always set on exported data)
+  - `label`: display label of the unit (e.g. `metre`)
+  - `wikidataId`: Wikidata item ID (e.g. `Q11573`) for Wikidata-backed units, or `null` for corpus-local units
 - `quantityLowerBound`: optional closed lower bound of the quantity amount (e.g. `12`), or `null`
 - `quantityUpperBound`: optional closed upper bound of the quantity amount (e.g. `15`), or `null`
 - `annotationStart` / `annotationEnd`: character offsets into the source text
@@ -148,6 +149,7 @@ Example:
   "entityCustom": false,
   "entityCustomId": null,
   "entityDatatype": "string",
+  "unit": null,
   "quantityLowerBound": null,
   "quantityUpperBound": null,
   "annotationStart": 123,
@@ -161,6 +163,15 @@ Example:
 }
 ```
 
+### UnitRecord
+
+Units live in a per-corpus registry and are exported in the top-level `units` array. Components reference them through their `unit` object.
+
+- `id`: UUID
+- `corpusId`: UUID of the parent corpus
+- `label`: display label of the unit
+- `wikidataId`: Wikidata item ID (e.g. `Q11573`) or `null` for corpus-local units
+
 ### CorpusCustomEntity
 
 Custom entities are defined per corpus and used to pre-populate annotation values.
@@ -170,7 +181,7 @@ Custom entities are defined per corpus and used to pre-populate annotation value
 - `label`: display label for the entity
 - `value`: value stored on the entity
 - `datatype`: entity datatype (`string` by default)
-- `customType`: `entity`, `relation`, or `unit`
+- `customType`: `entity` or `relation`
 - `createdAt` / `updatedAt`: timestamps
 
 Example:

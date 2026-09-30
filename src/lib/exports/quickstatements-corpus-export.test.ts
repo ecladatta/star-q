@@ -16,10 +16,7 @@ function component(overrides: Partial<DocumentAnnotationComponent>): DocumentAnn
     entityCustom: false,
     entityCustomId: null,
     entityDatatype: null,
-    unitValue: null,
-    unitLabel: null,
-    unitCustom: null,
-    unitCustomId: null,
+    unit: null,
     quantityLowerBound: null,
     quantityUpperBound: null,
     annotationStart: 0,
@@ -64,6 +61,7 @@ function model(annotations: AnnotationExport[]): ExportModel {
     title: 'Test',
     createdAt: null,
     updatedAt: null,
+    units: [],
     customEntities: [],
     wikibase: {
       instance: 'https://wikibase.example',
@@ -140,8 +138,7 @@ it('appends a wikidata unit suffix to quantities', () => {
     object: component({
       entityValue: '1360590',
       entityDatatype: 'integer',
-      unitValue: 'Q11573',
-      unitLabel: 'metre',
+      unit: { id: null, label: 'metre', wikidataId: 'Q11573' },
       annotationTag: 'object',
     }),
   })])).toBe('Q1\tP1082\t1360590U11573\n')
@@ -150,8 +147,7 @@ it('appends a wikidata unit suffix to quantities', () => {
     object: component({
       entityValue: '-3.5',
       entityDatatype: 'decimal',
-      unitValue: 'Q11573',
-      unitLabel: 'metre',
+      unit: { id: null, label: 'metre', wikidataId: 'Q11573' },
       annotationTag: 'object',
     }),
   })])).toBe('Q1\tP1082\t-3.5U11573\n')
@@ -163,10 +159,7 @@ it('exports custom units as bare amounts', () => {
     object: component({
       entityValue: '1360590',
       entityDatatype: 'integer',
-      unitValue: 'bottle',
-      unitLabel: 'bottle',
-      unitCustom: true,
-      unitCustomId: '00000000-0000-0000-0000-000000000001',
+      unit: { id: '00000000-0000-0000-0000-000000000001', label: 'bottle', wikidataId: null },
       annotationTag: 'object',
     }),
   })])).toBe('Q1\tP1082\t1360590\n')
@@ -180,8 +173,7 @@ it('emits quantity bounds in bracket syntax with and without a unit', () => {
       entityDatatype: 'decimal',
       quantityLowerBound: '12',
       quantityUpperBound: '15',
-      unitValue: 'Q11573',
-      unitLabel: 'metre',
+      unit: { id: null, label: 'metre', wikidataId: 'Q11573' },
       annotationTag: 'object',
     }),
   })])).toBe('Q1\tP1082\t12[12,15]U11573\n')
@@ -214,7 +206,7 @@ it('drops incomplete or non-decimal bounds from quantities', () => {
       entityDatatype: 'decimal',
       quantityLowerBound: 'about 12',
       quantityUpperBound: '15',
-      unitValue: 'Q11573',
+      unit: { id: null, label: 'metre', wikidataId: 'Q11573' },
       annotationTag: 'object',
     }),
   })])).toBe('Q1\tP1082\t12U11573\n')

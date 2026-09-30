@@ -1,7 +1,7 @@
 'use server'
 import { and, count, countDistinct, desc, eq, isNotNull, sql } from 'drizzle-orm'
 import { db } from '@/db/drizzle'
-import { annotation, annotationComponent, corpus, corpusCustomEntity, document } from '@/db/schema'
+import { annotation, annotationComponent, corpus, corpusCustomEntity, document, unit } from '@/db/schema'
 import { requireViewCorpus } from '@/lib/corpus-access'
 import { STORED_AMOUNT_PATTERN } from '@/lib/numeric-units'
 
@@ -76,9 +76,8 @@ export type CorpusAnalytics = {
     unassignedObjectCount: number
   }>
   unitStats: Array<{
-    label: string | null
-    value: string | null
-    isCustom: boolean
+    label: string
+    wikidataId: string | null
     count: number
   }>
   quantityAnnotations: number
@@ -383,9 +382,8 @@ export async function getCorpusAnalytics(corpusId: string): Promise<CorpusAnalyt
 
   const unitStatsQuery = await db
     .select({
-      label: sql<string | null>`COALESCE(${annotationComponent.unitLabel}, ${corpusCustomEntity.label})`.as('label'),
-      value: sql<string | null>`COALESCE(${annotationComponent.unitValue}, ${corpusCustomEntity.value})`.as('value'),
-      isCustom: annotationComponent.unitCustom,
+      label: unit.label,
+      wikidataId: unit.wikidataId,
       count: count(),
     })
     .from(annotationComponent)
@@ -394,34 +392,24 @@ export async function getCorpusAnalytics(corpusId: string): Promise<CorpusAnalyt
       sql`${annotationComponent.id} = ${annotation.objectId}`,
     )
     .innerJoin(document, eq(document.id, annotation.documentId))
-    .leftJoin(corpusCustomEntity, eq(annotationComponent.unitCustomId, corpusCustomEntity.id))
-    .where(
-      and(
-        eq(document.corpusId, corpusId),
-        sql`NOT ((${annotationComponent.unitValue} IS NULL OR ${annotationComponent.unitValue} = '') AND ${annotationComponent.unitCustomId} IS NULL)`,
-      ),
-    )
-    .groupBy(
-      sql`COALESCE(${annotationComponent.unitLabel}, ${corpusCustomEntity.label})`,
-      sql`COALESCE(${annotationComponent.unitValue}, ${corpusCustomEntity.value})`,
-      annotationComponent.unitCustom,
-    )
+    .innerJoin(unit, eq(unit.id, annotationComponent.unitId))
+    .where(eq(document.corpusId, corpusId))
+    .groupBy(unit.id, unit.label, unit.wikidataId)
     .orderBy(
       desc(count()),
-      sql`COALESCE(${annotationComponent.unitLabel}, ${corpusCustomEntity.label})`,
+      unit.label,
     )
 
   const unitStats = unitStatsQuery.map(stat => ({
     label: stat.label,
-    value: stat.value,
-    isCustom: stat.isCustom || false,
+    wikidataId: stat.wikidataId,
     count: stat.count,
   }))
 
   const [quantityTotalsResult] = await db
     .select({
       total: count(),
-      withoutUnit: sql<number>`CAST(COUNT(CASE WHEN ((${annotationComponent.unitValue} IS NULL OR ${annotationComponent.unitValue} = '') AND ${annotationComponent.unitCustomId} IS NULL) THEN 1 END) AS INTEGER)`.as('without_unit'),
+      withoutUnit: sql<number>`CAST(COUNT(CASE WHEN ${annotationComponent.unitId} IS NULL THEN 1 END) AS INTEGER)`.as('without_unit'),
     })
     .from(annotationComponent)
     .innerJoin(annotation, sql`${annotationComponent.id} = ${annotation.objectId}`)
@@ -429,7 +417,7 @@ export async function getCorpusAnalytics(corpusId: string): Promise<CorpusAnalyt
     .where(
       and(
         eq(document.corpusId, corpusId),
-        sql`((${annotationComponent.unitValue} IS NOT NULL AND ${annotationComponent.unitValue} <> '') OR ${annotationComponent.unitCustomId} IS NOT NULL OR ${annotationComponent.entityValue} ~ ${STORED_AMOUNT_PATTERN})`,
+        sql`(${annotationComponent.unitId} IS NOT NULL OR ${annotationComponent.entityValue} ~ ${STORED_AMOUNT_PATTERN})`,
       ),
     )
 
@@ -441,15 +429,15 @@ export async function getCorpusAnalytics(corpusId: string): Promise<CorpusAnalyt
       documentId: document.id,
       documentTitle: document.title,
       totalAnnotationCount: countDistinct(annotation.id),
-      quantityWithoutUnitCount: sql<number>`CAST(COUNT(DISTINCT CASE WHEN ((${annotationComponent}.unit_value IS NULL OR ${annotationComponent}.unit_value = '') AND ${annotationComponent}.unit_custom_id IS NULL) AND ${annotationComponent}.entity_value ~ ${STORED_AMOUNT_PATTERN} THEN ${annotation.id} END) AS INTEGER)`.as('quantity_without_unit_count'),
+      quantityWithoutUnitCount: sql<number>`CAST(COUNT(DISTINCT CASE WHEN ${annotationComponent}.unit_id IS NULL AND ${annotationComponent}.entity_value ~ ${STORED_AMOUNT_PATTERN} THEN ${annotation.id} END) AS INTEGER)`.as('quantity_without_unit_count'),
     })
     .from(annotation)
     .innerJoin(annotationComponent, eq(annotationComponent.id, annotation.objectId))
     .innerJoin(document, eq(document.id, annotation.documentId))
     .where(eq(document.corpusId, corpusId))
     .groupBy(document.id, document.title)
-    .having(sql`COUNT(DISTINCT CASE WHEN ((${annotationComponent}.unit_value IS NULL OR ${annotationComponent}.unit_value = '') AND ${annotationComponent}.unit_custom_id IS NULL) AND ${annotationComponent}.entity_value ~ ${STORED_AMOUNT_PATTERN} THEN ${annotation.id} END) > 0`)
-    .orderBy(desc(sql`COUNT(DISTINCT CASE WHEN ((${annotationComponent}.unit_value IS NULL OR ${annotationComponent}.unit_value = '') AND ${annotationComponent}.unit_custom_id IS NULL) AND ${annotationComponent}.entity_value ~ ${STORED_AMOUNT_PATTERN} THEN ${annotation.id} END)`))
+    .having(sql`COUNT(DISTINCT CASE WHEN ${annotationComponent}.unit_id IS NULL AND ${annotationComponent}.entity_value ~ ${STORED_AMOUNT_PATTERN} THEN ${annotation.id} END) > 0`)
+    .orderBy(desc(sql`COUNT(DISTINCT CASE WHEN ${annotationComponent}.unit_id IS NULL AND ${annotationComponent}.entity_value ~ ${STORED_AMOUNT_PATTERN} THEN ${annotation.id} END)`))
 
   const documentsWithQuantitiesWithoutUnit = docsWithQuantitiesWithoutUnit.map(doc => ({
     documentId: doc.documentId,

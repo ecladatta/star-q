@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react'
-import type { UnitSearchResult } from '@/actions/wikibase/wikibaseActions'
 import type {
   ConstraintEntityCheck,
   ConstraintSide,
@@ -12,6 +11,7 @@ import type {
   Entity,
   EntityDatatype,
   EntityType,
+  UnitCandidate,
   UnitRef,
 } from '@/types/types'
 import {
@@ -53,6 +53,7 @@ import {
   addCorpusCustomEntity,
   searchCorpusCustomEntities,
 } from '@/actions/corpus/corpusActions'
+import { createUnit } from '@/actions/units/unitsActions'
 import {
   classifyWikibaseEntityCandidates,
   classifyWikibasePredicateCandidates,
@@ -322,15 +323,15 @@ function EntityViewLink({ value }: { value: string }) {
 const UNIT_SEARCH_DEBOUNCE_MS = 200
 const UNIT_SEARCH_LIMIT = 5
 
-function partitionUnitResults(results: UnitSearchResult[]) {
+function partitionUnitResults(results: UnitCandidate[]) {
   return {
-    wikidataUnits: results.filter(result => !result.custom),
-    corpusUnits: results.filter(result => result.custom),
+    wikidataUnits: results.filter(result => result.wikidataId !== null),
+    corpusUnits: results.filter(result => result.wikidataId === null),
   }
 }
 
-function unitOptionValue(unit: UnitSearchResult, index: number): string {
-  return unit.custom && unit.customId ? `custom:${unit.customId}` : `wikidata:${unit.value}:${index}`
+function unitOptionValue(unit: UnitCandidate, index: number): string {
+  return unit.wikidataId !== null ? `wikidata:${unit.wikidataId}:${index}` : `custom:${unit.id}:${index}`
 }
 
 export type QuantityState = {
@@ -359,7 +360,7 @@ function QuantityEditorContent({
   header?: ReactNode
 }) {
   const [searchTerm, setSearchTerm] = useState(initialSearchTerm)
-  const [results, setResults] = useState<UnitSearchResult[]>([])
+  const [results, setResults] = useState<UnitCandidate[]>([])
   const [isSearching, setIsSearching] = useState(false)
   const [showRange, setShowRange] = useState(Boolean(quantity?.lowerBound || quantity?.upperBound))
   const searchSeqRef = useRef(0)
@@ -411,24 +412,14 @@ function QuantityEditorContent({
   const createAvailable = Boolean(
     trimmedTerm
     && !isSearching
-    && !results.some(
-      result =>
-        result.value === trimmedTerm
-        || result.label.toLowerCase() === trimmedTerm.toLowerCase(),
-    ),
+    && !results.some(result => result.label.toLowerCase() === trimmedTerm.toLowerCase()),
   )
 
   const handleCreateUnit = async () => {
     try {
-      const customId = await addCorpusCustomEntity(
-        corpusId,
-        trimmedTerm,
-        trimmedTerm,
-        'string',
-        'unit',
-      )
+      const created = await createUnit(corpusId, trimmedTerm)
       toast.success('Custom unit created!')
-      confirmUnit({ value: trimmedTerm, label: trimmedTerm, custom: true, customId })
+      confirmUnit({ id: created.id, label: created.label, wikidataId: null })
     } catch (error) {
       console.error('Failed to create custom unit:', error)
       toast.error('Failed to create custom unit. Please try again.')
@@ -546,10 +537,9 @@ function QuantityEditorContent({
                   key={unitOptionValue(unit, index)}
                   value={unitOptionValue(unit, index)}
                   onSelect={() => confirmUnit({
-                    value: unit.value,
+                    id: null,
                     label: unit.label,
-                    custom: false,
-                    customId: null,
+                    wikidataId: unit.wikidataId,
                   })}
                   className="items-start py-2"
                 >
@@ -558,7 +548,7 @@ function QuantityEditorContent({
                       <span>{unit.label}</span>
                       <span className="ml-2 text-xs text-muted-foreground">
                         (
-                        {unit.value}
+                        {unit.wikidataId}
                         )
                       </span>
                     </div>
@@ -568,7 +558,7 @@ function QuantityEditorContent({
                       </span>
                     )}
                   </div>
-                  <EntityViewLink value={unit.value} />
+                  <EntityViewLink value={unit.wikidataId!} />
                 </CommandItem>
               ))}
             </CommandGroup>
@@ -580,23 +570,15 @@ function QuantityEditorContent({
                   key={unitOptionValue(unit, index)}
                   value={unitOptionValue(unit, index)}
                   onSelect={() => confirmUnit({
-                    value: unit.value,
+                    id: unit.id,
                     label: unit.label,
-                    custom: true,
-                    customId: unit.customId,
+                    wikidataId: null,
                   })}
                   className="items-start py-2"
                 >
                   <div className="min-w-0 flex-1">
                     <div className="min-w-0 leading-5">
                       <span>{unit.label}</span>
-                      {unit.value !== unit.label && (
-                        <span className="ml-2 text-xs text-muted-foreground">
-                          (
-                          {unit.value}
-                          )
-                        </span>
-                      )}
                     </div>
                   </div>
                   <span className="ml-auto text-xs text-muted-foreground">Corpus</span>
@@ -604,23 +586,26 @@ function QuantityEditorContent({
               ))}
             </CommandGroup>
           )}
-          {unit && !results.some(result => result.value === unit.value) && (
+          {unit && !results.some(result =>
+            unit.wikidataId !== null
+              ? result.wikidataId === unit.wikidataId
+              : result.id !== null && result.id === unit.id) && (
             <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground">
               <span className="min-w-0 flex-1 truncate">
                 Currently set:
                 {' '}
                 <span className="font-medium text-foreground">{unit.label}</span>
-                {unit.value !== unit.label && (
+                {unit.wikidataId && unit.wikidataId !== unit.label && (
                   <span className="ml-1">
                     (
-                    {unit.value}
+                    {unit.wikidataId}
                     )
                   </span>
                 )}
               </span>
-              {unit.custom
-                ? <span className="shrink-0">Corpus</span>
-                : <EntityViewLink value={unit.value} />}
+              {unit.wikidataId
+                ? <EntityViewLink value={unit.wikidataId} />
+                : <span className="shrink-0">Corpus</span>}
             </div>
           )}
         </CommandList>

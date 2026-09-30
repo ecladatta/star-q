@@ -97,9 +97,9 @@ function ComponentBlock({
               <span className="min-w-0">{component.entityLabel}</span>
             )}
             <EntityId component={component} />
-            {component.unitLabel && (
+            {component.unit && (
               <span className="shrink-0 rounded-sm bg-background/50 px-1 text-[10px] font-normal opacity-80">
-                {component.unitLabel}
+                {component.unit.label}
               </span>
             )}
           </Badge>

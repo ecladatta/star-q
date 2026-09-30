@@ -1,8 +1,15 @@
 // Pure normalization helpers for full-corpus imports, split out of the
 // 'use server' module so they stay unit-testable.
 
+import type { UnitRef } from '@/types/types'
+import { WIKIDATA_ITEM_PATTERN } from '@/lib/wikidata-constraints'
+
 export function isUuid(value: unknown): value is string {
   return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+}
+
+function isUnitRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 export function normalizeCustomEntityFields(
@@ -25,27 +32,31 @@ export function normalizeCustomEntityFields(
     }
   }
 
-  normalizeCustomUnitFields(data, customEntityIdMap)
   return data
 }
 
-export function normalizeCustomUnitFields(
-  data: Record<string, any>,
-  customEntityIdMap: Record<string, string>,
-) {
-  const mappedUnitCustomId = typeof data.unitCustomId === 'string'
-    ? customEntityIdMap[data.unitCustomId]
-    : null
+export function takeImportedUnitRef(data: Record<string, any>): UnitRef | null {
+  if (!isUnitRecord(data.unit)) {
+    data.unit = null
+    return null
+  }
+  const raw = data.unit
+  data.unit = null
+  return normalizeUnitRef(raw)
+}
 
-  if (isUuid(mappedUnitCustomId)) {
-    data.unitCustomId = mappedUnitCustomId
-    data.unitLabel = null
-    data.unitValue = null
-    return
+function normalizeUnitRef(raw: Record<string, unknown>): UnitRef | null {
+  const label = typeof raw.label === 'string' ? raw.label : ''
+  const wikidataId = typeof raw.wikidataId === 'string' && WIKIDATA_ITEM_PATTERN.test(raw.wikidataId)
+    ? raw.wikidataId
+    : null
+  if (!wikidataId && !label) {
+    return null
   }
 
-  data.unitCustomId = null
-  if (data.unitCustom === true) {
-    data.unitCustom = false
+  return {
+    id: isUuid(raw.id) ? raw.id : null,
+    label,
+    wikidataId,
   }
 }

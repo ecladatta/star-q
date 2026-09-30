@@ -79,7 +79,6 @@ import { isNumericEntityDatatype } from '@/lib/datatypes'
 import { isValidQuantityAmount } from '@/lib/numeric-units'
 import { cn, isMac } from '@/lib/utils'
 import { WIKIDATA_ITEM_PATTERN, WIKIDATA_PROPERTY_PATTERN } from '@/lib/wikidata-constraints'
-import { buildUnitRef } from '@/types/types'
 
 type QualifierSide = 'predicate' | 'value'
 
@@ -151,10 +150,7 @@ function normalizeComponentForDirtyCheck(
     entityCustom: component.entityCustom ?? null,
     entityCustomId: component.entityCustomId ?? null,
     entityDatatype: component.entityDatatype ?? null,
-    unitValue: component.unitValue ?? null,
-    unitLabel: component.unitLabel ?? null,
-    unitCustom: component.unitCustom ?? null,
-    unitCustomId: component.unitCustomId ?? null,
+    unit: component.unit ?? null,
     quantityLowerBound: component.quantityLowerBound ?? null,
     quantityUpperBound: component.quantityUpperBound ?? null,
     annotationStart: component.annotationStart,
@@ -629,7 +625,7 @@ export function AnnotationForm({
         entityCustomId: newValue?.customId || null,
         entityDatatype: newValue?.datatype || null,
       }
-      if (type === 'object' && (updated.unitValue || updated.quantityLowerBound || updated.quantityUpperBound)) {
+      if (type === 'object' && (updated.unit || updated.quantityLowerBound || updated.quantityUpperBound)) {
         // An object holds either an entity link or a quantity, never both.
         const identityChanged = newValue === null
           || newValue.value !== prev[type]!.entityValue
@@ -641,10 +637,7 @@ export function AnnotationForm({
             ...prev,
             [type]: {
               ...updated,
-              unitValue: null,
-              unitLabel: null,
-              unitCustom: null,
-              unitCustomId: null,
+              unit: null,
               quantityLowerBound: null,
               quantityUpperBound: null,
             },
@@ -671,10 +664,7 @@ export function AnnotationForm({
         ...prev,
         [type]: {
           ...component,
-          unitValue: unit?.value ?? null,
-          unitLabel: unit?.label ?? null,
-          unitCustom: unit?.custom ?? null,
-          unitCustomId: unit?.customId ?? null,
+          unit: unit ?? null,
           ...(hadLink && unit !== null
             ? {
                 entityLabel: null,
@@ -713,7 +703,7 @@ export function AnnotationForm({
           quantityDatatypeBumpRef.current.add(component.id)
           updated.entityDatatype = 'decimal'
         }
-      } else if (!quantity.value && !component.unitValue && bumped) {
+      } else if (!quantity.value && !component.unit && bumped) {
         quantityDatatypeBumpRef.current.delete(component.id)
         updated.entityDatatype = null
       }
@@ -1429,7 +1419,7 @@ export function AnnotationForm({
                       tag={objectTag}
                       entityValue={getEntityValue(currentAnnotation?.object, 'object')}
                       onEntityChange={newValue => handleEntityChange('object', newValue)}
-                      unit={objectTag ? buildUnitRef(objectTag) : null}
+                      unit={objectTag?.unit ?? null}
                       onUnitChange={unit => handleUnitChange('object', unit)}
                       quantity={objectTag && !hasEntityLink(objectTag)
                         ? {

@@ -87,14 +87,14 @@ function getComponentUnitLabels(
 ): Map<string, string> {
   const labels = new Map<string, string>()
   for (const component of element.components) {
-    if (component.unitLabel) {
-      labels.set(component.id, component.unitLabel)
+    if (component.unit) {
+      labels.set(component.id, component.unit.label)
     }
   }
   if (currentAnnotation) {
     for (const component of getAnnotationComponents(currentAnnotation)) {
-      if (component.unitLabel) {
-        labels.set(component.id, component.unitLabel)
+      if (component.unit) {
+        labels.set(component.id, component.unit.label)
       }
     }
   }

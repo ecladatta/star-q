@@ -1,11 +1,12 @@
 'use server'
-import type { AnnotationComponentRole } from '@/types/types'
+import type { AnnotationComponentRole, UnitRef } from '@/types/types'
 import { db } from '@/db/drizzle'
 import { annotation, annotationComponent, annotationQualifier, corpusCustomEntity, document } from '@/db/schema'
 import { MAX_DOCUMENTS_PER_IMPORT } from '@/lib/constants'
 import { ENTITY_DATATYPES, normalizeDatatype } from '@/lib/datatypes'
+import { findOrCreateUnit, WIKIDATA_ID_PATTERN } from '@/lib/units/server'
 
-import { isUuid, normalizeCustomEntityFields } from './corpusImportNormalization'
+import { isUuid, normalizeCustomEntityFields, takeImportedUnitRef } from './corpusImportNormalization'
 import { isFullCorpusExport } from './fullCorpusExport'
 
 const POSTGRES_INTEGER_MIN = -2_147_483_648
@@ -99,7 +100,7 @@ function getInvalidCustomEntityFields(entity: Record<string, any>) {
   if (!ENTITY_DATATYPES.includes(entity.datatype) && !normalizeDatatype(entity.datatype)) {
     invalidFields.push('datatype')
   }
-  if (entity.customType !== 'entity' && entity.customType !== 'relation' && entity.customType !== 'unit') {
+  if (entity.customType !== 'entity' && entity.customType !== 'relation') {
     invalidFields.push('customType')
   }
   if (entity.createdAt && !normalizeDate(entity.createdAt)) {
@@ -153,10 +154,31 @@ export async function importFullCorpusExportDocuments(
   await db.transaction(async (tx) => {
     // Map old custom entity IDs to new database IDs
     const customEntityIdMap: Record<string, string> = {}
+    const unitIdMap: Record<string, string> = {}
+
+    if (Array.isArray(corpusData.units)) {
+      for (const [index, entry] of corpusData.units.entries()) {
+        if (!isComponentRecord(entry)) {
+          warnings.push(`Skipping unit at index ${index}: row is not an object.`)
+          continue
+        }
+        if (!isUuid(entry.id) || typeof entry.label !== 'string' || entry.label.length === 0) {
+          warnings.push(`Skipping unit at index ${index}: invalid id or label.`)
+          continue
+        }
+
+        const wikidataId = typeof entry.wikidataId === 'string' && WIKIDATA_ID_PATTERN.test(entry.wikidataId)
+          ? entry.wikidataId
+          : null
+        unitIdMap[entry.id] = await findOrCreateUnit(tx, corpusId, { id: null, label: entry.label, wikidataId })
+      }
+    }
 
     // Batch insert valid custom entities and skip malformed rows before DB constraints.
-    if (corpusData.customEntities && corpusData.customEntities.length > 0) {
-      const entitiesToInsert = corpusData.customEntities.flatMap((ent, index) => {
+    // Raw rows are handled untyped so each invalid field gets its own warning.
+    const exportedCustomEntities = (corpusData.customEntities ?? []) as unknown as Array<Record<string, any>>
+    if (exportedCustomEntities.length > 0) {
+      const entitiesToInsert = exportedCustomEntities.flatMap((ent, index) => {
         if (!isComponentRecord(ent)) {
           warnings.push(`Skipping custom entity at index ${index}: row is not an object.`)
           return []
@@ -181,7 +203,7 @@ export async function importFullCorpusExportDocuments(
 
       if (entitiesToInsert.length > 0) {
         const insertedEntities = await tx.insert(corpusCustomEntity)
-          .values(entitiesToInsert.map(({ _oldId, ...data }) => data))
+          .values(entitiesToInsert.map(({ _oldId, ...data }) => data) as typeof corpusCustomEntity.$inferInsert[])
           .returning({ id: corpusCustomEntity.id })
 
         // Map old IDs to new IDs
@@ -226,7 +248,28 @@ export async function importFullCorpusExportDocuments(
         if (doc.annotations && doc.annotations.length > 0) {
           for (const ann of doc.annotations) {
             try {
-              const prepareComponentData = (
+              // Remap a component's unit reference to the imported unit row:
+              // the id map covers references into the export's units, identity
+              // lookup handles dangling ones.
+              const resolveImportedUnitId = async (unitRef: UnitRef | null): Promise<string | null> => {
+                if (!unitRef) {
+                  return null
+                }
+                const mapped = unitRef.id ? unitIdMap[unitRef.id] : undefined
+                if (mapped) {
+                  return mapped
+                }
+                if (!unitRef.wikidataId && !unitRef.label) {
+                  return null
+                }
+                return findOrCreateUnit(tx, corpusId, {
+                  id: null,
+                  label: unitRef.label || unitRef.wikidataId || '',
+                  wikidataId: unitRef.wikidataId,
+                })
+              }
+
+              const prepareComponentData = async (
                 comp: unknown,
                 key: string,
                 issues: string[],
@@ -247,7 +290,9 @@ export async function importFullCorpusExportDocuments(
                   return null
                 }
 
-                return normalizeCustomEntityFields(data, customEntityIdMap) as typeof annotationComponent.$inferInsert
+                const normalized = normalizeCustomEntityFields(data, customEntityIdMap)
+                const unitId = await resolveImportedUnitId(takeImportedUnitRef(normalized))
+                return { ...normalized, unitId } as typeof annotationComponent.$inferInsert
               }
 
               const insertPreparedComponent = async (data: typeof annotationComponent.$inferInsert) => {
@@ -258,7 +303,7 @@ export async function importFullCorpusExportDocuments(
                 return insertedComp.id
               }
 
-              const baseComponentData = (['subject', 'predicate', 'object'] as const).map(key => prepareComponentData(ann[key], key, errors))
+              const baseComponentData = await Promise.all((['subject', 'predicate', 'object'] as const).map(key => prepareComponentData(ann[key], key, errors)))
               if (baseComponentData.includes(null)) {
                 errors.push(`Skipping annotation in document ${doc.title} due to invalid component.`)
                 continue
@@ -293,13 +338,13 @@ export async function importFullCorpusExportDocuments(
                   }
 
                   const qualifierPosition = normalizeQualifierPosition(qualifier.position, qualifierIndex)
-                  const qualifierPredicateData = prepareComponentData(
+                  const qualifierPredicateData = await prepareComponentData(
                     qualifier.predicate,
                     `qualifier[${qualifierIndex}].predicate`,
                     warnings,
                     'qualifier-predicate',
                   )
-                  const qualifierValueData = prepareComponentData(
+                  const qualifierValueData = await prepareComponentData(
                     qualifier.value,
                     `qualifier[${qualifierIndex}].value`,
                     warnings,

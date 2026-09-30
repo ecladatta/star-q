@@ -215,9 +215,9 @@ export function AnnotationListPopover({
                                     >
                                       {getAnnotationComponentDisplayText(component)}
                                     </span>
-                                    {component.unitLabel && (
+                                    {component.unit && (
                                       <span className="shrink-0 rounded-sm bg-background/50 px-1 text-[10px] font-normal opacity-80">
-                                        {component.unitLabel}
+                                        {component.unit.label}
                                       </span>
                                     )}
                                   </span>

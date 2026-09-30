@@ -83,6 +83,7 @@ describe('getCorpusExportFilename', () => {
       title,
       createdAt: null,
       updatedAt: null,
+      units: [],
       customEntities: [],
       wikibase: {
         instance: 'https://wikibase.example',

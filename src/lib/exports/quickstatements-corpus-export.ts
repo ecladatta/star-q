@@ -126,12 +126,8 @@ function literalValue(
 // corpus units export as bare amounts. Bounds are emitted only when both are
 // present and parse as plain decimals, since the bracket form needs both ends.
 function unitSuffix(component: DocumentAnnotationComponent): string {
-  if (component.unitCustom) {
-    return ''
-  }
-
-  const unitValue = component.unitValue?.trim()
-  return unitValue && /^Q\d+$/.test(unitValue) ? `U${unitValue.slice(1)}` : ''
+  const wikidataId = component.unit?.wikidataId
+  return wikidataId ? `U${wikidataId.slice(1)}` : ''
 }
 
 function quantityValue(

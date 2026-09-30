@@ -22,10 +22,7 @@ function component(overrides: Partial<DocumentAnnotationComponent> = {}): Docume
     entityCustom: false,
     entityCustomId: null,
     entityDatatype: null,
-    unitValue: null,
-    unitLabel: null,
-    unitCustom: null,
-    unitCustomId: null,
+    unit: null,
     quantityLowerBound: null,
     quantityUpperBound: null,
     annotationStart: 0,
@@ -95,6 +92,7 @@ function model(annotations: AnnotationExport[], raw: ExportModel['documents'][nu
     title: 'Test',
     createdAt: null,
     updatedAt: null,
+    units: [],
     customEntities: [],
     wikibase: wikibaseConfig,
     documents: [{
@@ -160,8 +158,7 @@ describe('serializeRdfCorpusExport (truthy)', () => {
       object: component({
         entityValue: '1360590',
         entityDatatype: 'integer',
-        unitValue: 'Q11573',
-        unitLabel: 'metre',
+        unit: { id: null, label: 'metre', wikidataId: 'Q11573' },
         annotationTag: 'object',
       }),
     })])
@@ -174,15 +171,12 @@ describe('serializeRdfCorpusExport (truthy)', () => {
       object: component({
         entityValue: '1360590',
         entityDatatype: 'integer',
-        unitValue: 'bottle',
-        unitLabel: 'bottle',
-        unitCustom: true,
-        unitCustomId: '00000000-0000-0000-0000-000000000001',
+        unit: { id: '00000000-0000-0000-0000-000000000001', label: 'bottle', wikidataId: null },
         annotationTag: 'object',
       }),
     })])
     expect(output).toContain(
-      `<${RDF_NAMESPACE_BASE}/ontology#unit> <${RDF_NAMESPACE_BASE}/corpus/corpus-1/entity/00000000-0000-0000-0000-000000000001>.`,
+      `<${RDF_NAMESPACE_BASE}/ontology#unit> <${RDF_NAMESPACE_BASE}/corpus/corpus-1/unit/00000000-0000-0000-0000-000000000001>.`,
     )
   })
 
@@ -292,8 +286,7 @@ describe('serializeRdfCorpusExport (full)', () => {
       object: component({
         entityValue: '1360590',
         entityDatatype: 'integer',
-        unitValue: 'Q11573',
-        unitLabel: 'metre',
+        unit: { id: null, label: 'metre', wikidataId: 'Q11573' },
         annotationTag: 'object',
       }),
     })], rawText()), 'full')
@@ -306,15 +299,12 @@ describe('serializeRdfCorpusExport (full)', () => {
       object: component({
         entityValue: '1360590',
         entityDatatype: 'integer',
-        unitValue: 'bottle',
-        unitLabel: 'bottle',
-        unitCustom: true,
-        unitCustomId: '00000000-0000-0000-0000-000000000001',
+        unit: { id: '00000000-0000-0000-0000-000000000001', label: 'bottle', wikidataId: null },
         annotationTag: 'object',
       }),
     })], rawText()), 'full')
     expect(output).toContain(
-      `at:unit <${RDF_NAMESPACE_BASE}/corpus/corpus-1/entity/00000000-0000-0000-0000-000000000001>.`,
+      `at:unit <${RDF_NAMESPACE_BASE}/corpus/corpus-1/unit/00000000-0000-0000-0000-000000000001>.`,
     )
   })
 

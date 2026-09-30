@@ -211,10 +211,7 @@ export function buildCellBatchPreview(input: CellBatchPreviewInput): CellBatchPr
       entityCustom: null,
       entityCustomId: null,
       entityDatatype: null,
-      unitValue: null,
-      unitLabel: null,
-      unitCustom: null,
-      unitCustomId: null,
+      unit: null,
       quantityLowerBound: null,
       quantityUpperBound: null,
       annotationStart: value.start,
@@ -287,10 +284,7 @@ function withCellQuantity(
     entityValue: quantity.value || null,
     quantityLowerBound: quantity.lowerBound || null,
     quantityUpperBound: quantity.upperBound || null,
-    unitValue: quantity.unit?.value ?? null,
-    unitLabel: quantity.unit?.label ?? null,
-    unitCustom: quantity.unit?.custom ?? null,
-    unitCustomId: quantity.unit?.customId ?? null,
+    unit: quantity.unit,
     entityDatatype: quantity.value && isValidQuantityAmount(quantity.value)
       ? (isNumericEntityDatatype(component.entityDatatype) ? component.entityDatatype : 'decimal')
       : component.entityDatatype,
