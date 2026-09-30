@@ -1,6 +1,7 @@
 'use server'
+import type { SQL } from 'drizzle-orm'
 import type { AnnotationComponent } from '@/db/schema'
-import type { CellBatchAnnotationItem as BatchAnnotationItem } from '@/lib/cell-batch'
+import type { CellBatchAnnotationItem } from '@/lib/cell-batch'
 import type {
   AnnotationComponentRole,
   AnnotationQualifierInput,
@@ -64,6 +65,16 @@ function resolveComponentCustomUnit<T extends ComponentWithUnit>(
     unitLabel: component.unitCustom && customUnit ? customUnit.label : component.unitLabel,
     unitValue: component.unitCustom && customUnit ? customUnit.value : component.unitValue,
   }
+}
+
+// Read-time resolution for any component: its custom-entity row wins for the
+// entity fields, then its custom-unit row for the unit fields.
+function resolveComponentCustomRefs<T extends ComponentWithCustomEntity & ComponentWithUnit>(
+  component: T,
+  customEntity: CustomEntityLike,
+  customUnit: CustomEntityLike,
+): T {
+  return resolveComponentCustomUnit(resolveComponentCustomEntity(component, customEntity), customUnit)
 }
 
 function customTypeForComponentRole(role: AnnotationComponentRole): 'entity' | 'relation' {
@@ -210,13 +221,11 @@ async function upsertAnnotationComponent(
     unitValue = component.unitValue
   }
 
-  // Entity fields follow the link when one exists. With no link the
+  // Entity fields follow the link when one exists — the branches above filled
+  // entityLabel (Wikidata) or entityCustomId (custom). With no link the
   // component's own fields stand: a quantity object carries its amount and
   // datatype without an entity, and they must survive the save.
-  const hasEntityLink = Boolean(
-    (entity?.custom && entity.label && entity.value && entity.datatype)
-    || (entity && !entity.custom),
-  )
+  const hasEntityLink = entityLabel !== null || entityCustomId !== null
 
   const values = {
     ...component,
@@ -334,8 +343,8 @@ async function getQualifiersForAnnotations(annotationIds: string[]): Promise<Map
       predicateId: row.predicateId,
       valueId: row.valueId,
       position: row.position,
-      predicate: resolveComponentCustomUnit(resolveComponentCustomEntity(row.predicate, row.predicateCustomEntity), row.predicateCustomUnit),
-      value: resolveComponentCustomUnit(resolveComponentCustomEntity(row.value, row.valueCustomEntity), row.valueCustomUnit),
+      predicate: resolveComponentCustomRefs(row.predicate, row.predicateCustomEntity, row.predicateCustomUnit),
+      value: resolveComponentCustomRefs(row.value, row.valueCustomEntity, row.valueCustomUnit),
     }
 
     const existing = qualifiersByAnnotation.get(row.annotationId) ?? []
@@ -399,7 +408,7 @@ export async function addAnnotation(
 
 export async function addAnnotations(
   documentId: string,
-  items: BatchAnnotationItem[],
+  items: CellBatchAnnotationItem[],
 ): Promise<string[]> {
   if (items.length === 0) {
     return []
@@ -520,9 +529,10 @@ export async function updateAnnotation(
   revalidatePath(`/document/${annotationData.documentId}`)
 }
 
-export async function getAnnotations(documentId: string): Promise<DocumentAnnotation[]> {
-  await requireViewDocument(documentId)
-
+// The shared read path behind every annotation lookup: three component
+// columns, each with its custom-entity and custom-unit rows joined for
+// read-time resolution, plus the annotation's qualifiers.
+async function fetchAnnotations(where: SQL): Promise<DocumentAnnotation[]> {
   const component1 = alias(annotationComponent, 'component1')
   const component2 = alias(annotationComponent, 'component2')
   const component3 = alias(annotationComponent, 'component3')
@@ -559,58 +569,27 @@ export async function getAnnotations(documentId: string): Promise<DocumentAnnota
     .leftJoin(customUnit1, eq(customUnit1.id, component1.unitCustomId))
     .leftJoin(customUnit2, eq(customUnit2.id, component2.unitCustomId))
     .leftJoin(customUnit3, eq(customUnit3.id, component3.unitCustomId))
-    .where(eq(annotation.documentId, documentId))
+    .where(where)
 
   const qualifiersByAnnotation = await getQualifiersForAnnotations(results.map(result => result.id))
 
   return results.map(result => ({
     ...result,
-    subject: resolveComponentCustomUnit(resolveComponentCustomEntity(result.subject, result.subjectCustomEntity), result.subjectCustomUnit),
-    predicate: resolveComponentCustomUnit(resolveComponentCustomEntity(result.predicate, result.predicateCustomEntity), result.predicateCustomUnit),
-    object: resolveComponentCustomUnit(resolveComponentCustomEntity(result.object, result.objectCustomEntity), result.objectCustomUnit),
+    subject: resolveComponentCustomRefs(result.subject, result.subjectCustomEntity, result.subjectCustomUnit),
+    predicate: resolveComponentCustomRefs(result.predicate, result.predicateCustomEntity, result.predicateCustomUnit),
+    object: resolveComponentCustomRefs(result.object, result.objectCustomEntity, result.objectCustomUnit),
     qualifiers: qualifiersByAnnotation.get(result.id) ?? [],
   }))
 }
 
-export async function getAnnotationById(id: string): Promise<DocumentAnnotation> {
-  const component1 = alias(annotationComponent, 'component1')
-  const component2 = alias(annotationComponent, 'component2')
-  const component3 = alias(annotationComponent, 'component3')
-  const customEntity1 = alias(corpusCustomEntity, 'customEntity1')
-  const customEntity2 = alias(corpusCustomEntity, 'customEntity2')
-  const customEntity3 = alias(corpusCustomEntity, 'customEntity3')
-  const customUnit1 = alias(corpusCustomEntity, 'customUnit1')
-  const customUnit2 = alias(corpusCustomEntity, 'customUnit2')
-  const customUnit3 = alias(corpusCustomEntity, 'customUnit3')
+export async function getAnnotations(documentId: string): Promise<DocumentAnnotation[]> {
+  await requireViewDocument(documentId)
 
-  const [result] = await db.select({
-    ...getTableColumns(annotation),
-    subject: getTableColumns(component1),
-    predicate: getTableColumns(component2),
-    object: getTableColumns(component3),
-    subjectCustomEntity: getTableColumns(customEntity1),
-    predicateCustomEntity: getTableColumns(customEntity2),
-    objectCustomEntity: getTableColumns(customEntity3),
-    subjectCustomUnit: getTableColumns(customUnit1),
-    predicateCustomUnit: getTableColumns(customUnit2),
-    objectCustomUnit: getTableColumns(customUnit3),
-    annotationId: annotation.id,
-    documentId: annotation.documentId,
-    corpusId: document.corpusId,
-  })
-    .from(annotation)
-    .innerJoin(component1, eq(component1.id, annotation.subjectId))
-    .innerJoin(component2, eq(component2.id, annotation.predicateId))
-    .innerJoin(component3, eq(component3.id, annotation.objectId))
-    .innerJoin(document, eq(document.id, annotation.documentId))
-    .leftJoin(customEntity1, eq(customEntity1.id, component1.entityCustomId))
-    .leftJoin(customEntity2, eq(customEntity2.id, component2.entityCustomId))
-    .leftJoin(customEntity3, eq(customEntity3.id, component3.entityCustomId))
-    .leftJoin(customUnit1, eq(customUnit1.id, component1.unitCustomId))
-    .leftJoin(customUnit2, eq(customUnit2.id, component2.unitCustomId))
-    .leftJoin(customUnit3, eq(customUnit3.id, component3.unitCustomId))
-    .where(eq(annotation.id, id))
-    .limit(1)
+  return fetchAnnotations(eq(annotation.documentId, documentId))
+}
+
+export async function getAnnotationById(id: string): Promise<DocumentAnnotation> {
+  const [result] = await fetchAnnotations(eq(annotation.id, id))
 
   if (!result) {
     throw new NotFoundError('Annotation not found')
@@ -618,15 +597,7 @@ export async function getAnnotationById(id: string): Promise<DocumentAnnotation>
 
   await requireViewDocument(result.documentId!)
 
-  const qualifiersByAnnotation = await getQualifiersForAnnotations([result.id])
-
-  return {
-    ...result,
-    subject: resolveComponentCustomUnit(resolveComponentCustomEntity(result.subject, result.subjectCustomEntity), result.subjectCustomUnit),
-    predicate: resolveComponentCustomUnit(resolveComponentCustomEntity(result.predicate, result.predicateCustomEntity), result.predicateCustomUnit),
-    object: resolveComponentCustomUnit(resolveComponentCustomEntity(result.object, result.objectCustomEntity), result.objectCustomUnit),
-    qualifiers: qualifiersByAnnotation.get(result.id) ?? [],
-  }
+  return result
 }
 
 export async function deleteAnnotation(id: string) {

@@ -132,7 +132,7 @@ async function searchEntities(
         const results = await searchCorpusCustomEntities(
           corpusId,
           searchTerm,
-          type,
+          type === 'predicate' ? 'relation' : 'entity',
         )
         return results.map(entity => ({
           label: entity.label,

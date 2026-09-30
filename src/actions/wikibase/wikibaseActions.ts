@@ -112,7 +112,7 @@ export async function searchUnits(corpusId: string, search: string, limit = 5): 
         return []
       }
     })(),
-    searchCorpusCustomEntities(corpusId, term, undefined, 'unit').catch((error) => {
+    searchCorpusCustomEntities(corpusId, term, 'unit').catch((error) => {
       console.error('Custom unit search error:', error)
       return []
     }),
