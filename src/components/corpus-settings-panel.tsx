@@ -1,13 +1,14 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type { Corpus, CorpusCustomEntity, CorpusVisibility, WikibaseInstance } from '@/db/schema'
+import type { Corpus, CorpusCustomEntity, CorpusVisibility, Unit, WikibaseInstance } from '@/db/schema'
 import type { CorpusSettings } from '@/lib/corpus-settings'
 import type { EntityDatatype } from '@/types/types'
 import { EditIcon, FilterIcon, Loader2Icon, PlusIcon, SearchIcon, Trash2Icon } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { addCorpusCustomEntity, deleteCorpusCustomEntity, getCorpusCustomEntities, renameCorpus, updateCorpusCustomEntity, updateCorpusSettings, updateCorpusVisibility } from '@/actions/corpus/corpusActions'
+import { createUnit, deleteUnit, listUnits, updateUnit } from '@/actions/units/unitsActions'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
@@ -48,6 +49,10 @@ export function CorpusSettingsPanel({ corpus, wikibaseInstances, onCorpusRenamed
     datatype: 'string' as EntityDatatype,
     customType: 'entity' as 'entity' | 'relation',
   })
+  const [units, setUnits] = useState<Array<Unit & { usageCount: number }>>([])
+  const [isLoadingUnits, setIsLoadingUnits] = useState(false)
+  const [editingUnit, setEditingUnit] = useState<Unit & { usageCount: number } | null>(null)
+  const [newUnitLabel, setNewUnitLabel] = useState('')
 
   const loadCustomEntities = useCallback(async () => {
     try {
@@ -64,6 +69,21 @@ export function CorpusSettingsPanel({ corpus, wikibaseInstances, onCorpusRenamed
   useEffect(() => {
     loadCustomEntities()
   }, [loadCustomEntities])
+
+  const loadUnits = useCallback(async () => {
+    try {
+      setIsLoadingUnits(true)
+      setUnits(await listUnits(corpus.id))
+    } catch {
+      toast.error('Failed to load units')
+    } finally {
+      setIsLoadingUnits(false)
+    }
+  }, [corpus.id])
+
+  useEffect(() => {
+    loadUnits()
+  }, [loadUnits])
 
   const handleSaveCorpusTitle = async () => {
     if (!corpusTitle || !corpusTitle.trim() || corpusTitle === corpus.title) {
@@ -209,6 +229,46 @@ export function CorpusSettingsPanel({ corpus, wikibaseInstances, onCorpusRenamed
     }
   }
 
+  const handleCreateUnit = async () => {
+    if (!newUnitLabel.trim()) {
+      return
+    }
+
+    try {
+      await createUnit(corpus.id, newUnitLabel.trim())
+      setNewUnitLabel('')
+      await loadUnits()
+      toast.success('Unit created successfully')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to create unit')
+    }
+  }
+
+  const handleRenameUnit = async () => {
+    if (!editingUnit || !editingUnit.label.trim()) {
+      return
+    }
+
+    try {
+      await updateUnit(editingUnit.id, editingUnit.label.trim())
+      setEditingUnit(null)
+      await loadUnits()
+      toast.success('Unit renamed successfully')
+    } catch {
+      toast.error('Failed to rename unit')
+    }
+  }
+
+  const handleDeleteUnit = async (id: string) => {
+    try {
+      await deleteUnit(id)
+      await loadUnits()
+      toast.success('Unit deleted successfully')
+    } catch {
+      toast.error('Failed to delete unit')
+    }
+  }
+
   const filteredEntities = customEntities.filter((entity) => {
     const searchTerm = filterKeyword.toLowerCase()
     if (!searchTerm.trim() && !filterType) {
@@ -232,9 +292,10 @@ export function CorpusSettingsPanel({ corpus, wikibaseInstances, onCorpusRenamed
 
   return (
     <Tabs defaultValue="general" className="flex flex-1 flex-col gap-4 overflow-hidden">
-      <TabsList className="grid w-full max-w-md grid-cols-2">
+      <TabsList className="grid w-full max-w-md grid-cols-3">
         <TabsTrigger value="general">General</TabsTrigger>
         <TabsTrigger value="entities">Custom Entities</TabsTrigger>
+        <TabsTrigger value="units">Units</TabsTrigger>
       </TabsList>
 
       <TabsContent value="general" className="space-y-4">
@@ -587,6 +648,129 @@ export function CorpusSettingsPanel({ corpus, wikibaseInstances, onCorpusRenamed
                 </div>
               )}
         </div>
+      </TabsContent>
+
+      <TabsContent value="units" className="flex flex-1 flex-col space-y-4 overflow-hidden">
+        <div className="space-y-1">
+          <h3 className="text-sm font-medium text-foreground">Units</h3>
+          <p className="text-xs text-muted-foreground">Units used by quantity annotations.</p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Input
+            placeholder="New unit label"
+            value={newUnitLabel}
+            onChange={e => setNewUnitLabel(e.target.value)}
+            className="w-64"
+            disabled={!canEdit}
+          />
+          <Button onClick={handleCreateUnit} className="w-fit" disabled={!canEdit || !newUnitLabel.trim()}>
+            <PlusIcon className="mr-2 size-4" />
+            Add Unit
+          </Button>
+        </div>
+
+        {isLoadingUnits
+          ? (
+              <div className="flex items-center justify-center p-8">
+                <Loader2Icon className="size-6 animate-spin" />
+              </div>
+            )
+          : (
+              <div className="flex-1 overflow-auto rounded-lg border border-border">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead className="bg-muted/40 px-3 py-2 text-left text-xs font-medium text-muted-foreground">Label</TableHead>
+                      <TableHead className="bg-muted/40 px-3 py-2 text-left text-xs font-medium text-muted-foreground">Origin</TableHead>
+                      <TableHead className="bg-muted/40 px-3 py-2 text-left text-xs font-medium text-muted-foreground">Usage</TableHead>
+                      <TableHead className="bg-muted/40 px-3 py-2 text-left text-xs font-medium text-muted-foreground">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {units.length === 0
+                      ? (
+                          <TableRow>
+                            <TableCell colSpan={4} className="px-3 py-2.5 text-center text-[13px] text-muted-foreground">
+                              No units found. Create one above to get started.
+                            </TableCell>
+                          </TableRow>
+                        )
+                      : (
+                          units.map(unitRow => (
+                            <TableRow key={unitRow.id} className="border-t border-border hover:bg-muted/30">
+                              <TableCell className="px-3 py-2.5 text-[13px]">
+                                {editingUnit?.id === unitRow.id
+                                  ? (
+                                      <Input
+                                        value={editingUnit.label}
+                                        onChange={e => setEditingUnit(prev => prev ? { ...prev, label: e.target.value } : null)}
+                                      />
+                                    )
+                                  : (
+                                      unitRow.label
+                                    )}
+                              </TableCell>
+                              <TableCell className="px-3 py-2.5 text-[13px]">
+                                {unitRow.wikidataId
+                                  ? (
+                                      <a
+                                        href={`https://www.wikidata.org/wiki/${unitRow.wikidataId}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-xs text-accent hover:underline"
+                                      >
+                                        {unitRow.wikidataId}
+                                      </a>
+                                    )
+                                  : (
+                                      <span className="text-muted-foreground">Corpus</span>
+                                    )}
+                              </TableCell>
+                              <TableCell className="px-3 py-2.5 text-[13px]">{unitRow.usageCount}</TableCell>
+                              <TableCell>
+                                <div className="flex gap-1">
+                                  {editingUnit?.id === unitRow.id
+                                    ? (
+                                        <>
+                                          <Button size="sm" onClick={handleRenameUnit} disabled={!editingUnit.label.trim()}>
+                                            Save
+                                          </Button>
+                                          <Button size="sm" variant="outline" onClick={() => setEditingUnit(null)}>
+                                            Cancel
+                                          </Button>
+                                        </>
+                                      )
+                                    : (
+                                        <>
+                                          <Button
+                                            size="sm"
+                                            variant="outline"
+                                            disabled={!canEdit}
+                                            onClick={() => setEditingUnit(unitRow)}
+                                          >
+                                            <EditIcon className="size-3" />
+                                          </Button>
+                                          <Button
+                                            size="sm"
+                                            variant="destructive"
+                                            disabled={!canEdit || unitRow.usageCount > 0}
+                                            title={unitRow.usageCount > 0 ? `${unitRow.usageCount} annotations use this unit` : undefined}
+                                            onClick={() => handleDeleteUnit(unitRow.id)}
+                                          >
+                                            <Trash2Icon className="size-3" />
+                                          </Button>
+                                        </>
+                                      )}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
       </TabsContent>
     </Tabs>
   )

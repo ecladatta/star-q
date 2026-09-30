@@ -3,7 +3,7 @@ import type { Unit } from '@/db/schema'
 import type { UnitCandidate, UnitRef } from '@/types/types'
 import { and, asc, count, eq, ilike, isNull, sql } from 'drizzle-orm'
 import { db } from '@/db/drizzle'
-import { unit } from '@/db/schema'
+import { annotationComponent, unit } from '@/db/schema'
 import { MAX_CUSTOM_ENTITIES_PER_CORPUS } from '@/lib/constants'
 import { loadCorpusWikibaseConfig } from '@/lib/wikibase-server'
 import { searchWikibaseUnits } from '@/lib/wikidata-sparql'
@@ -51,11 +51,34 @@ export async function updateCorpusUnit(executor: DbExecutor, id: string, label: 
 }
 
 export async function deleteCorpusUnit(executor: DbExecutor, id: string): Promise<void> {
+  const [inUse] = await executor.select({ count: count() }).from(annotationComponent).where(eq(annotationComponent.unitId, id))
+  if ((inUse?.count ?? 0) > 0) {
+    throw new Error(`This unit is used by ${inUse.count} annotation${inUse.count === 1 ? '' : 's'} and cannot be deleted.`)
+  }
   await executor.delete(unit).where(eq(unit.id, id))
 }
 
-export async function listCorpusUnits(corpusId: string): Promise<Unit[]> {
-  return db.select().from(unit).where(eq(unit.corpusId, corpusId)).orderBy(sql`${unit.wikidataId} IS NOT NULL DESC`, asc(unit.label))
+// Shared by every unit listing so the ordering rule lives in one place.
+export function unitOrdering() {
+  return [sql`${unit.wikidataId} IS NOT NULL DESC`, asc(unit.label)] as const
+}
+
+export async function listCorpusUnits(corpusId: string): Promise<Array<Unit & { usageCount: number }>> {
+  return db
+    .select({
+      id: unit.id,
+      corpusId: unit.corpusId,
+      label: unit.label,
+      wikidataId: unit.wikidataId,
+      createdAt: unit.createdAt,
+      updatedAt: unit.updatedAt,
+      usageCount: count(annotationComponent.id),
+    })
+    .from(unit)
+    .leftJoin(annotationComponent, eq(annotationComponent.unitId, unit.id))
+    .where(eq(unit.corpusId, corpusId))
+    .groupBy(unit.id)
+    .orderBy(...unitOrdering())
 }
 
 // Unit search results for the quantity editor: Wikidata hits first with no

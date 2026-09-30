@@ -1,16 +1,19 @@
 import type { CorpusExportFormat } from './export-format'
 import type { AnnotationExport, ExportModel } from '@/types/types'
+import { eq } from 'drizzle-orm'
 import { getAnnotations } from '@/actions/annotation/annotationActions'
 import { getCorpus, getCorpusCustomEntities } from '@/actions/corpus/corpusActions'
 import { getDocumentsMetadata, getRawDocumentData } from '@/actions/document/documentActions'
-import { listCorpusUnits } from '@/lib/units/server'
+import { db } from '@/db/drizzle'
+import { unit } from '@/db/schema'
+import { unitOrdering } from '@/lib/units/server'
 import { loadCorpusWikibaseConfig } from '@/lib/wikibase-server'
 
 export async function buildCorpusExportModel(corpusId: string): Promise<ExportModel> {
   const [corpus, documents, units, customEntities, wikibase] = await Promise.all([
     getCorpus(corpusId),
     getDocumentsMetadata(corpusId),
-    listCorpusUnits(corpusId),
+    db.select().from(unit).where(eq(unit.corpusId, corpusId)).orderBy(...unitOrdering()),
     getCorpusCustomEntities(corpusId),
     loadCorpusWikibaseConfig(corpusId),
   ])

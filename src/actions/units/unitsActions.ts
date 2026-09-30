@@ -30,7 +30,7 @@ export async function deleteUnit(id: string): Promise<void> {
   revalidatePath(`/corpus/${corpusId}`)
 }
 
-export async function listUnits(corpusId: string): Promise<Unit[]> {
+export async function listUnits(corpusId: string): Promise<Array<Unit & { usageCount: number }>> {
   await requireViewCorpus(corpusId)
 
   return listCorpusUnits(corpusId)
