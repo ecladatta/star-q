@@ -2,8 +2,8 @@
 
 import type { DbTransaction } from '@/db/drizzle'
 import type { Corpus, CorpusCollaboratorRole } from '@/db/schema'
-import { and, count, eq } from 'drizzle-orm'
-import { revalidatePath, unstable_cache } from 'next/cache'
+import { and, count, desc, eq } from 'drizzle-orm'
+import { revalidatePath } from 'next/cache'
 import { db } from '@/db/drizzle'
 import { auditLog, corpus, corpusCollaboration, team, teamInvitation, teamMembership, users } from '@/db/schema'
 import { ForbiddenError, getRequestActor, NotFoundError } from '@/lib/auth-utils'
@@ -363,26 +363,33 @@ export async function getPendingInvitations() {
   const [teamInvitations, userCorpusInvitations, teamCorpusInvitations] = await Promise.all([
     db.select({
       id: teamInvitation.id,
-      kind: teamInvitation.status,
       teamId: team.id,
       teamName: team.name,
       teamSlug: team.slug,
       role: teamInvitation.role,
       createdAt: teamInvitation.createdAt,
+      inviterName: users.name,
+      inviterUsername: users.username,
     })
       .from(teamInvitation)
       .innerJoin(team, eq(team.id, teamInvitation.teamId))
-      .where(and(eq(teamInvitation.inviteeUserId, actor.userId), eq(teamInvitation.status, 'pending'))),
+      .leftJoin(users, eq(users.id, teamInvitation.invitedByUserId))
+      .where(and(eq(teamInvitation.inviteeUserId, actor.userId), eq(teamInvitation.status, 'pending')))
+      .orderBy(desc(teamInvitation.createdAt)),
     db.select({
       id: corpusCollaboration.id,
       corpusId: corpus.id,
       corpusTitle: corpus.title,
       role: corpusCollaboration.role,
       createdAt: corpusCollaboration.createdAt,
+      inviterName: users.name,
+      inviterUsername: users.username,
     })
       .from(corpusCollaboration)
       .innerJoin(corpus, eq(corpus.id, corpusCollaboration.corpusId))
-      .where(and(eq(corpusCollaboration.targetUserId, actor.userId), eq(corpusCollaboration.status, 'pending'))),
+      .leftJoin(users, eq(users.id, corpusCollaboration.invitedByUserId))
+      .where(and(eq(corpusCollaboration.targetUserId, actor.userId), eq(corpusCollaboration.status, 'pending')))
+      .orderBy(desc(corpusCollaboration.createdAt)),
     db.select({
       id: corpusCollaboration.id,
       corpusId: corpus.id,
@@ -392,48 +399,44 @@ export async function getPendingInvitations() {
       teamSlug: team.slug,
       role: corpusCollaboration.role,
       createdAt: corpusCollaboration.createdAt,
+      inviterName: users.name,
+      inviterUsername: users.username,
     })
       .from(corpusCollaboration)
       .innerJoin(team, eq(team.id, corpusCollaboration.targetTeamId))
       .innerJoin(teamMembership, eq(teamMembership.teamId, team.id))
       .innerJoin(corpus, eq(corpus.id, corpusCollaboration.corpusId))
+      .leftJoin(users, eq(users.id, corpusCollaboration.invitedByUserId))
+      .where(and(
+        eq(teamMembership.userId, actor.userId),
+        eq(teamMembership.role, 'owner'),
+        eq(corpusCollaboration.status, 'pending'),
+      ))
+      .orderBy(desc(corpusCollaboration.createdAt)),
+  ])
+
+  return { teamInvitations, userCorpusInvitations, teamCorpusInvitations }
+}
+
+export async function getPendingInvitationCount(): Promise<number> {
+  const actor = await requireUserActor()
+  const [[teamInvitations], [userCorpusInvitations], [teamCorpusInvitations]] = await Promise.all([
+    db.select({ count: count() })
+      .from(teamInvitation)
+      .where(and(eq(teamInvitation.inviteeUserId, actor.userId), eq(teamInvitation.status, 'pending'))),
+    db.select({ count: count() })
+      .from(corpusCollaboration)
+      .where(and(eq(corpusCollaboration.targetUserId, actor.userId), eq(corpusCollaboration.status, 'pending'))),
+    db.select({ count: count() })
+      .from(corpusCollaboration)
+      .innerJoin(teamMembership, eq(teamMembership.teamId, corpusCollaboration.targetTeamId))
       .where(and(
         eq(teamMembership.userId, actor.userId),
         eq(teamMembership.role, 'owner'),
         eq(corpusCollaboration.status, 'pending'),
       )),
   ])
-
-  return { teamInvitations, userCorpusInvitations, teamCorpusInvitations }
-}
-
-const getCachedPendingInvitationCount = unstable_cache(
-  async (userId: string) => {
-    const [[teamInvitations], [userCorpusInvitations], [teamCorpusInvitations]] = await Promise.all([
-      db.select({ count: count() })
-        .from(teamInvitation)
-        .where(and(eq(teamInvitation.inviteeUserId, userId), eq(teamInvitation.status, 'pending'))),
-      db.select({ count: count() })
-        .from(corpusCollaboration)
-        .where(and(eq(corpusCollaboration.targetUserId, userId), eq(corpusCollaboration.status, 'pending'))),
-      db.select({ count: count() })
-        .from(corpusCollaboration)
-        .innerJoin(teamMembership, eq(teamMembership.teamId, corpusCollaboration.targetTeamId))
-        .where(and(
-          eq(teamMembership.userId, userId),
-          eq(teamMembership.role, 'owner'),
-          eq(corpusCollaboration.status, 'pending'),
-        )),
-    ])
-    return (teamInvitations?.count ?? 0)
-      + (userCorpusInvitations?.count ?? 0)
-      + (teamCorpusInvitations?.count ?? 0)
-  },
-  ['pending-invitation-count'],
-  { revalidate: 60 },
-)
-
-export async function getPendingInvitationCount(): Promise<number> {
-  const actor = await requireUserActor()
-  return getCachedPendingInvitationCount(actor.userId)
+  return (teamInvitations?.count ?? 0)
+    + (userCorpusInvitations?.count ?? 0)
+    + (teamCorpusInvitations?.count ?? 0)
 }

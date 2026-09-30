@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { getMyAcceptedCorpusCollaborations, getPendingInvitations, leaveCorpusCollaboration, respondToCorpusInvitation } from '@/actions/collaboration/collaborationActions'
 import { respondToTeamInvitation } from '@/actions/team/teamActions'
@@ -18,23 +19,49 @@ export default async function InvitationsPage() {
     getPendingInvitations(),
     getMyAcceptedCorpusCollaborations(),
   ])
-  const total = invitations.teamInvitations.length
-    + invitations.userCorpusInvitations.length
-    + invitations.teamCorpusInvitations.length
+  const pendingViews: PendingInvitationView[] = [
+    ...invitations.teamInvitations.map((invitation) => {
+      const inviter = formatInviter(invitation.inviterName, invitation.inviterUsername)
+      const inviterSentence = inviter ? `${inviter} invited you` : null
+      return {
+        key: invitation.id,
+        title: `Join ${invitation.teamName}`,
+        detail: buildDetail(inviterSentence, invitation.role, invitation.createdAt),
+        accept: respondToTeamInvitation.bind(null, invitation.id, 'accepted'),
+        decline: respondToTeamInvitation.bind(null, invitation.id, 'declined'),
+      }
+    }),
+    ...invitations.userCorpusInvitations.map((invitation) => {
+      const inviter = formatInviter(invitation.inviterName, invitation.inviterUsername)
+      const inviterSentence = inviter ? `${inviter} invited you` : null
+      return {
+        key: invitation.id,
+        title: `Collaborate on ${invitation.corpusTitle}`,
+        detail: buildDetail(inviterSentence, invitation.role, invitation.createdAt),
+        accept: respondToCorpusInvitation.bind(null, invitation.id, 'accepted'),
+        decline: respondToCorpusInvitation.bind(null, invitation.id, 'declined'),
+      }
+    }),
+    ...invitations.teamCorpusInvitations.map((invitation) => {
+      const inviter = formatInviter(invitation.inviterName, invitation.inviterUsername)
+      const inviterSentence = inviter ? `${inviter} invited team ${invitation.teamName}` : null
+      return {
+        key: invitation.id,
+        title: `Collaborate on ${invitation.corpusTitle}`,
+        detail: buildDetail(inviterSentence, invitation.role, invitation.createdAt),
+        accept: respondToCorpusInvitation.bind(null, invitation.id, 'accepted'),
+        decline: respondToCorpusInvitation.bind(null, invitation.id, 'declined'),
+      }
+    }),
+  ]
   return (
     <Page>
       <PageHeader title="Invitations" />
       <section className="space-y-3">
-        {invitations.teamInvitations.map(invitation => (
-          <InvitationRow key={invitation.id} title={`Join ${invitation.teamName}`} detail={`Team role: ${invitation.role}`} accept={respondToTeamInvitation.bind(null, invitation.id, 'accepted')} decline={respondToTeamInvitation.bind(null, invitation.id, 'declined')} />
+        {pendingViews.map(view => (
+          <InvitationRow key={view.key} title={view.title} detail={view.detail} accept={view.accept} decline={view.decline} />
         ))}
-        {invitations.userCorpusInvitations.map(invitation => (
-          <InvitationRow key={invitation.id} title={`Collaborate on ${invitation.corpusTitle}`} detail={`Corpus role: ${invitation.role}`} accept={respondToCorpusInvitation.bind(null, invitation.id, 'accepted')} decline={respondToCorpusInvitation.bind(null, invitation.id, 'declined')} />
-        ))}
-        {invitations.teamCorpusInvitations.map(invitation => (
-          <InvitationRow key={invitation.id} title={`${invitation.teamName} invited to ${invitation.corpusTitle}`} detail={`Corpus role: ${invitation.role}`} accept={respondToCorpusInvitation.bind(null, invitation.id, 'accepted')} decline={respondToCorpusInvitation.bind(null, invitation.id, 'declined')} />
-        ))}
-        {total === 0 && <p className="text-sm text-muted-foreground">No pending invitations.</p>}
+        {pendingViews.length === 0 && <p className="text-sm text-muted-foreground">No pending invitations.</p>}
       </section>
       {(accepted.direct.length > 0 || accepted.forTeams.length > 0) && (
         <section className="mt-8 space-y-3">
@@ -46,7 +73,8 @@ export default async function InvitationsPage() {
             <AcceptedCollaborationRow
               key={collaboration.id}
               title={collaboration.corpusTitle ?? 'Untitled corpus'}
-              detail={`Your role: ${collaboration.role}`}
+              detail={`You collaborate as ${capitalizeRole(collaboration.role)}`}
+              href={`/corpus/${collaboration.corpusId}`}
               leave={leaveCorpusCollaboration.bind(null, collaboration.id)}
             />
           ))}
@@ -54,7 +82,8 @@ export default async function InvitationsPage() {
             <AcceptedCollaborationRow
               key={collaboration.id}
               title={collaboration.corpusTitle ?? 'Untitled corpus'}
-              detail={`${collaboration.teamName}: ${collaboration.role}`}
+              detail={`${collaboration.teamName} collaborates as ${capitalizeRole(collaboration.role)}`}
+              href={`/corpus/${collaboration.corpusId}`}
               leave={leaveCorpusCollaboration.bind(null, collaboration.id)}
             />
           ))}
@@ -64,11 +93,13 @@ export default async function InvitationsPage() {
   )
 }
 
-function AcceptedCollaborationRow({ title, detail, leave }: { title: string, detail: string, leave: () => Promise<void> }) {
+function AcceptedCollaborationRow({ title, detail, href, leave }: { title: string, detail: string, href?: string, leave: () => Promise<void> }) {
   return (
     <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card p-3">
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[13px] font-medium">{title}</p>
+        <p className="truncate text-[13px] font-medium">
+          {href ? <Link href={href}>{title}</Link> : title}
+        </p>
         <p className="mt-0.5 truncate text-xs text-muted-foreground">{detail}</p>
       </div>
       <div className="flex shrink-0 items-center gap-2">
@@ -87,10 +118,54 @@ function InvitationRow({ title, detail, accept, decline, acceptMessage = 'Invita
         <p className="mt-0.5 truncate text-xs text-muted-foreground">{detail}</p>
       </div>
       <div className="flex shrink-0 items-center gap-2">
-        <span className="inline-flex rounded-full border border-border bg-secondary px-2 py-0.5 text-[11px] text-muted-foreground">Pending</span>
         <ServerActionForm action={decline}><Button type="submit" variant="outline" size="sm" className="h-8">Decline</Button></ServerActionForm>
         <ServerActionForm action={accept} successMessage={acceptMessage}><Button type="submit" size="sm" className="h-8">Accept</Button></ServerActionForm>
       </div>
     </div>
   )
+}
+
+type PendingInvitationView = {
+  key: string
+  title: string
+  detail: string
+  accept: () => Promise<void>
+  decline: () => Promise<void>
+}
+
+function buildDetail(inviterSentence: string | null, role: string, sentAt: Date): string {
+  return [inviterSentence, formatRole(role), formatSentAt(sentAt)].filter(Boolean).join(' · ')
+}
+
+function capitalizeRole(role: string): string {
+  return `${role.charAt(0).toUpperCase()}${role.slice(1)}`
+}
+
+function formatInviter(inviterName: string | null, inviterUsername: string | null): string | null {
+  if (inviterName && inviterUsername)
+    return `${inviterName} (@${inviterUsername})`
+  if (inviterName)
+    return inviterName
+  if (inviterUsername)
+    return `@${inviterUsername}`
+  return null
+}
+
+function formatRole(role: string): string {
+  return `as ${capitalizeRole(role)}`
+}
+
+function formatSentAt(sentAt: Date): string {
+  const elapsedMinutes = Math.floor((Date.now() - sentAt.getTime()) / 60_000)
+  if (elapsedMinutes < 1)
+    return 'just now'
+  if (elapsedMinutes < 60)
+    return `${elapsedMinutes} minute${elapsedMinutes === 1 ? '' : 's'} ago`
+  const elapsedHours = Math.floor(elapsedMinutes / 60)
+  if (elapsedHours < 24)
+    return `${elapsedHours} hour${elapsedHours === 1 ? '' : 's'} ago`
+  const elapsedDays = Math.floor(elapsedHours / 24)
+  if (elapsedDays < 7)
+    return `${elapsedDays} day${elapsedDays === 1 ? '' : 's'} ago`
+  return sentAt.toLocaleDateString()
 }
