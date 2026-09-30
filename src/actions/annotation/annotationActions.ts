@@ -217,6 +217,10 @@ async function upsertAnnotationComponent(
     unitValue = component.unitValue
   }
 
+  // Explicit so an update always overwrites a stale link flag. With no
+  // entity, drizzle would skip an undefined column and leave the old
+  // entity_custom behind.
+  const entityCustom = entity?.custom ?? false
   const hasEntityLink = entityLabel !== null || entityCustomId !== null
 
   const values = {
@@ -225,10 +229,7 @@ async function upsertAnnotationComponent(
     entityLabel: hasEntityLink ? entityLabel : component.entityLabel,
     entityValue: hasEntityLink ? entityValue : component.entityValue,
     entityDatatype: hasEntityLink ? (entity?.datatype ?? null) : component.entityDatatype,
-    // Explicit so an update always overwrites a stale link flag: with no
-    // entity, drizzle would skip an undefined column and leave the old
-    // entity_custom behind.
-    entityCustom: entity?.custom ?? false,
+    entityCustom,
     entityCustomId,
     unitValue,
     unitLabel,
