@@ -13,11 +13,12 @@ import { and, asc, count, eq, getTableColumns, inArray, or } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { revalidatePath } from 'next/cache'
 import { db } from '@/db/drizzle'
-import { annotation, annotationComponent, annotationQualifier, corpusCustomEntity, document } from '@/db/schema'
+import { annotation, annotationComponent, annotationQualifier, corpusCustomEntity, document, unit } from '@/db/schema'
 import { entityTypeForComponentRole } from '@/lib/annotation-roles'
 import { NotFoundError, requireAuth } from '@/lib/auth-utils'
 import { MAX_ANNOTATIONS_PER_BATCH, MAX_ANNOTATIONS_PER_DOCUMENT } from '@/lib/constants'
 import { requireEditAnnotation, requireEditCorpus, requireEditDocument, requireViewDocument } from '@/lib/corpus-access'
+import { findOrCreateUnit, WIKIDATA_ID_PATTERN } from '@/lib/units/server'
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0]
 type DbExecutor = typeof db | Transaction
@@ -202,6 +203,7 @@ async function upsertAnnotationComponent(
   let unitLabel: string | null = null
   let unitValue: string | null = null
   let unitCustom: boolean | null = null
+  let unitId: string | null = null
 
   if (component.unitCustom && component.unitLabel && component.unitValue) {
     unitCustom = true
@@ -211,10 +213,35 @@ async function upsertAnnotationComponent(
       component.unitLabel,
       component.unitValue,
     )
+    // The unit table mirrors unit registry rows under the same UUID, so
+    // rows created before this request already exist (the migration
+    // backfill kept the registry UUIDs); brand-new registry rows don't.
+    const [existingUnit] = await executor.select({ id: unit.id }).from(unit).where(eq(unit.id, unitCustomId)).limit(1)
+    if (existingUnit) {
+      unitId = existingUnit.id
+    } else {
+      await executor.insert(unit).values({
+        id: unitCustomId,
+        corpusId,
+        label: component.unitLabel,
+        wikidataId: null,
+      }).onConflictDoNothing()
+      unitId = unitCustomId
+    }
   } else if (!component.unitCustom && component.unitValue) {
     unitCustom = false
     unitLabel = component.unitLabel ?? null
     unitValue = component.unitValue
+
+    if (WIKIDATA_ID_PATTERN.test(unitValue)) {
+      unitId = await findOrCreateUnit(executor, corpusId, {
+        label: unitLabel ?? unitValue,
+        value: unitValue,
+        custom: false,
+        customId: null,
+      })
+    }
+    // Non-Q legacy unit values (none in practice) keep unit_id null.
   }
 
   // Explicit so an update always overwrites a stale link flag. With no
@@ -235,6 +262,7 @@ async function upsertAnnotationComponent(
     unitLabel,
     unitCustom,
     unitCustomId,
+    unitId,
   }
 
   if (existingId) {

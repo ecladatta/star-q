@@ -287,6 +287,21 @@ export const corpusCustomEntity = pgTable('corpus_custom_entity', {
 })
 export type CorpusCustomEntity = InferSelectModel<typeof corpusCustomEntity>
 
+export const unit = pgTable('unit', {
+  id: uuid('id').primaryKey().$defaultFn(() => randomUUID()),
+  corpusId: uuid('corpus_id').references(() => corpus.id, { onDelete: 'cascade' }).notNull(),
+  label: text('label').notNull(),
+  wikidataId: text('wikidata_id'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, t => [
+  uniqueIndex('unit_corpus_wikidata_idx').on(t.corpusId, t.wikidataId).where(sql`${t.wikidataId} IS NOT NULL`),
+  uniqueIndex('unit_corpus_label_idx').on(t.corpusId, t.label).where(sql`${t.wikidataId} IS NULL`),
+  check('unit_wikidata_id_check', sql`${t.wikidataId} IS NULL OR ${t.wikidataId} ~ '^Q[0-9]+$'`),
+  check('unit_label_check', sql`${t.label} <> ''`),
+])
+export type Unit = InferSelectModel<typeof unit>
+
 export const document = pgTable('document', {
   id: uuid('id').primaryKey().$defaultFn(() => randomUUID()),
   corpusId: uuid('corpus_id').references(() => corpus.id, { onDelete: 'cascade' }).notNull(),
@@ -310,6 +325,7 @@ export const annotationComponent = pgTable('annotation_component', {
   unitLabel: text('unit_label'),
   unitCustom: boolean('unit_custom'),
   unitCustomId: uuid('unit_custom_id').references(() => corpusCustomEntity.id, { onDelete: 'set null' }),
+  unitId: uuid('unit_id').references(() => unit.id, { onDelete: 'set null' }),
   quantityLowerBound: text('quantity_lower_bound'),
   quantityUpperBound: text('quantity_upper_bound'),
   annotationStart: integer('annotation_start').notNull(),
@@ -321,7 +337,9 @@ export const annotationComponent = pgTable('annotation_component', {
   annotationTag: text('annotation_tag').$type<AnnotationComponentRole>().notNull(),
   elementIndex: integer('element_index').notNull(),
 })
-export type AnnotationComponent = InferSelectModel<typeof annotationComponent>
+// unit_id stays optional on the input side: callers still speak the
+// DocumentAnnotationComponent shape until the readers unify on it.
+export type AnnotationComponent = Omit<InferSelectModel<typeof annotationComponent>, 'unitId'> & { unitId?: string | null }
 
 export const annotation = pgTable('annotation', {
   id: uuid('id').defaultRandom().primaryKey(),
