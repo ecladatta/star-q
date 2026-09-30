@@ -334,6 +334,46 @@ export async function AnalyticsContent({ corpusId, analyticsPromise, warningsPro
         </div>
       )}
 
+      {/* Documents with Quantities Without Units */}
+      {analytics.documentsWithQuantitiesWithoutUnit.length > 0 && (
+        <div className="mt-8 rounded-lg border border-border bg-card p-4">
+          <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+            <AlertTriangleIcon className="size-4 text-warning-foreground" />
+            Documents with Quantities Without Units
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Documents containing annotations where the object quantity has no unit assigned
+          </p>
+          <div className="mt-4">
+            <Collapsible defaultOpen={analytics.documentsWithQuantitiesWithoutUnit.length <= 5}>
+              <CollapsibleTrigger className="group flex w-full items-center justify-between rounded-lg border border-border bg-warning/40 p-3 hover:bg-warning/60">
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm font-medium text-foreground">View Documents</span>
+                  <Badge variant="secondary">{analytics.documentsWithQuantitiesWithoutUnit.length}</Badge>
+                </div>
+                <ChevronRightIcon className="size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-2 space-y-2">
+                {analytics.documentsWithQuantitiesWithoutUnit.map(doc => (
+                  <Link
+                    key={doc.documentId}
+                    href={`/document/${doc.documentId}`}
+                    className="flex items-center justify-between rounded-lg border border-border bg-muted/40 p-3 text-foreground transition-colors hover:bg-muted"
+                  >
+                    <span className="text-sm font-medium">{doc.documentTitle}</span>
+                    <Badge variant="secondary">
+                      {doc.quantityWithoutUnitCount}
+                      {' '}
+                      without unit
+                    </Badge>
+                  </Link>
+                ))}
+              </CollapsibleContent>
+            </Collapsible>
+          </div>
+        </div>
+      )}
+
       {/* Warnings */}
       <Suspense fallback={<WikidataWarningsSkeleton />}>
         <WikidataWarningsSection warningsPromise={warningsPromise} instanceName={wikibase?.label ?? null} />
@@ -476,6 +516,91 @@ export async function AnalyticsContent({ corpusId, analyticsPromise, warningsPro
               )}
         </div>
       </div>
+
+      {/* Unit Statistics */}
+      {analytics.quantityAnnotations > 0 && (
+        <div className="mt-8 rounded-lg border border-border bg-card p-4">
+          <div className="text-sm font-medium text-foreground">Unit Statistics</div>
+          <div className="text-xs text-muted-foreground">
+            Units used by quantity annotations across all documents
+          </div>
+          {analytics.quantitiesWithoutUnit > 0 && (
+            <div className="mt-3 flex items-center gap-2 text-xs text-warning-foreground">
+              <AlertTriangleIcon className="size-3.5 shrink-0" />
+              <span>
+                {analytics.quantitiesWithoutUnit}
+                {' '}
+                of
+                {' '}
+                {analytics.quantityAnnotations}
+                {' '}
+                quantities have no unit assigned
+              </span>
+            </div>
+          )}
+          <div className="mt-4">
+            {analytics.unitStats.length > 0
+              ? (
+                  <Collapsible defaultOpen={analytics.unitStats.length <= 10}>
+                    <CollapsibleTrigger className="group flex w-full items-center justify-between rounded-lg border border-border bg-muted/40 p-3 hover:bg-muted">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm font-medium text-foreground">View All Units</span>
+                        <Badge variant="secondary">{analytics.unitStats.length}</Badge>
+                      </div>
+                      <ChevronRightIcon className="size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="w-full overflow-hidden rounded-lg border border-border">
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="hover:bg-transparent">
+                              <TableHead className="bg-muted/40 px-3 py-2 text-left text-xs font-medium text-muted-foreground">Label</TableHead>
+                              <TableHead className="bg-muted/40 px-3 py-2 text-left text-xs font-medium text-muted-foreground">Identifier</TableHead>
+                              <TableHead className="bg-muted/40 px-3 py-2 text-right text-xs font-medium text-muted-foreground">Count</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {analytics.unitStats.map((stat) => {
+                              const unitKey = `${stat.label || 'null'}:${stat.value || 'null'}`
+                              const unitUrl = stat.value && !stat.isCustom ? wikiUrlFor(stat.value) : null
+
+                              return (
+                                <TableRow key={unitKey} className="border-t border-border hover:bg-muted/30">
+                                  <TableCell className="px-3 py-2.5 text-[13px] font-medium text-foreground">
+                                    {stat.label || <span className="text-muted-foreground">—</span>}
+                                  </TableCell>
+                                  <TableCell className="px-3 py-2.5 text-[13px]">
+                                    {stat.value
+                                      ? unitUrl
+                                        ? (
+                                            <Link
+                                              href={unitUrl}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="text-accent underline hover:opacity-80"
+                                            >
+                                              {stat.value}
+                                            </Link>
+                                          )
+                                        : stat.value
+                                      : <span className="text-muted-foreground">—</span>}
+                                  </TableCell>
+                                  <TableCell className="px-3 py-2.5 text-right font-mono text-[13px] text-muted-foreground tabular-nums">{stat.count}</TableCell>
+                                </TableRow>
+                              )
+                            })}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                )
+              : (
+                  <p className="text-center text-muted-foreground">No units found</p>
+                )}
+          </div>
+        </div>
+      )}
     </>
   )
 }
