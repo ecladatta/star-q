@@ -138,8 +138,6 @@ Annotations are stored as a triple of `subject`, `predicate`, and `object`, each
 - `annotationTag`: component role; one of `subject`, `predicate`, `object`, `qualifier-predicate`, or `qualifier-value`
 - `elementIndex`: index of the text/table element this annotation belongs to
 
-The unit and quantity bound fields are optional in the data model: exports from before these features omit them, and older exports without them import unchanged. The surface span (`annotationValue`) is never modified by quantity editing.
-
 Example:
 
 ```json
@@ -159,33 +157,6 @@ Example:
   "annotationValue": "Jane Doe",
   "annotationType": "text",
   "annotationTag": "subject",
-  "elementIndex": 0
-}
-```
-
-An object annotated from the span "12 to 15 metres" with the amount, bounds, and Wikidata unit metre set stores the amount in `entityValue` and the quantity alongside it. The annotator can edit all of these; the span itself is never rewritten:
-
-```json
-{
-  "id": "<componentId>",
-  "entityLabel": null,
-  "entityValue": "12",
-  "entityCustom": false,
-  "entityCustomId": null,
-  "entityDatatype": "decimal",
-  "unitValue": "Q11573",
-  "unitLabel": "metre",
-  "unitCustom": false,
-  "unitCustomId": null,
-  "quantityLowerBound": "12",
-  "quantityUpperBound": "15",
-  "annotationStart": 0,
-  "annotationEnd": 14,
-  "annotationRow": null,
-  "annotationCell": null,
-  "annotationValue": "12 to 15 metres",
-  "annotationType": "text",
-  "annotationTag": "object",
   "elementIndex": 0
 }
 ```
@@ -283,7 +254,7 @@ Q68550	P69	"University of Vienna"
 Q68550	P571	+1365-00-00T00:00:00Z/9	P585	+2019-01-01T00:00:00Z/11
 ```
 
-Numeric object values serialize as [QuickStatements 3.0 quantities](https://www.wikidata.org/wiki/Help:Data_type#Quantity): `amount`, `amountUunit` when a Wikidata unit is set, and `amount[lower,upper]Uunit` when both quantity bounds are also set, as in `12[12,15]U11573`. Custom corpus units cannot be expressed in QuickStatements and export as bare amounts, and a single missing or non-numeric bound drops the bracket pair.
+Numeric object values serialize as [QuickStatements 3.0 quantities](https://www.wikidata.org/wiki/Help:Data_type#Quantity): `amount`, `amountUunit` when a Wikidata unit is set, and `amount[lower,upper]Uunit` when both quantity bounds are also set, as in `12[12,15]U11573`. A custom corpus unit cannot be referenced in QuickStatements, so the amount exports without a unit. Quantity bounds export only as a pair: a missing or non-numeric bound drops the brackets rather than exporting one side.
 
 Only annotations that fully resolve to Wikidata are exported:
 
