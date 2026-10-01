@@ -44,7 +44,7 @@ Each exported document follows this shape:
 
 Each annotation can include:
 
-- `qualifiers`: ordered list of qualifier predicate/value pairs attached to the annotation. Missing `qualifiers` should be treated as an empty list when importing older exports.
+- `qualifiers`: ordered list of qualifier predicate/value pairs attached to the annotation. Missing `qualifiers` should be treated as an empty list.
 
 Example:
 
