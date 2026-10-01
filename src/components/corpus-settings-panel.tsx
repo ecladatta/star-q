@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useWikibaseInstance } from '@/hooks/useWikibaseInstance'
 import { WIKIBASE_INSTANCE_NONE } from '@/lib/corpus-settings'
 import { ENTITY_DATATYPE_GROUPS, ENTITY_DATATYPE_LABELS } from '@/lib/datatypes'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu'
@@ -34,6 +35,7 @@ const NONE_SENTINELS = new Set([WIKIBASE_INSTANCE_NONE, SERVER_DEFAULT_WIKIBASE]
 
 export function CorpusSettingsPanel({ corpus, wikibaseInstances, onCorpusRenamed, canManageVisibility = false, canEdit = true, dangerZone }: CorpusSettingsPanelProps) {
   const [corpusTitle, setCorpusTitle] = useState(corpus.title)
+  const { wikiUrl } = useWikibaseInstance()
   const [visibility, setVisibility] = useState<CorpusVisibility>(corpus.visibility ?? 'private')
   const [settings, setSettings] = useState<CorpusSettings>(corpus.settings ?? {})
   const [isSavingSettings, setIsSavingSettings] = useState(false)
@@ -109,7 +111,7 @@ export function CorpusSettingsPanel({ corpus, wikibaseInstances, onCorpusRenamed
     try {
       setIsSavingSettings(true)
       await updateCorpusSettings(corpus.id, { [key]: checked })
-      toast.success(checked ? 'Wikidata setting enabled' : 'Wikidata setting disabled')
+      toast.success(checked ? 'Wikibase setting enabled' : 'Wikibase setting disabled')
     } catch {
       setSettings(prev => ({ ...prev, [key]: previous }))
       toast.error('Failed to update corpus settings')
@@ -349,14 +351,14 @@ export function CorpusSettingsPanel({ corpus, wikibaseInstances, onCorpusRenamed
         </div>
 
         <div className="space-y-3">
-          <h3 className="text-sm font-medium text-foreground">Wikidata</h3>
+          <h3 className="text-sm font-medium text-foreground">Wikibase</h3>
           <div className="flex items-start justify-between gap-4 rounded-lg border border-border bg-card p-4">
             <div className="space-y-1">
               <Label htmlFor="wikibase-instance">
                 Wikibase instance
               </Label>
               <p className="text-xs text-muted-foreground">
-                Used for entity links, constraint checks, and suggestions. Server default resolves to this deployment's Wikidata configuration. Select None to disable entity suggestions and constraint checks for this corpus.
+                Used for entity links, constraint checks, and suggestions. Server default resolves to this deployment's Wikibase configuration. Select None to disable entity suggestions and constraint checks for this corpus.
               </p>
             </div>
             <Select
@@ -385,34 +387,34 @@ export function CorpusSettingsPanel({ corpus, wikibaseInstances, onCorpusRenamed
           </div>
           <div className="flex items-start justify-between gap-4 rounded-lg border border-border bg-card p-4">
             <div className="space-y-1">
-              <Label htmlFor="wikidata-constraint-warnings">
-                Check annotations against Wikidata constraints
+              <Label htmlFor="wikibase-constraint-warnings">
+                Check annotations against Wikibase constraints
               </Label>
               <p className="text-xs text-muted-foreground">
                 Show constraint warnings on the analytics and document pages.
               </p>
             </div>
             <Checkbox
-              id="wikidata-constraint-warnings"
-              checked={Boolean(settings.wikidataConstraintWarnings)}
+              id="wikibase-constraint-warnings"
+              checked={Boolean(settings.wikibaseConstraintWarnings)}
               disabled={!canEdit || isSavingSettings}
-              onCheckedChange={checked => handleToggleSetting('wikidataConstraintWarnings', Boolean(checked))}
+              onCheckedChange={checked => handleToggleSetting('wikibaseConstraintWarnings', Boolean(checked))}
             />
           </div>
           <div className="flex items-start justify-between gap-4 rounded-lg border border-border bg-card p-4">
             <div className="space-y-1">
-              <Label htmlFor="wikidata-predicate-filtering">
-                Filter entity and predicate suggestions by Wikidata constraints
+              <Label htmlFor="wikibase-predicate-filtering">
+                Filter entity and predicate suggestions by Wikibase constraints
               </Label>
               <p className="text-xs text-muted-foreground">
-                Restrict annotation suggestions to Wikidata-compatible items.
+                Restrict annotation suggestions to Wikibase-compatible items.
               </p>
             </div>
             <Checkbox
-              id="wikidata-predicate-filtering"
-              checked={Boolean(settings.wikidataPredicateFiltering)}
+              id="wikibase-predicate-filtering"
+              checked={Boolean(settings.wikibasePredicateFiltering)}
               disabled={!canEdit || isSavingSettings}
-              onCheckedChange={checked => handleToggleSetting('wikidataPredicateFiltering', Boolean(checked))}
+              onCheckedChange={checked => handleToggleSetting('wikibasePredicateFiltering', Boolean(checked))}
             />
           </div>
         </div>
@@ -697,75 +699,82 @@ export function CorpusSettingsPanel({ corpus, wikibaseInstances, onCorpusRenamed
                           </TableRow>
                         )
                       : (
-                          units.map(unitRow => (
-                            <TableRow key={unitRow.id} className="border-t border-border hover:bg-muted/30">
-                              <TableCell className="px-3 py-2.5 text-[13px]">
-                                {editingUnit?.id === unitRow.id
-                                  ? (
-                                      <Input
-                                        value={editingUnit.label}
-                                        onChange={e => setEditingUnit(prev => prev ? { ...prev, label: e.target.value } : null)}
-                                      />
-                                    )
-                                  : (
-                                      unitRow.label
-                                    )}
-                              </TableCell>
-                              <TableCell className="px-3 py-2.5 text-[13px]">
-                                {unitRow.wikidataId
-                                  ? (
-                                      <a
-                                        href={`https://www.wikidata.org/wiki/${unitRow.wikidataId}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-xs text-accent hover:underline"
-                                      >
-                                        {unitRow.wikidataId}
-                                      </a>
-                                    )
-                                  : (
-                                      <span className="text-muted-foreground">Corpus</span>
-                                    )}
-                              </TableCell>
-                              <TableCell className="px-3 py-2.5 text-[13px]">{unitRow.usageCount}</TableCell>
-                              <TableCell>
-                                <div className="flex gap-1">
+                          units.map((unitRow) => {
+                            const unitHref = unitRow.wikidataId ? wikiUrl(unitRow.wikidataId) : null
+                            return (
+                              <TableRow key={unitRow.id} className="border-t border-border hover:bg-muted/30">
+                                <TableCell className="px-3 py-2.5 text-[13px]">
                                   {editingUnit?.id === unitRow.id
                                     ? (
-                                        <>
-                                          <Button size="sm" onClick={handleRenameUnit} disabled={!editingUnit.label.trim()}>
-                                            Save
-                                          </Button>
-                                          <Button size="sm" variant="outline" onClick={() => setEditingUnit(null)}>
-                                            Cancel
-                                          </Button>
-                                        </>
+                                        <Input
+                                          value={editingUnit.label}
+                                          onChange={e => setEditingUnit(prev => prev ? { ...prev, label: e.target.value } : null)}
+                                        />
                                       )
                                     : (
-                                        <>
-                                          <Button
-                                            size="sm"
-                                            variant="outline"
-                                            disabled={!canEdit}
-                                            onClick={() => setEditingUnit(unitRow)}
-                                          >
-                                            <EditIcon className="size-3" />
-                                          </Button>
-                                          <Button
-                                            size="sm"
-                                            variant="destructive"
-                                            disabled={!canEdit || unitRow.usageCount > 0}
-                                            title={unitRow.usageCount > 0 ? `${unitRow.usageCount} annotations use this unit` : undefined}
-                                            onClick={() => handleDeleteUnit(unitRow.id)}
-                                          >
-                                            <Trash2Icon className="size-3" />
-                                          </Button>
-                                        </>
+                                        unitRow.label
                                       )}
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))
+                                </TableCell>
+                                <TableCell className="px-3 py-2.5 text-[13px]">
+                                  {unitHref
+                                    ? (
+                                        <a
+                                          href={unitHref}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-xs text-accent hover:underline"
+                                        >
+                                          {unitRow.wikidataId}
+                                        </a>
+                                      )
+                                    : unitRow.wikidataId
+                                      ? (
+                                          <span className="text-xs text-foreground">{unitRow.wikidataId}</span>
+                                        )
+                                      : (
+                                          <span className="text-muted-foreground">Corpus</span>
+                                        )}
+                                </TableCell>
+                                <TableCell className="px-3 py-2.5 text-[13px]">{unitRow.usageCount}</TableCell>
+                                <TableCell>
+                                  <div className="flex gap-1">
+                                    {editingUnit?.id === unitRow.id
+                                      ? (
+                                          <>
+                                            <Button size="sm" onClick={handleRenameUnit} disabled={!editingUnit.label.trim()}>
+                                              Save
+                                            </Button>
+                                            <Button size="sm" variant="outline" onClick={() => setEditingUnit(null)}>
+                                              Cancel
+                                            </Button>
+                                          </>
+                                        )
+                                      : (
+                                          <>
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              disabled={!canEdit}
+                                              onClick={() => setEditingUnit(unitRow)}
+                                            >
+                                              <EditIcon className="size-3" />
+                                            </Button>
+                                            <Button
+                                              size="sm"
+                                              variant="destructive"
+                                              disabled={!canEdit || unitRow.usageCount > 0}
+                                              title={unitRow.usageCount > 0 ? `${unitRow.usageCount} annotations use this unit` : undefined}
+                                              onClick={() => handleDeleteUnit(unitRow.id)}
+                                            >
+                                              <Trash2Icon className="size-3" />
+                                            </Button>
+                                          </>
+                                        )}
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            )
+                          })
                         )}
                   </TableBody>
                 </Table>

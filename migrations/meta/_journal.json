@@ -225,6 +225,13 @@
       "when": 1790783064628,
       "tag": "0031_stiff_centennial",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1790858741805,
+      "tag": "0032_wikibase_settings_keys",
+      "breakpoints": true
     }
   ]
 }

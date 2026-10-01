@@ -117,7 +117,7 @@ function truthy(annotations: AnnotationExport[]): string {
 }
 
 describe('serializeRdfCorpusExport (truthy)', () => {
-  it('emits a wikidata statement', () => {
+  it('emits a wikibase statement', () => {
     expect(truthy([annotation()])).toContain('wd:Q1 wdt:P1 wd:Q2.')
   })
 
@@ -153,7 +153,7 @@ describe('serializeRdfCorpusExport (truthy)', () => {
     expect(output).toContain('pq:P585 "2000-08-01"^^xsd:date.')
   })
 
-  it('attaches a wikidata unit to the reified statement', () => {
+  it('attaches a wikibase unit to the reified statement', () => {
     const output = truthy([annotation({
       object: component({
         entityValue: '1360590',
@@ -281,7 +281,7 @@ describe('serializeRdfCorpusExport (full)', () => {
     expect(output).toContain('prov:wasDerivedFrom annotation:c1')
   })
 
-  it('attaches a wikidata unit to the named statement', () => {
+  it('attaches a wikibase unit to the named statement', () => {
     const output = serializeRdfCorpusExport(model([annotation({
       object: component({
         entityValue: '1360590',

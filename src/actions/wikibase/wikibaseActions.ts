@@ -1,21 +1,21 @@
 'use server'
-import type { ConstraintEntityCheck, ConstraintSide, EntityCandidateClassification, PropertyConstraints } from '@/lib/wikidata-constraints'
-import type { ConstraintModelSupport } from '@/lib/wikidata-sparql'
+import type { ConstraintEntityCheck, ConstraintSide, EntityCandidateClassification, PropertyConstraints } from '@/lib/wikibase-constraints'
+import type { ConstraintModelSupport } from '@/lib/wikibase-sparql'
 import type { UnitCandidate } from '@/types/types'
 import { eq } from 'drizzle-orm'
 import { db } from '@/db/drizzle'
 import { wikibaseInstances } from '@/db/schema'
 import { requireViewCorpus } from '@/lib/corpus-access'
 import { searchUnitCandidates } from '@/lib/units/server'
+import { WIKIBASE_ITEM_PATTERN, WIKIBASE_PROPERTY_PATTERN } from '@/lib/wikibase-constraints'
 import { loadCorpusWikibaseConfig } from '@/lib/wikibase-server'
-import { WIKIDATA_ITEM_PATTERN, WIKIDATA_PROPERTY_PATTERN } from '@/lib/wikidata-constraints'
 import {
-  classifyEntityCandidatesViaWikidata,
-  classifyPredicateCandidatesViaWikidata,
+  classifyEntityCandidatesViaWikibase,
+  classifyPredicateCandidatesViaWikibase,
   fetchConstraintModelSupport,
   fetchPropertyConstraints,
   searchWikibaseEntities as searchWikibaseEntitiesLib,
-} from '@/lib/wikidata-sparql'
+} from '@/lib/wikibase-sparql'
 
 const MAX_SEARCH_LENGTH = 200
 const MAX_SEARCH_LIMIT = 50
@@ -41,14 +41,14 @@ function validPropertyIds(ids: string[], max: number): string[] {
   if (!Array.isArray(ids)) {
     return []
   }
-  return ids.filter(id => typeof id === 'string' && WIKIDATA_PROPERTY_PATTERN.test(id)).slice(0, max)
+  return ids.filter(id => typeof id === 'string' && WIKIBASE_PROPERTY_PATTERN.test(id)).slice(0, max)
 }
 
 function validItemIds(ids: string[], max: number): string[] {
   if (!Array.isArray(ids)) {
     return []
   }
-  return ids.filter(id => typeof id === 'string' && WIKIDATA_ITEM_PATTERN.test(id)).slice(0, max)
+  return ids.filter(id => typeof id === 'string' && WIKIBASE_ITEM_PATTERN.test(id)).slice(0, max)
 }
 
 function validChecks(checks: ConstraintEntityCheck[], max: number): ConstraintEntityCheck[] {
@@ -59,7 +59,7 @@ function validChecks(checks: ConstraintEntityCheck[], max: number): ConstraintEn
     .filter(check =>
       check != null
       && typeof check.entityId === 'string'
-      && WIKIDATA_ITEM_PATTERN.test(check.entityId)
+      && WIKIBASE_ITEM_PATTERN.test(check.entityId)
       && (check.side === 'domain' || check.side === 'range'))
     .slice(0, max)
 }
@@ -67,7 +67,7 @@ function validChecks(checks: ConstraintEntityCheck[], max: number): ConstraintEn
 function validConstraintSides(constraints: PropertyConstraints, side: ConstraintSide): PropertyConstraints {
   const constraintsForSide = constraints?.[side]
   const classes = Array.isArray(constraintsForSide)
-    ? constraintsForSide.filter(({ class: cls }) => typeof cls === 'string' && WIKIDATA_ITEM_PATTERN.test(cls))
+    ? constraintsForSide.filter(({ class: cls }) => typeof cls === 'string' && WIKIBASE_ITEM_PATTERN.test(cls))
     : []
   return { domain: side === 'domain' ? classes : [], range: side === 'range' ? classes : [] }
 }
@@ -117,7 +117,7 @@ export async function classifyWikibaseEntityCandidates(
   if (support.status === 'unavailable') {
     return { classification: { members: cappedCandidates, unverifiable: [], filteredOut: [] }, support }
   }
-  const classification = await classifyEntityCandidatesViaWikidata(config, cappedCandidates, validConstraintSides(constraints, side), side)
+  const classification = await classifyEntityCandidatesViaWikibase(config, cappedCandidates, validConstraintSides(constraints, side), side)
   return { classification, support }
 }
 
@@ -137,7 +137,7 @@ export async function classifyWikibasePredicateCandidates(
   if (support.status === 'unavailable') {
     return { classification: { members: cappedCandidates, unverifiable: [], filteredOut: [] }, support }
   }
-  const classification = await classifyPredicateCandidatesViaWikidata(config, cappedCandidates, cappedChecks)
+  const classification = await classifyPredicateCandidatesViaWikibase(config, cappedCandidates, cappedChecks)
   return { classification, support }
 }
 

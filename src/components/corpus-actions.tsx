@@ -178,7 +178,7 @@ export function CorpusActions({ corpus, showOpenAction = true, access, triggerBu
     const skipped = Number(response.headers.get('X-QuickStatements-Skipped'))
     if (skipped > 0) {
       toast.warning(
-        `${skipped} annotation${skipped === 1 ? '' : 's'} skipped. Only Wikidata-linked statements were exported.`,
+        `${skipped} annotation${skipped === 1 ? '' : 's'} skipped. Only Wikibase-linked statements were exported.`,
       )
     }
   }

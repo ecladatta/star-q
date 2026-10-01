@@ -1,7 +1,7 @@
 import type { Dispatch, ReactNode, SetStateAction } from 'react'
 import type { QuantityState } from '@/components/entity-selector'
 import type { BatchCellQuantity, CellBatchCellRef } from '@/lib/cell-batch'
-import type { ConstraintEntityCheck, ConstraintSide, PropertyConstraints } from '@/lib/wikidata-constraints'
+import type { ConstraintEntityCheck, ConstraintSide, PropertyConstraints } from '@/lib/wikibase-constraints'
 import type {
   AnnotationComponentRole,
   CurrentAnnotation,
@@ -78,7 +78,7 @@ import { cellKey } from '@/lib/cell-batch'
 import { isNumericEntityDatatype } from '@/lib/datatypes'
 import { isValidQuantityAmount } from '@/lib/numeric-units'
 import { cn, isMac } from '@/lib/utils'
-import { WIKIDATA_ITEM_PATTERN, WIKIDATA_PROPERTY_PATTERN } from '@/lib/wikidata-constraints'
+import { WIKIBASE_ITEM_PATTERN, WIKIBASE_PROPERTY_PATTERN } from '@/lib/wikibase-constraints'
 
 type QualifierSide = 'predicate' | 'value'
 
@@ -98,8 +98,8 @@ type AnnotationFormProps = {
   annotationFormLoading: boolean
   isDeletingAnnotation: boolean
   corpusId: string
-  wikidataPredicateFiltering?: boolean
-  wikidataConstraintWarnings?: boolean
+  wikibasePredicateFiltering?: boolean
+  wikibaseConstraintWarnings?: boolean
   removeQualifier: (qualifierId: string) => void
   assignSelectionToQualifier: (
     qualifierId: string,
@@ -369,8 +369,8 @@ export function AnnotationForm({
   annotationFormLoading,
   isDeletingAnnotation,
   corpusId,
-  wikidataPredicateFiltering = false,
-  wikidataConstraintWarnings = false,
+  wikibasePredicateFiltering = false,
+  wikibaseConstraintWarnings = false,
   removeQualifier,
   assignSelectionToQualifier,
   updateQualifierEntity,
@@ -405,12 +405,12 @@ export function AnnotationForm({
   const [predicateConstraints, setPredicateConstraints] = useState<PropertyConstraints | null>(null)
   const [qualifierPredicateConstraints, setQualifierPredicateConstraints] = useState<Record<string, PropertyConstraints> | null>(null)
 
-  const constraintsActive = wikidataPredicateFiltering || wikidataConstraintWarnings
+  const constraintsActive = wikibasePredicateFiltering || wikibaseConstraintWarnings
 
   const predicateConstraintsEligible = Boolean(
     constraintsActive
     && predicateEntityValue
-    && WIKIDATA_PROPERTY_PATTERN.test(predicateEntityValue),
+    && WIKIBASE_PROPERTY_PATTERN.test(predicateEntityValue),
   )
 
   useEffect(() => {
@@ -452,14 +452,14 @@ export function AnnotationForm({
       return null
     }
     const checks: Array<{ entityId: string, side: 'domain' | 'range', label: string }> = []
-    if (subjectEntity?.entityValue && WIKIDATA_ITEM_PATTERN.test(subjectEntity.entityValue)) {
+    if (subjectEntity?.entityValue && WIKIBASE_ITEM_PATTERN.test(subjectEntity.entityValue)) {
       checks.push({
         entityId: subjectEntity.entityValue,
         side: 'domain',
         label: subjectEntity.entityLabel ?? subjectEntity.entityValue,
       })
     }
-    if (objectEntity?.entityValue && WIKIDATA_ITEM_PATTERN.test(objectEntity.entityValue)) {
+    if (objectEntity?.entityValue && WIKIBASE_ITEM_PATTERN.test(objectEntity.entityValue)) {
       checks.push({
         entityId: objectEntity.entityValue,
         side: 'range',
@@ -479,9 +479,9 @@ export function AnnotationForm({
   const qualifierPredicates = useMemo(() => Array.from(new Set(
     qualifiers
       .map(qualifier => qualifier.predicate?.entityValue)
-      .filter((value): value is string => value != null && WIKIDATA_PROPERTY_PATTERN.test(value)),
+      .filter((value): value is string => value != null && WIKIBASE_PROPERTY_PATTERN.test(value)),
   )), [qualifiers])
-  const qualifierPredicatesEligible = Boolean(wikidataPredicateFiltering && qualifierPredicates.length > 0)
+  const qualifierPredicatesEligible = Boolean(wikibasePredicateFiltering && qualifierPredicates.length > 0)
 
   useEffect(() => {
     if (!qualifierPredicatesEligible) {
@@ -504,7 +504,7 @@ export function AnnotationForm({
     return () => {
       cancelled = true
     }
-  }, [corpusId, qualifierPredicates, wikidataPredicateFiltering, qualifierPredicatesEligible])
+  }, [corpusId, qualifierPredicates, wikibasePredicateFiltering, qualifierPredicatesEligible])
 
   const effectiveQualifierPredicateConstraints = qualifierPredicatesEligible
     ? (qualifierPredicateConstraints ?? {})
@@ -659,7 +659,7 @@ export function AnnotationForm({
       }
 
       const hadLink = type === 'object'
-        && (component.entityCustom || (component.entityValue !== null && WIKIDATA_ITEM_PATTERN.test(component.entityValue)))
+        && (component.entityCustom || (component.entityValue !== null && WIKIBASE_ITEM_PATTERN.test(component.entityValue)))
       return {
         ...prev,
         [type]: {
@@ -692,7 +692,7 @@ export function AnnotationForm({
         quantityLowerBound: quantity.lowerBound || null,
         quantityUpperBound: quantity.upperBound || null,
       }
-      if (type === 'object' && (component.entityCustom || WIKIDATA_ITEM_PATTERN.test(component.entityValue ?? ''))) {
+      if (type === 'object' && (component.entityCustom || WIKIBASE_ITEM_PATTERN.test(component.entityValue ?? ''))) {
         updated.entityLabel = null
         updated.entityCustom = false
         updated.entityCustomId = null
@@ -896,7 +896,7 @@ export function AnnotationForm({
             constraints={qualifierValueConstraintSide ? qualifierConstraints : null}
             constraintSide={qualifierValueConstraintSide}
             constraintPropertyLabel={qualifierConstraints ? (qualifier?.predicate?.entityLabel ?? qualifierPredicateValue) : undefined}
-            filteringEnabled={wikidataPredicateFiltering}
+            filteringEnabled={wikibasePredicateFiltering}
           />
         )}
       </div>
@@ -1312,7 +1312,7 @@ export function AnnotationForm({
                             constraints={subjectConstraintSide ? effectivePredicateConstraints : null}
                             constraintSide={subjectConstraintSide}
                             constraintPropertyLabel={predicateEntityLabel}
-                            filteringEnabled={wikidataPredicateFiltering}
+                            filteringEnabled={wikibasePredicateFiltering}
                           />
                         </div>
                       )}
@@ -1330,7 +1330,7 @@ export function AnnotationForm({
                       constraints={subjectConstraintSide ? effectivePredicateConstraints : null}
                       constraintSide={subjectConstraintSide}
                       constraintPropertyLabel={predicateEntityLabel}
-                      filteringEnabled={wikidataPredicateFiltering}
+                      filteringEnabled={wikibasePredicateFiltering}
                     />
                   )}
             </div>
@@ -1348,7 +1348,7 @@ export function AnnotationForm({
                             text={singleBatchCell.text}
                             corpusId={corpusId}
                             constraintEntityChecks={predicateEntityChecks}
-                            filteringEnabled={wikidataPredicateFiltering}
+                            filteringEnabled={wikibasePredicateFiltering}
                           />
                         </div>
                       )}
@@ -1364,7 +1364,7 @@ export function AnnotationForm({
                       onRemove={() => removeTag('predicate')}
                       corpusId={corpusId}
                       constraintEntityChecks={predicateEntityChecks}
-                      filteringEnabled={wikidataPredicateFiltering}
+                      filteringEnabled={wikibasePredicateFiltering}
                       trailing={(
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -1407,7 +1407,7 @@ export function AnnotationForm({
                             constraints={objectConstraintSide ? effectivePredicateConstraints : null}
                             constraintSide={objectConstraintSide}
                             constraintPropertyLabel={predicateEntityLabel}
-                            filteringEnabled={wikidataPredicateFiltering}
+                            filteringEnabled={wikibasePredicateFiltering}
                           />
                         </div>
                       )}
@@ -1435,7 +1435,7 @@ export function AnnotationForm({
                       constraints={objectConstraintSide ? effectivePredicateConstraints : null}
                       constraintSide={objectConstraintSide}
                       constraintPropertyLabel={predicateEntityLabel}
-                      filteringEnabled={wikidataPredicateFiltering}
+                      filteringEnabled={wikibasePredicateFiltering}
                     />
                   )}
             </div>
@@ -1497,7 +1497,7 @@ export function AnnotationForm({
                           constraints={cellConstraintSide ? effectivePredicateConstraints : null}
                           constraintSide={cellConstraintSide}
                           constraintPropertyLabel={predicateEntityLabel}
-                          filteringEnabled={wikidataPredicateFiltering}
+                          filteringEnabled={wikibasePredicateFiltering}
                         />
                       </div>
                       {anySet && (
@@ -1562,7 +1562,7 @@ export function AnnotationForm({
                             constraints={cellConstraintSide ? effectivePredicateConstraints : null}
                             constraintSide={cellConstraintSide}
                             constraintPropertyLabel={predicateEntityLabel}
-                            filteringEnabled={wikidataPredicateFiltering}
+                            filteringEnabled={wikibasePredicateFiltering}
                           />
                         )}
                       </div>

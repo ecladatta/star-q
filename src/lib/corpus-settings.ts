@@ -1,6 +1,6 @@
 export type CorpusSettings = {
-  wikidataConstraintWarnings?: boolean
-  wikidataPredicateFiltering?: boolean
+  wikibaseConstraintWarnings?: boolean
+  wikibasePredicateFiltering?: boolean
   wikibaseInstanceId?: string
 }
 
@@ -10,7 +10,7 @@ export type CorpusSettingsPatch = Partial<Omit<CorpusSettings, 'wikibaseInstance
 
 export const WIKIBASE_INSTANCE_NONE = 'none'
 
-const allowedKeys = ['wikidataConstraintWarnings', 'wikidataPredicateFiltering', 'wikibaseInstanceId'] as const
+const allowedKeys = ['wikibaseConstraintWarnings', 'wikibasePredicateFiltering', 'wikibaseInstanceId'] as const
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -54,9 +54,9 @@ export function mergeCorpusSettings(
 }
 
 export function isConstraintWarningsEnabled(settings: CorpusSettings | undefined): boolean {
-  return settings?.wikidataConstraintWarnings ?? false
+  return settings?.wikibaseConstraintWarnings ?? false
 }
 
 export function isPredicateFilteringEnabled(settings: CorpusSettings | undefined): boolean {
-  return settings?.wikidataPredicateFiltering ?? false
+  return settings?.wikibasePredicateFiltering ?? false
 }

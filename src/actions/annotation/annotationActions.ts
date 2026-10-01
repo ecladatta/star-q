@@ -141,7 +141,6 @@ async function upsertAnnotationComponent(
     )
     // Don't store label/value for custom entities, they'll be fetched from corpusCustomEntity
   } else if (entity && !entity.custom) {
-    // For non-custom entities (Wikidata), store the label/value directly
     entityLabel = entity.label
     entityValue = entity.value
   }

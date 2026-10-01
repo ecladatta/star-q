@@ -1,5 +1,5 @@
 import pkg from '../../package.json'
-import { withRequestTimeout } from './wikidata-sparql'
+import { withRequestTimeout } from './wikibase-sparql'
 
 export type WikibaseProbeCheck = { ok: true } | { ok: false, error: string }
 export type WikibaseProbeResult = {

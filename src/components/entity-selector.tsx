@@ -4,8 +4,8 @@ import type {
   ConstraintSide,
   EntityCandidateClassification,
   PropertyConstraints,
-} from '@/lib/wikidata-constraints'
-import type { ConstraintModelSupport } from '@/lib/wikidata-sparql'
+} from '@/lib/wikibase-constraints'
+import type { ConstraintModelSupport } from '@/lib/wikibase-sparql'
 import type {
   AnnotationComponentRole,
   Entity,
@@ -74,7 +74,7 @@ import { entityTypeForComponentRole } from '@/lib/annotation-roles'
 import { ENTITY_DATATYPE_GROUPS, ENTITY_DATATYPE_LABELS } from '@/lib/datatypes'
 import { normalizeQuantityAmount, parseQuantityHint } from '@/lib/numeric-units'
 import { cn } from '@/lib/utils'
-import { WIKIDATA_ITEM_PATTERN, WIKIDATA_PROPERTY_PATTERN } from '@/lib/wikidata-constraints'
+import { WIKIBASE_ITEM_PATTERN, WIKIBASE_PROPERTY_PATTERN } from '@/lib/wikibase-constraints'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
@@ -267,7 +267,7 @@ const TYPES_ICONS: Record<EntityDatatype, ReactNode> = {
 
 function entityOptionId(
   entity: Entity,
-  source: 'current' | 'custom' | 'wikidata',
+  source: 'current' | 'custom' | 'wikibase',
   index: number,
 ): string {
   if (entity.custom && entity.customId) {
@@ -325,13 +325,13 @@ const UNIT_SEARCH_LIMIT = 5
 
 function partitionUnitResults(results: UnitCandidate[]) {
   return {
-    wikidataUnits: results.filter(result => result.wikidataId !== null),
+    wikibaseUnits: results.filter(result => result.wikidataId !== null),
     corpusUnits: results.filter(result => result.wikidataId === null),
   }
 }
 
 function unitOptionValue(unit: UnitCandidate, index: number): string {
-  return unit.wikidataId !== null ? `wikidata:${unit.wikidataId}:${index}` : `custom:${unit.id}:${index}`
+  return unit.wikidataId !== null ? `wikibase:${unit.wikidataId}:${index}` : `custom:${unit.id}:${index}`
 }
 
 export type QuantityState = {
@@ -402,7 +402,7 @@ function QuantityEditorContent({
     }
   }
 
-  const { wikidataUnits, corpusUnits } = partitionUnitResults(results)
+  const { wikibaseUnits, corpusUnits } = partitionUnitResults(results)
   const trimmedTerm = searchTerm.trim()
 
   const confirmUnit = (picked: UnitRef) => {
@@ -530,9 +530,9 @@ function QuantityEditorContent({
               </CommandItem>
             </CommandGroup>
           )}
-          {wikidataUnits.length > 0 && (
-            <CommandGroup heading="Wikidata units">
-              {wikidataUnits.map((unit, index) => (
+          {wikibaseUnits.length > 0 && (
+            <CommandGroup heading="Wikibase units">
+              {wikibaseUnits.map((unit, index) => (
                 <CommandItem
                   key={unitOptionValue(unit, index)}
                   value={unitOptionValue(unit, index)}
@@ -665,7 +665,7 @@ export function EntitySelector({
   const classificationSeqRef = useRef(0)
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const candidatePattern = entityType === 'predicate' ? WIKIDATA_PROPERTY_PATTERN : WIKIDATA_ITEM_PATTERN
+  const candidatePattern = entityType === 'predicate' ? WIKIBASE_PROPERTY_PATTERN : WIKIBASE_ITEM_PATTERN
   const searchLimit = constraintEntityChecks?.length ? 20 : 5
 
   const runSearch = useCallback(async (term: string, seq: number) => {
@@ -730,7 +730,6 @@ export function EntitySelector({
     }
   }, [])
 
-  // Classify candidates against Wikidata domain/range constraints
   useEffect(() => {
     if (!classificationEligible || currentCandidates.length === 0) {
       return
@@ -776,7 +775,6 @@ export function EntitySelector({
     }, SEARCH_DEBOUNCE_MS)
   }
 
-  // Separate custom and Wikidata entities, honoring constraint filtering when active
   const resultStatus = useMemo(() => {
     if (!activeClassification) {
       return new Map<string, 'member' | 'unverifiable' | ConstraintSide[]>()
@@ -819,7 +817,7 @@ export function EntitySelector({
   }, [visibleResults, activeClassification])
 
   const customEntities = sortedResults.filter(entity => entity.custom)
-  const wikidataEntities = sortedResults.filter(entity => !entity.custom)
+  const wikibaseEntities = sortedResults.filter(entity => !entity.custom)
   const filteredOutCount = activeClassification?.filteredOut.length ?? 0
   const hasConstraintFilter = Boolean(
     (constraintEntityChecks && constraintEntityChecks.length > 0)
@@ -846,7 +844,7 @@ export function EntitySelector({
 
   const enterQuantityMode = () => {
     const hint = parseQuantityHint(text ?? '')
-    const hasLink = Boolean(value?.custom) || Boolean(value?.value && WIKIDATA_ITEM_PATTERN.test(value.value))
+    const hasLink = Boolean(value?.custom) || Boolean(value?.value && WIKIBASE_ITEM_PATTERN.test(value.value))
     if (onQuantityChange && quantity && !hasLink && !quantity.value && (hint.amount || hint.lowerBound || hint.upperBound)) {
       onQuantityChange({ value: hint.amount ?? '', lowerBound: hint.lowerBound ?? '', upperBound: hint.upperBound ?? '' })
     }
@@ -861,8 +859,8 @@ export function EntitySelector({
   )
   const firstResultValue = customEntities.length > 0
     ? entityOptionId(customEntities[0], 'custom', 0)
-    : wikidataEntities.length > 0
-      ? entityOptionId(wikidataEntities[0], 'wikidata', 0)
+    : wikibaseEntities.length > 0
+      ? entityOptionId(wikibaseEntities[0], 'wikibase', 0)
       : undefined
   const defaultSelectedValue = firstResultValue ?? (createAvailable ? 'create-new' : undefined)
 
@@ -1186,12 +1184,12 @@ export function EntitySelector({
                     </CommandGroup>
                   )}
 
-                  {wikidataEntities.length > 0 && (
-                    <CommandGroup heading="Wikidata Entities">
-                      {wikidataEntities.map((entity, index) => (
+                  {wikibaseEntities.length > 0 && (
+                    <CommandGroup heading="Wikibase Entities">
+                      {wikibaseEntities.map((entity, index) => (
                         <CommandItem
-                          key={entityOptionId(entity, 'wikidata', index)}
-                          value={entityOptionId(entity, 'wikidata', index)}
+                          key={entityOptionId(entity, 'wikibase', index)}
+                          value={entityOptionId(entity, 'wikibase', index)}
                           onSelect={() => {
                             onValueChange(entity)
                             setOpen(false)

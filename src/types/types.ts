@@ -106,7 +106,7 @@ export type DocumentAnnotationComponent = {
 
 // UI + wire shape for a unit reference. `id` is the persisted unit row id
 // and may be null while the reference only exists in the annotation form;
-// `wikidataId` is set only for units backed by a Wikidata item.
+// `wikidataId` is set only for units backed by a Wikibase item.
 export type UnitRef = { id: string | null, label: string, wikidataId: string | null }
 
 export type UnitRecord = {

@@ -132,7 +132,7 @@ it('normalizes leading-dot decimals', () => {
   })])).toBe('Q1\tP1082\t-0.5\n')
 })
 
-it('appends a wikidata unit suffix to quantities', () => {
+it('appends a wikibase unit suffix to quantities', () => {
   expect(body([annotation({
     predicate: component({ entityValue: 'P1082', annotationTag: 'predicate' }),
     object: component({

@@ -1,14 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { asConceptBaseUri } from './wikibase'
-import { membershipKey } from './wikidata-constraints'
+import { membershipKey } from './wikibase-constraints'
 import {
-  classifyPredicateCandidatesViaWikidata,
+  classifyPredicateCandidatesViaWikibase,
   fetchEntityLabels,
   fetchItemsWithTypeData,
   fetchMembership,
   fetchPropertyConstraints,
   SPARQL_CONCURRENCY,
-} from './wikidata-sparql'
+} from './wikibase-sparql'
 
 const fetchMock = vi.fn()
 const config = {
@@ -31,7 +31,7 @@ function sparqlResponse(bindings: Array<Record<string, { value: string }>>) {
   return { results: { bindings } }
 }
 
-describe('wikidata sparql caching', () => {
+describe('wikibase sparql caching', () => {
   it('caches membership facts across calls', async () => {
     fetchMock.mockResolvedValue({
       ok: true,
@@ -123,7 +123,7 @@ describe('wikidata sparql caching', () => {
 describe('cache keying', () => {
   it('does not share the label cache between instances', async () => {
     vi.resetModules()
-    const labelsForInstanceA = (await import('./wikidata-sparql')).fetchEntityLabels
+    const labelsForInstanceA = (await import('./wikibase-sparql')).fetchEntityLabels
     fetchMock.mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -140,7 +140,7 @@ describe('cache keying', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2)
 
     vi.resetModules()
-    const labelsForInstanceB = (await import('./wikidata-sparql')).fetchEntityLabels
+    const labelsForInstanceB = (await import('./wikibase-sparql')).fetchEntityLabels
     await labelsForInstanceB(config, ['Q5'])
     expect(fetchMock).toHaveBeenCalledTimes(3)
   })
@@ -249,7 +249,7 @@ describe('bounded sparql concurrency', () => {
 describe('sparql id validation', () => {
   it('drops non-conforming ids from membership queries without fetching them', async () => {
     vi.resetModules()
-    const { fetchMembership } = await import('./wikidata-sparql')
+    const { fetchMembership } = await import('./wikibase-sparql')
     fetchMock.mockResolvedValue({ ok: true, json: async () => sparqlResponse([]) })
 
     await fetchMembership(config, [
@@ -267,7 +267,7 @@ describe('sparql id validation', () => {
 
   it('drops non-conforming ids from type-data queries without fetching them', async () => {
     vi.resetModules()
-    const { fetchItemsWithTypeData } = await import('./wikidata-sparql')
+    const { fetchItemsWithTypeData } = await import('./wikibase-sparql')
     fetchMock.mockResolvedValue({ ok: true, json: async () => sparqlResponse([]) })
 
     await fetchItemsWithTypeData(config, [
@@ -282,7 +282,7 @@ describe('sparql id validation', () => {
   })
 })
 
-describe('classifyPredicateCandidatesViaWikidata', () => {
+describe('classifyPredicateCandidatesViaWikibase', () => {
   it('classifies candidate predicates against entity checks', async () => {
     fetchMock
       .mockResolvedValueOnce({ // fetchPropertyConstraints -> wbgetentities
@@ -317,7 +317,7 @@ describe('classifyPredicateCandidatesViaWikidata', () => {
         ]),
       })
 
-    const result = await classifyPredicateCandidatesViaWikidata(
+    const result = await classifyPredicateCandidatesViaWikibase(
       config,
       ['P100', 'P101'],
       [{ entityId: 'Q7001', side: 'domain' }],
@@ -354,7 +354,7 @@ describe('classifyPredicateCandidatesViaWikidata', () => {
         ]),
       })
 
-    const result = await classifyPredicateCandidatesViaWikidata(
+    const result = await classifyPredicateCandidatesViaWikibase(
       config,
       ['P102'],
       [{ entityId: 'Q7001', side: 'domain' }],
@@ -367,7 +367,7 @@ describe('classifyPredicateCandidatesViaWikidata', () => {
 describe('fetchConstraintModelSupport', () => {
   it('reports supported when both constraint model entities exist and caches the result', async () => {
     vi.resetModules()
-    const { fetchConstraintModelSupport } = await import('./wikidata-sparql')
+    const { fetchConstraintModelSupport } = await import('./wikibase-sparql')
     fetchMock.mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -387,7 +387,7 @@ describe('fetchConstraintModelSupport', () => {
 
   it('reports missing-items when a constraint model entity is absent', async () => {
     vi.resetModules()
-    const { fetchConstraintModelSupport } = await import('./wikidata-sparql')
+    const { fetchConstraintModelSupport } = await import('./wikibase-sparql')
     fetchMock.mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -403,7 +403,7 @@ describe('fetchConstraintModelSupport', () => {
 
   it('reports fetch-failed when the constraint model entities cannot be fetched and retries later', async () => {
     vi.resetModules()
-    const { fetchConstraintModelSupport } = await import('./wikidata-sparql')
+    const { fetchConstraintModelSupport } = await import('./wikibase-sparql')
     fetchMock.mockResolvedValue({ ok: false })
 
     expect(await fetchConstraintModelSupport(config)).toEqual({ status: 'unavailable', reason: 'fetch-failed' })

@@ -4,7 +4,7 @@ import { db } from '@/db/drizzle'
 import { annotation, annotationComponent, annotationQualifier, corpusCustomEntity, document } from '@/db/schema'
 import { MAX_DOCUMENTS_PER_IMPORT } from '@/lib/constants'
 import { ENTITY_DATATYPES, normalizeDatatype } from '@/lib/datatypes'
-import { findOrCreateUnit, WIKIDATA_ID_PATTERN } from '@/lib/units/server'
+import { findOrCreateUnit, WIKIBASE_ITEM_ID_PATTERN } from '@/lib/units/server'
 
 import { isUuid, normalizeCustomEntityFields, takeImportedUnitRef } from './corpusImportNormalization'
 import { isFullCorpusExport } from './fullCorpusExport'
@@ -167,7 +167,7 @@ export async function importFullCorpusExportDocuments(
           continue
         }
 
-        const wikidataId = typeof entry.wikidataId === 'string' && WIKIDATA_ID_PATTERN.test(entry.wikidataId)
+        const wikidataId = typeof entry.wikidataId === 'string' && WIKIBASE_ITEM_ID_PATTERN.test(entry.wikidataId)
           ? entry.wikidataId
           : null
         unitIdMap[entry.id] = await findOrCreateUnit(tx, corpusId, { id: null, label: entry.label, wikidataId })

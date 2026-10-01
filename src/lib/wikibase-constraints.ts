@@ -1,5 +1,5 @@
-export const WIKIDATA_ITEM_PATTERN = /^Q\d+$/
-export const WIKIDATA_PROPERTY_PATTERN = /^P\d+$/
+export const WIKIBASE_ITEM_PATTERN = /^Q\d+$/
+export const WIKIBASE_PROPERTY_PATTERN = /^P\d+$/
 
 export const CONSTRAINT_SUBJECT_TYPE = 'Q21503250'
 export const CONSTRAINT_VALUE_TYPE = 'Q21510865'
@@ -45,16 +45,16 @@ export type PropertyConstraints = {
 
 export type ConstraintSide = 'domain' | 'range'
 
-export type WikidataQualifier = {
+export type WikibaseQualifier = {
   datavalue?: { value?: { id?: string } | string | null }
 }
 
-export type WikidataClaim = {
+export type WikibaseClaim = {
   mainsnak?: { datavalue?: { value?: { id?: string } | string | null } }
-  qualifiers?: Record<string, WikidataQualifier[]>
+  qualifiers?: Record<string, WikibaseQualifier[]>
 }
 
-export type WikidataClaims = Record<string, WikidataClaim[]>
+export type WikibaseClaims = Record<string, WikibaseClaim[]>
 
 const RELATION_TO_MODE: Record<string, ConstraintRelation> = {
   Q21503252: 'instance',
@@ -62,7 +62,7 @@ const RELATION_TO_MODE: Record<string, ConstraintRelation> = {
   Q30208840: 'instance-or-subclass',
 }
 
-export function parsePropertyConstraints(claims: WikidataClaims | undefined): PropertyConstraints {
+export function parsePropertyConstraints(claims: WikibaseClaims | undefined): PropertyConstraints {
   const constraints: PropertyConstraints = { domain: [], range: [] }
 
   const constraintClaims = claims?.P2302
@@ -90,7 +90,7 @@ export function parsePropertyConstraints(claims: WikidataClaims | undefined): Pr
     for (const qualifier of classQualifiers) {
       const classValue = qualifier.datavalue?.value
       const classId = typeof classValue === 'object' && classValue !== null ? classValue.id : undefined
-      if (classId && WIKIDATA_ITEM_PATTERN.test(classId)) {
+      if (classId && WIKIBASE_ITEM_PATTERN.test(classId)) {
         constraints[side].push({ class: classId, relation })
       }
     }
@@ -182,7 +182,7 @@ export function buildConstraintChecks(
 
     for (const side of ['domain', 'range'] as const) {
       const itemValue = side === 'domain' ? row.subjectValue : row.objectValue
-      if (itemValue && WIKIDATA_ITEM_PATTERN.test(itemValue) && constraints[side].length > 0) {
+      if (itemValue && WIKIBASE_ITEM_PATTERN.test(itemValue) && constraints[side].length > 0) {
         const itemLabel = side === 'domain' ? (row.subjectLabel ?? itemValue) : (row.objectLabel ?? itemValue)
         checks.push({
           annotationId: row.annotationId,
@@ -214,7 +214,7 @@ export function buildQualifierRangeChecks(
   const checks: AnnotationCheck[] = []
 
   for (const row of rows) {
-    if (!row.qualifierPredicateValue || !WIKIDATA_PROPERTY_PATTERN.test(row.qualifierPredicateValue)) {
+    if (!row.qualifierPredicateValue || !WIKIBASE_PROPERTY_PATTERN.test(row.qualifierPredicateValue)) {
       continue
     }
     const constraints = constraintsByProperty.get(row.qualifierPredicateValue)
@@ -222,7 +222,7 @@ export function buildQualifierRangeChecks(
       continue
     }
     const qualifierValue = row.qualifierValueValue
-    if (!qualifierValue || !WIKIDATA_ITEM_PATTERN.test(qualifierValue)) {
+    if (!qualifierValue || !WIKIBASE_ITEM_PATTERN.test(qualifierValue)) {
       continue
     }
 

@@ -6,22 +6,22 @@ import { db } from '@/db/drizzle'
 import { annotationComponent, unit } from '@/db/schema'
 import { MAX_CUSTOM_ENTITIES_PER_CORPUS } from '@/lib/constants'
 import { loadCorpusWikibaseConfig } from '@/lib/wikibase-server'
-import { searchWikibaseUnits } from '@/lib/wikidata-sparql'
+import { searchWikibaseUnits } from '@/lib/wikibase-sparql'
 
-export const WIKIDATA_ID_PATTERN = /^Q\d+$/
+export const WIKIBASE_ITEM_ID_PATTERN = /^Q\d+$/
 
-// Wikidata units are identified by their Q-id, corpus-local units by label.
+// Wikibase units are identified by their Q-id, corpus-local units by label.
 export async function findOrCreateUnit(executor: DbExecutor, corpusId: string, unitRef: UnitRef): Promise<string> {
-  const isWikidata = unitRef.wikidataId !== null
+  const isWikibaseLinked = unitRef.wikidataId !== null
 
   const [result] = await executor.insert(unit).values({
     corpusId,
     label: unitRef.label,
     wikidataId: unitRef.wikidataId,
   }).onConflictDoUpdate({
-    target: isWikidata ? [unit.corpusId, unit.wikidataId] : [unit.corpusId, unit.label],
+    target: isWikibaseLinked ? [unit.corpusId, unit.wikidataId] : [unit.corpusId, unit.label],
     // Matches the partial unique indexes, which split on wikidata_id nullness.
-    targetWhere: isWikidata ? sql`${unit.wikidataId} IS NOT NULL` : sql`${unit.wikidataId} IS NULL`,
+    targetWhere: isWikibaseLinked ? sql`${unit.wikidataId} IS NOT NULL` : sql`${unit.wikidataId} IS NULL`,
     set: { label: unitRef.label, updatedAt: new Date() },
   }).returning({ id: unit.id })
 
@@ -81,11 +81,8 @@ export async function listCorpusUnits(corpusId: string): Promise<Array<Unit & { 
     .orderBy(...unitOrdering())
 }
 
-// Unit search results for the quantity editor: Wikidata hits first with no
-// persisted id, then corpus units with corpus-local labels de-duplicated
-// against the Wikidata ones.
 export async function searchUnitCandidates(corpusId: string, search: string, limit: number): Promise<UnitCandidate[]> {
-  const [wikidataUnits, corpusUnits] = await Promise.all([
+  const [wikibaseUnits, corpusUnits] = await Promise.all([
     (async () => {
       try {
         const config = await loadCorpusWikibaseConfig(corpusId)
@@ -115,13 +112,13 @@ export async function searchUnitCandidates(corpusId: string, search: string, lim
       }),
   ])
 
-  const results: UnitCandidate[] = wikidataUnits.map(unit => ({
+  const results: UnitCandidate[] = wikibaseUnits.map(unit => ({
     id: null,
     label: unit.label,
     wikidataId: unit.id,
     description: unit.description,
   }))
-  const seenLabels = new Set(wikidataUnits.map(unit => unit.label.toLowerCase()))
+  const seenLabels = new Set(wikibaseUnits.map(unit => unit.label.toLowerCase()))
   for (const candidate of corpusUnits) {
     if (!seenLabels.has(candidate.label.toLowerCase())) {
       results.push({ id: candidate.id, label: candidate.label, wikidataId: null, description: null })

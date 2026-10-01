@@ -6,9 +6,9 @@ import type {
   PropertyConstraints,
   WarningAnnotationRow,
   WarningQualifierRow,
-  WikidataClaim,
-  WikidataClaims,
-} from './wikidata-constraints'
+  WikibaseClaim,
+  WikibaseClaims,
+} from './wikibase-constraints'
 import { expect, it } from 'vitest'
 import {
   buildConstraintChecks,
@@ -19,9 +19,9 @@ import {
   groupByRelation,
   membershipKey,
   parsePropertyConstraints,
-} from './wikidata-constraints'
+} from './wikibase-constraints'
 
-function constraintClaim(type: string, classes: string[], relation = 'Q30208840'): WikidataClaim {
+function constraintClaim(type: string, classes: string[], relation = 'Q30208840'): WikibaseClaim {
   return {
     mainsnak: { datavalue: { value: { id: type } } },
     qualifiers: {
@@ -31,7 +31,7 @@ function constraintClaim(type: string, classes: string[], relation = 'Q30208840'
   }
 }
 
-function claims(overrides: Partial<WikidataClaims> = {}): WikidataClaims {
+function claims(overrides: Partial<WikibaseClaims> = {}): WikibaseClaims {
   return {
     P2302: [
       constraintClaim('Q21503250', ['Q5', 'Q95074'], 'Q30208840'),
@@ -163,7 +163,7 @@ it('skips annotations whose predicate has no constraints', () => {
   expect(checks).toEqual([])
 })
 
-it('skips checks for sides that are not Wikidata items', () => {
+it('skips checks for sides that are not Wikibase items', () => {
   const checks = buildConstraintChecks(
     [row({ subjectValue: null, objectValue: 'literal' })],
     new Map([['P69', constraints()]]),
@@ -408,12 +408,12 @@ it('builds a range check for a qualifier with a Q-valued qualifier value', () =>
   })
 })
 
-it('skips qualifiers whose predicate is not a Wikidata property', () => {
+it('skips qualifiers whose predicate is not a Wikibase property', () => {
   const checks = buildQualifierRangeChecks([qualifierRow({ qualifierPredicateValue: 'not-a-prop' })], new Map())
   expect(checks).toEqual([])
 })
 
-it('skips qualifiers whose value is not a Wikidata item', () => {
+it('skips qualifiers whose value is not a Wikibase item', () => {
   const checks = buildQualifierRangeChecks(
     [qualifierRow({ qualifierValueValue: 'literal' })],
     new Map([['P580', { domain: [], range: [{ class: 'Q5', relation: 'instance' }] }]]),

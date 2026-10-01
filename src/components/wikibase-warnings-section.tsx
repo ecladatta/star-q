@@ -1,12 +1,12 @@
-import type { ConstraintCheck, CorpusWarnings } from '@/lib/wikidata-constraints'
+import type { ConstraintCheck, CorpusWarnings } from '@/lib/wikibase-constraints'
 import { AlertTriangleIcon, CheckCircle2Icon, ChevronRightIcon, Loader2Icon } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { cn } from '@/lib/utils'
-import { WikidataWarningRow } from './wikidata-warning-row'
+import { WikibaseWarningRow } from './wikibase-warning-row'
 
-type WikidataWarningsSectionProps = {
+type WikibaseWarningsSectionProps = {
   warningsPromise: Promise<CorpusWarnings>
   instanceName: string | null
   groupByDocument?: boolean
@@ -49,10 +49,10 @@ function WarningsRows({ violations, unverifiable }: { violations: ConstraintChec
   return (
     <>
       {violations.map(check => (
-        <WikidataWarningRow key={`${check.annotationId}-${check.side}-${check.qualifierId ?? ''}`} check={check} />
+        <WikibaseWarningRow key={`${check.annotationId}-${check.side}-${check.qualifierId ?? ''}`} check={check} />
       ))}
       {unverifiable.map(check => (
-        <WikidataWarningRow
+        <WikibaseWarningRow
           key={`${check.annotationId}-${check.side}-${check.qualifierId ?? ''}`}
           check={check}
           muted
@@ -62,7 +62,7 @@ function WarningsRows({ violations, unverifiable }: { violations: ConstraintChec
   )
 }
 
-function WikidataWarningsContent({ warnings, groupByDocument, compact, instanceName }: { warnings: CorpusWarnings, groupByDocument: boolean, compact: boolean, instanceName: string | null }) {
+function WikibaseWarningsContent({ warnings, groupByDocument, compact, instanceName }: { warnings: CorpusWarnings, groupByDocument: boolean, compact: boolean, instanceName: string | null }) {
   const totalCount = warnings.violations.length + warnings.unverifiable.length
 
   if (totalCount === 0 && !warnings.unavailable) {
@@ -80,13 +80,13 @@ function WikidataWarningsContent({ warnings, groupByDocument, compact, instanceN
               {warnings.unavailable || totalCount > 0
                 ? <AlertTriangleIcon className={compact ? 'size-4 text-warning-foreground' : 'size-5 text-warning-foreground'} />
                 : <CheckCircle2Icon className={compact ? 'size-4 text-success' : 'size-5 text-success'} />}
-              Wikidata Constraints Warnings
+              Wikibase Constraints Warnings
               {totalCount > 0 && <Badge variant="secondary">{totalCount}</Badge>}
               <ChevronRightIcon className="ml-auto size-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
             </CardTitle>
             {!compact && (
               <CardDescription>
-                Domain and range coherence checks against Wikidata property constraints
+                Domain and range coherence checks against Wikibase property constraints
               </CardDescription>
             )}
           </CardHeader>
@@ -99,8 +99,8 @@ function WikidataWarningsContent({ warnings, groupByDocument, compact, instanceN
                     {warnings.unavailableReason === 'no-instance'
                       ? 'No Wikibase instance is available for this corpus.'
                       : warnings.unavailableReason === 'not-supported'
-                        ? `Constraint checking is unavailable: the configured Wikibase instance ${instanceName} does not provide the Wikidata constraint model, so annotations were not verified.`
-                        : 'Wikidata constraint check could not be completed, so annotations were not verified.'}
+                        ? `Constraint checking is unavailable: the configured Wikibase instance ${instanceName} does not provide the Wikidata-style constraint model, so annotations were not verified.`
+                        : 'Wikibase constraint check could not be completed, so annotations were not verified.'}
                   </p>
                 )
               : totalCount === 0
@@ -151,12 +151,12 @@ function WikidataWarningsContent({ warnings, groupByDocument, compact, instanceN
   )
 }
 
-export async function WikidataWarningsSection({ warningsPromise, instanceName, groupByDocument = true, compact = false }: WikidataWarningsSectionProps) {
+export async function WikibaseWarningsSection({ warningsPromise, instanceName, groupByDocument = true, compact = false }: WikibaseWarningsSectionProps) {
   const warnings = await warningsPromise
-  return <WikidataWarningsContent warnings={warnings} groupByDocument={groupByDocument} compact={compact} instanceName={instanceName} />
+  return <WikibaseWarningsContent warnings={warnings} groupByDocument={groupByDocument} compact={compact} instanceName={instanceName} />
 }
 
-export function WikidataWarningsSkeleton({ compact = false }: { compact?: boolean }) {
+export function WikibaseWarningsSkeleton({ compact = false }: { compact?: boolean }) {
   if (compact) {
     return (
       <div className="mb-6 space-y-2">
@@ -171,17 +171,17 @@ export function WikidataWarningsSkeleton({ compact = false }: { compact?: boolea
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <AlertTriangleIcon className="size-5 text-warning-foreground" />
-          Wikidata Constraints Warnings
+          Wikibase Constraints Warnings
         </CardTitle>
         <CardDescription>
-          Domain and range coherence checks against Wikidata property constraints
+          Domain and range coherence checks against Wikibase property constraints
         </CardDescription>
       </CardHeader>
       <CardContent>
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2Icon className="size-4 animate-spin" />
           <span>
-            Checking annotations against Wikidata constraints. This can take a moment for large
+            Checking annotations against Wikibase constraints. This can take a moment for large
             corpora.
           </span>
         </div>

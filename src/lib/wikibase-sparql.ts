@@ -7,8 +7,8 @@ import type {
   EntityCandidateClassification,
   MembershipTriple,
   PropertyConstraints,
-  WikidataClaims,
-} from './wikidata-constraints'
+  WikibaseClaims,
+} from './wikibase-constraints'
 import WBK from 'wikibase-sdk'
 import pkg from '../../package.json'
 import {
@@ -18,9 +18,9 @@ import {
   CONSTRAINT_VALUE_TYPE,
   membershipKey,
   parsePropertyConstraints,
-  WIKIDATA_ITEM_PATTERN,
-  WIKIDATA_PROPERTY_PATTERN,
-} from './wikidata-constraints'
+  WIKIBASE_ITEM_PATTERN,
+  WIKIBASE_PROPERTY_PATTERN,
+} from './wikibase-constraints'
 
 const USER_AGENT = `star-q/${pkg.version} (https://github.com/ecladatta/star-q)`
 
@@ -80,7 +80,7 @@ function cacheKey(config: WikibaseConfig, id: string): string {
 type WbGetEntitiesResponse = {
   entities?: Record<string, {
     missing?: string
-    claims?: WikidataClaims
+    claims?: WikibaseClaims
     labels?: Record<string, { value?: string }>
   }>
 }
@@ -278,7 +278,7 @@ export async function fetchMembership(config: WikibaseConfig, pairs: MembershipT
   const byRelation = new Map<ConstraintRelation, Array<[string, string]>>()
   for (const [item, cls, relation] of pairs) {
     // Ids are interpolated as wd: terms, so only well-formed ids may reach SPARQL text.
-    if (!WIKIDATA_ITEM_PATTERN.test(item) || !WIKIDATA_ITEM_PATTERN.test(cls)) {
+    if (!WIKIBASE_ITEM_PATTERN.test(item) || !WIKIBASE_ITEM_PATTERN.test(cls)) {
       continue
     }
     const key = membershipKey(item, cls, relation)
@@ -336,7 +336,7 @@ export async function fetchItemsWithTypeData(config: WikibaseConfig, items: stri
   const missing: string[] = []
   for (const id of items) {
     // Ids are interpolated as wd: terms, so only well-formed ids may reach SPARQL text.
-    if (!WIKIDATA_ITEM_PATTERN.test(id)) {
+    if (!WIKIBASE_ITEM_PATTERN.test(id)) {
       continue
     }
     const cached = typeDataCache.get(cacheKey(config, id))
@@ -396,7 +396,7 @@ export async function fetchPropertyConstraints(config: WikibaseConfig, propertyI
   let unavailable = false
 
   for (const id of propertyIds) {
-    if (!WIKIDATA_PROPERTY_PATTERN.test(id)) {
+    if (!WIKIBASE_PROPERTY_PATTERN.test(id)) {
       continue
     }
     const cached = propertyConstraintsCache.get(cacheKey(config, id))
@@ -418,7 +418,7 @@ export async function fetchPropertyConstraints(config: WikibaseConfig, propertyI
         continue
       }
       for (const [id, entity] of Object.entries(data.entities)) {
-        if (!WIKIDATA_PROPERTY_PATTERN.test(id)) {
+        if (!WIKIBASE_PROPERTY_PATTERN.test(id)) {
           continue
         }
         const parsed = parsePropertyConstraints(entity.claims)
@@ -435,7 +435,7 @@ export async function fetchEntityLabels(config: WikibaseConfig, ids: string[]): 
   const wdk = WBK(config)
   const labels = new Map<string, string>()
   const validIds = ids.filter(id =>
-    WIKIDATA_ITEM_PATTERN.test(id) || WIKIDATA_PROPERTY_PATTERN.test(id))
+    WIKIBASE_ITEM_PATTERN.test(id) || WIKIBASE_PROPERTY_PATTERN.test(id))
 
   const missing: string[] = []
   for (const id of validIds) {
@@ -469,7 +469,7 @@ export async function fetchEntityLabels(config: WikibaseConfig, ids: string[]): 
   return labels
 }
 
-export async function classifyEntityCandidatesViaWikidata(
+export async function classifyEntityCandidatesViaWikibase(
   config: WikibaseConfig,
   candidates: string[],
   constraints: PropertyConstraints,
@@ -487,7 +487,7 @@ export async function classifyEntityCandidatesViaWikidata(
   return classifyCandidates(memberships, memberPairs, itemsWithTypeData)
 }
 
-export async function classifyPredicateCandidatesViaWikidata(
+export async function classifyPredicateCandidatesViaWikibase(
   config: WikibaseConfig,
   candidates: string[],
   checks: ConstraintEntityCheck[],

@@ -1,13 +1,13 @@
 'use client'
 
-import type { ConstraintCheck, ConstraintGroup } from '@/lib/wikidata-constraints'
+import type { ConstraintCheck, ConstraintGroup } from '@/lib/wikibase-constraints'
 import { AlertTriangleIcon } from 'lucide-react'
 import Link from 'next/link'
 import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { useWikibaseInstance } from '@/hooks/useWikibaseInstance'
 import { cn } from '@/lib/utils'
-import { CONSTRAINT_RELATION_LABELS, groupByRelation, WIKIDATA_ITEM_PATTERN, WIKIDATA_PROPERTY_PATTERN } from '@/lib/wikidata-constraints'
+import { CONSTRAINT_RELATION_LABELS, groupByRelation, WIKIBASE_ITEM_PATTERN, WIKIBASE_PROPERTY_PATTERN } from '@/lib/wikibase-constraints'
 
 const VISIBLE_CLASS_LIMIT = 5
 
@@ -25,10 +25,10 @@ function visibleGroupsUpTo(groups: ConstraintGroup[], limit: number): Constraint
   return visible
 }
 
-function WikidataLink({ id, label }: { id: string, label: string }) {
+function WikibaseLink({ id, label }: { id: string, label: string }) {
   const { wikiUrl } = useWikibaseInstance()
   const url = wikiUrl(id)
-  if (!url || (!WIKIDATA_ITEM_PATTERN.test(id) && !WIKIDATA_PROPERTY_PATTERN.test(id))) {
+  if (!url || (!WIKIBASE_ITEM_PATTERN.test(id) && !WIKIBASE_PROPERTY_PATTERN.test(id))) {
     return <span>{label}</span>
   }
   return (
@@ -43,7 +43,7 @@ function WikidataLink({ id, label }: { id: string, label: string }) {
   )
 }
 
-export function WikidataWarningRow({ check, muted }: { check: ConstraintCheck, muted?: boolean }) {
+export function WikibaseWarningRow({ check, muted }: { check: ConstraintCheck, muted?: boolean }) {
   const [expanded, setExpanded] = useState<boolean>(false)
   const subjectText = check.subjectLabel ?? check.subjectValue
   const objectText = check.objectLabel ?? check.objectValue
@@ -67,26 +67,26 @@ export function WikidataWarningRow({ check, muted }: { check: ConstraintCheck, m
           </Badge>
           <span>
             <span className="font-medium">
-              {subjectText ? <WikidataLink id={check.subjectValue ?? ''} label={subjectText} /> : '—'}
+              {subjectText ? <WikibaseLink id={check.subjectValue ?? ''} label={subjectText} /> : '—'}
             </span>
             <span className="text-muted-foreground"> → </span>
             <span className="font-medium">
-              <WikidataLink id={check.predicateValue} label={check.predicateLabel} />
+              <WikibaseLink id={check.predicateValue} label={check.predicateLabel} />
             </span>
             <span className="text-muted-foreground"> → </span>
             <span className="font-medium">
-              {objectText ? <WikidataLink id={check.objectValue ?? ''} label={objectText} /> : '—'}
+              {objectText ? <WikibaseLink id={check.objectValue ?? ''} label={objectText} /> : '—'}
             </span>
             {isQualifier && check.qualifierPredicateValue && (
               <>
                 <span className="text-muted-foreground"> · qualifier: </span>
                 <span className="font-medium">
-                  <WikidataLink id={check.qualifierPredicateValue} label={qualifierPredicateText ?? ''} />
+                  <WikibaseLink id={check.qualifierPredicateValue} label={qualifierPredicateText ?? ''} />
                 </span>
                 <span className="text-muted-foreground"> → </span>
                 <span className="font-medium">
                   {check.qualifierValueValue
-                    ? <WikidataLink id={check.qualifierValueValue} label={check.qualifierValueLabel ?? check.qualifierValueValue} />
+                    ? <WikibaseLink id={check.qualifierValueValue} label={check.qualifierValueLabel ?? check.qualifierValueValue} />
                     : '—'}
                 </span>
               </>
@@ -120,7 +120,7 @@ export function WikidataWarningRow({ check, muted }: { check: ConstraintCheck, m
                       {group.classes.map((constraint, classIndex) => (
                         <span key={constraint.class}>
                           {classIndex > 0 && ', '}
-                          <WikidataLink id={constraint.class} label={constraint.label} />
+                          <WikibaseLink id={constraint.class} label={constraint.label} />
                         </span>
                       ))}
                     </span>

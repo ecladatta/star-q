@@ -8,13 +8,13 @@ import {
 } from './corpus-settings'
 
 it('merges a partial patch without clobbering other settings', () => {
-  expect(mergeCorpusSettings({ wikidataConstraintWarnings: true }, { wikidataPredicateFiltering: true }))
-    .toEqual({ wikidataConstraintWarnings: true, wikidataPredicateFiltering: true })
+  expect(mergeCorpusSettings({ wikibaseConstraintWarnings: true }, { wikibasePredicateFiltering: true }))
+    .toEqual({ wikibaseConstraintWarnings: true, wikibasePredicateFiltering: true })
 })
 
 it('merges from undefined current settings', () => {
-  expect(mergeCorpusSettings(undefined, { wikidataConstraintWarnings: true }))
-    .toEqual({ wikidataConstraintWarnings: true })
+  expect(mergeCorpusSettings(undefined, { wikibaseConstraintWarnings: true }))
+    .toEqual({ wikibaseConstraintWarnings: true })
 })
 
 it('treats missing settings as disabled by default', () => {
@@ -24,33 +24,33 @@ it('treats missing settings as disabled by default', () => {
 })
 
 it('reflects explicitly enabled settings', () => {
-  expect(isConstraintWarningsEnabled({ wikidataConstraintWarnings: true })).toBe(true)
-  expect(isPredicateFilteringEnabled({ wikidataPredicateFiltering: true })).toBe(true)
+  expect(isConstraintWarningsEnabled({ wikibaseConstraintWarnings: true })).toBe(true)
+  expect(isPredicateFilteringEnabled({ wikibasePredicateFiltering: true })).toBe(true)
 })
 
 it('keeps only allowed keys from a valid boolean patch', () => {
   const result = sanitizeCorpusSettingsPatch({
-    wikidataConstraintWarnings: true,
-    wikidataPredicateFiltering: false,
+    wikibaseConstraintWarnings: true,
+    wikibasePredicateFiltering: false,
   })
   expect(result).toEqual({
-    wikidataConstraintWarnings: true,
-    wikidataPredicateFiltering: false,
+    wikibaseConstraintWarnings: true,
+    wikibasePredicateFiltering: false,
   })
 })
 
 it('throws on a non-boolean value for an allowed key', () => {
   expect(() =>
-    sanitizeCorpusSettingsPatch({ wikidataPredicateFiltering: 'yes' as unknown as boolean }),
-  ).toThrow('Invalid corpus setting "wikidataPredicateFiltering": expected boolean')
+    sanitizeCorpusSettingsPatch({ wikibasePredicateFiltering: 'yes' as unknown as boolean }),
+  ).toThrow('Invalid corpus setting "wikibasePredicateFiltering": expected boolean')
 })
 
 it('drops unknown keys that are not in the whitelist', () => {
   const result = sanitizeCorpusSettingsPatch({
-    wikidataConstraintWarnings: true,
+    wikibaseConstraintWarnings: true,
     someUnknownKey: 'nope',
   } as unknown as Parameters<typeof sanitizeCorpusSettingsPatch>[0])
-  expect(result).toEqual({ wikidataConstraintWarnings: true })
+  expect(result).toEqual({ wikibaseConstraintWarnings: true })
 })
 
 it('accepts a UUID for wikibaseInstanceId', () => {
@@ -87,10 +87,10 @@ it('treats an explicit undefined for wikibaseInstanceId as no change', () => {
 
 it('removes wikibaseInstanceId from the merged settings on a null patch value', () => {
   const merged = mergeCorpusSettings(
-    { wikibaseInstanceId: '123e4567-e89b-12d3-a456-426614174000', wikidataConstraintWarnings: true },
+    { wikibaseInstanceId: '123e4567-e89b-12d3-a456-426614174000', wikibaseConstraintWarnings: true },
     { wikibaseInstanceId: null },
   )
-  expect(merged).toEqual({ wikidataConstraintWarnings: true })
+  expect(merged).toEqual({ wikibaseConstraintWarnings: true })
   expect(merged).not.toHaveProperty('wikibaseInstanceId')
 })
 
@@ -107,7 +107,7 @@ it('keeps wikibaseInstanceId when the patch does not mention it', () => {
   expect(
     mergeCorpusSettings(
       { wikibaseInstanceId: '123e4567-e89b-12d3-a456-426614174000' },
-      { wikidataConstraintWarnings: true },
+      { wikibaseConstraintWarnings: true },
     ),
-  ).toEqual({ wikibaseInstanceId: '123e4567-e89b-12d3-a456-426614174000', wikidataConstraintWarnings: true })
+  ).toEqual({ wikibaseInstanceId: '123e4567-e89b-12d3-a456-426614174000', wikibaseConstraintWarnings: true })
 })

@@ -2,7 +2,7 @@
 // 'use server' module so they stay unit-testable.
 
 import type { UnitRef } from '@/types/types'
-import { WIKIDATA_ITEM_PATTERN } from '@/lib/wikidata-constraints'
+import { WIKIBASE_ITEM_PATTERN } from '@/lib/wikibase-constraints'
 
 export function isUuid(value: unknown): value is string {
   return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
@@ -47,7 +47,7 @@ export function takeImportedUnitRef(data: Record<string, any>): UnitRef | null {
 
 function normalizeUnitRef(raw: Record<string, unknown>): UnitRef | null {
   const label = typeof raw.label === 'string' ? raw.label : ''
-  const wikidataId = typeof raw.wikidataId === 'string' && WIKIDATA_ITEM_PATTERN.test(raw.wikidataId)
+  const wikidataId = typeof raw.wikidataId === 'string' && WIKIBASE_ITEM_PATTERN.test(raw.wikidataId)
     ? raw.wikidataId
     : null
   if (!wikidataId && !label) {

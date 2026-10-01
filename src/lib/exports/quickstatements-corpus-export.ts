@@ -15,8 +15,8 @@ const TIME_DATATYPES = new Set<EntityDatatype>([
   'gYearMonth',
 ])
 
-const WIKIDATA_ENTITY_ID = /^[QP]\d+$/
-const WIKIDATA_PROPERTY_ID = /^P\d+$/
+const WIKIBASE_ENTITY_ID = /^[QP]\d+$/
+const WIKIBASE_PROPERTY_ID = /^P\d+$/
 
 export type QuickStatementsExport = {
   body: string
@@ -75,7 +75,7 @@ function entityId(component: DocumentAnnotationComponent): string | null {
   }
 
   const value = component.entityValue?.trim()
-  return value && WIKIDATA_ENTITY_ID.test(value) ? value : null
+  return value && WIKIBASE_ENTITY_ID.test(value) ? value : null
 }
 
 function propertyId(component: DocumentAnnotationComponent): string | null {
@@ -84,7 +84,7 @@ function propertyId(component: DocumentAnnotationComponent): string | null {
   }
 
   const value = component.entityValue?.trim()
-  return value && WIKIDATA_PROPERTY_ID.test(value) ? value : null
+  return value && WIKIBASE_PROPERTY_ID.test(value) ? value : null
 }
 
 function valueTerm(component: DocumentAnnotationComponent): string | null {
@@ -93,7 +93,7 @@ function valueTerm(component: DocumentAnnotationComponent): string | null {
   }
 
   const entityValue = component.entityValue?.trim()
-  if (entityValue && WIKIDATA_ENTITY_ID.test(entityValue)) {
+  if (entityValue && WIKIBASE_ENTITY_ID.test(entityValue)) {
     return entityValue
   }
 
@@ -122,7 +122,7 @@ function literalValue(
 }
 
 // QuickStatements quantity syntax is `amount[lower,upper]Uxx`: optional
-// closed bounds in brackets, and only Wikidata unit items after `U`; custom
+// closed bounds in brackets, and only Wikibase unit items after `U`; custom
 // corpus units export as bare amounts. Bounds are emitted only when both are
 // present and parse as plain decimals, since the bracket form needs both ends.
 function unitSuffix(component: DocumentAnnotationComponent): string {

@@ -1,5 +1,5 @@
 import type { CorpusAnalytics } from '@/actions/analytics/analyticsActions'
-import type { CorpusWarnings } from '@/lib/wikidata-constraints'
+import type { CorpusWarnings } from '@/lib/wikibase-constraints'
 import { AlertTriangleIcon, BarChart3Icon, ChevronRightIcon, FileTextIcon, TableIcon } from 'lucide-react'
 import Link from 'next/link'
 import { Suspense } from 'react'
@@ -8,7 +8,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { wikiUrl } from '@/lib/wikibase'
 import { loadCorpusWikibaseConfig } from '@/lib/wikibase-server'
-import { WikidataWarningsSection, WikidataWarningsSkeleton } from './wikidata-warnings-section'
+import { WikibaseWarningsSection, WikibaseWarningsSkeleton } from './wikibase-warnings-section'
 
 type AnalyticsContentProps = {
   corpusId: string
@@ -375,8 +375,8 @@ export async function AnalyticsContent({ corpusId, analyticsPromise, warningsPro
       )}
 
       {/* Warnings */}
-      <Suspense fallback={<WikidataWarningsSkeleton />}>
-        <WikidataWarningsSection warningsPromise={warningsPromise} instanceName={wikibase?.label ?? null} />
+      <Suspense fallback={<WikibaseWarningsSkeleton />}>
+        <WikibaseWarningsSection warningsPromise={warningsPromise} instanceName={wikibase?.label ?? null} />
       </Suspense>
 
       {/* Property Statistics */}

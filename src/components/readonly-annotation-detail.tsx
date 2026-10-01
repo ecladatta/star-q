@@ -23,7 +23,7 @@ const ROLE_SOFT: Record<AnnotationComponentRole, string> = {
   'qualifier-value': 'bg-qualifier-soft text-qualifier-fg',
 }
 
-function isWikidataId(value: string | null): boolean {
+function isWikibaseId(value: string | null): boolean {
   return value != null && /^(?:Q|P)\d+$/.test(value)
 }
 
@@ -33,7 +33,7 @@ function EntityId({ component }: { component: DocumentAnnotationComponent }) {
   if (!entityValue || entityValue === entityLabel) {
     return null
   }
-  const url = isWikidataId(entityValue) && !entityCustom ? wikiUrl(entityValue) : null
+  const url = isWikibaseId(entityValue) && !entityCustom ? wikiUrl(entityValue) : null
   if (url) {
     return (
       <a

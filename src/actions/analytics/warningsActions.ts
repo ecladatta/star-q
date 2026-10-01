@@ -1,16 +1,16 @@
 'use server'
 import type { SQL } from 'drizzle-orm'
 import type { WikibaseConfig } from '@/lib/wikibase'
-import type { AnnotationCheck, ConstraintCheck, CorpusWarnings, PropertyConstraints, WarningAnnotationRow, WarningQualifierRow } from '@/lib/wikidata-constraints'
+import type { AnnotationCheck, ConstraintCheck, CorpusWarnings, PropertyConstraints, WarningAnnotationRow, WarningQualifierRow } from '@/lib/wikibase-constraints'
 import { and, eq, sql } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 import { db } from '@/db/drizzle'
 import { annotation, annotationComponent, annotationQualifier, corpus, document } from '@/db/schema'
 import { requireViewCorpus, requireViewDocument } from '@/lib/corpus-access'
 import { isConstraintWarningsEnabled } from '@/lib/corpus-settings'
+import { buildConstraintChecks, buildQualifierRangeChecks, collectPairs, evaluateConstraintChecks, WIKIBASE_PROPERTY_PATTERN } from '@/lib/wikibase-constraints'
 import { loadCorpusWikibaseConfig } from '@/lib/wikibase-server'
-import { buildConstraintChecks, buildQualifierRangeChecks, collectPairs, evaluateConstraintChecks, WIKIDATA_PROPERTY_PATTERN } from '@/lib/wikidata-constraints'
-import { fetchConstraintModelSupport, fetchEntityLabels, fetchItemsWithTypeData, fetchMembership, fetchPropertyConstraints } from '@/lib/wikidata-sparql'
+import { fetchConstraintModelSupport, fetchEntityLabels, fetchItemsWithTypeData, fetchMembership, fetchPropertyConstraints } from '@/lib/wikibase-sparql'
 
 type WarningsComputation = {
   violations: ConstraintCheck[]
@@ -48,10 +48,10 @@ async function computeWarningsForRows(
   const predicates = Array.from(new Set([
     ...rows
       .map(row => row.predicateValue)
-      .filter((value): value is string => value != null && WIKIDATA_PROPERTY_PATTERN.test(value)),
+      .filter((value): value is string => value != null && WIKIBASE_PROPERTY_PATTERN.test(value)),
     ...qualifierRows
       .map(row => row.qualifierPredicateValue)
-      .filter((value): value is string => value != null && WIKIDATA_PROPERTY_PATTERN.test(value)),
+      .filter((value): value is string => value != null && WIKIBASE_PROPERTY_PATTERN.test(value)),
   ]))
 
   if (predicates.length === 0) {
@@ -73,7 +73,7 @@ async function computeWarningsForRows(
     fetchUnavailable = result.unavailable
     constraintsByProperty = result.constraints
   } catch (error) {
-    console.warn('Wikidata constraint check unavailable while fetching property constraints:', error)
+    console.warn('Wikibase constraint check unavailable while fetching property constraints:', error)
     return unavailableWarnings(predicates.length)
   }
 
@@ -92,7 +92,7 @@ async function computeWarningsForRows(
       fetchItemsWithTypeData(config, items),
     ])
   } catch (error) {
-    console.warn('Wikidata constraint check unavailable while checking membership or type data:', error)
+    console.warn('Wikibase constraint check unavailable while checking membership or type data:', error)
     return unavailableWarnings(predicates.length)
   }
 

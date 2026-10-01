@@ -7,7 +7,7 @@ import { getCorpus } from '@/actions/corpus/corpusActions'
 import { getDocument, getDocumentsMetadata } from '@/actions/document/documentActions'
 import { auth } from '@/auth'
 import { DocumentViewer } from '@/components/document-viewer'
-import { WikidataWarningsSection, WikidataWarningsSkeleton } from '@/components/wikidata-warnings-section'
+import { WikibaseWarningsSection, WikibaseWarningsSkeleton } from '@/components/wikibase-warnings-section'
 import { getAppSettings } from '@/lib/app-settings'
 import { canEditCorpus, getCorpusAccess } from '@/lib/corpus-access'
 import { isConstraintWarningsEnabled } from '@/lib/corpus-settings'
@@ -58,8 +58,8 @@ export default async function DocumentPage({ params }: { params: Promise<{ docum
       readOnly={!edit}
       warningsSlot={showWarnings
         ? (
-            <Suspense key={documentId} fallback={<WikidataWarningsSkeleton compact />}>
-              <WikidataWarningsSection
+            <Suspense key={documentId} fallback={<WikibaseWarningsSkeleton compact />}>
+              <WikibaseWarningsSection
                 warningsPromise={getDocumentWarnings(documentId)}
                 instanceName={wikibase?.label ?? null}
                 groupByDocument={false}

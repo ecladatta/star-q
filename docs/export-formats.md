@@ -265,11 +265,11 @@ Q68550	P69	"University of Vienna"
 Q68550	P571	+1365-00-00T00:00:00Z/9	P585	+2019-01-01T00:00:00Z/11
 ```
 
-Numeric object values serialize as [QuickStatements 3.0 quantities](https://www.wikidata.org/wiki/Help:Data_type#Quantity): `amount`, `amountUunit` when a Wikidata unit is set, and `amount[lower,upper]Uunit` when both quantity bounds are also set, as in `12[12,15]U11573`. A custom corpus unit cannot be referenced in QuickStatements, so the amount exports without a unit. Quantity bounds export only as a pair: a missing or non-numeric bound drops the brackets rather than exporting one side.
+Numeric object values serialize as [QuickStatements 3.0 quantities](https://www.wikidata.org/wiki/Help:Data_type#Quantity): `amount`, `amountUunit` when a Wikibase unit is set, and `amount[lower,upper]Uunit` when both quantity bounds are also set, as in `12[12,15]U11573`. A custom corpus unit cannot be referenced in QuickStatements, so the amount exports without a unit. Quantity bounds export only as a pair: a missing or non-numeric bound drops the brackets rather than exporting one side.
 
-Only annotations that fully resolve to Wikidata are exported:
+Only annotations that fully resolve to the configured Wikibase instance are exported:
 
-- Annotations whose subject, predicate, or object references a custom corpus entity or a value with no Wikidata `Q`/`P` ID are skipped.
+- Annotations whose subject, predicate, or object references a custom corpus entity or a value with no Wikibase `Q`/`P` ID are skipped.
 - Qualifiers that cannot be resolved are omitted from an otherwise valid line.
 - Identical resulting commands are de-duplicated.
 

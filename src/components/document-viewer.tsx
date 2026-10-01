@@ -497,8 +497,8 @@ export function DocumentViewer({
               annotationFormLoading={annotationFormLoading}
               isDeletingAnnotation={isDeletingAnnotation}
               corpusId={corpus.id}
-              wikidataPredicateFiltering={isPredicateFilteringEnabled(corpus.settings)}
-              wikidataConstraintWarnings={isConstraintWarningsEnabled(corpus.settings)}
+              wikibasePredicateFiltering={isPredicateFilteringEnabled(corpus.settings)}
+              wikibaseConstraintWarnings={isConstraintWarningsEnabled(corpus.settings)}
               removeQualifier={removeQualifier}
               assignSelectionToQualifier={assignSelectionToQualifier}
               updateQualifierEntity={updateQualifierEntity}
