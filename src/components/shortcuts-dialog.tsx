@@ -129,6 +129,43 @@ export function ShortcutsDialog() {
           </div>
           <div>
             <h4 className="mb-2 text-sm font-medium">
+              Text Batch Annotation
+            </h4>
+            <div className="space-y-2 text-sm">
+              <p className="text-xs text-muted-foreground">
+                Batch annotate: stage the selected text into a batch for that
+                role; repeat on more selections, then save.
+              </p>
+              <div className="flex justify-between">
+                <span>Batch stage as Subject</span>
+                <kbd className="rounded-sm bg-muted px-2 py-1 text-xs">
+                  Shift+S
+                </kbd>
+              </div>
+              <div className="flex justify-between">
+                <span>Batch stage as Predicate</span>
+                <kbd className="rounded-sm bg-muted px-2 py-1 text-xs">
+                  Shift+P
+                </kbd>
+              </div>
+              <div className="flex justify-between">
+                <span>Batch stage as Object</span>
+                <kbd className="rounded-sm bg-muted px-2 py-1 text-xs">
+                  Shift+O
+                </kbd>
+              </div>
+              <div className="flex justify-between">
+                <span>
+                  Annotate only the latest selection (releases the batch)
+                </span>
+                <kbd className="rounded-sm bg-muted px-2 py-1 text-xs">
+                  S / P / O
+                </kbd>
+              </div>
+            </div>
+          </div>
+          <div>
+            <h4 className="mb-2 text-sm font-medium">
               Form Actions
             </h4>
             <div className="space-y-2 text-sm">
