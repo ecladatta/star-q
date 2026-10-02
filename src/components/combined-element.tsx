@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { getAnnotationComponents } from '@/lib/annotation-roles'
+import { isTitleSpanComponent } from '@/lib/document-elements'
 import { cn, splitWithOffsets } from '@/lib/utils'
 import Split from './split'
 import { TableBatchControls } from './table-batch-controls'
@@ -285,9 +286,7 @@ function CombinedElement({
     const renderedTitle = normalizeRenderedWhitespace(rawTitle)
 
     const isHeadingComponent = (component: DocumentElement['components'][number]) =>
-      component.annotationType === 'text'
-      && rawTitle.slice(component.annotationStart, component.annotationEnd) === component.annotationValue
-      && rawText.slice(component.annotationStart, component.annotationEnd) !== component.annotationValue
+      isTitleSpanComponent(component, rawText, rawTitle)
 
     const currentAnnotationComponents = currentAnnotation
       ? getAnnotationComponents(currentAnnotation)

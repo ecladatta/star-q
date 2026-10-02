@@ -306,9 +306,6 @@ export function useAnnotationBatch(options: UseAnnotationBatchOptions) {
       return
     }
 
-    // Start a span batch: fold the same-role text mention in as unit #1,
-    // seeding it with the user's entity or quantity pick so the fold
-    // loses nothing.
     const nextMentions: BatchMention[] = []
     const seededEntities = new Map<string, Entity>()
     const seededQuantities = new Map<string, BatchMentionQuantity>()

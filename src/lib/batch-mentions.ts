@@ -8,6 +8,7 @@ import type {
 } from '@/types/types'
 import { createEntityFromComponent } from '@/lib/annotation-roles'
 import { isNumericEntityDatatype } from '@/lib/datatypes'
+import { isTitleSpanComponent } from '@/lib/document-elements'
 import { isValidQuantityAmount, parseQuantityHint } from '@/lib/numeric-units'
 
 export type BatchCellRef = {
@@ -89,9 +90,7 @@ export function spanRefFromComponent(
 
   const rawText = element?.type === 'text' ? element.value : undefined
   const rawTitle = element?.type === 'text' ? (element.data?.title ?? '') : undefined
-  const title = rawText !== undefined
-    && rawTitle.slice(component.annotationStart, component.annotationEnd) === component.annotationValue
-    && rawText.slice(component.annotationStart, component.annotationEnd) !== component.annotationValue
+  const title = rawText !== undefined && isTitleSpanComponent(component, rawText, rawTitle ?? '')
 
   return {
     kind: 'span',
