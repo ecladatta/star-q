@@ -155,6 +155,12 @@ export function ShortcutsDialog() {
                 </kbd>
               </div>
               <div className="flex justify-between">
+                <span>Batch stage with a role button</span>
+                <kbd className="rounded-sm bg-muted px-2 py-1 text-xs">
+                  Shift+Click
+                </kbd>
+              </div>
+              <div className="flex justify-between">
                 <span>
                   Annotate only the latest selection (releases the batch)
                 </span>
