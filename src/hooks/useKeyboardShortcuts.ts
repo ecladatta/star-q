@@ -5,6 +5,8 @@ type KeyboardShortcutsConfig = {
   popoverVisible: boolean
   hasSelection: boolean
   currentAnnotation: DocumentAnnotation | null
+  batchHasMentions: boolean
+  hasInProgressAnnotation: boolean
   onAnnotationAction: (type: EntityType, modifiers?: { shift?: boolean }) => void
   onEditCurrentAnnotation: () => void
   onClearAnnotation: () => void
@@ -12,12 +14,25 @@ type KeyboardShortcutsConfig = {
   onToggleAnnotations: () => void
   onCloneAnnotation: () => void
   onDeleteAnnotation: () => void
+  onCancelBatchDrag: () => void
+  onExitBatchMode: () => void
+}
+
+export type EscapeAction = 'exit-batch' | 'clear-annotation'
+
+export function resolveEscapeAction(input: { batchHasMentions: boolean, hasInProgressAnnotation: boolean }): EscapeAction {
+  if (input.batchHasMentions && !input.hasInProgressAnnotation) {
+    return 'exit-batch'
+  }
+  return 'clear-annotation'
 }
 
 export function useKeyboardShortcuts({
   popoverVisible,
   hasSelection,
   currentAnnotation,
+  batchHasMentions,
+  hasInProgressAnnotation,
   onAnnotationAction,
   onEditCurrentAnnotation,
   onClearAnnotation,
@@ -25,6 +40,8 @@ export function useKeyboardShortcuts({
   onToggleAnnotations,
   onCloneAnnotation,
   onDeleteAnnotation,
+  onCancelBatchDrag,
+  onExitBatchMode,
 }: KeyboardShortcutsConfig) {
   useLayoutEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -46,10 +63,16 @@ export function useKeyboardShortcuts({
 
       const key = e.key.toLowerCase()
 
-      // Escape key - clear annotation and hide popover
+      // The discard dialog owns its own Escape (capture).
       if (key === 'escape') {
         e.preventDefault()
-        onClearAnnotation()
+        onCancelBatchDrag()
+        const action = resolveEscapeAction({ batchHasMentions, hasInProgressAnnotation })
+        if (action === 'exit-batch') {
+          onExitBatchMode()
+        } else {
+          onClearAnnotation()
+        }
         onHidePopover()
         return
       }
@@ -97,6 +120,8 @@ export function useKeyboardShortcuts({
     popoverVisible,
     hasSelection,
     currentAnnotation,
+    batchHasMentions,
+    hasInProgressAnnotation,
     onAnnotationAction,
     onEditCurrentAnnotation,
     onClearAnnotation,
@@ -104,5 +129,7 @@ export function useKeyboardShortcuts({
     onToggleAnnotations,
     onCloneAnnotation,
     onDeleteAnnotation,
+    onCancelBatchDrag,
+    onExitBatchMode,
   ])
 }

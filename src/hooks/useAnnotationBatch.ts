@@ -975,31 +975,16 @@ export function useAnnotationBatch(options: UseAnnotationBatchOptions) {
     }
   }, [dragging, extendRect])
 
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') {
-        return
-      }
-      if (dragRef.current?.active) {
-        activeTouchCleanupRef.current?.()
-        dragRef.current = null
-        dragActiveInSequenceRef.current = false
-        setDragging(false)
-        clearBrowserSelection()
-      }
-      if (mentions.length > 0) {
-        // With an in-progress annotation, defer to the form's discard
-        // confirmation (its close button is triggered by the keyboard
-        // shortcuts' Escape handler). Exit immediately otherwise.
-        if (!currentAnnotation) {
-          exitBatchMode()
-        }
-      }
+  const cancelDrag = useCallback(() => {
+    if (!dragRef.current?.active) {
+      return
     }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [mentions.length, currentAnnotation, exitBatchMode])
+    activeTouchCleanupRef.current?.()
+    dragRef.current = null
+    dragActiveInSequenceRef.current = false
+    setDragging(false)
+    clearBrowserSelection()
+  }, [])
 
   useEffect(() => {
     const finalizeDrag = (releasedOnTouch: boolean) => {
@@ -1137,6 +1122,7 @@ export function useAnnotationBatch(options: UseAnnotationBatchOptions) {
     handleSelectColumn,
     handleSelectRow,
     handleSelectAll,
+    cancelDrag,
     createBatch,
     clearMentions,
   } as const

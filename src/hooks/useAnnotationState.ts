@@ -771,6 +771,10 @@ export function useAnnotationState(
 
       setCurrentAnnotation(null)
     },
+    onCancelBatchDrag: annotationBatch.cancelDrag,
+    onExitBatchMode: annotationBatch.exitBatchMode,
+    batchHasMentions: annotationBatch.mentions.length > 0,
+    hasInProgressAnnotation: currentAnnotation !== null,
     onHidePopover: popover.hidePopover,
     onToggleAnnotations: () => setShowAnnotations(!showAnnotations),
     onCloneAnnotation: handleCloneAnnotation,
