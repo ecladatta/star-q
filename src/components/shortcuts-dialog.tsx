@@ -26,7 +26,7 @@ export function ShortcutsDialog() {
           <InfoIcon className="size-3.5" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Keyboard Shortcuts</DialogTitle>
           <DialogDescription>
@@ -97,7 +97,7 @@ export function ShortcutsDialog() {
           </div>
           <div>
             <h4 className="mb-2 text-sm font-medium">
-              Table Batch Annotation
+              Table Annotation
             </h4>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
@@ -129,11 +129,48 @@ export function ShortcutsDialog() {
           </div>
           <div>
             <h4 className="mb-2 text-sm font-medium">
+              Text Annotation
+            </h4>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span>Annotate selection</span>
+                <kbd className="rounded-sm bg-muted px-2 py-1 text-xs">
+                  S / P / O
+                </kbd>
+              </div>
+              <div className="flex justify-between">
+                <span>Batch stage as Subject</span>
+                <kbd className="rounded-sm bg-muted px-2 py-1 text-xs">
+                  Shift+S
+                </kbd>
+              </div>
+              <div className="flex justify-between">
+                <span>Batch stage as Predicate</span>
+                <kbd className="rounded-sm bg-muted px-2 py-1 text-xs">
+                  Shift+P
+                </kbd>
+              </div>
+              <div className="flex justify-between">
+                <span>Batch stage as Object</span>
+                <kbd className="rounded-sm bg-muted px-2 py-1 text-xs">
+                  Shift+O
+                </kbd>
+              </div>
+              <div className="flex justify-between">
+                <span>Batch stage with a role button</span>
+                <kbd className="rounded-sm bg-muted px-2 py-1 text-xs">
+                  Shift+Click
+                </kbd>
+              </div>
+            </div>
+          </div>
+          <div>
+            <h4 className="mb-2 text-sm font-medium">
               Form Actions
             </h4>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span>Clone annotation</span>
+                <span>Clone annotation (when editing)</span>
                 <kbd className="rounded-sm bg-muted px-2 py-1 text-xs">
                   C
                 </kbd>

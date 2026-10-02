@@ -21,7 +21,7 @@ import { useDocumentElements } from '@/hooks/useDocumentElements'
 import { useSelectionHandlers } from '@/hooks/useSelectionState'
 import { useWikibaseInstance } from '@/hooks/useWikibaseInstance'
 import { getAnnotationComponents } from '@/lib/annotation-roles'
-import { CONSTANT_ROLES } from '@/lib/cell-batch'
+import { CONSTANT_ROLES } from '@/lib/batch-mentions'
 import { isConstraintWarningsEnabled, isPredicateFilteringEnabled } from '@/lib/corpus-settings'
 import { annotationComponentsShareSegment, cn } from '@/lib/utils'
 import { AnnotationForm } from './annotation-form'
@@ -166,7 +166,7 @@ export function DocumentViewer({
     clearQualifierSide,
     selection,
     popover,
-    cellBatch,
+    annotationBatch,
   } = annotationState
 
   const { handleTextSelection, handleTableSelection } = useSelectionHandlers(
@@ -176,35 +176,35 @@ export function DocumentViewer({
   )
 
   const handleTableCellMouseUp = useCallback((index: number, row: number, col: number) => {
-    if (cellBatch.handleCellMouseUp({ elementIndex: index, row, col })) {
+    if (annotationBatch.handleCellMouseUp({ kind: 'cell', elementIndex: index, row, col })) {
       return
     }
 
     // Small delay to ensure selection state is properly updated
     setTimeout(handleTableSelection, 50, index, row, col)
-  }, [cellBatch, handleTableSelection])
+  }, [annotationBatch, handleTableSelection])
 
   const anchorPopoverState = useMemo<PopoverState | null>(() => {
-    if (!cellBatch.anchorRect) {
+    if (!annotationBatch.anchorRect) {
       return null
     }
     return {
-      top: cellBatch.anchorRect.top,
-      left: cellBatch.anchorRect.left,
-      anchorWidth: cellBatch.anchorRect.width,
-      anchorHeight: cellBatch.anchorRect.height,
+      top: annotationBatch.anchorRect.top,
+      left: annotationBatch.anchorRect.left,
+      anchorWidth: annotationBatch.anchorRect.width,
+      anchorHeight: annotationBatch.anchorRect.height,
       annotation: null,
       componentId: null,
       visible: true,
       annotations: [],
       mentionData: null,
     }
-  }, [cellBatch.anchorRect])
+  }, [annotationBatch.anchorRect])
 
   const handleCellSelectionAssociation = useCallback((type: EntityType) => {
-    cellBatch.setCellRole(type)
-    cellBatch.openBatchMode()
-  }, [cellBatch])
+    annotationBatch.setBatchRole(type)
+    annotationBatch.openBatchMode()
+  }, [annotationBatch])
 
   const handleQualifierSelectionAssociation = useCallback(
     (side: QualifierSide) => {
@@ -249,19 +249,31 @@ export function DocumentViewer({
     }
   }
 
-  const scrollToSelectedCells = useCallback(() => {
-    const selected = cellBatch.cells
+  const scrollToSelectedMentions = useCallback(() => {
+    const selected = annotationBatch.mentions
     if (selected.length === 0) {
       return
     }
     const middle = selected[Math.floor(selected.length / 2)]
-    const element = window.document.getElementById(`element-${middle.elementIndex}`)?.querySelector<HTMLElement>(
-      `[data-cell="${middle.row}-${middle.col}"]`,
-    )
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    const element = window.document.getElementById(`element-${middle.elementIndex}`)
+    if (!element) {
+      return
     }
-  }, [cellBatch])
+    if (middle.kind === 'cell') {
+      element.querySelector<HTMLElement>(
+        `[data-cell="${middle.row}-${middle.col}"]`,
+      )?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      return
+    }
+    const mark = element.querySelector<HTMLElement>(
+      `[data-start="${middle.start}"][data-end="${middle.end}"]`,
+    )
+    if (mark) {
+      mark.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      return
+    }
+    element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [annotationBatch])
 
   const scrollToAnnotationComponent = (component: DocumentAnnotationComponent) => {
     const element = window.document.getElementById(
@@ -328,8 +340,8 @@ export function DocumentViewer({
       return
     }
 
-    if (cellBatch.batchMode) {
-      await cellBatch.createBatch(document.id)
+    if (annotationBatch.batchMode) {
+      await annotationBatch.createBatch(document.id)
       return
     }
 
@@ -465,21 +477,22 @@ export function DocumentViewer({
                       handleSplitClick={handleSplitClick}
                       handleTableSelection={handleTableSelection}
                       handleTableCellPointerDown={(index, row, col, event) =>
-                        cellBatch.handleCellPointerDown({ elementIndex: index, row, col }, event)}
+                        annotationBatch.handleCellPointerDown({ kind: 'cell', elementIndex: index, row, col }, event)}
                       handleTableCellDragOver={(index, row, col) =>
-                        cellBatch.handleCellDragOver({ elementIndex: index, row, col })}
+                        annotationBatch.handleCellDragOver({ kind: 'cell', elementIndex: index, row, col })}
                       handleTableCellMouseUp={handleTableCellMouseUp}
                       handleTextSelection={handleTextSelection}
                       documentElements={documentElements}
                       currentAnnotation={currentAnnotation}
-                      selectedCellKeys={cellBatch.selectedKeys}
-                      cellRole={cellBatch.batchMode ? cellBatch.cellRole : undefined}
+                      selectedCellKeys={annotationBatch.selectedCellKeys}
+                      stagedComponentIds={annotationBatch.stagedSpanIds}
+                      cellRole={annotationBatch.batchMode ? annotationBatch.batchRole : undefined}
                       onSelectColumn={(col, additive, originRect) =>
-                        cellBatch.handleSelectColumn(element.elementIndex, col, additive, originRect)}
+                        annotationBatch.handleSelectColumn(element.elementIndex, col, additive, originRect)}
                       onSelectRow={(row, additive, originRect) =>
-                        cellBatch.handleSelectRow(element.elementIndex, row, additive, originRect)}
+                        annotationBatch.handleSelectRow(element.elementIndex, row, additive, originRect)}
                       onSelectAll={(additive, originRect) =>
-                        cellBatch.handleSelectAll(element.elementIndex, additive, originRect)}
+                        annotationBatch.handleSelectAll(element.elementIndex, additive, originRect)}
                       readOnly={readOnly}
                     />
                   ))}
@@ -505,31 +518,31 @@ export function DocumentViewer({
               clearQualifierSide={clearQualifierSide}
               hasActiveSelection={selection.hasSelection()}
               onActiveQualifierChange={setActiveQualifierId}
-              batchMode={cellBatch.batchMode}
-              batchCreating={cellBatch.creating}
-              batchCellRole={cellBatch.cellRole}
-              batchCellsCount={cellBatch.cells.length}
-              batchCellRows={cellBatch.cellRows}
-              batchCellEntities={cellBatch.cellEntities}
-              batchCellQuantities={cellBatch.cellQuantities}
-              batchQuantity={cellBatch.batchQuantity}
-              onBatchQuantityApply={cellBatch.applyBatchQuantity}
-              onBatchQuantityClear={cellBatch.clearBatchQuantity}
-              onBatchCellQuantityChange={cellBatch.setCellQuantity}
-              onBatchCellUnitChange={cellBatch.setCellUnit}
-              onBatchCellRoleChange={cellBatch.setCellRole}
-              onBatchCellEntityChange={cellBatch.setCellEntity}
+              batchMode={annotationBatch.batchMode}
+              batchCreating={annotationBatch.creating}
+              batchRole={annotationBatch.batchRole}
+              batchMentionsCount={annotationBatch.mentions.length}
+              batchMentionRows={annotationBatch.mentionRows}
+              batchMentionEntities={annotationBatch.mentionEntities}
+              batchMentionQuantities={annotationBatch.mentionQuantities}
+              batchQuantity={annotationBatch.batchQuantity}
+              onBatchQuantityApply={annotationBatch.applyBatchQuantity}
+              onBatchQuantityClear={annotationBatch.clearBatchQuantity}
+              onBatchMentionQuantityChange={annotationBatch.setMentionQuantity}
+              onBatchMentionQuantityUnitChange={annotationBatch.setMentionQuantityUnit}
+              onBatchRoleChange={annotationBatch.setBatchRole}
+              onBatchMentionEntityChange={annotationBatch.setMentionEntity}
               batchReady={Boolean(
-                CONSTANT_ROLES[cellBatch.cellRole].every(role => currentAnnotation?.[role])
-                && (cellBatch.preview?.createCount ?? 0) > 0,
+                CONSTANT_ROLES[annotationBatch.batchRole].every(role => currentAnnotation?.[role])
+                && (annotationBatch.preview?.createCount ?? 0) > 0,
               )}
-              batchSummary={cellBatch.preview?.createCount === 0
+              batchSummary={annotationBatch.preview?.createCount === 0
                 ? 'Nothing to create'
-                : cellBatch.preview
-                  ? `Create ${cellBatch.preview.createCount} annotation${cellBatch.preview.createCount === 1 ? '' : 's'}`
+                : annotationBatch.preview
+                  ? `Create ${annotationBatch.preview.createCount} annotation${annotationBatch.preview.createCount === 1 ? '' : 's'}`
                   : null}
-              onBatchExit={cellBatch.exitBatchMode}
-              scrollToCells={scrollToSelectedCells}
+              onBatchExit={annotationBatch.exitBatchMode}
+              scrollToMentions={scrollToSelectedMentions}
             />
           )}
 
@@ -583,13 +596,13 @@ export function DocumentViewer({
 
           {/* Same fresh-selection popup for multi-cell selections */}
           {!readOnly
-            && cellBatch.anchorRect
-            && !cellBatch.batchMode
-            && !cellBatch.dragging
+            && annotationBatch.anchorRect
+            && !annotationBatch.batchMode
+            && !annotationBatch.dragging
             && anchorPopoverState && (
             <SelectionPopover
               popoverState={anchorPopoverState}
-              onClose={cellBatch.clearCells}
+              onClose={annotationBatch.clearMentions}
               onDelete={deleteAnnotationById}
               isDeletingAnnotation={isDeletingAnnotation}
               onMentionAssociation={handleCellSelectionAssociation}

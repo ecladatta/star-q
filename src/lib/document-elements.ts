@@ -1,9 +1,23 @@
 import type {
+  DocumentAnnotationComponent,
   DocumentData,
   DocumentExtractionMetadata,
   TextOrTableElement,
 } from '@/types/types'
 import wtf from 'wtf_wikipedia'
+
+// A text-span component anchors into the heading when its value slices the
+// title string but not the body string. Render placement and batch mention keys
+// must classify it identically, so this predicate is the single authority.
+export function isTitleSpanComponent(
+  component: Pick<DocumentAnnotationComponent, 'annotationType' | 'annotationStart' | 'annotationEnd' | 'annotationValue'>,
+  rawText: string,
+  rawTitle: string,
+): boolean {
+  return component.annotationType === 'text'
+    && rawTitle.slice(component.annotationStart, component.annotationEnd) === component.annotationValue
+    && rawText.slice(component.annotationStart, component.annotationEnd) !== component.annotationValue
+}
 
 type UnindexedDocumentElement
   = | Omit<Extract<TextOrTableElement, { type: 'text' }>, 'elementIndex'>

@@ -26,7 +26,7 @@ type SelectionPopoverProps = {
   onClose: () => void
   onDelete: (annotationId: string) => void
   isDeletingAnnotation: boolean
-  onMentionAssociation: (type: EntityType) => void
+  onMentionAssociation: (type: EntityType, modifiers?: { shift?: boolean }) => void
   onQualifierSelectionAssociation: (side: QualifierSide) => void
   hasCurrentAnnotation: boolean
   onEditAnnotation: (annotation: DocumentAnnotation) => void
@@ -144,7 +144,7 @@ export function SelectionPopover({
                 variant="outline"
                 size="sm"
                 className="flex-1 border-subject/50 text-subject-fg hover:bg-subject-soft/50 focus-visible:ring-subject"
-                onClick={() => onMentionAssociation('subject')}
+                onClick={e => onMentionAssociation('subject', { shift: e.shiftKey })}
               >
                 <UserIcon />
                 {!popoverState.annotation && (
@@ -158,7 +158,7 @@ export function SelectionPopover({
                 variant="outline"
                 size="sm"
                 className="flex-1 border-predicate/50 text-predicate-fg hover:bg-predicate-soft/50 focus-visible:ring-predicate"
-                onClick={() => onMentionAssociation('predicate')}
+                onClick={e => onMentionAssociation('predicate', { shift: e.shiftKey })}
               >
                 <LinkIcon />
                 {!popoverState.annotation && (
@@ -172,7 +172,7 @@ export function SelectionPopover({
                 variant="outline"
                 size="sm"
                 className="flex-1 border-object/50 text-object-fg hover:bg-object-soft/50 focus-visible:ring-object"
-                onClick={() => onMentionAssociation('object')}
+                onClick={e => onMentionAssociation('object', { shift: e.shiftKey })}
               >
                 <BoxIcon />
                 {!popoverState.annotation && (

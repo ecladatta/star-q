@@ -1,5 +1,5 @@
 'use client'
-import type { CellBatchOriginRect } from '@/hooks/useCellBatch'
+import type { BatchOriginRect } from '@/hooks/useAnnotationBatch'
 import type { Offset } from '@/lib/utils'
 import type { AnnotationComponentRole, CurrentAnnotation, DocumentElement, EntityType } from '@/types/types'
 import { createElement, useCallback, useEffect, useRef, useState } from 'react'
@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { getAnnotationComponents } from '@/lib/annotation-roles'
+import { isTitleSpanComponent } from '@/lib/document-elements'
 import { cn, splitWithOffsets } from '@/lib/utils'
 import Split from './split'
 import { TableBatchControls } from './table-batch-controls'
@@ -34,10 +35,11 @@ export type CombinedElementProps = {
   documentElements: DocumentElement[]
   currentAnnotation: CurrentAnnotation | null
   selectedCellKeys?: Set<string>
+  stagedComponentIds?: Set<string>
   cellRole?: EntityType
-  onSelectColumn?: (col: number, additive: boolean, originRect?: CellBatchOriginRect | null) => void
-  onSelectRow?: (row: number, additive: boolean, originRect?: CellBatchOriginRect | null) => void
-  onSelectAll?: (additive: boolean, originRect?: CellBatchOriginRect | null) => void
+  onSelectColumn?: (col: number, additive: boolean, originRect?: BatchOriginRect | null) => void
+  onSelectRow?: (row: number, additive: boolean, originRect?: BatchOriginRect | null) => void
+  onSelectAll?: (additive: boolean, originRect?: BatchOriginRect | null) => void
   readOnly?: boolean
 }
 
@@ -115,6 +117,7 @@ function CombinedElement({
   documentElements,
   currentAnnotation,
   selectedCellKeys,
+  stagedComponentIds,
   cellRole,
   onSelectColumn,
   onSelectRow,
@@ -126,6 +129,13 @@ function CombinedElement({
   const [columnButtonPosition, setColumnButtonPosition] = useState<ColumnButtonPosition | null>(null)
   const [rowButtonPosition, setRowButtonPosition] = useState<RowButtonPosition | null>(null)
   const [tableActionRailPosition, setTableActionRailPosition] = useState<TableActionRailPosition | null>(null)
+
+  const isCurrentOrStaged = (componentId: string | null | undefined) =>
+    !!componentId
+    && (
+      isComponentFromCurrentAnnotation(componentId, currentAnnotation)
+      || (stagedComponentIds?.has(componentId) ?? false)
+    )
 
   const tableRootRef = useRef<HTMLDivElement | null>(null)
   const tableWrapperRef = useRef<HTMLDivElement | null>(null)
@@ -276,9 +286,7 @@ function CombinedElement({
     const renderedTitle = normalizeRenderedWhitespace(rawTitle)
 
     const isHeadingComponent = (component: DocumentElement['components'][number]) =>
-      component.annotationType === 'text'
-      && rawTitle.slice(component.annotationStart, component.annotationEnd) === component.annotationValue
-      && rawText.slice(component.annotationStart, component.annotationEnd) !== component.annotationValue
+      isTitleSpanComponent(component, rawText, rawTitle)
 
     const currentAnnotationComponents = currentAnnotation
       ? getAnnotationComponents(currentAnnotation)
@@ -333,7 +341,7 @@ function CombinedElement({
               className="wrap-break-word"
               onClick={anchorRect => handleSplitClick(split, anchorRect)}
               role={getComponentRole(split.componentId, element, currentAnnotation)}
-              isCurrentAnnotation={split.componentId ? isComponentFromCurrentAnnotation(split.componentId, currentAnnotation) : false}
+              isCurrentAnnotation={isCurrentOrStaged(split.componentId)}
               unitLabel={unitLabelFor(split.componentId)}
             />
           ))
@@ -357,7 +365,7 @@ function CombinedElement({
                 className="wrap-break-word"
                 onClick={anchorRect => handleSplitClick(split, anchorRect)}
                 role={getComponentRole(split.componentId, element, currentAnnotation)}
-                isCurrentAnnotation={split.componentId ? isComponentFromCurrentAnnotation(split.componentId, currentAnnotation) : false}
+                isCurrentAnnotation={isCurrentOrStaged(split.componentId)}
                 unitLabel={unitLabelFor(split.componentId)}
               />
             ))}
@@ -718,7 +726,7 @@ function CombinedElement({
                                 {...split}
                                 onClick={anchorRect => handleSplitClick(split, anchorRect)}
                                 role={getComponentRole(split.componentId, element, currentAnnotation)}
-                                isCurrentAnnotation={split.componentId ? isComponentFromCurrentAnnotation(split.componentId, currentAnnotation) : false}
+                                isCurrentAnnotation={isCurrentOrStaged(split.componentId)}
                                 unitLabel={unitLabelFor(split.componentId)}
                               />
                             ))}
@@ -771,7 +779,7 @@ function CombinedElement({
                                 {...split}
                                 onClick={anchorRect => handleSplitClick(split, anchorRect)}
                                 role={getComponentRole(split.componentId, element, currentAnnotation)}
-                                isCurrentAnnotation={split.componentId ? isComponentFromCurrentAnnotation(split.componentId, currentAnnotation) : false}
+                                isCurrentAnnotation={isCurrentOrStaged(split.componentId)}
                                 unitLabel={unitLabelFor(split.componentId)}
                               />
                             ))}

@@ -1,5 +1,5 @@
 'use client'
-import type { CellBatchOriginRect } from '@/hooks/useCellBatch'
+import type { BatchOriginRect } from '@/hooks/useAnnotationBatch'
 import { Check, Columns3Icon, Copy, Grid2x2Check, Rows3Icon } from 'lucide-react'
 import { createPortal } from 'react-dom'
 import { Button } from '@/components/ui/button'
@@ -14,16 +14,16 @@ type TableBatchControlsProps = {
   tableActionRailPosition: { top: number, left: number } | null
   copied: boolean
   portalTarget: HTMLElement | null
-  onSelectColumn?: ((col: number, additive: boolean, originRect?: CellBatchOriginRect | null) => void) | null
-  onSelectRow?: ((row: number, additive: boolean, originRect?: CellBatchOriginRect | null) => void) | null
-  onSelectAll?: ((additive: boolean, originRect?: CellBatchOriginRect | null) => void) | null
+  onSelectColumn?: ((col: number, additive: boolean, originRect?: BatchOriginRect | null) => void) | null
+  onSelectRow?: ((row: number, additive: boolean, originRect?: BatchOriginRect | null) => void) | null
+  onSelectAll?: ((additive: boolean, originRect?: BatchOriginRect | null) => void) | null
   onCopyTable: () => void
   onColumnButtonRef: (button: HTMLButtonElement | null) => void
   onRowButtonRef: (button: HTMLButtonElement | null) => void
   onRowButtonLeave: (event: React.MouseEvent<HTMLElement>) => void
 }
 
-function originRectFrom(element: Element): CellBatchOriginRect {
+function originRectFrom(element: Element): BatchOriginRect {
   const rect = element.getBoundingClientRect()
   return {
     top: rect.top + window.scrollY,

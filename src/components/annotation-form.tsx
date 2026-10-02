@@ -1,6 +1,6 @@
 import type { Dispatch, ReactNode, SetStateAction } from 'react'
 import type { QuantityState } from '@/components/entity-selector'
-import type { BatchCellQuantity, CellBatchCellRef } from '@/lib/cell-batch'
+import type { BatchMention, BatchMentionQuantity, BatchMentionRow } from '@/lib/batch-mentions'
 import type { ConstraintEntityCheck, ConstraintSide, PropertyConstraints } from '@/lib/wikibase-constraints'
 import type {
   AnnotationComponentRole,
@@ -74,7 +74,7 @@ import {
 } from '@/components/ui/tooltip'
 import { entityTypeForComponentRole, hasEntityLink } from '@/lib/annotation-roles'
 import { validateAnnotationQualifiers } from '@/lib/annotation-validation'
-import { cellKey } from '@/lib/cell-batch'
+import { mentionKey } from '@/lib/batch-mentions'
 import { isNumericEntityDatatype } from '@/lib/datatypes'
 import { isValidQuantityAmount } from '@/lib/numeric-units'
 import { cn, isMac } from '@/lib/utils'
@@ -120,19 +120,19 @@ type AnnotationFormProps = {
   batchReady?: boolean
   batchSummary?: string | null
   batchCreating?: boolean
-  batchCellRole?: EntityType
-  batchCellsCount?: number
-  batchCellRows?: Array<{ cell: CellBatchCellRef, text: string, filled: boolean }> | null
-  batchCellEntities?: Map<string, Entity>
-  batchCellQuantities?: Map<string, BatchCellQuantity>
-  batchQuantity?: BatchCellQuantity | null
-  onBatchQuantityApply?: (quantity: BatchCellQuantity) => void
+  batchRole?: EntityType
+  batchMentionsCount?: number
+  batchMentionRows?: BatchMentionRow[] | null
+  batchMentionEntities?: Map<string, Entity>
+  batchMentionQuantities?: Map<string, BatchMentionQuantity>
+  batchQuantity?: BatchMentionQuantity | null
+  onBatchQuantityApply?: (quantity: BatchMentionQuantity) => void
   onBatchQuantityClear?: () => void
-  onBatchCellQuantityChange?: (cell: CellBatchCellRef, quantity: { value: string, lowerBound: string, upperBound: string } | null) => void
-  onBatchCellUnitChange?: (cell: CellBatchCellRef, unit: UnitRef | null) => void
-  onBatchCellRoleChange?: (role: EntityType) => void
-  onBatchCellEntityChange?: (cell: CellBatchCellRef, entity: Entity | null) => void
-  scrollToCells?: () => void
+  onBatchMentionQuantityChange?: (unit: BatchMention, quantity: { value: string, lowerBound: string, upperBound: string } | null) => void
+  onBatchMentionQuantityUnitChange?: (unit: BatchMention, unitRef: UnitRef | null) => void
+  onBatchRoleChange?: (role: EntityType) => void
+  onBatchMentionEntityChange?: (unit: BatchMention, entity: Entity | null) => void
+  scrollToMentions?: () => void
   onBatchExit?: () => void
 }
 
@@ -193,17 +193,38 @@ const ROLE_LABEL: Record<EntityType, string> = {
   object: 'Object',
 }
 
-function CellsSlotIndicator({
+function batchMentionsLabel(rows: BatchMentionRow[]): string {
+  const cellCount = rows.filter(row => row.mention.kind === 'cell').length
+  const spanCount = rows.length - cellCount
+  if (cellCount > 0 && spanCount > 0) {
+    return `${cellCount} cell${cellCount === 1 ? '' : 's'} · ${spanCount} text${spanCount === 1 ? '' : 's'}`
+  }
+  if (spanCount > 0) {
+    return `${spanCount} text${spanCount === 1 ? '' : 's'}`
+  }
+  return `${cellCount} cell${cellCount === 1 ? '' : 's'}`
+}
+
+function batchMentionKinds(rows: BatchMentionRow[]): string {
+  const hasCells = rows.some(row => row.mention.kind === 'cell')
+  const hasSpans = rows.some(row => row.mention.kind === 'span')
+  if (hasCells && hasSpans) {
+    return 'cell or text'
+  }
+  return hasSpans ? 'text' : 'cell'
+}
+
+function BatchMentionsIndicator({
   slotRole,
-  count,
+  rows,
   onRoleChange,
-  onScrollToCells,
+  onScrollToMentions,
   disabled = false,
 }: {
   slotRole: EntityType
-  count: number
+  rows: BatchMentionRow[]
   onRoleChange?: (role: EntityType) => void
-  onScrollToCells?: () => void
+  onScrollToMentions?: () => void
   disabled?: boolean
 }) {
   return (
@@ -216,14 +237,11 @@ function CellsSlotIndicator({
       <button
         type="button"
         className="flex cursor-pointer items-center gap-1.5 truncate text-sm"
-        onClick={onScrollToCells}
-        aria-label={`Scroll to the selected cells, which fill the ${ROLE_LABEL[slotRole].toLowerCase()} slot`}
+        onClick={onScrollToMentions}
+        aria-label={`Scroll to the batch selections, which fill the ${ROLE_LABEL[slotRole].toLowerCase()} slot`}
       >
         <LayersIcon className="size-3.5" />
-        {count}
-        {' '}
-        cell
-        {count === 1 ? '' : 's'}
+        {batchMentionsLabel(rows)}
       </button>
       <DropdownMenu>
         <DropdownMenuTrigger asChild disabled={disabled}>
@@ -381,19 +399,19 @@ export function AnnotationForm({
   batchReady = false,
   batchSummary = null,
   batchCreating = false,
-  batchCellRole,
-  batchCellsCount,
-  batchCellRows = null,
-  batchCellEntities,
-  batchCellQuantities,
+  batchRole,
+  batchMentionsCount,
+  batchMentionRows = null,
+  batchMentionEntities,
+  batchMentionQuantities,
   batchQuantity,
   onBatchQuantityApply,
   onBatchQuantityClear,
-  onBatchCellQuantityChange,
-  onBatchCellUnitChange,
-  onBatchCellRoleChange,
-  onBatchCellEntityChange,
-  scrollToCells,
+  onBatchMentionQuantityChange,
+  onBatchMentionQuantityUnitChange,
+  onBatchRoleChange,
+  onBatchMentionEntityChange,
+  scrollToMentions,
   onBatchExit,
 }: AnnotationFormProps) {
   const subjectTag = currentAnnotation?.subject
@@ -509,18 +527,18 @@ export function AnnotationForm({
   const effectiveQualifierPredicateConstraints = qualifierPredicatesEligible
     ? (qualifierPredicateConstraints ?? {})
     : null
-  // The constraint side applies to the entity picked for the cell role's entities.
-  const cellConstraintSide = batchCellRole === 'subject'
+  const batchConstraintSide = batchRole === 'subject'
     ? subjectConstraintSide
-    : batchCellRole === 'object'
+    : batchRole === 'object'
       ? objectConstraintSide
       : null
-  const singleBatchCell = batchCellsCount === 1 ? batchCellRows?.[0] ?? null : null
-  const singleBatchCellEntity = singleBatchCell
-    ? batchCellEntities?.get(cellKey(singleBatchCell.cell)) ?? null
+  const batchMentionKindsLabel = batchMentionKinds(batchMentionRows ?? [])
+  const singleBatchMention = batchMentionsCount === 1 ? batchMentionRows?.[0] ?? null : null
+  const singleBatchMentionEntity = singleBatchMention
+    ? batchMentionEntities?.get(mentionKey(singleBatchMention.mention)) ?? null
     : null
-  const singleBatchCellQuantity = singleBatchCell
-    ? batchCellQuantities?.get(cellKey(singleBatchCell.cell)) ?? null
+  const singleBatchMentionQuantity = singleBatchMention
+    ? batchMentionQuantities?.get(mentionKey(singleBatchMention.mention)) ?? null
     : null
   const batchQuantityFields = batchQuantity
     ? { value: batchQuantity.value, lowerBound: batchQuantity.lowerBound, upperBound: batchQuantity.upperBound }
@@ -715,9 +733,8 @@ export function AnnotationForm({
   }
 
   const handleSwapSubjectObject = () => {
-    if (batchMode && (batchCellRole === 'subject' || batchCellRole === 'object')) {
-      const cellRole = batchCellRole
-      const otherRole: EntityType = cellRole === 'subject' ? 'object' : 'subject'
+    if (batchMode && (batchRole === 'subject' || batchRole === 'object')) {
+      const otherRole: EntityType = batchRole === 'subject' ? 'object' : 'subject'
       setCurrentAnnotation((prev) => {
         if (!prev)
           return prev
@@ -725,11 +742,11 @@ export function AnnotationForm({
         const swapped = prev[otherRole]
         return {
           ...prev,
-          [cellRole]: swapped ? { ...swapped, annotationTag: cellRole } : undefined,
+          [batchRole]: swapped ? { ...swapped, annotationTag: batchRole } : undefined,
           [otherRole]: undefined,
         }
       })
-      onBatchCellRoleChange?.(otherRole)
+      onBatchRoleChange?.(otherRole)
       return
     }
 
@@ -1141,7 +1158,7 @@ export function AnnotationForm({
             </CardTitle>
             <CardDescription>
               {batchMode
-                ? 'One annotation per selected cell.'
+                ? `One annotation per selected ${batchMentionKindsLabel}.`
                 : 'Select entities for each subject, predicate, and object.'}
             </CardDescription>
           </div>
@@ -1297,17 +1314,17 @@ export function AnnotationForm({
         <CardContent className="max-h-[min(70vh,32rem)] overflow-y-auto">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div>
-              {batchMode && batchCellRole === 'subject'
+              {batchMode && batchRole === 'subject'
                 ? (
                     <>
-                      <CellsSlotIndicator slotRole="subject" count={batchCellsCount ?? 0} onRoleChange={onBatchCellRoleChange} onScrollToCells={scrollToCells} disabled={batchCreating} />
-                      {singleBatchCell && (
+                      <BatchMentionsIndicator slotRole="subject" rows={batchMentionRows ?? []} onRoleChange={onBatchRoleChange} onScrollToMentions={scrollToMentions} disabled={batchCreating} />
+                      {singleBatchMention && (
                         <div className="mt-1">
                           <EntitySelector
                             type="subject"
-                            value={singleBatchCellEntity}
-                            onValueChange={newValue => onBatchCellEntityChange?.(singleBatchCell.cell, newValue)}
-                            text={singleBatchCell.text}
+                            value={singleBatchMentionEntity}
+                            onValueChange={newValue => onBatchMentionEntityChange?.(singleBatchMention.mention, newValue)}
+                            text={singleBatchMention.text}
                             corpusId={corpusId}
                             constraints={subjectConstraintSide ? effectivePredicateConstraints : null}
                             constraintSide={subjectConstraintSide}
@@ -1335,17 +1352,17 @@ export function AnnotationForm({
                   )}
             </div>
             <div>
-              {batchMode && batchCellRole === 'predicate'
+              {batchMode && batchRole === 'predicate'
                 ? (
                     <>
-                      <CellsSlotIndicator slotRole="predicate" count={batchCellsCount ?? 0} onRoleChange={onBatchCellRoleChange} onScrollToCells={scrollToCells} disabled={batchCreating} />
-                      {singleBatchCell && (
+                      <BatchMentionsIndicator slotRole="predicate" rows={batchMentionRows ?? []} onRoleChange={onBatchRoleChange} onScrollToMentions={scrollToMentions} disabled={batchCreating} />
+                      {singleBatchMention && (
                         <div className="mt-1">
                           <EntitySelector
                             type="predicate"
-                            value={singleBatchCellEntity}
-                            onValueChange={newValue => onBatchCellEntityChange?.(singleBatchCell.cell, newValue)}
-                            text={singleBatchCell.text}
+                            value={singleBatchMentionEntity}
+                            onValueChange={newValue => onBatchMentionEntityChange?.(singleBatchMention.mention, newValue)}
+                            text={singleBatchMention.text}
                             corpusId={corpusId}
                             constraintEntityChecks={predicateEntityChecks}
                             filteringEnabled={wikibasePredicateFiltering}
@@ -1384,25 +1401,25 @@ export function AnnotationForm({
                   )}
             </div>
             <div>
-              {batchMode && batchCellRole === 'object'
+              {batchMode && batchRole === 'object'
                 ? (
                     <>
-                      <CellsSlotIndicator slotRole="object" count={batchCellsCount ?? 0} onRoleChange={onBatchCellRoleChange} onScrollToCells={scrollToCells} disabled={batchCreating} />
-                      {singleBatchCell && (
+                      <BatchMentionsIndicator slotRole="object" rows={batchMentionRows ?? []} onRoleChange={onBatchRoleChange} onScrollToMentions={scrollToMentions} disabled={batchCreating} />
+                      {singleBatchMention && (
                         <div className="mt-1">
                           <EntitySelector
                             type="object"
-                            value={singleBatchCellEntity}
-                            onValueChange={newValue => onBatchCellEntityChange?.(singleBatchCell.cell, newValue)}
+                            value={singleBatchMentionEntity}
+                            onValueChange={newValue => onBatchMentionEntityChange?.(singleBatchMention.mention, newValue)}
                             quantity={{
-                              value: singleBatchCellQuantity?.value ?? '',
-                              lowerBound: singleBatchCellQuantity?.lowerBound ?? '',
-                              upperBound: singleBatchCellQuantity?.upperBound ?? '',
+                              value: singleBatchMentionQuantity?.value ?? '',
+                              lowerBound: singleBatchMentionQuantity?.lowerBound ?? '',
+                              upperBound: singleBatchMentionQuantity?.upperBound ?? '',
                             }}
-                            unit={singleBatchCellQuantity?.unit ?? null}
-                            onQuantityChange={quantity => onBatchCellQuantityChange?.(singleBatchCell.cell, quantity)}
-                            onUnitChange={unit => onBatchCellUnitChange?.(singleBatchCell.cell, unit)}
-                            text={singleBatchCell.text}
+                            unit={singleBatchMentionQuantity?.unit ?? null}
+                            onQuantityChange={quantity => onBatchMentionQuantityChange?.(singleBatchMention.mention, quantity)}
+                            onUnitChange={unit => onBatchMentionQuantityUnitChange?.(singleBatchMention.mention, unit)}
+                            text={singleBatchMention.text}
                             corpusId={corpusId}
                             constraints={objectConstraintSide ? effectivePredicateConstraints : null}
                             constraintSide={objectConstraintSide}
@@ -1440,43 +1457,51 @@ export function AnnotationForm({
                   )}
             </div>
           </div>
-          {batchMode && (batchCellsCount ?? 0) > 1 && (
+          {batchMode && (batchMentionsCount ?? 0) > 1 && (
             <Collapsible className="pt-1">
               <CollapsibleTrigger
                 className="group flex w-full items-center gap-1.5 rounded-md border border-dashed px-2 py-1.5 text-sm font-medium text-muted-foreground hover:bg-foreground/5"
               >
                 <ChevronRightIcon className="size-3.5 transition-transform group-data-[state=open]:rotate-90" />
-                {batchCellRole === 'subject' ? 'Per-cell subjects' : batchCellRole === 'predicate' ? 'Per-cell predicates' : 'Per-cell objects'}
+                {(() => {
+                  const rows = batchMentionRows ?? []
+                  const hasCells = rows.some(row => row.mention.kind === 'cell')
+                  const hasSpans = rows.some(row => row.mention.kind === 'span')
+                  const kindLabel = hasCells && hasSpans ? 'Per-selection' : hasSpans ? 'Per-span' : 'Per-cell'
+                  return batchRole === 'subject'
+                    ? `${kindLabel} subjects`
+                    : batchRole === 'predicate' ? `${kindLabel} predicates` : `${kindLabel} objects`
+                })()}
                 <Badge variant="secondary" className="ml-auto font-normal">
                   {(() => {
-                    const filled = (batchCellRows ?? []).filter(row => row.filled)
+                    const filled = (batchMentionRows ?? []).filter(row => row.filled)
                     const withValue = filled.filter(row =>
-                      batchCellEntities?.has(cellKey(row.cell))
-                      || batchCellQuantities?.has(cellKey(row.cell))).length
+                      batchMentionEntities?.has(mentionKey(row.mention))
+                      || batchMentionQuantities?.has(mentionKey(row.mention))).length
                     return `${withValue} of ${filled.length} set`
                   })()}
                 </Badge>
               </CollapsibleTrigger>
               <CollapsibleContent>
                 {(() => {
-                  const filledRows = (batchCellRows ?? []).filter(row => row.filled)
+                  const filledRows = (batchMentionRows ?? []).filter(row => row.filled)
                   const anySet = filledRows.some(row =>
-                    batchCellEntities?.has(cellKey(row.cell))
-                    || batchCellQuantities?.has(cellKey(row.cell)))
+                    batchMentionEntities?.has(mentionKey(row.mention))
+                    || batchMentionQuantities?.has(mentionKey(row.mention)))
 
                   return (
                     <div className="mt-2 flex items-center gap-2 rounded-md bg-muted/40 px-2 py-1.5">
                       <span className="w-20 shrink-0 text-xs font-medium text-muted-foreground">Apply to all</span>
                       <div className="min-w-0 flex-1">
                         <EntitySelector
-                          type={batchCellRole ?? 'subject'}
+                          type={batchRole ?? 'subject'}
                           value={null}
                           onValueChange={(newValue) => {
                             if (!newValue) {
                               return
                             }
                             for (const row of filledRows) {
-                              onBatchCellEntityChange?.(row.cell, newValue)
+                              onBatchMentionEntityChange?.(row.mention, newValue)
                             }
                             onBatchQuantityClear?.()
                           }}
@@ -1494,8 +1519,8 @@ export function AnnotationForm({
                           })}
                           text=""
                           corpusId={corpusId}
-                          constraints={cellConstraintSide ? effectivePredicateConstraints : null}
-                          constraintSide={cellConstraintSide}
+                          constraints={batchConstraintSide ? effectivePredicateConstraints : null}
+                          constraintSide={batchConstraintSide}
                           constraintPropertyLabel={predicateEntityLabel}
                           filteringEnabled={wikibasePredicateFiltering}
                         />
@@ -1507,12 +1532,12 @@ export function AnnotationForm({
                           className="size-7 shrink-0 text-destructive hover:text-destructive"
                           onClick={() => {
                             for (const row of filledRows) {
-                              onBatchCellEntityChange?.(row.cell, null)
-                              onBatchCellQuantityChange?.(row.cell, null)
+                              onBatchMentionEntityChange?.(row.mention, null)
+                              onBatchMentionQuantityChange?.(row.mention, null)
                             }
                             onBatchQuantityClear?.()
                           }}
-                          aria-label="Clear entities and quantities for all cells"
+                          aria-label="Clear entities and quantities for all selections"
                         >
                           <Trash2Icon className="size-3.5" />
                         </Button>
@@ -1521,9 +1546,9 @@ export function AnnotationForm({
                   )
                 })()}
                 <div className="mt-1 flex max-h-72 flex-col gap-1 overflow-y-auto pr-1">
-                  {(batchCellRows ?? []).map(row => (
+                  {(batchMentionRows ?? []).map(row => (
                     <div
-                      key={cellKey(row.cell)}
+                      key={mentionKey(row.mention)}
                       className={cn('flex items-center gap-2 rounded-md border px-2 py-1.5', !row.filled && 'bg-muted/40')}
                     >
                       {row.filled
@@ -1541,26 +1566,26 @@ export function AnnotationForm({
                       <div className="w-44 shrink-0">
                         {row.filled && (
                           <EntitySelector
-                            type={batchCellRole ?? 'subject'}
-                            value={batchCellEntities?.get(cellKey(row.cell)) ?? null}
-                            onValueChange={newValue => onBatchCellEntityChange?.(row.cell, newValue)}
+                            type={batchRole ?? 'subject'}
+                            value={batchMentionEntities?.get(mentionKey(row.mention)) ?? null}
+                            onValueChange={newValue => onBatchMentionEntityChange?.(row.mention, newValue)}
                             quantity={(() => {
-                              const cellQuantity = batchCellQuantities?.get(cellKey(row.cell))
+                              const mentionQuantity = batchMentionQuantities?.get(mentionKey(row.mention))
                               // Always a state object (possibly empty). The
                               // quantity view renders only when non-null.
                               return {
-                                value: cellQuantity?.value ?? '',
-                                lowerBound: cellQuantity?.lowerBound ?? '',
-                                upperBound: cellQuantity?.upperBound ?? '',
+                                value: mentionQuantity?.value ?? '',
+                                lowerBound: mentionQuantity?.lowerBound ?? '',
+                                upperBound: mentionQuantity?.upperBound ?? '',
                               }
                             })()}
-                            unit={batchCellQuantities?.get(cellKey(row.cell))?.unit ?? null}
-                            onQuantityChange={quantity => onBatchCellQuantityChange?.(row.cell, quantity)}
-                            onUnitChange={unit => onBatchCellUnitChange?.(row.cell, unit)}
+                            unit={batchMentionQuantities?.get(mentionKey(row.mention))?.unit ?? null}
+                            onQuantityChange={quantity => onBatchMentionQuantityChange?.(row.mention, quantity)}
+                            onUnitChange={unit => onBatchMentionQuantityUnitChange?.(row.mention, unit)}
                             text={row.text}
                             corpusId={corpusId}
-                            constraints={cellConstraintSide ? effectivePredicateConstraints : null}
-                            constraintSide={cellConstraintSide}
+                            constraints={batchConstraintSide ? effectivePredicateConstraints : null}
+                            constraintSide={batchConstraintSide}
                             constraintPropertyLabel={predicateEntityLabel}
                             filteringEnabled={wikibasePredicateFiltering}
                           />
