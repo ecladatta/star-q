@@ -519,14 +519,14 @@ const columns: ColumnDef<typeof features, DocumentMetadata, any>[] = [
               Open
             </Button>
           </Link>
-          {meta.canEdit && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="size-8 p-0">
-                  <MoreVerticalIcon className="size-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="size-8 p-0">
+                <MoreVerticalIcon className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              {meta.canEdit && (
                 <DropdownMenuItem
                   onClick={() => meta.handleMarkCompleted(row.original)}
                 >
@@ -544,39 +544,45 @@ const columns: ColumnDef<typeof features, DocumentMetadata, any>[] = [
                         </>
                       )}
                 </DropdownMenuItem>
+              )}
+              {meta.canEdit && (
                 <DropdownMenuItem
                   onClick={() => downloadRawDocumentData(row.original.id, row.original.title)}
                 >
                   <DownloadIcon className="mr-2 size-4" />
                   Download Raw Data
                 </DropdownMenuItem>
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger>
-                    <FileDownIcon className="mr-2 size-4" />
-                    Export
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent>
-                    {visibleExportFormatIds(meta.rdfAvailable).map(format => (
-                      <DropdownMenuItem
-                        key={format}
-                        onClick={() => void downloadExportFile(`/api/document/${row.original.id}/export?${EXPORT_FORMATS[format].query}`)}
-                      >
-                        {EXPORT_FORMATS[format].label}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => meta.setDocumentToDelete(row.original)}
-                  className="font-medium text-destructive focus:text-destructive"
-                >
-                  <Trash2Icon className="mr-2 size-4" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+              )}
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <FileDownIcon className="mr-2 size-4" />
+                  Export
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  {visibleExportFormatIds(meta.rdfAvailable).map(format => (
+                    <DropdownMenuItem
+                      key={format}
+                      onClick={() => void downloadExportFile(`/api/document/${row.original.id}/export?${EXPORT_FORMATS[format].query}`)}
+                    >
+                      {EXPORT_FORMATS[format].label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+              {meta.canEdit && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => meta.setDocumentToDelete(row.original)}
+                    className="font-medium text-destructive focus:text-destructive"
+                  >
+                    <Trash2Icon className="mr-2 size-4" />
+                    Delete
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       )
     },
