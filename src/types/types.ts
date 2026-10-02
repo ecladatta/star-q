@@ -230,7 +230,7 @@ export type DocumentExport = {
 export type ExportModel = {
   exportMeta: {
     version: string
-    type: 'full-corpus-export'
+    type: 'full-corpus-export' | 'single-document-export'
   }
   id: string
   title: string | null

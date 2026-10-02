@@ -1,13 +1,66 @@
 import type { ExportFormat } from './export-format'
-import type { AnnotationExport, ExportModel } from '@/types/types'
+import type { ResolvedWikibase } from '@/lib/wikibase'
+import type { AnnotationExport, DocumentExport, ExportModel } from '@/types/types'
 import { eq } from 'drizzle-orm'
 import { getAnnotations } from '@/actions/annotation/annotationActions'
 import { getCorpus, getCorpusCustomEntities } from '@/actions/corpus/corpusActions'
-import { getDocumentsMetadata, getRawDocumentData } from '@/actions/document/documentActions'
+import { getDocument, getDocumentsMetadata, getRawDocumentData } from '@/actions/document/documentActions'
 import { db } from '@/db/drizzle'
 import { unit } from '@/db/schema'
+import { NotFoundError } from '@/lib/auth-utils'
 import { unitOrdering } from '@/lib/units/server'
 import { loadCorpusWikibaseConfig } from '@/lib/wikibase-server'
+
+function toWikibaseConfig(wikibase: ResolvedWikibase | null) {
+  return wikibase
+    ? {
+        instance: wikibase.instance,
+        sparqlEndpoint: wikibase.sparqlEndpoint,
+        conceptBaseUri: wikibase.conceptBaseUri,
+      }
+    : null
+}
+
+async function buildDocumentExport(doc: {
+  id: string
+  title: string
+  createdAt: Date
+  updatedAt: Date | null
+  completedAt: Date | null
+  order: number
+}): Promise<DocumentExport> {
+  const [docAnnotations, rawContent] = await Promise.all([
+    getAnnotations(doc.id),
+    getRawDocumentData(doc.id),
+  ])
+  if (!rawContent) {
+    throw new Error(`Raw document data not found for document ${doc.id}`)
+  }
+
+  const annotations: AnnotationExport[] = docAnnotations.map(annotation => ({
+    id: annotation.id,
+    subject: { ...annotation.subject },
+    predicate: { ...annotation.predicate },
+    object: { ...annotation.object },
+    qualifiers: annotation.qualifiers.map(qualifier => ({
+      id: qualifier.id,
+      predicate: { ...qualifier.predicate },
+      value: { ...qualifier.value },
+      position: qualifier.position,
+    })),
+  }))
+
+  return {
+    id: doc.id,
+    title: doc.title,
+    createdAt: doc.createdAt.toISOString(),
+    updatedAt: doc.updatedAt ? doc.updatedAt.toISOString() : null,
+    completedAt: doc.completedAt ? doc.completedAt.toISOString() : null,
+    order: doc.order,
+    raw: rawContent,
+    annotations,
+  }
+}
 
 export async function buildCorpusExportModel(corpusId: string): Promise<ExportModel> {
   const [corpus, documents, units, customEntities, wikibase] = await Promise.all([
@@ -27,46 +80,38 @@ export async function buildCorpusExportModel(corpusId: string): Promise<ExportMo
     title: corpus.title,
     createdAt: corpus.createdAt ? corpus.createdAt.toISOString() : null,
     updatedAt: corpus.updatedAt ? corpus.updatedAt.toISOString() : null,
-    wikibase: wikibase
-      ? {
-          instance: wikibase.instance,
-          sparqlEndpoint: wikibase.sparqlEndpoint,
-          conceptBaseUri: wikibase.conceptBaseUri,
-        }
-      : null,
-    documents: await Promise.all(documents.map(async (document) => {
-      const [docAnnotations, rawContent] = await Promise.all([
-        getAnnotations(document.id),
-        getRawDocumentData(document.id),
-      ])
-      if (!rawContent) {
-        throw new Error(`Raw document data not found for document ${document.id}`)
-      }
+    wikibase: toWikibaseConfig(wikibase),
+    documents: await Promise.all(documents.map(document => buildDocumentExport(document))),
+    units,
+    customEntities,
+  }
+}
 
-      const annotations: AnnotationExport[] = docAnnotations.map(annotation => ({
-        id: annotation.id,
-        subject: { ...annotation.subject },
-        predicate: { ...annotation.predicate },
-        object: { ...annotation.object },
-        qualifiers: annotation.qualifiers.map(qualifier => ({
-          id: qualifier.id,
-          predicate: { ...qualifier.predicate },
-          value: { ...qualifier.value },
-          position: qualifier.position,
-        })),
-      }))
+export async function buildDocumentExportModel(documentId: string): Promise<ExportModel> {
+  const doc = await getDocument(documentId)
+  if (!doc) {
+    throw new NotFoundError(`Document ${documentId} not found.`)
+  }
 
-      return {
-        id: document.id,
-        title: document.title,
-        createdAt: document.createdAt.toISOString(),
-        updatedAt: document.updatedAt ? document.updatedAt.toISOString() : null,
-        completedAt: document.completedAt ? document.completedAt.toISOString() : null,
-        order: document.order,
-        raw: rawContent,
-        annotations,
-      }
-    })),
+  const [corpus, documentExport, units, customEntities, wikibase] = await Promise.all([
+    getCorpus(doc.corpusId),
+    buildDocumentExport(doc),
+    db.select().from(unit).where(eq(unit.corpusId, doc.corpusId)).orderBy(...unitOrdering()),
+    getCorpusCustomEntities(doc.corpusId),
+    loadCorpusWikibaseConfig(doc.corpusId),
+  ])
+
+  return {
+    exportMeta: {
+      version: '1.4',
+      type: 'single-document-export',
+    },
+    id: corpus.id,
+    title: corpus.title,
+    createdAt: corpus.createdAt ? corpus.createdAt.toISOString() : null,
+    updatedAt: corpus.updatedAt ? corpus.updatedAt.toISOString() : null,
+    wikibase: toWikibaseConfig(wikibase),
+    documents: [documentExport],
     units,
     customEntities,
   }
