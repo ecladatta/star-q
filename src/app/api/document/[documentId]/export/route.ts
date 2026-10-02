@@ -8,6 +8,12 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const { documentId } = await params
   return withApiHandler(async () => {
     await requireViewDocument(documentId)
-    return buildExportFileResponse(request, await buildDocumentExportModel(documentId))
+    const exportData = await buildDocumentExportModel(documentId)
+    const documentExport = exportData.documents[0]
+    return buildExportFileResponse(
+      request,
+      exportData,
+      { title: documentExport.title, fallbackBase: `document-${documentExport.id}` },
+    )
   })
 }

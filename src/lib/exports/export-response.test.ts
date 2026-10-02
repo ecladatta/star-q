@@ -76,6 +76,16 @@ describe('buildExportFileResponse', () => {
     expect(response.headers.get('Content-Disposition')).toBe('attachment; filename="corpus-c1.json"')
   })
 
+  it('uses an explicit filename source when given', async () => {
+    const response = await buildExportFileResponse(
+      exportRequest('?format=json'),
+      model({ title: 'My Corpus' }),
+      { title: 'Nintendo Wi-Fi Connection', fallbackBase: 'document-d1' },
+    )
+
+    expect(response.headers.get('Content-Disposition')).toBe('attachment; filename="Nintendo-Wi-Fi-Connection.json"')
+  })
+
   it('exposes the skipped count as a header for quickstatements exports', async () => {
     vi.mocked(serializeExport).mockReturnValue({
       body: 'QS',

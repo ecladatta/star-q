@@ -3,7 +3,16 @@ import { getExportFilename, resolveExportFormat } from './corpus-export'
 import { EXPORT_FORMATS } from './export-format'
 import { serializeExport } from './serialize-corpus-export'
 
-export async function buildExportFileResponse(request: Request, exportData: ExportModel): Promise<Response> {
+export type ExportFilename = {
+  title: string | null | undefined
+  fallbackBase: string
+}
+
+export async function buildExportFileResponse(
+  request: Request,
+  exportData: ExportModel,
+  filename: ExportFilename = { title: exportData.title, fallbackBase: `corpus-${exportData.id}` },
+): Promise<Response> {
   const format = resolveExportFormat(request)
 
   if (!format) {
@@ -23,11 +32,11 @@ export async function buildExportFileResponse(request: Request, exportData: Expo
   }
 
   const serializedExport = serializeExport(exportData, format)
-  const filename = getExportFilename(exportData.title, `corpus-${exportData.id}`, serializedExport.extension)
+  const exportFilename = getExportFilename(filename.title, filename.fallbackBase, serializedExport.extension)
 
   const headers: Record<string, string> = {
     'Content-Type': serializedExport.contentType,
-    'Content-Disposition': `attachment; filename="${filename}"`,
+    'Content-Disposition': `attachment; filename="${exportFilename}"`,
   }
   if (serializedExport.skippedCount && serializedExport.skippedCount > 0) {
     headers['X-QuickStatements-Skipped'] = String(serializedExport.skippedCount)
