@@ -3,18 +3,18 @@ import { withApiHandler } from '@/lib/api-utils'
 import { requireViewCorpus } from '@/lib/corpus-access'
 import {
   buildCorpusExportModel,
-  getCorpusExportFilename,
-  resolveCorpusExportFormat,
+  getExportFilename,
+  resolveExportFormat,
 } from '@/lib/exports/corpus-export'
-import { CORPUS_EXPORT_FORMATS } from '@/lib/exports/export-format'
-import { serializeCorpusExport } from '@/lib/exports/serialize-corpus-export'
+import { EXPORT_FORMATS } from '@/lib/exports/export-format'
+import { serializeExport } from '@/lib/exports/serialize-corpus-export'
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ corpusId: string }> }) {
   const { corpusId } = await params
   return withApiHandler(async () => {
     await requireViewCorpus(corpusId)
 
-    const format = resolveCorpusExportFormat(request)
+    const format = resolveExportFormat(request)
 
     if (!format) {
       return Response.json(
@@ -27,15 +27,15 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     const corpusData = await buildCorpusExportModel(corpusId)
 
-    if (CORPUS_EXPORT_FORMATS[format].kind === 'rdf' && !corpusData.wikibase) {
+    if (EXPORT_FORMATS[format].kind === 'rdf' && !corpusData.wikibase) {
       return Response.json(
         { error: 'RDF export requires a Wikibase instance, and none is available for this corpus.' },
         { status: 400 },
       )
     }
 
-    const serializedExport = serializeCorpusExport(corpusData, format)
-    const filename = getCorpusExportFilename(corpusData, serializedExport.extension)
+    const serializedExport = serializeExport(corpusData, format)
+    const filename = getExportFilename(corpusData.title, `corpus-${corpusId}`, serializedExport.extension)
 
     const headers: HeadersInit = {
       'Content-Type': serializedExport.contentType,

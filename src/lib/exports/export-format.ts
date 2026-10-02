@@ -1,8 +1,8 @@
 export type RdfExportMode = 'truthy' | 'full'
 
-export type CorpusExportKind = 'json' | 'rdf' | 'quickstatements'
+export type ExportKind = 'json' | 'rdf' | 'quickstatements'
 
-export type CorpusExportFormatConfig
+export type ExportFormatConfig
   = | {
     kind: 'json'
     extension: string
@@ -23,7 +23,7 @@ export type CorpusExportFormatConfig
     query: string
   }
 
-export const CORPUS_EXPORT_FORMATS = {
+export const EXPORT_FORMATS = {
   'json': {
     extension: 'json',
     label: 'JSON',
@@ -50,10 +50,10 @@ export const CORPUS_EXPORT_FORMATS = {
     query: 'format=quickstatements',
     kind: 'quickstatements',
   },
-} as const satisfies Record<string, CorpusExportFormatConfig>
+} as const satisfies Record<string, ExportFormatConfig>
 
-export type CorpusExportFormat = keyof typeof CORPUS_EXPORT_FORMATS
+export type ExportFormat = keyof typeof EXPORT_FORMATS
 
-export const CORPUS_EXPORT_FORMAT_IDS = Object.keys(
-  CORPUS_EXPORT_FORMATS,
-) as CorpusExportFormat[]
+export const EXPORT_FORMAT_IDS = Object.keys(
+  EXPORT_FORMATS,
+) as ExportFormat[]

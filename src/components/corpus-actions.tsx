@@ -4,7 +4,7 @@ import type { ChangeEvent, ReactNode } from 'react'
 import type { CorpusOwnerInput } from '@/actions/corpus/corpusActions'
 import type { Corpus } from '@/db/schema'
 import type { CorpusAccess } from '@/lib/corpus-access'
-import type { CorpusExportFormat } from '@/lib/exports/export-format'
+import type { ExportFormat } from '@/lib/exports/export-format'
 import type { CorpusImportFormat } from '@/lib/imports/import-format'
 import {
   BarChart3Icon,
@@ -56,8 +56,8 @@ import {
 } from '@/components/ui/select'
 import { canEditCorpus } from '@/lib/corpus-access-policy'
 import {
-  CORPUS_EXPORT_FORMAT_IDS,
-  CORPUS_EXPORT_FORMATS,
+  EXPORT_FORMAT_IDS,
+  EXPORT_FORMATS,
 } from '@/lib/exports/export-format'
 import {
   CORPUS_IMPORT_FORMAT_IDS,
@@ -82,8 +82,8 @@ export function CorpusActions({ corpus, showOpenAction = true, access, triggerBu
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const exportFormatIds = CORPUS_EXPORT_FORMAT_IDS
-    .filter(id => rdfAvailable || CORPUS_EXPORT_FORMATS[id].kind !== 'rdf')
+  const exportFormatIds = EXPORT_FORMAT_IDS
+    .filter(id => rdfAvailable || EXPORT_FORMATS[id].kind !== 'rdf')
 
   const [isDuplicating, setIsDuplicating] = useState(false)
   const [isRenaming, setIsRenaming] = useState(false)
@@ -151,8 +151,8 @@ export function CorpusActions({ corpus, showOpenAction = true, access, triggerBu
     }
   }
 
-  const handleExportClick = async (format: CorpusExportFormat) => {
-    const url = `/api/corpus/${corpus.id}/export?${CORPUS_EXPORT_FORMATS[format].query}`
+  const handleExportClick = async (format: ExportFormat) => {
+    const url = `/api/corpus/${corpus.id}/export?${EXPORT_FORMATS[format].query}`
     const response = await fetch(url)
     if (!response.ok) {
       const message = await response
@@ -304,7 +304,7 @@ export function CorpusActions({ corpus, showOpenAction = true, access, triggerBu
                   key={format}
                   onClick={() => handleExportClick(format)}
                 >
-                  {CORPUS_EXPORT_FORMATS[format].label}
+                  {EXPORT_FORMATS[format].label}
                 </DropdownMenuItem>
               ))}
             </DropdownMenuSubContent>

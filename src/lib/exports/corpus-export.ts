@@ -1,4 +1,4 @@
-import type { CorpusExportFormat } from './export-format'
+import type { ExportFormat } from './export-format'
 import type { AnnotationExport, ExportModel } from '@/types/types'
 import { eq } from 'drizzle-orm'
 import { getAnnotations } from '@/actions/annotation/annotationActions'
@@ -72,7 +72,7 @@ export async function buildCorpusExportModel(corpusId: string): Promise<ExportMo
   }
 }
 
-export function resolveCorpusExportFormat(request: Request): CorpusExportFormat | null {
+export function resolveExportFormat(request: Request): ExportFormat | null {
   const url = new URL(request.url)
   const requestedFormat = url.searchParams.get('format')?.trim().toLowerCase()
   const requestedMode = url.searchParams.get('mode')?.trim().toLowerCase()
@@ -105,13 +105,13 @@ export function resolveCorpusExportFormat(request: Request): CorpusExportFormat 
   return null
 }
 
-export function getCorpusExportFilename(corpusData: ExportModel, extension: string): string {
-  const baseName = corpusData.title?.trim() || `corpus-${corpusData.id}`
+export function getExportFilename(title: string | null | undefined, fallbackBase: string, extension: string): string {
+  const baseName = title?.trim() || fallbackBase
   const safeName = baseName
     .replace(/[/\\?%*:|"<>]/g, '-')
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '')
 
-  return `${safeName || 'corpus'}.${extension}`
+  return `${safeName || fallbackBase}.${extension}`
 }
