@@ -193,15 +193,36 @@ const ROLE_LABEL: Record<EntityType, string> = {
   object: 'Object',
 }
 
-function CellsSlotIndicator({
+function batchMentionsLabel(rows: BatchMentionRow[]): string {
+  const cellCount = rows.filter(row => row.mention.kind === 'cell').length
+  const spanCount = rows.length - cellCount
+  if (cellCount > 0 && spanCount > 0) {
+    return `${cellCount} cell${cellCount === 1 ? '' : 's'} · ${spanCount} text${spanCount === 1 ? '' : 's'}`
+  }
+  if (spanCount > 0) {
+    return `${spanCount} text${spanCount === 1 ? '' : 's'}`
+  }
+  return `${cellCount} cell${cellCount === 1 ? '' : 's'}`
+}
+
+function batchMentionKinds(rows: BatchMentionRow[]): string {
+  const hasCells = rows.some(row => row.mention.kind === 'cell')
+  const hasSpans = rows.some(row => row.mention.kind === 'span')
+  if (hasCells && hasSpans) {
+    return 'cell or text'
+  }
+  return hasSpans ? 'text' : 'cell'
+}
+
+function BatchMentionsIndicator({
   slotRole,
-  count,
+  rows,
   onRoleChange,
   onScrollToMentions,
   disabled = false,
 }: {
   slotRole: EntityType
-  count: number
+  rows: BatchMentionRow[]
   onRoleChange?: (role: EntityType) => void
   onScrollToMentions?: () => void
   disabled?: boolean
@@ -217,13 +238,10 @@ function CellsSlotIndicator({
         type="button"
         className="flex cursor-pointer items-center gap-1.5 truncate text-sm"
         onClick={onScrollToMentions}
-        aria-label={`Scroll to the selected cells, which fill the ${ROLE_LABEL[slotRole].toLowerCase()} slot`}
+        aria-label={`Scroll to the batch selections, which fill the ${ROLE_LABEL[slotRole].toLowerCase()} slot`}
       >
         <LayersIcon className="size-3.5" />
-        {count}
-        {' '}
-        cell
-        {count === 1 ? '' : 's'}
+        {batchMentionsLabel(rows)}
       </button>
       <DropdownMenu>
         <DropdownMenuTrigger asChild disabled={disabled}>
@@ -509,12 +527,12 @@ export function AnnotationForm({
   const effectiveQualifierPredicateConstraints = qualifierPredicatesEligible
     ? (qualifierPredicateConstraints ?? {})
     : null
-  // The constraint side applies to the entity picked for the unit role's entities.
   const batchConstraintSide = batchRole === 'subject'
     ? subjectConstraintSide
     : batchRole === 'object'
       ? objectConstraintSide
       : null
+  const batchMentionKindsLabel = batchMentionKinds(batchMentionRows ?? [])
   const singleBatchMention = batchMentionsCount === 1 ? batchMentionRows?.[0] ?? null : null
   const singleBatchMentionEntity = singleBatchMention
     ? batchMentionEntities?.get(mentionKey(singleBatchMention.mention)) ?? null
@@ -1140,7 +1158,7 @@ export function AnnotationForm({
             </CardTitle>
             <CardDescription>
               {batchMode
-                ? 'One annotation per selected cell.'
+                ? `One annotation per selected ${batchMentionKindsLabel}.`
                 : 'Select entities for each subject, predicate, and object.'}
             </CardDescription>
           </div>
@@ -1299,7 +1317,7 @@ export function AnnotationForm({
               {batchMode && batchRole === 'subject'
                 ? (
                     <>
-                      <CellsSlotIndicator slotRole="subject" count={batchMentionsCount ?? 0} onRoleChange={onBatchRoleChange} onScrollToMentions={scrollToMentions} disabled={batchCreating} />
+                      <BatchMentionsIndicator slotRole="subject" rows={batchMentionRows ?? []} onRoleChange={onBatchRoleChange} onScrollToMentions={scrollToMentions} disabled={batchCreating} />
                       {singleBatchMention && (
                         <div className="mt-1">
                           <EntitySelector
@@ -1337,7 +1355,7 @@ export function AnnotationForm({
               {batchMode && batchRole === 'predicate'
                 ? (
                     <>
-                      <CellsSlotIndicator slotRole="predicate" count={batchMentionsCount ?? 0} onRoleChange={onBatchRoleChange} onScrollToMentions={scrollToMentions} disabled={batchCreating} />
+                      <BatchMentionsIndicator slotRole="predicate" rows={batchMentionRows ?? []} onRoleChange={onBatchRoleChange} onScrollToMentions={scrollToMentions} disabled={batchCreating} />
                       {singleBatchMention && (
                         <div className="mt-1">
                           <EntitySelector
@@ -1386,7 +1404,7 @@ export function AnnotationForm({
               {batchMode && batchRole === 'object'
                 ? (
                     <>
-                      <CellsSlotIndicator slotRole="object" count={batchMentionsCount ?? 0} onRoleChange={onBatchRoleChange} onScrollToMentions={scrollToMentions} disabled={batchCreating} />
+                      <BatchMentionsIndicator slotRole="object" rows={batchMentionRows ?? []} onRoleChange={onBatchRoleChange} onScrollToMentions={scrollToMentions} disabled={batchCreating} />
                       {singleBatchMention && (
                         <div className="mt-1">
                           <EntitySelector
@@ -1445,7 +1463,15 @@ export function AnnotationForm({
                 className="group flex w-full items-center gap-1.5 rounded-md border border-dashed px-2 py-1.5 text-sm font-medium text-muted-foreground hover:bg-foreground/5"
               >
                 <ChevronRightIcon className="size-3.5 transition-transform group-data-[state=open]:rotate-90" />
-                {batchRole === 'subject' ? 'Per-cell subjects' : batchRole === 'predicate' ? 'Per-cell predicates' : 'Per-cell objects'}
+                {(() => {
+                  const rows = batchMentionRows ?? []
+                  const hasCells = rows.some(row => row.mention.kind === 'cell')
+                  const hasSpans = rows.some(row => row.mention.kind === 'span')
+                  const kindLabel = hasCells && hasSpans ? 'Per-selection' : hasSpans ? 'Per-span' : 'Per-cell'
+                  return batchRole === 'subject'
+                    ? `${kindLabel} subjects`
+                    : batchRole === 'predicate' ? `${kindLabel} predicates` : `${kindLabel} objects`
+                })()}
                 <Badge variant="secondary" className="ml-auto font-normal">
                   {(() => {
                     const filled = (batchMentionRows ?? []).filter(row => row.filled)
@@ -1511,7 +1537,7 @@ export function AnnotationForm({
                             }
                             onBatchQuantityClear?.()
                           }}
-                          aria-label="Clear entities and quantities for all cells"
+                          aria-label="Clear entities and quantities for all selections"
                         >
                           <Trash2Icon className="size-3.5" />
                         </Button>
@@ -1544,13 +1570,13 @@ export function AnnotationForm({
                             value={batchMentionEntities?.get(mentionKey(row.mention)) ?? null}
                             onValueChange={newValue => onBatchMentionEntityChange?.(row.mention, newValue)}
                             quantity={(() => {
-                              const cellQuantity = batchMentionQuantities?.get(mentionKey(row.mention))
+                              const mentionQuantity = batchMentionQuantities?.get(mentionKey(row.mention))
                               // Always a state object (possibly empty). The
                               // quantity view renders only when non-null.
                               return {
-                                value: cellQuantity?.value ?? '',
-                                lowerBound: cellQuantity?.lowerBound ?? '',
-                                upperBound: cellQuantity?.upperBound ?? '',
+                                value: mentionQuantity?.value ?? '',
+                                lowerBound: mentionQuantity?.lowerBound ?? '',
+                                upperBound: mentionQuantity?.upperBound ?? '',
                               }
                             })()}
                             unit={batchMentionQuantities?.get(mentionKey(row.mention))?.unit ?? null}
