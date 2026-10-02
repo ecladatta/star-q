@@ -1,5 +1,45 @@
 # Changelog
 
+## [1.4.0](https://github.com/ecladatta/star-q/compare/v1.3.1...v1.4.0) (2026-10-02)
+
+
+### Features
+
+* **admin:** add wikibase connection test button ([13c57c1](https://github.com/ecladatta/star-q/commit/13c57c1815aae6912dd5282510f9526a56fce1f0))
+* **admin:** move wikibase enable switch to left of instance rows ([7d380fc](https://github.com/ecladatta/star-q/commit/7d380fcd51e32d5fccc9583612b48aca8d59e183))
+* **admin:** show app version and update availability in admin sidebar ([db21057](https://github.com/ecladatta/star-q/commit/db21057fa4938e8231c5d631f9b401b3555c1356))
+* **analytics:** render unit statistics in analytics view ([3efd939](https://github.com/ecladatta/star-q/commit/3efd9399a3c69d4d9191fd2c2125d6557de7206b))
+* **analytics:** unit usage stats and quantity totals ([a690275](https://github.com/ecladatta/star-q/commit/a6902750c90ec49699a14997d7e7f0a3e9037d91))
+* **annotation:** batch annotate text spans ([#28](https://github.com/ecladatta/star-q/issues/28)) ([caee3ca](https://github.com/ecladatta/star-q/commit/caee3cafe0833d4eea00ed42b4d623be84b1150d))
+* **annotation:** move create option above results and pin highlight to first result ([c5cd0a4](https://github.com/ecladatta/star-q/commit/c5cd0a42773cc481446043c52fb28b7d26d712d8))
+* **annotation:** restyle entity selector status and create rows ([b9cb461](https://github.com/ecladatta/star-q/commit/b9cb461f53d2614b930cfb80b35ec7fe17f9d48a))
+* **auth:** add star-q logo to auth pages and link brand home ([f0f22a4](https://github.com/ecladatta/star-q/commit/f0f22a4803c23693d04ea63745ea4c66dcabb957))
+* **corpus:** add archived read-only state with unarchive ([d5cef57](https://github.com/ecladatta/star-q/commit/d5cef5735fd3557f81425e275e4a2c35761babcf))
+* **documents:** add title search server action ([4ee67f9](https://github.com/ecladatta/star-q/commit/4ee67f9105872e06164ba1e1704e6583bace8097))
+* **exports:** export a single document from its action menu ([107b1e4](https://github.com/ecladatta/star-q/commit/107b1e41ffb5647e80f281d8a417b25df28a047c))
+* **exports:** export a single document from the documents table ([49d94b6](https://github.com/ecladatta/star-q/commit/49d94b600165bb07d9aca344053f310c7bf4a580))
+* **exports:** single-document export backend ([44978db](https://github.com/ecladatta/star-q/commit/44978db1a78ff8205da8a39e8dbbe1d29b8caa55))
+* **import:** make import upload size configurable via MAX_IMPORT_FILE_SIZE_BYTES ([92e4e53](https://github.com/ecladatta/star-q/commit/92e4e53076cbbfa4e9fc81ebaec751ad396e6ef8))
+* **import:** raise upload size limit to 1gb ([b5e26a7](https://github.com/ecladatta/star-q/commit/b5e26a73bc4e0f86b12631a6dfcffa71aff9980e))
+* **invitations:** show inviter, role, and sent time on invitation rows ([27b6731](https://github.com/ecladatta/star-q/commit/27b6731289e87d71aaf3eb2689c71c0907f6d4e4))
+* **quantity:** explicit units and quantities for numeric objects ([#27](https://github.com/ecladatta/star-q/issues/27)) ([759ed02](https://github.com/ecladatta/star-q/commit/759ed0269cdf727ec593a67efb20d69c83268a5b))
+* **shell:** search documents by title in command palette ([c258678](https://github.com/ecladatta/star-q/commit/c2586781874007a614456929fe97ac5d36534108))
+* **shell:** show pending invitation count as red badge in nav and command menu ([abdcf67](https://github.com/ecladatta/star-q/commit/abdcf67280945f0e5532be89a0b2d0504d13e781))
+* **types:** add optional table title to extraction metadata ([3fc585f](https://github.com/ecladatta/star-q/commit/3fc585f2e0b8255cac5fb245b140989e3153298c))
+* **units:** manage units from corpus settings ([3dabe1e](https://github.com/ecladatta/star-q/commit/3dabe1e1f4fbc4a6bd32afcaeaf6c8fe9e100fad))
+* **units:** store units in a dedicated table ([158d83c](https://github.com/ecladatta/star-q/commit/158d83c04856c81ee82498d73d1c85604669369b))
+
+
+### Bug Fixes
+
+* **account:** show friendly error when a username is taken ([62d6ea9](https://github.com/ecladatta/star-q/commit/62d6ea914c818c71f26d458708d8f989b99f85d5))
+* **annotation:** center selected-entity checkmark in result rows ([a04bf79](https://github.com/ecladatta/star-q/commit/a04bf79ea070256a0fa85e545c2a16674fc2932b))
+* **app:** navigate error page home via router instead of full reload ([b503124](https://github.com/ecladatta/star-q/commit/b5031249f4a00920de2165e00b6db0cd733d8bf9))
+* **corpus:** restrict my-corpora listing to owned and shared corpora ([59dffb6](https://github.com/ecladatta/star-q/commit/59dffb6e95fe9c033e7944bb0b12f7ee9969c30c))
+* **document-elements:** coerce numeric table cells to strings ([438d7a2](https://github.com/ecladatta/star-q/commit/438d7a20ec3f511c84cf15dc5071e61a6e166e10))
+* **exports:** name single-document exports after the document ([609ab45](https://github.com/ecladatta/star-q/commit/609ab455f5e82885245030b1fae462fb5e84387e))
+* **exports:** show the documents-table row menu to viewers with export only ([351cab9](https://github.com/ecladatta/star-q/commit/351cab95eb3d3314ce5b53ad22ed4a5fcfc023cd))
+
 ## [1.3.1](https://github.com/ecladatta/star-q/compare/v1.3.0...v1.3.1) (2026-09-16)
 
 
