@@ -1,7 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react'
 import type { usePopoverState } from './useSelectionState'
-import type { BatchAnnotationItem, BatchCellRef, BatchPreview, BatchPreviewRow, BatchMentionQuantity } from '@/lib/batch-mentions'
-import type { CurrentAnnotation, DocumentAnnotation, DocumentAnnotationComponent, Entity, EntityType, UnitRef } from '@/types/types'
+import type { BatchAnnotationItem, BatchCellRef, BatchMention, BatchMentionQuantity, BatchPreview, BatchPreviewRow } from '@/lib/batch-mentions'
+import type { CurrentAnnotation, DocumentAnnotation, DocumentAnnotationComponent, Entity, EntityType, TextOrTableElement, UnitRef } from '@/types/types'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import {
@@ -9,6 +9,7 @@ import {
   deleteAnnotations,
   getAnnotations,
 } from '@/actions/annotation/annotationActions'
+import { createEntityFromComponent } from '@/lib/annotation-roles'
 import {
   allCellRefs,
   buildBatchAnnotationItem,
@@ -21,6 +22,8 @@ import {
   mentionKey,
   rectContainsCell,
   rowCellRefs,
+  spanMentionComponent,
+  spanRefFromComponent,
   trimmedCellValue,
 } from '@/lib/batch-mentions'
 import { clearBrowserSelection } from './useSelectionState'
@@ -32,10 +35,10 @@ type AnchorRect = {
   height: number
 }
 
-export type CellBatchOriginRect = AnchorRect
+export type BatchOriginRect = AnchorRect
 
-type UseCellBatchOptions = {
-  documentElements: Parameters<typeof buildBatchPreview>[0]['elements']
+type UseAnnotationBatchOptions = {
+  rawElements: TextOrTableElement[]
   documentAnnotations: DocumentAnnotation[]
   currentAnnotation: CurrentAnnotation | null
   setCurrentAnnotation: Dispatch<SetStateAction<CurrentAnnotation | null>>
@@ -108,9 +111,9 @@ function getAnchorRectForCells(cells: BatchCellRef[]): AnchorRect | null {
   }
 }
 
-export function useCellBatch(options: UseCellBatchOptions) {
+export function useAnnotationBatch(options: UseAnnotationBatchOptions) {
   const {
-    documentElements,
+    rawElements,
     documentAnnotations,
     currentAnnotation,
     setCurrentAnnotation,
@@ -118,27 +121,27 @@ export function useCellBatch(options: UseCellBatchOptions) {
     popover,
   } = options
 
-  const [cells, setCells] = useState<BatchCellRef[]>([])
+  const [mentions, setMentions] = useState<BatchMention[]>([])
   const [dragging, setDragging] = useState(false)
   const [batchMode, setBatchMode] = useState(false)
   const [selectedRole, setSelectedRole] = useState<EntityType>('subject')
   const [creating, setCreating] = useState(false)
   const [anchorRect, setAnchorRect] = useState<AnchorRect | null>(null)
-  const [cellEntities, setCellEntities] = useState<Map<string, Entity>>(() => new Map())
-  const [cellQuantities, setCellQuantities] = useState<Map<string, BatchMentionQuantity>>(() => new Map())
+  const [mentionEntities, setMentionEntities] = useState<Map<string, Entity>>(() => new Map())
+  const [mentionQuantities, setMentionQuantities] = useState<Map<string, BatchMentionQuantity>>(() => new Map())
   const [batchQuantity, setBatchQuantity] = useState<BatchMentionQuantity | null>(null)
 
-  const cellKeySet = useMemo(() => new Set(cells.map(mentionKey)), [cells])
+  const mentionKeySet = useMemo(() => new Set(mentions.map(mentionKey)), [mentions])
 
-  const resetCellValues = useCallback(() => {
-    setCellEntities(new Map())
-    setCellQuantities(new Map())
+  const resetMentionValues = useCallback(() => {
+    setMentionEntities(new Map())
+    setMentionQuantities(new Map())
     setBatchQuantity(null)
   }, [])
 
-  const setCellEntity = useCallback((cell: BatchCellRef, entity: Entity | null) => {
-    const key = mentionKey(cell)
-    setCellEntities((prev) => {
+  const setMentionEntity = useCallback((mention: BatchMention, entity: Entity | null) => {
+    const key = mentionKey(mention)
+    setMentionEntities((prev) => {
       const next = new Map(prev)
       if (entity) {
         next.set(key, entity)
@@ -148,42 +151,42 @@ export function useCellBatch(options: UseCellBatchOptions) {
       return next
     })
     if (entity) {
-      setCellQuantities(prev => withoutKey(prev, key))
+      setMentionQuantities(prev => withoutKey(prev, key))
     }
   }, [])
 
-  const setCellQuantity = useCallback((cell: BatchCellRef, quantity: { value: string, lowerBound: string, upperBound: string } | null) => {
-    const key = mentionKey(cell)
+  const setMentionQuantity = useCallback((mention: BatchMention, quantity: { value: string, lowerBound: string, upperBound: string } | null) => {
+    const key = mentionKey(mention)
     if (quantity) {
-      setCellQuantities((prev) => {
+      setMentionQuantities((prev) => {
         const next = new Map(prev)
         next.set(key, { ...quantity, unit: prev.get(key)?.unit ?? null })
         return next
       })
-      setCellEntities(prev => withoutKey(prev, key))
+      setMentionEntities(prev => withoutKey(prev, key))
     } else {
-      setCellQuantities(prev => withoutKey(prev, key))
+      setMentionQuantities(prev => withoutKey(prev, key))
     }
   }, [])
 
-  const setCellUnit = useCallback((cell: BatchCellRef, unit: UnitRef | null) => {
-    const key = mentionKey(cell)
-    setCellQuantities((prev) => {
+  const setMentionQuantityUnit = useCallback((mention: BatchMention, unitRef: UnitRef | null) => {
+    const key = mentionKey(mention)
+    setMentionQuantities((prev) => {
       const next = new Map(prev)
       const existing = prev.get(key)
-      if (!existing && !unit) {
+      if (!existing && !unitRef) {
         return prev
       }
       next.set(key, {
         value: existing?.value ?? '',
         lowerBound: existing?.lowerBound ?? '',
         upperBound: existing?.upperBound ?? '',
-        unit,
+        unit: unitRef,
       })
       return next
     })
-    if (unit) {
-      setCellEntities(prev => withoutKey(prev, key))
+    if (unitRef) {
+      setMentionEntities(prev => withoutKey(prev, key))
     }
   }, [])
 
@@ -227,54 +230,52 @@ export function useCellBatch(options: UseCellBatchOptions) {
     }
   }, [dragging])
 
-  const commitCells = useCallback((next: BatchCellRef[], showAnchor = true) => {
-    resetCellValues()
-    setCells(next)
+  const commitMentions = useCallback((next: BatchMention[], showAnchor = true) => {
+    resetMentionValues()
+    setMentions(next)
     if (dragRef.current?.active || next.length < 2) {
       setAnchorRect(null)
     } else if (showAnchor) {
-      setAnchorRect(getAnchorRectForCells(next))
+      setAnchorRect(getAnchorRectForCells(next.filter(mention => mention.kind === 'cell')))
     } else {
-      setAnchorRect(prev => (prev === null ? null : getAnchorRectForCells(next)))
+      setAnchorRect(prev => (prev === null ? null : getAnchorRectForCells(next.filter(mention => mention.kind === 'cell'))))
     }
-  }, [resetCellValues])
+  }, [resetMentionValues])
 
-  const commitStagedCells = useCallback((next: BatchCellRef[], originRect: CellBatchOriginRect | null) => {
-    resetCellValues()
-    setCells(next)
+  const commitStagedMentions = useCallback((next: BatchMention[], originRect: BatchOriginRect | null) => {
+    resetMentionValues()
+    setMentions(next)
     if (dragRef.current?.active || next.length < 2) {
       setAnchorRect(null)
       return
     }
-    setAnchorRect(originRect ?? getAnchorRectForCells(next))
-  }, [resetCellValues])
+    setAnchorRect(originRect ?? getAnchorRectForCells(next.filter(mention => mention.kind === 'cell')))
+  }, [resetMentionValues])
 
-  const clearCells = useCallback(() => {
-    if (cells.length === 0) {
+  const clearMentions = useCallback(() => {
+    if (mentions.length === 0) {
       return
     }
     anchorRef.current = null
-    commitCells([])
-  }, [cells, commitCells])
+    commitMentions([])
+  }, [mentions, commitMentions])
 
   const exitBatchMode = useCallback(() => {
     setBatchMode(false)
     setSelectedRole('subject')
-    clearCells()
+    clearMentions()
     setCurrentAnnotation(null)
-  }, [clearCells, setCurrentAnnotation])
+  }, [clearMentions, setCurrentAnnotation])
 
-  const releaseCells = useCallback(() => {
+  const releaseMentions = useCallback(() => {
     setBatchMode(false)
     setSelectedRole('subject')
-    clearCells()
-    resetCellValues()
-  }, [clearCells, resetCellValues])
+    clearMentions()
+    resetMentionValues()
+  }, [clearMentions, resetMentionValues])
 
-  const setCellRole = useCallback((type: EntityType) => {
+  const setBatchRole = useCallback((type: EntityType) => {
     setSelectedRole(type)
-    // The selected cells now fill this role; release the fixed component
-    // that was assigned to it, if any.
     setCurrentAnnotation(prev => (prev?.[type] ? { ...prev, [type]: undefined } : prev))
   }, [setCurrentAnnotation])
 
@@ -283,34 +284,99 @@ export function useCellBatch(options: UseCellBatchOptions) {
     popover.hidePopover()
   }, [popover])
 
+  const stageSpanBatch = useCallback((input: {
+    role: EntityType
+    stagedComponent: DocumentAnnotationComponent | null
+    foldedComponent: DocumentAnnotationComponent | null
+  }) => {
+    if (creating) {
+      return
+    }
+    const staged = input.stagedComponent
+      ? spanRefFromComponent(input.stagedComponent, rawElements[input.stagedComponent.elementIndex])
+      : null
+    if (!staged) {
+      return
+    }
+
+    if (batchMode && selectedRole === input.role) {
+      // Append keeps per-mention assignments; only starting a batch resets.
+      setMentions(prev => dedupeMentions([...prev, staged]))
+      popover.hidePopover()
+      return
+    }
+
+    // Start a span batch: fold the same-role text mention in as unit #1,
+    // seeding it with the user's entity or quantity pick so the fold
+    // loses nothing.
+    const nextMentions: BatchMention[] = []
+    const seededEntities = new Map<string, Entity>()
+    const seededQuantities = new Map<string, BatchMentionQuantity>()
+    const foldedComponent = input.foldedComponent
+    const folded = foldedComponent
+      ? spanRefFromComponent(foldedComponent, rawElements[foldedComponent.elementIndex])
+      : null
+    if (folded && foldedComponent && mentionKey(folded) !== mentionKey(staged)) {
+      nextMentions.push(folded)
+      const entity = createEntityFromComponent(foldedComponent)
+      if (entity) {
+        seededEntities.set(mentionKey(folded), entity)
+      } else if (
+        foldedComponent.entityValue !== null
+        || foldedComponent.quantityLowerBound !== null
+        || foldedComponent.quantityUpperBound !== null
+        || foldedComponent.unit !== null
+      ) {
+        seededQuantities.set(mentionKey(folded), {
+          value: foldedComponent.entityValue ?? '',
+          lowerBound: foldedComponent.quantityLowerBound ?? '',
+          upperBound: foldedComponent.quantityUpperBound ?? '',
+          unit: foldedComponent.unit,
+        })
+      }
+    }
+    nextMentions.push(staged)
+
+    resetMentionValues()
+    setMentionEntities(seededEntities)
+    setMentionQuantities(seededQuantities)
+    setMentions(nextMentions)
+    setSelectedRole(input.role)
+    setCurrentAnnotation(prev => (prev?.[input.role] ? { ...prev, [input.role]: undefined } : prev))
+    setBatchMode(true)
+    // Spans highlight inline through the components map; no floating anchor.
+    setAnchorRect(null)
+    popover.hidePopover()
+  }, [creating, rawElements, batchMode, selectedRole, resetMentionValues, setCurrentAnnotation, popover])
+
   const toggleCell = useCallback((cell: BatchCellRef) => {
     const key = mentionKey(cell)
-    const exists = cellKeySet.has(key)
+    const exists = mentionKeySet.has(key)
     const next = exists
-      ? cells.filter(candidate => mentionKey(candidate) !== key)
-      : dedupeMentions([...cells, cell])
+      ? mentions.filter(candidate => mentionKey(candidate) !== key)
+      : dedupeMentions([...mentions, cell])
     anchorRef.current = cell
-    commitCells(next, false)
-  }, [cells, cellKeySet, commitCells])
+    commitMentions(next, false)
+  }, [mentions, mentionKeySet, commitMentions])
 
   const spreadToggle = useCallback((from: BatchCellRef, to: BatchCellRef, selecting: boolean) => {
-    resetCellValues()
-    setCells((prev) => {
+    resetMentionValues()
+    setMentions((prev) => {
       if (!selecting) {
-        return prev.filter(candidate => !rectContainsCell(from, to, candidate))
+        return prev.filter(candidate => candidate.kind !== 'cell' || !rectContainsCell(from, to, candidate))
       }
       return dedupeMentions([...prev, ...cellsInRect(from, to)])
     })
     setAnchorRect(null)
-  }, [resetCellValues])
+  }, [resetMentionValues])
 
   const extendRect = useCallback((from: BatchCellRef, to: BatchCellRef) => {
-    commitCells(cellsInRect(from, to))
-  }, [commitCells])
+    commitMentions(cellsInRect(from, to))
+  }, [commitMentions])
 
-  const selectColumn = useCallback((elementIndex: number, col: number, originRect: CellBatchOriginRect | null = null) => {
+  const selectColumn = useCallback((elementIndex: number, col: number, originRect: BatchOriginRect | null = null) => {
     dragRef.current = null
-    const element = documentElements[elementIndex]
+    const element = rawElements[elementIndex]
     const tableData = element?.type === 'table' ? element.value as string[][] : undefined
     if (!tableData || tableData.length < 2) {
       toast.error('This column has no data rows to annotate.')
@@ -318,34 +384,34 @@ export function useCellBatch(options: UseCellBatchOptions) {
     }
     const refs = columnCellRefs(elementIndex, tableData, col)
     anchorRef.current = refs[0] ?? null
-    commitStagedCells(refs, originRect)
+    commitStagedMentions(refs, originRect)
     return refs.length
-  }, [commitStagedCells, documentElements])
+  }, [commitStagedMentions, rawElements])
 
-  const toggleColumn = useCallback((elementIndex: number, col: number, originRect: CellBatchOriginRect | null = null) => {
+  const toggleColumn = useCallback((elementIndex: number, col: number, originRect: BatchOriginRect | null = null) => {
     dragRef.current = null
-    const element = documentElements[elementIndex]
+    const element = rawElements[elementIndex]
     const tableData = element?.type === 'table' ? element.value as string[][] : undefined
     if (!tableData || tableData.length < 2) {
       return
     }
     const refs = columnCellRefs(elementIndex, tableData, col)
     const keys = new Set(refs.map(mentionKey))
-    const allSelected = refs.every(ref => cellKeySet.has(mentionKey(ref)))
+    const allSelected = refs.every(ref => mentionKeySet.has(mentionKey(ref)))
     const next = allSelected
-      ? cells.filter(candidate => !keys.has(mentionKey(candidate)))
-      : dedupeMentions([...cells, ...refs])
+      ? mentions.filter(candidate => !keys.has(mentionKey(candidate)))
+      : dedupeMentions([...mentions, ...refs])
     anchorRef.current = refs[0] ?? null
     if (allSelected) {
-      commitCells(next)
+      commitMentions(next)
     } else {
-      commitStagedCells(next, originRect)
+      commitStagedMentions(next, originRect)
     }
-  }, [cells, cellKeySet, commitCells, commitStagedCells, documentElements])
+  }, [mentions, mentionKeySet, commitMentions, commitStagedMentions, rawElements])
 
-  const selectRow = useCallback((elementIndex: number, row: number, originRect: CellBatchOriginRect | null = null) => {
+  const selectRow = useCallback((elementIndex: number, row: number, originRect: BatchOriginRect | null = null) => {
     dragRef.current = null
-    const element = documentElements[elementIndex]
+    const element = rawElements[elementIndex]
     const tableData = element?.type === 'table' ? element.value as string[][] : undefined
     if (!tableData?.[row]) {
       toast.error('This row has no cells to annotate.')
@@ -353,34 +419,34 @@ export function useCellBatch(options: UseCellBatchOptions) {
     }
     const refs = rowCellRefs(elementIndex, tableData, row)
     anchorRef.current = refs[0] ?? null
-    commitStagedCells(refs, originRect)
+    commitStagedMentions(refs, originRect)
     return refs.length
-  }, [commitStagedCells, documentElements])
+  }, [commitStagedMentions, rawElements])
 
-  const toggleRow = useCallback((elementIndex: number, row: number, originRect: CellBatchOriginRect | null = null) => {
+  const toggleRow = useCallback((elementIndex: number, row: number, originRect: BatchOriginRect | null = null) => {
     dragRef.current = null
-    const element = documentElements[elementIndex]
+    const element = rawElements[elementIndex]
     const tableData = element?.type === 'table' ? element.value as string[][] : undefined
     if (!tableData?.[row]) {
       return
     }
     const refs = rowCellRefs(elementIndex, tableData, row)
     const keys = new Set(refs.map(mentionKey))
-    const allSelected = refs.every(ref => cellKeySet.has(mentionKey(ref)))
+    const allSelected = refs.every(ref => mentionKeySet.has(mentionKey(ref)))
     const next = allSelected
-      ? cells.filter(candidate => !keys.has(mentionKey(candidate)))
-      : dedupeMentions([...cells, ...refs])
+      ? mentions.filter(candidate => !keys.has(mentionKey(candidate)))
+      : dedupeMentions([...mentions, ...refs])
     anchorRef.current = refs[0] ?? null
     if (allSelected) {
-      commitCells(next)
+      commitMentions(next)
     } else {
-      commitStagedCells(next, originRect)
+      commitStagedMentions(next, originRect)
     }
-  }, [cells, cellKeySet, commitCells, commitStagedCells, documentElements])
+  }, [mentions, mentionKeySet, commitMentions, commitStagedMentions, rawElements])
 
-  const selectAll = useCallback((elementIndex: number, originRect: CellBatchOriginRect | null = null) => {
+  const selectAll = useCallback((elementIndex: number, originRect: BatchOriginRect | null = null) => {
     dragRef.current = null
-    const element = documentElements[elementIndex]
+    const element = rawElements[elementIndex]
     const tableData = element?.type === 'table' ? element.value as string[][] : undefined
     if (!tableData || tableData.length < 2) {
       toast.error('This table has no data rows to annotate.')
@@ -388,13 +454,13 @@ export function useCellBatch(options: UseCellBatchOptions) {
     }
     const refs = allCellRefs(elementIndex, tableData)
     anchorRef.current = refs[0] ?? null
-    commitStagedCells(refs, originRect)
+    commitStagedMentions(refs, originRect)
     return refs.length
-  }, [commitStagedCells, documentElements])
+  }, [commitStagedMentions, rawElements])
 
-  const toggleAll = useCallback((elementIndex: number, originRect: CellBatchOriginRect | null = null) => {
+  const toggleAll = useCallback((elementIndex: number, originRect: BatchOriginRect | null = null) => {
     dragRef.current = null
-    const element = documentElements[elementIndex]
+    const element = rawElements[elementIndex]
     const tableData = element?.type === 'table' ? element.value as string[][] : undefined
     if (!tableData) {
       return
@@ -402,17 +468,17 @@ export function useCellBatch(options: UseCellBatchOptions) {
     const refs = allCellRefs(elementIndex, tableData)
     const keys = new Set(refs.map(mentionKey))
     const allSelected = refs.length > 0
-      && refs.every(ref => cellKeySet.has(mentionKey(ref)))
+      && refs.every(ref => mentionKeySet.has(mentionKey(ref)))
     const next = allSelected
-      ? cells.filter(candidate => !keys.has(mentionKey(candidate)))
-      : dedupeMentions([...cells, ...refs])
+      ? mentions.filter(candidate => !keys.has(mentionKey(candidate)))
+      : dedupeMentions([...mentions, ...refs])
     anchorRef.current = refs[0] ?? null
     if (allSelected) {
-      commitCells(next)
+      commitMentions(next)
     } else {
-      commitStagedCells(next, originRect)
+      commitStagedMentions(next, originRect)
     }
-  }, [cells, cellKeySet, commitCells, commitStagedCells, documentElements])
+  }, [mentions, mentionKeySet, commitMentions, commitStagedMentions, rawElements])
 
   const handleCellMouseDown = useCallback((cell: BatchCellRef, event: React.MouseEvent<HTMLElement>) => {
     if (event.button !== 0) {
@@ -445,7 +511,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
     if (event.ctrlKey || event.metaKey) {
       event.preventDefault()
       popover.hidePopover()
-      const selecting = !cellKeySet.has(mentionKey(cell))
+      const selecting = !mentionKeySet.has(mentionKey(cell))
       modifierClickRef.current = true
       dragRef.current = { origin: cell, focus: null, active: false, mode: 'toggle', selecting }
       toggleCell(cell)
@@ -456,7 +522,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
     pointerRef.current = null
     viewportRef.current = null
     setAnchorRect(null)
-  }, [extendRect, toggleCell, popover, cellKeySet])
+  }, [extendRect, toggleCell, popover, mentionKeySet])
 
   const handleCellDragOver = useCallback((cell: BatchCellRef) => {
     const drag = dragRef.current
@@ -501,15 +567,15 @@ export function useCellBatch(options: UseCellBatchOptions) {
 
     if (!batchModeRef.current) {
       const clickedSelected = cell !== undefined
-        && cellKeySet.has(mentionKey(cell))
+        && mentionKeySet.has(mentionKey(cell))
       if (clickedSelected) {
-        setAnchorRect(getAnchorRectForCells(cells))
+        setAnchorRect(getAnchorRectForCells(mentions.filter(mention => mention.kind === 'cell')))
         return true
       }
-      clearCells()
+      clearMentions()
     }
     return false
-  }, [cells, cellKeySet, clearCells])
+  }, [mentions, mentionKeySet, clearMentions])
 
   const startPendingTouchGesture = useCallback((cell: BatchCellRef, event: React.PointerEvent<HTMLElement>) => {
     pendingTouchCleanupRef.current?.()
@@ -563,7 +629,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
       viewportRef.current = findViewportForOrigin(cell)
       setDragging(true)
       clearBrowserSelection()
-      commitCells(cellsInRect(cell, cell))
+      commitMentions(cellsInRect(cell, cell))
 
       const cellElement = getTableCellElement(cell.elementIndex, cell.row, cell.col)
       if (cellElement) {
@@ -604,10 +670,10 @@ export function useCellBatch(options: UseCellBatchOptions) {
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup', onUp)
     window.addEventListener('pointercancel', onCancel)
-  }, [commitCells])
+  }, [commitMentions])
 
   // Mouse and pen drags keep the direct-drag flow; touch drags start with a
-  // long-press so one-finger scrolling on cells keeps working.
+  // long-press so one-finger scrolling on mentions keeps working.
   const handleCellPointerDown = useCallback((cell: BatchCellRef, event: React.PointerEvent<HTMLElement>) => {
     if (event.pointerType === 'touch') {
       startPendingTouchGesture(cell, event)
@@ -618,39 +684,39 @@ export function useCellBatch(options: UseCellBatchOptions) {
   }, [handleCellMouseDown, startPendingTouchGesture])
 
   const isColumnSelected = useCallback((elementIndex: number, col: number) => {
-    const element = documentElements[elementIndex]
+    const element = rawElements[elementIndex]
     const tableData = element?.type === 'table' ? element.value as string[][] : undefined
     if (!tableData || tableData.length < 2) {
       return false
     }
     const refs = columnCellRefs(elementIndex, tableData, col)
-    return refs.length > 0 && refs.every(ref => cellKeySet.has(mentionKey(ref)))
-  }, [cellKeySet, documentElements])
+    return refs.length > 0 && refs.every(ref => mentionKeySet.has(mentionKey(ref)))
+  }, [mentionKeySet, rawElements])
 
   const isRowSelected = useCallback((elementIndex: number, row: number) => {
-    const element = documentElements[elementIndex]
+    const element = rawElements[elementIndex]
     const tableData = element?.type === 'table' ? element.value as string[][] : undefined
     if (!tableData?.[row]) {
       return false
     }
     const refs = rowCellRefs(elementIndex, tableData, row)
-    return refs.length > 0 && refs.every(ref => cellKeySet.has(mentionKey(ref)))
-  }, [cellKeySet, documentElements])
+    return refs.length > 0 && refs.every(ref => mentionKeySet.has(mentionKey(ref)))
+  }, [mentionKeySet, rawElements])
 
   const isAllSelected = useCallback((elementIndex: number) => {
-    const element = documentElements[elementIndex]
+    const element = rawElements[elementIndex]
     const tableData = element?.type === 'table' ? element.value as string[][] : undefined
     if (!tableData || tableData.length < 2) {
       return false
     }
     const refs = allCellRefs(elementIndex, tableData)
-    return refs.length > 0 && refs.every(ref => cellKeySet.has(mentionKey(ref)))
-  }, [cellKeySet, documentElements])
+    return refs.length > 0 && refs.every(ref => mentionKeySet.has(mentionKey(ref)))
+  }, [mentionKeySet, rawElements])
 
-  const handleSelectColumn = useCallback((elementIndex: number, col: number, additive: boolean, originRect: CellBatchOriginRect | null = null) => {
+  const handleSelectColumn = useCallback((elementIndex: number, col: number, additive: boolean, originRect: BatchOriginRect | null = null) => {
     if (!additive && isColumnSelected(elementIndex, col)) {
       if (currentAnnotation) {
-        releaseCells()
+        releaseMentions()
       } else {
         exitBatchMode()
       }
@@ -662,18 +728,18 @@ export function useCellBatch(options: UseCellBatchOptions) {
         // Multi-cell selections wait unclaimed; claiming a role opens batch mode.
         setBatchMode(false)
       } else {
-        setCellRole(nextEmptyRole(currentAnnotation))
+        setBatchRole(nextEmptyRole(currentAnnotation))
         openBatchMode()
       }
     } else {
       toggleColumn(elementIndex, col, originRect)
     }
-  }, [isColumnSelected, releaseCells, exitBatchMode, selectColumn, setCellRole, openBatchMode, toggleColumn, currentAnnotation])
+  }, [isColumnSelected, releaseMentions, exitBatchMode, selectColumn, setBatchRole, openBatchMode, toggleColumn, currentAnnotation])
 
-  const handleSelectRow = useCallback((elementIndex: number, row: number, additive: boolean, originRect: CellBatchOriginRect | null = null) => {
+  const handleSelectRow = useCallback((elementIndex: number, row: number, additive: boolean, originRect: BatchOriginRect | null = null) => {
     if (!additive && isRowSelected(elementIndex, row)) {
       if (currentAnnotation) {
-        releaseCells()
+        releaseMentions()
       } else {
         exitBatchMode()
       }
@@ -685,18 +751,18 @@ export function useCellBatch(options: UseCellBatchOptions) {
         // Multi-cell selections wait unclaimed; claiming a role opens batch mode.
         setBatchMode(false)
       } else {
-        setCellRole(nextEmptyRole(currentAnnotation))
+        setBatchRole(nextEmptyRole(currentAnnotation))
         openBatchMode()
       }
     } else {
       toggleRow(elementIndex, row, originRect)
     }
-  }, [isRowSelected, releaseCells, exitBatchMode, selectRow, setCellRole, openBatchMode, toggleRow, currentAnnotation])
+  }, [isRowSelected, releaseMentions, exitBatchMode, selectRow, setBatchRole, openBatchMode, toggleRow, currentAnnotation])
 
-  const handleSelectAll = useCallback((elementIndex: number, additive: boolean, originRect: CellBatchOriginRect | null = null) => {
+  const handleSelectAll = useCallback((elementIndex: number, additive: boolean, originRect: BatchOriginRect | null = null) => {
     if (!additive && isAllSelected(elementIndex)) {
       if (currentAnnotation) {
-        releaseCells()
+        releaseMentions()
       } else {
         exitBatchMode()
       }
@@ -708,13 +774,13 @@ export function useCellBatch(options: UseCellBatchOptions) {
         // Multi-cell selections wait unclaimed; claiming a role opens batch mode.
         setBatchMode(false)
       } else {
-        setCellRole(nextEmptyRole(currentAnnotation))
+        setBatchRole(nextEmptyRole(currentAnnotation))
         openBatchMode()
       }
     } else {
       toggleAll(elementIndex, originRect)
     }
-  }, [isAllSelected, releaseCells, exitBatchMode, selectAll, setCellRole, openBatchMode, toggleAll, currentAnnotation])
+  }, [isAllSelected, releaseMentions, exitBatchMode, selectAll, setBatchRole, openBatchMode, toggleAll, currentAnnotation])
 
   const preview = useMemo<BatchPreview | null>(() => {
     if (!batchMode) {
@@ -728,13 +794,38 @@ export function useCellBatch(options: UseCellBatchOptions) {
     }
 
     return buildBatchPreview({
-      mentions: cells,
-      elements: documentElements,
+      mentions,
+      rawElements,
       batchRole: selectedRole,
       fixed,
       existingAnnotations: documentAnnotations,
     })
-  }, [batchMode, cells, documentElements, selectedRole, currentAnnotation, documentAnnotations])
+  }, [batchMode, mentions, rawElements, selectedRole, currentAnnotation, documentAnnotations])
+
+  const stagedSpanComponents = useMemo(() => {
+    if (!batchMode) {
+      return []
+    }
+    return dedupeMentions(mentions).flatMap(mention =>
+      mention.kind === 'span' ? [spanMentionComponent(mention, selectedRole)] : [])
+  }, [batchMode, mentions, selectedRole])
+
+  const stagedSpanIds = useMemo(
+    () => new Set(stagedSpanComponents.map(component => component.id)),
+    [stagedSpanComponents],
+  )
+
+  // Legacy `${elementIndex}:${row}:${col}` projection of the cell-kind mentions
+  // for CombinedElement's tint check, which stays byte-identical.
+  const selectedCellKeys = useMemo(() => {
+    const keys = new Set<string>()
+    for (const mention of mentions) {
+      if (mention.kind === 'cell') {
+        keys.add(`${mention.elementIndex}:${mention.row}:${mention.col}`)
+      }
+    }
+    return keys
+  }, [mentions])
 
   const createBatch = useCallback(async (documentId: string) => {
     if (!preview || preview.createCount === 0 || creating) {
@@ -753,7 +844,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
     }
 
     const buildItem = (row: BatchPreviewRow & { component: DocumentAnnotationComponent }): BatchAnnotationItem =>
-      buildBatchAnnotationItem({ row, batchRole: selectedRole, fixed: slots, mentionEntities: cellEntities, mentionQuantities: cellQuantities })
+      buildBatchAnnotationItem({ row, batchRole: selectedRole, fixed: slots, mentionEntities, mentionQuantities })
 
     setCreating(true)
     try {
@@ -776,7 +867,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
       toast.success(`${created} annotation${created > 1 ? 's' : ''} created!`, {
         description: preview.emptyCount > 0 || preview.duplicateCount > 0
           ? [
-              preview.emptyCount > 0 ? `${preview.emptyCount} empty cell${preview.emptyCount > 1 ? 's' : ''} skipped` : null,
+              preview.emptyCount > 0 ? `${preview.emptyCount} empty selection${preview.emptyCount > 1 ? 's' : ''} skipped` : null,
               preview.duplicateCount > 0 ? `${preview.duplicateCount} duplicate${preview.duplicateCount > 1 ? 's' : ''} skipped` : null,
             ].filter(Boolean).join(' · ')
           : undefined,
@@ -798,7 +889,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
     } finally {
       setCreating(false)
     }
-  }, [selectedRole, preview, creating, currentAnnotation, cellEntities, cellQuantities, exitBatchMode, setDocumentAnnotations])
+  }, [selectedRole, preview, creating, currentAnnotation, mentionEntities, mentionQuantities, exitBatchMode, setDocumentAnnotations])
 
   useEffect(() => {
     if (!dragging) {
@@ -899,7 +990,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
         setDragging(false)
         clearBrowserSelection()
       }
-      if (cells.length > 0) {
+      if (mentions.length > 0) {
         // With an in-progress annotation, defer to the form's discard
         // confirmation (its close button is triggered by the keyboard
         // shortcuts' Escape handler). Exit immediately otherwise.
@@ -911,7 +1002,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [cells.length, currentAnnotation, exitBatchMode])
+  }, [mentions.length, currentAnnotation, exitBatchMode])
 
   useEffect(() => {
     const finalizeDrag = (releasedOnTouch: boolean) => {
@@ -922,13 +1013,13 @@ export function useCellBatch(options: UseCellBatchOptions) {
         dragActiveInSequenceRef.current = true
         setDragging(false)
 
-        if (releasedOnTouch && cells.length === 1) {
-          setCellRole(nextEmptyRole(currentAnnotation))
+        if (releasedOnTouch && mentions.length === 1) {
+          setBatchRole(nextEmptyRole(currentAnnotation))
           openBatchMode()
           return
         }
 
-        setAnchorRect(cells.length >= 2 ? getAnchorRectForCells(cells) : null)
+        setAnchorRect(mentions.length >= 2 ? getAnchorRectForCells(mentions.filter(mention => mention.kind === 'cell')) : null)
         return
       }
       setDragging(false)
@@ -952,7 +1043,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
       }
       activeTouchCleanupRef.current?.()
       finalizeDrag(false)
-      clearCells()
+      clearMentions()
     }
 
     window.addEventListener('pointerup', handleWindowPointerUp, true)
@@ -961,7 +1052,7 @@ export function useCellBatch(options: UseCellBatchOptions) {
       window.removeEventListener('pointerup', handleWindowPointerUp, true)
       window.removeEventListener('pointercancel', handleWindowPointerCancel, true)
     }
-  }, [cells, clearCells, currentAnnotation, openBatchMode, setCellRole])
+  }, [mentions, clearMentions, currentAnnotation, openBatchMode, setBatchRole])
 
   useEffect(() => {
     return () => {
@@ -970,73 +1061,79 @@ export function useCellBatch(options: UseCellBatchOptions) {
     }
   }, [])
 
-  const cellRows = useMemo(() => {
-    return dedupeMentions(cells).map((cell) => {
-      const element = documentElements[cell.elementIndex]
+  const mentionRows = useMemo(() => {
+    return dedupeMentions(mentions).map((mention) => {
+      if (mention.kind === 'span') {
+        return { mention, text: mention.value, filled: true }
+      }
+      const element = rawElements[mention.elementIndex]
       const tableData = element?.type === 'table' ? element.value as string[][] : undefined
-      const cellText = tableData?.[cell.row]?.[cell.col]
+      const cellText = tableData?.[mention.row]?.[mention.col]
       const value = typeof cellText === 'string' ? trimmedCellValue(cellText) : null
 
       return {
-        cell,
+        mention,
         text: value?.value ?? '',
         filled: Boolean(value),
       }
     })
-  }, [cells, documentElements])
+  }, [mentions, rawElements])
 
   const applyBatchQuantity = useCallback((shared: BatchMentionQuantity) => {
     setBatchQuantity(shared)
-    setCellQuantities((prev) => {
+    setMentionQuantities((prev) => {
       const next = new Map(prev)
-      for (const row of cellRows) {
+      for (const row of mentionRows) {
         if (!row.filled) {
           continue
         }
-        next.set(mentionKey(row.cell), materializeBatchMentionQuantity({ text: row.text, shared }))
+        next.set(mentionKey(row.mention), materializeBatchMentionQuantity({ text: row.text, shared }))
       }
       return next
     })
-    setCellEntities((prev) => {
-      if (cellRows.every(row => !row.filled || !prev.has(mentionKey(row.cell)))) {
+    setMentionEntities((prev) => {
+      if (mentionRows.every(row => !row.filled || !prev.has(mentionKey(row.mention)))) {
         return prev
       }
       const next = new Map(prev)
-      for (const row of cellRows) {
+      for (const row of mentionRows) {
         if (row.filled) {
-          next.delete(mentionKey(row.cell))
+          next.delete(mentionKey(row.mention))
         }
       }
       return next
     })
-  }, [cellRows])
+  }, [mentionRows])
 
   const clearBatchQuantity = useCallback(() => {
     setBatchQuantity(null)
   }, [])
 
   return {
-    cells,
-    selectedKeys: cellKeySet,
+    mentions,
+    selectedCellKeys,
+    stagedSpanComponents,
+    stagedSpanIds,
     dragging,
     batchMode,
-    cellRole: selectedRole,
-    setCellRole,
+    batchRole: selectedRole,
+    setBatchRole,
     creating,
     preview,
     anchorRect,
-    cellEntities,
-    setCellEntity,
-    cellQuantities,
-    setCellQuantity,
-    setCellUnit,
+    mentionEntities,
+    setMentionEntity,
+    mentionQuantities,
+    setMentionQuantity,
+    setMentionQuantityUnit,
     batchQuantity,
     applyBatchQuantity,
     clearBatchQuantity,
-    cellRows,
+    mentionRows,
+    stageSpanBatch,
     openBatchMode,
     exitBatchMode,
-    releaseCells,
+    releaseMentions,
     handleCellPointerDown,
     handleCellDragOver,
     handleCellMouseUp,
@@ -1044,6 +1141,6 @@ export function useCellBatch(options: UseCellBatchOptions) {
     handleSelectRow,
     handleSelectAll,
     createBatch,
-    clearCells,
+    clearMentions,
   } as const
 }

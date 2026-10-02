@@ -242,7 +242,7 @@ export const CONSTANT_ROLES: Record<EntityType, [EntityType, EntityType]> = {
 
 export type BatchPreviewInput = {
   mentions: BatchMention[]
-  elements: TextOrTableElement[]
+  rawElements: TextOrTableElement[]
   batchRole: EntityType
   fixed: BatchFixedSlots
   existingAnnotations: DocumentAnnotation[]
@@ -268,7 +268,7 @@ function componentShapeMatches(
 }
 
 export function buildBatchPreview(input: BatchPreviewInput): BatchPreview {
-  const { mentions, elements, batchRole, fixed, existingAnnotations } = input
+  const { mentions, rawElements, batchRole, fixed, existingAnnotations } = input
   const rows: BatchPreviewRow[] = []
   const fixedIncomplete = CONSTANT_ROLES[batchRole].some(role => !fixed[role])
 
@@ -291,7 +291,7 @@ export function buildBatchPreview(input: BatchPreviewInput): BatchPreview {
       continue
     }
 
-    const element = elements[mention.elementIndex]
+    const element = rawElements[mention.elementIndex]
     const tableData = element?.type === 'table' ? element.value as string[][] : undefined
     const cellText = tableData?.[mention.row]?.[mention.col]
     const value = typeof cellText === 'string' ? trimmedCellValue(cellText) : null

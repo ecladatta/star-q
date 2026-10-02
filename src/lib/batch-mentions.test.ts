@@ -325,7 +325,7 @@ describe('buildBatchPreview', () => {
 
   const baseInput = {
     mentions,
-    elements: [tableElement],
+    rawElements: [tableElement],
     batchRole: 'object' as const,
     fixed: { subject, predicate, object: null },
     existingAnnotations: [] as DocumentAnnotation[],
@@ -454,7 +454,7 @@ describe('buildBatchPreview', () => {
     const preview = buildBatchPreview({
       ...baseInput,
       mentions: [span],
-      elements: [],
+      rawElements: [],
     })
 
     expect(preview.createCount).toBe(1)

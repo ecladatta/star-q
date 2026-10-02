@@ -1,5 +1,5 @@
 'use client'
-import type { CellBatchOriginRect } from '@/hooks/useCellBatch'
+import type { BatchOriginRect } from '@/hooks/useAnnotationBatch'
 import type { Offset } from '@/lib/utils'
 import type { AnnotationComponentRole, CurrentAnnotation, DocumentElement, EntityType } from '@/types/types'
 import { createElement, useCallback, useEffect, useRef, useState } from 'react'
@@ -35,9 +35,9 @@ export type CombinedElementProps = {
   currentAnnotation: CurrentAnnotation | null
   selectedCellKeys?: Set<string>
   cellRole?: EntityType
-  onSelectColumn?: (col: number, additive: boolean, originRect?: CellBatchOriginRect | null) => void
-  onSelectRow?: (row: number, additive: boolean, originRect?: CellBatchOriginRect | null) => void
-  onSelectAll?: (additive: boolean, originRect?: CellBatchOriginRect | null) => void
+  onSelectColumn?: (col: number, additive: boolean, originRect?: BatchOriginRect | null) => void
+  onSelectRow?: (row: number, additive: boolean, originRect?: BatchOriginRect | null) => void
+  onSelectAll?: (additive: boolean, originRect?: BatchOriginRect | null) => void
   readOnly?: boolean
 }
 
