@@ -21,7 +21,7 @@ import { useDocumentElements } from '@/hooks/useDocumentElements'
 import { useSelectionHandlers } from '@/hooks/useSelectionState'
 import { useWikibaseInstance } from '@/hooks/useWikibaseInstance'
 import { getAnnotationComponents } from '@/lib/annotation-roles'
-import { CONSTANT_ROLES } from '@/lib/cell-batch'
+import { CONSTANT_ROLES } from '@/lib/batch-mentions'
 import { isConstraintWarningsEnabled, isPredicateFilteringEnabled } from '@/lib/corpus-settings'
 import { annotationComponentsShareSegment, cn } from '@/lib/utils'
 import { AnnotationForm } from './annotation-form'
@@ -176,7 +176,7 @@ export function DocumentViewer({
   )
 
   const handleTableCellMouseUp = useCallback((index: number, row: number, col: number) => {
-    if (cellBatch.handleCellMouseUp({ elementIndex: index, row, col })) {
+    if (cellBatch.handleCellMouseUp({ kind: 'cell', elementIndex: index, row, col })) {
       return
     }
 
@@ -465,9 +465,9 @@ export function DocumentViewer({
                       handleSplitClick={handleSplitClick}
                       handleTableSelection={handleTableSelection}
                       handleTableCellPointerDown={(index, row, col, event) =>
-                        cellBatch.handleCellPointerDown({ elementIndex: index, row, col }, event)}
+                        cellBatch.handleCellPointerDown({ kind: 'cell', elementIndex: index, row, col }, event)}
                       handleTableCellDragOver={(index, row, col) =>
-                        cellBatch.handleCellDragOver({ elementIndex: index, row, col })}
+                        cellBatch.handleCellDragOver({ kind: 'cell', elementIndex: index, row, col })}
                       handleTableCellMouseUp={handleTableCellMouseUp}
                       handleTextSelection={handleTextSelection}
                       documentElements={documentElements}

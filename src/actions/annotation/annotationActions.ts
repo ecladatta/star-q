@@ -1,7 +1,7 @@
 'use server'
 import type { SQL } from 'drizzle-orm'
 import type { AnnotationComponent } from '@/db/schema'
-import type { CellBatchAnnotationItem } from '@/lib/cell-batch'
+import type { BatchAnnotationItem } from '@/lib/batch-mentions'
 import type {
   AnnotationComponentRole,
   AnnotationQualifierInput,
@@ -336,7 +336,7 @@ export async function addAnnotation(
 
 export async function addAnnotations(
   documentId: string,
-  items: CellBatchAnnotationItem[],
+  items: BatchAnnotationItem[],
 ): Promise<string[]> {
   if (items.length === 0) {
     return []

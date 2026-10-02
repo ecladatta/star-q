@@ -1,6 +1,6 @@
 import type { Dispatch, ReactNode, SetStateAction } from 'react'
 import type { QuantityState } from '@/components/entity-selector'
-import type { BatchCellQuantity, CellBatchCellRef } from '@/lib/cell-batch'
+import type { BatchCellRef, BatchMentionQuantity } from '@/lib/batch-mentions'
 import type { ConstraintEntityCheck, ConstraintSide, PropertyConstraints } from '@/lib/wikibase-constraints'
 import type {
   AnnotationComponentRole,
@@ -74,7 +74,7 @@ import {
 } from '@/components/ui/tooltip'
 import { entityTypeForComponentRole, hasEntityLink } from '@/lib/annotation-roles'
 import { validateAnnotationQualifiers } from '@/lib/annotation-validation'
-import { cellKey } from '@/lib/cell-batch'
+import { mentionKey } from '@/lib/batch-mentions'
 import { isNumericEntityDatatype } from '@/lib/datatypes'
 import { isValidQuantityAmount } from '@/lib/numeric-units'
 import { cn, isMac } from '@/lib/utils'
@@ -122,16 +122,16 @@ type AnnotationFormProps = {
   batchCreating?: boolean
   batchCellRole?: EntityType
   batchCellsCount?: number
-  batchCellRows?: Array<{ cell: CellBatchCellRef, text: string, filled: boolean }> | null
+  batchCellRows?: Array<{ cell: BatchCellRef, text: string, filled: boolean }> | null
   batchCellEntities?: Map<string, Entity>
-  batchCellQuantities?: Map<string, BatchCellQuantity>
-  batchQuantity?: BatchCellQuantity | null
-  onBatchQuantityApply?: (quantity: BatchCellQuantity) => void
+  batchCellQuantities?: Map<string, BatchMentionQuantity>
+  batchQuantity?: BatchMentionQuantity | null
+  onBatchQuantityApply?: (quantity: BatchMentionQuantity) => void
   onBatchQuantityClear?: () => void
-  onBatchCellQuantityChange?: (cell: CellBatchCellRef, quantity: { value: string, lowerBound: string, upperBound: string } | null) => void
-  onBatchCellUnitChange?: (cell: CellBatchCellRef, unit: UnitRef | null) => void
+  onBatchCellQuantityChange?: (cell: BatchCellRef, quantity: { value: string, lowerBound: string, upperBound: string } | null) => void
+  onBatchCellUnitChange?: (cell: BatchCellRef, unit: UnitRef | null) => void
   onBatchCellRoleChange?: (role: EntityType) => void
-  onBatchCellEntityChange?: (cell: CellBatchCellRef, entity: Entity | null) => void
+  onBatchCellEntityChange?: (cell: BatchCellRef, entity: Entity | null) => void
   scrollToCells?: () => void
   onBatchExit?: () => void
 }
@@ -517,10 +517,10 @@ export function AnnotationForm({
       : null
   const singleBatchCell = batchCellsCount === 1 ? batchCellRows?.[0] ?? null : null
   const singleBatchCellEntity = singleBatchCell
-    ? batchCellEntities?.get(cellKey(singleBatchCell.cell)) ?? null
+    ? batchCellEntities?.get(mentionKey(singleBatchCell.cell)) ?? null
     : null
   const singleBatchCellQuantity = singleBatchCell
-    ? batchCellQuantities?.get(cellKey(singleBatchCell.cell)) ?? null
+    ? batchCellQuantities?.get(mentionKey(singleBatchCell.cell)) ?? null
     : null
   const batchQuantityFields = batchQuantity
     ? { value: batchQuantity.value, lowerBound: batchQuantity.lowerBound, upperBound: batchQuantity.upperBound }
@@ -1451,8 +1451,8 @@ export function AnnotationForm({
                   {(() => {
                     const filled = (batchCellRows ?? []).filter(row => row.filled)
                     const withValue = filled.filter(row =>
-                      batchCellEntities?.has(cellKey(row.cell))
-                      || batchCellQuantities?.has(cellKey(row.cell))).length
+                      batchCellEntities?.has(mentionKey(row.cell))
+                      || batchCellQuantities?.has(mentionKey(row.cell))).length
                     return `${withValue} of ${filled.length} set`
                   })()}
                 </Badge>
@@ -1461,8 +1461,8 @@ export function AnnotationForm({
                 {(() => {
                   const filledRows = (batchCellRows ?? []).filter(row => row.filled)
                   const anySet = filledRows.some(row =>
-                    batchCellEntities?.has(cellKey(row.cell))
-                    || batchCellQuantities?.has(cellKey(row.cell)))
+                    batchCellEntities?.has(mentionKey(row.cell))
+                    || batchCellQuantities?.has(mentionKey(row.cell)))
 
                   return (
                     <div className="mt-2 flex items-center gap-2 rounded-md bg-muted/40 px-2 py-1.5">
@@ -1523,7 +1523,7 @@ export function AnnotationForm({
                 <div className="mt-1 flex max-h-72 flex-col gap-1 overflow-y-auto pr-1">
                   {(batchCellRows ?? []).map(row => (
                     <div
-                      key={cellKey(row.cell)}
+                      key={mentionKey(row.cell)}
                       className={cn('flex items-center gap-2 rounded-md border px-2 py-1.5', !row.filled && 'bg-muted/40')}
                     >
                       {row.filled
@@ -1542,10 +1542,10 @@ export function AnnotationForm({
                         {row.filled && (
                           <EntitySelector
                             type={batchCellRole ?? 'subject'}
-                            value={batchCellEntities?.get(cellKey(row.cell)) ?? null}
+                            value={batchCellEntities?.get(mentionKey(row.cell)) ?? null}
                             onValueChange={newValue => onBatchCellEntityChange?.(row.cell, newValue)}
                             quantity={(() => {
-                              const cellQuantity = batchCellQuantities?.get(cellKey(row.cell))
+                              const cellQuantity = batchCellQuantities?.get(mentionKey(row.cell))
                               // Always a state object (possibly empty). The
                               // quantity view renders only when non-null.
                               return {
@@ -1554,7 +1554,7 @@ export function AnnotationForm({
                                 upperBound: cellQuantity?.upperBound ?? '',
                               }
                             })()}
-                            unit={batchCellQuantities?.get(cellKey(row.cell))?.unit ?? null}
+                            unit={batchCellQuantities?.get(mentionKey(row.cell))?.unit ?? null}
                             onQuantityChange={quantity => onBatchCellQuantityChange?.(row.cell, quantity)}
                             onUnitChange={unit => onBatchCellUnitChange?.(row.cell, unit)}
                             text={row.text}
