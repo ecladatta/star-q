@@ -710,8 +710,8 @@ export function useAnnotationBatch(options: UseAnnotationBatchOptions) {
     return refs.length > 0 && refs.every(ref => mentionKeySet.has(mentionKey(ref)))
   }, [mentionKeySet, rawElements])
 
-  const handleSelectColumn = useCallback((elementIndex: number, col: number, additive: boolean, originRect: BatchOriginRect | null = null) => {
-    if (!additive && isColumnSelected(elementIndex, col)) {
+  const stageOrRelease = useCallback((alreadySelected: boolean, stage: () => number) => {
+    if (alreadySelected) {
       if (currentAnnotation) {
         releaseMentions()
       } else {
@@ -719,65 +719,39 @@ export function useAnnotationBatch(options: UseAnnotationBatchOptions) {
       }
       return
     }
-    if (!additive) {
-      const selectedCount = selectColumn(elementIndex, col, originRect)
-      if (selectedCount >= 2) {
-        // Multi-cell selections wait unclaimed; claiming a role opens batch mode.
-        setBatchMode(false)
-      } else {
-        setBatchRole(nextEmptyRole(currentAnnotation))
-        openBatchMode()
-      }
+    const selectedCount = stage()
+    if (selectedCount >= 2) {
+      // Multi-cell selections wait unclaimed; claiming a role opens batch mode.
+      setBatchMode(false)
     } else {
-      toggleColumn(elementIndex, col, originRect)
+      setBatchRole(nextEmptyRole(currentAnnotation))
+      openBatchMode()
     }
-  }, [isColumnSelected, releaseMentions, exitBatchMode, selectColumn, setBatchRole, openBatchMode, toggleColumn, currentAnnotation])
+  }, [currentAnnotation, releaseMentions, exitBatchMode, setBatchRole, openBatchMode])
+
+  const handleSelectColumn = useCallback((elementIndex: number, col: number, additive: boolean, originRect: BatchOriginRect | null = null) => {
+    if (additive) {
+      toggleColumn(elementIndex, col, originRect)
+      return
+    }
+    stageOrRelease(isColumnSelected(elementIndex, col), () => selectColumn(elementIndex, col, originRect))
+  }, [stageOrRelease, isColumnSelected, selectColumn, toggleColumn])
 
   const handleSelectRow = useCallback((elementIndex: number, row: number, additive: boolean, originRect: BatchOriginRect | null = null) => {
-    if (!additive && isRowSelected(elementIndex, row)) {
-      if (currentAnnotation) {
-        releaseMentions()
-      } else {
-        exitBatchMode()
-      }
+    if (additive) {
+      toggleRow(elementIndex, row, originRect)
       return
     }
-    if (!additive) {
-      const selectedCount = selectRow(elementIndex, row, originRect)
-      if (selectedCount >= 2) {
-        // Multi-cell selections wait unclaimed; claiming a role opens batch mode.
-        setBatchMode(false)
-      } else {
-        setBatchRole(nextEmptyRole(currentAnnotation))
-        openBatchMode()
-      }
-    } else {
-      toggleRow(elementIndex, row, originRect)
-    }
-  }, [isRowSelected, releaseMentions, exitBatchMode, selectRow, setBatchRole, openBatchMode, toggleRow, currentAnnotation])
+    stageOrRelease(isRowSelected(elementIndex, row), () => selectRow(elementIndex, row, originRect))
+  }, [stageOrRelease, isRowSelected, selectRow, toggleRow])
 
   const handleSelectAll = useCallback((elementIndex: number, additive: boolean, originRect: BatchOriginRect | null = null) => {
-    if (!additive && isAllSelected(elementIndex)) {
-      if (currentAnnotation) {
-        releaseMentions()
-      } else {
-        exitBatchMode()
-      }
+    if (additive) {
+      toggleAll(elementIndex, originRect)
       return
     }
-    if (!additive) {
-      const selectedCount = selectAll(elementIndex, originRect)
-      if (selectedCount >= 2) {
-        // Multi-cell selections wait unclaimed; claiming a role opens batch mode.
-        setBatchMode(false)
-      } else {
-        setBatchRole(nextEmptyRole(currentAnnotation))
-        openBatchMode()
-      }
-    } else {
-      toggleAll(elementIndex, originRect)
-    }
-  }, [isAllSelected, releaseMentions, exitBatchMode, selectAll, setBatchRole, openBatchMode, toggleAll, currentAnnotation])
+    stageOrRelease(isAllSelected(elementIndex), () => selectAll(elementIndex, originRect))
+  }, [stageOrRelease, isAllSelected, selectAll, toggleAll])
 
   const preview = useMemo<BatchPreview | null>(() => {
     if (!batchMode) {
