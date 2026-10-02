@@ -484,7 +484,7 @@ export function DocumentViewer({
                       handleTextSelection={handleTextSelection}
                       documentElements={documentElements}
                       currentAnnotation={currentAnnotation}
-                      selectedCellKeys={annotationBatch.selectedCellKeys}
+                      mentionKeySet={annotationBatch.mentionKeySet}
                       stagedComponentIds={annotationBatch.stagedSpanIds}
                       cellRole={annotationBatch.batchMode ? annotationBatch.batchRole : undefined}
                       onSelectColumn={(col, additive, originRect) =>

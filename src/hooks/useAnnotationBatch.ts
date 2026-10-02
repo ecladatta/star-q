@@ -812,18 +812,6 @@ export function useAnnotationBatch(options: UseAnnotationBatchOptions) {
     [stagedSpanComponents],
   )
 
-  // Legacy `${elementIndex}:${row}:${col}` projection of the cell-kind mentions
-  // for CombinedElement's tint check, which stays byte-identical.
-  const selectedCellKeys = useMemo(() => {
-    const keys = new Set<string>()
-    for (const mention of mentions) {
-      if (mention.kind === 'cell') {
-        keys.add(`${mention.elementIndex}:${mention.row}:${mention.col}`)
-      }
-    }
-    return keys
-  }, [mentions])
-
   const createBatch = useCallback(async (documentId: string) => {
     if (!preview || preview.createCount === 0 || creating) {
       return
@@ -1108,7 +1096,7 @@ export function useAnnotationBatch(options: UseAnnotationBatchOptions) {
 
   return {
     mentions,
-    selectedCellKeys,
+    mentionKeySet,
     stagedSpanComponents,
     stagedSpanIds,
     dragging,

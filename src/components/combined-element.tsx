@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { getAnnotationComponents } from '@/lib/annotation-roles'
+import { mentionKey } from '@/lib/batch-mentions'
 import { isTitleSpanComponent } from '@/lib/document-elements'
 import { cn, splitWithOffsets } from '@/lib/utils'
 import Split from './split'
@@ -34,7 +35,7 @@ export type CombinedElementProps = {
   handleSplitClick: (split: Offset, anchorRect?: DOMRect) => void
   documentElements: DocumentElement[]
   currentAnnotation: CurrentAnnotation | null
-  selectedCellKeys?: Set<string>
+  mentionKeySet?: Set<string>
   stagedComponentIds?: Set<string>
   cellRole?: EntityType
   onSelectColumn?: (col: number, additive: boolean, originRect?: BatchOriginRect | null) => void
@@ -116,7 +117,7 @@ function CombinedElement({
   handleSplitClick,
   documentElements,
   currentAnnotation,
-  selectedCellKeys,
+  mentionKeySet,
   stagedComponentIds,
   cellRole,
   onSelectColumn,
@@ -556,7 +557,7 @@ function CombinedElement({
     }
 
     const isCellSelected = (rowIndex: number, cellIndex: number) => {
-      return selectedCellKeys?.has(`${elementIndex}:${rowIndex}:${cellIndex}`) ?? false
+      return mentionKeySet?.has(mentionKey({ kind: 'cell', elementIndex, row: rowIndex, col: cellIndex })) ?? false
     }
 
     const handleHeaderMouseEnter = (cellIndex: number) => {
