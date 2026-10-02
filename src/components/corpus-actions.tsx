@@ -57,8 +57,8 @@ import {
 import { canEditCorpus } from '@/lib/corpus-access-policy'
 import { downloadExportFile } from '@/lib/exports/download'
 import {
-  EXPORT_FORMAT_IDS,
   EXPORT_FORMATS,
+  visibleExportFormatIds,
 } from '@/lib/exports/export-format'
 import {
   CORPUS_IMPORT_FORMAT_IDS,
@@ -83,8 +83,7 @@ export function CorpusActions({ corpus, showOpenAction = true, access, triggerBu
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const exportFormatIds = EXPORT_FORMAT_IDS
-    .filter(id => rdfAvailable || EXPORT_FORMATS[id].kind !== 'rdf')
+  const exportFormatIds = visibleExportFormatIds(rdfAvailable)
 
   const [isDuplicating, setIsDuplicating] = useState(false)
   const [isRenaming, setIsRenaming] = useState(false)
@@ -297,7 +296,6 @@ export function CorpusActions({ corpus, showOpenAction = true, access, triggerBu
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* Import Dialog */}
       <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -424,7 +422,6 @@ export function CorpusActions({ corpus, showOpenAction = true, access, triggerBu
         </DialogContent>
       </Dialog>
 
-      {/* Delete Dialog */}
       <ConfirmActionButton
         open={showDeleteDialog}
         onOpenChange={setShowDeleteDialog}
@@ -447,7 +444,6 @@ export function CorpusActions({ corpus, showOpenAction = true, access, triggerBu
         variant="destructive"
       />
 
-      {/* Duplicate Dialog */}
       <Dialog open={showDuplicateDialog} onOpenChange={setShowDuplicateDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -526,7 +522,6 @@ export function CorpusActions({ corpus, showOpenAction = true, access, triggerBu
         </DialogContent>
       </Dialog>
 
-      {/* Rename Dialog */}
       <Dialog open={showRenameDialog} onOpenChange={setShowRenameDialog}>
         <DialogContent className="sm:max-w-sm">
           <DialogHeader>
@@ -565,7 +560,6 @@ export function CorpusActions({ corpus, showOpenAction = true, access, triggerBu
         </DialogContent>
       </Dialog>
 
-      {/* Hidden file input */}
       <input
         type="file"
         ref={fileInputRef}

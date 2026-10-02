@@ -20,7 +20,7 @@ import {
 import { setFullWidth, setShowUnits, useFullWidth, useShowUnits } from '@/lib/display'
 import { downloadRawDocumentData } from '@/lib/download-document'
 import { downloadExportFile } from '@/lib/exports/download'
-import { EXPORT_FORMAT_IDS, EXPORT_FORMATS } from '@/lib/exports/export-format'
+import { EXPORT_FORMATS, visibleExportFormatIds } from '@/lib/exports/export-format'
 import { ShortcutsDialog } from './shortcuts-dialog'
 
 type DocumentHeaderProps = {
@@ -49,8 +49,7 @@ export function DocumentHeader({
   const fullWidth = useFullWidth()
   const showUnits = useShowUnits()
 
-  const exportFormatIds = EXPORT_FORMAT_IDS
-    .filter(id => rdfAvailable || EXPORT_FORMATS[id].kind !== 'rdf')
+  const exportFormatIds = visibleExportFormatIds(rdfAvailable)
 
   const toggleCompletion = () => {
     startTransition(async () => {

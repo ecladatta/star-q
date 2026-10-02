@@ -106,7 +106,7 @@ export default async function CorpusPage({ params }: { params: Promise<{ corpusI
           )}
         />
       </PageHeader>
-      <DocumentsTable documents={documentsList} canEdit={edit} />
+      <DocumentsTable documents={documentsList} canEdit={edit} rdfAvailable={rdfAvailable} />
     </Page>
   )
 }

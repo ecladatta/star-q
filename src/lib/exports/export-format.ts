@@ -57,3 +57,7 @@ export type ExportFormat = keyof typeof EXPORT_FORMATS
 export const EXPORT_FORMAT_IDS = Object.keys(
   EXPORT_FORMATS,
 ) as ExportFormat[]
+
+export function visibleExportFormatIds(rdfAvailable: boolean): ExportFormat[] {
+  return EXPORT_FORMAT_IDS.filter(id => rdfAvailable || EXPORT_FORMATS[id].kind !== 'rdf')
+}

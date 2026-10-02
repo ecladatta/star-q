@@ -36,6 +36,7 @@ import {
   ChevronsRightIcon,
   ChevronsUpDownIcon,
   DownloadIcon,
+  FileDownIcon,
   FilePenIcon,
   Loader2Icon,
   MoreVerticalIcon,
@@ -62,6 +63,10 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
@@ -81,6 +86,8 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { downloadRawDocumentData } from '@/lib/download-document'
+import { downloadExportFile } from '@/lib/exports/download'
+import { EXPORT_FORMATS, visibleExportFormatIds } from '@/lib/exports/export-format'
 import { cn } from '@/lib/utils'
 import { Label } from './ui/label'
 
@@ -97,6 +104,7 @@ type DataTableProps = {
   handleMarkCompleted: (doc: DocumentMetadata) => void
   loadingIds: string[]
   canEdit: boolean
+  rdfAvailable: boolean
   isBulkMarking: boolean
   isBulkDeleting: boolean
   onSelectionChange: (docs: DocumentMetadata[]) => void
@@ -114,6 +122,7 @@ type DocumentTableMeta = {
   setDocumentToDelete: (doc: DocumentMetadata) => void
   loadingIds: string[]
   canEdit: boolean
+  rdfAvailable: boolean
 }
 
 const features = tableFeatures({
@@ -138,6 +147,7 @@ function DataTable({
   handleMarkCompleted,
   loadingIds,
   canEdit,
+  rdfAvailable,
   isBulkMarking,
   isBulkDeleting,
   onSelectionChange,
@@ -180,6 +190,7 @@ function DataTable({
       setDocumentToDelete,
       loadingIds,
       canEdit,
+      rdfAvailable,
     } satisfies DocumentTableMeta,
   })
 
@@ -539,6 +550,23 @@ const columns: ColumnDef<typeof features, DocumentMetadata, any>[] = [
                   <DownloadIcon className="mr-2 size-4" />
                   Download Raw Data
                 </DropdownMenuItem>
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <FileDownIcon className="mr-2 size-4" />
+                    Export
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    {visibleExportFormatIds(meta.rdfAvailable).map(format => (
+                      <DropdownMenuItem
+                        key={format}
+                        onClick={() => void downloadExportFile(`/api/document/${row.original.id}/export?${EXPORT_FORMATS[format].query}`)}
+                      >
+                        {EXPORT_FORMATS[format].label}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={() => meta.setDocumentToDelete(row.original)}
                   className="font-medium text-destructive focus:text-destructive"
@@ -605,9 +633,11 @@ function DataTableColumnHeader<TValue>({
 export default function DocumentsTable({
   documents,
   canEdit,
+  rdfAvailable,
 }: {
   documents: DocumentMetadata[]
   canEdit?: boolean
+  rdfAvailable: boolean
 }) {
   const [documentToDelete, setDocumentToDelete]
     = useState<DocumentMetadata | null>(null)
@@ -640,7 +670,6 @@ export default function DocumentsTable({
         : 'Selected documents marked as not completed',
     )
 
-    // update timestamps locally so UI reflects the change without losing selection
     setSelectedDocuments(
       selectedDocuments.map(d => ({ ...d, completedAt: value })),
     )
@@ -657,7 +686,6 @@ export default function DocumentsTable({
     setIsBulkDeleting(true)
     await deleteDocuments(selectedDocuments.map(d => d.id))
     setIsBulkDeleting(false)
-    // clear selection since those documents are gone
     setSelectedDocuments([])
     setShowBulkDeleteDialog(false)
   }
@@ -697,6 +725,7 @@ export default function DocumentsTable({
         handleMarkCompleted={handleMarkCompleted}
         loadingIds={loadingIds}
         canEdit={canEdit ?? true}
+        rdfAvailable={rdfAvailable}
         isBulkMarking={isBulkMarking}
         isBulkDeleting={isBulkDeleting}
         onSelectionChange={setSelectedDocuments}
