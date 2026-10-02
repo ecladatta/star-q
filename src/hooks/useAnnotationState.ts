@@ -645,7 +645,28 @@ export function useAnnotationState(
     })
   }, [])
 
-  const handleSelectionMentionAssociation = useCallback((type: EntityType) => {
+  const handleSelectionMentionAssociation = useCallback((type: EntityType, modifiers?: { shift?: boolean }) => {
+    if (
+      modifiers?.shift
+      && selection.hasSelection()
+      && !popover.popoverState.isTableCell
+      && combinedElements[selection.currentElementIndex ?? -1]?.type === 'text'
+      // A running batch of a different role is claimed by plain association.
+      && !(annotationBatch.batchMode && annotationBatch.batchRole !== type)
+    ) {
+      const stagedComponent = createAnnotationComponent(type)
+      if (stagedComponent) {
+        annotationBatch.stageSpanBatch({
+          role: type,
+          stagedComponent,
+          foldedComponent: currentAnnotation?.[type] ?? null,
+        })
+        selection.clearSelection()
+        popover.hidePopover()
+        return
+      }
+    }
+
     if (annotationBatch.batchMode && annotationBatch.batchRole === type) {
       // The keystroke refers to the latest selection, which claims the role
       // the docked batch's mentions occupy. Drop the mentions entirely and fall
@@ -676,7 +697,7 @@ export function useAnnotationState(
       addToCurrentAnnotation(type)
     }
     popover.hidePopover()
-  }, [addToCurrentAnnotation, handleMentionAssociation, popover, selection, annotationBatch])
+  }, [addToCurrentAnnotation, handleMentionAssociation, popover, selection, annotationBatch, combinedElements, createAnnotationComponent, currentAnnotation])
 
   const handleCloneAnnotation = useCallback((annotation?: DocumentAnnotation) => {
     const annotationToClone = annotation || popover.popoverState.annotation
@@ -715,11 +736,11 @@ export function useAnnotationState(
     popoverVisible: popover.popoverState.visible,
     hasSelection: selection.hasSelection(),
     currentAnnotation: popover.popoverState.annotation,
-    onAnnotationAction: (type) => {
+    onAnnotationAction: (type, modifiers) => {
       // A visible selection popover means the user just made a new text or
       // cell selection: the keystroke refers to it, not to the docked batch.
       if (popover.popoverState.visible) {
-        handleSelectionMentionAssociation(type)
+        handleSelectionMentionAssociation(type, modifiers)
         return
       }
 
@@ -731,7 +752,7 @@ export function useAnnotationState(
         return
       }
 
-      handleSelectionMentionAssociation(type)
+      handleSelectionMentionAssociation(type, modifiers)
     },
     onEditCurrentAnnotation: () => {
       if (popover.popoverState.annotation) {

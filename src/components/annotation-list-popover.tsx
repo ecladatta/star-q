@@ -64,7 +64,7 @@ type AnnotationListPopoverProps = {
   onDelete: (annotationId: string) => void
   onView: (annotation: DocumentAnnotation) => void
   isDeletingAnnotation: boolean
-  onCreateMention: (type: EntityType) => void
+  onCreateMention: (type: EntityType, modifiers?: { shift?: boolean }) => void
   mentionData: AnnotationMention | null
   readOnly?: boolean
 }
@@ -97,10 +97,10 @@ export function AnnotationListPopover({
     }
   }
 
-  const handleCreateMention = useCallback((type: EntityType) => {
+  const handleCreateMention = useCallback((type: EntityType, modifiers?: { shift?: boolean }) => {
     if (!mentionData)
       return
-    onCreateMention(type)
+    onCreateMention(type, modifiers)
     onClose()
   }, [mentionData, onCreateMention, onClose])
 
@@ -122,7 +122,7 @@ export function AnnotationListPopover({
         const mentionActions: Record<string, EntityType> = { s: 'subject', p: 'predicate', o: 'object' }
         if (mentionActions[key]) {
           e.preventDefault()
-          handleCreateMention(mentionActions[key])
+          handleCreateMention(mentionActions[key], { shift: e.shiftKey })
           handled = true
         }
       }

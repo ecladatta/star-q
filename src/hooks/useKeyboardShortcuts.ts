@@ -5,7 +5,7 @@ type KeyboardShortcutsConfig = {
   popoverVisible: boolean
   hasSelection: boolean
   currentAnnotation: DocumentAnnotation | null
-  onAnnotationAction: (type: EntityType) => void
+  onAnnotationAction: (type: EntityType, modifiers?: { shift?: boolean }) => void
   onEditCurrentAnnotation: () => void
   onClearAnnotation: () => void
   onHidePopover: () => void
@@ -63,7 +63,7 @@ export function useKeyboardShortcuts({
 
       if (key in annotationKeyMap) {
         e.preventDefault()
-        onAnnotationAction(annotationKeyMap[key])
+        onAnnotationAction(annotationKeyMap[key], { shift: e.shiftKey })
       }
 
       // Edit key (e) - only when popover is visible with annotation
