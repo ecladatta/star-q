@@ -51,6 +51,7 @@ type DocumentViewerProps = {
   annotations?: DocumentAnnotation[]
   warningsSlot?: ReactNode
   readOnly?: boolean
+  rdfAvailable: boolean
 }
 
 function formatVersionDate(value: string) {
@@ -128,6 +129,7 @@ export function DocumentViewer({
   annotations,
   warningsSlot,
   readOnly = false,
+  rdfAvailable,
 }: DocumentViewerProps) {
   const [showAnnotations, setShowAnnotations] = useState(true)
   const [mobileAnnotationsOpen, setMobileAnnotationsOpen] = useState(false)
@@ -454,6 +456,7 @@ export function DocumentViewer({
             document={document}
             documentData={documentData}
             readOnly={readOnly}
+            rdfAvailable={rdfAvailable}
             annotationsCount={documentAnnotations.length}
             onOpenAnnotations={() => setMobileAnnotationsOpen(true)}
             onCopyText={copyTextOnly}

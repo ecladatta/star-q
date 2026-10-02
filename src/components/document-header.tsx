@@ -1,7 +1,7 @@
 'use client'
 import type { Document } from '@/db/schema'
 import type { DocumentData } from '@/types/types'
-import { Circle, CircleCheck, Download, FileText, ListIcon, MoreHorizontal, Type } from 'lucide-react'
+import { Circle, CircleCheck, Download, FileDown, FileText, ListIcon, MoreHorizontal, Type } from 'lucide-react'
 import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { markDocumentsAsCompleted } from '@/actions/document/documentActions'
@@ -12,16 +12,22 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { setFullWidth, setShowUnits, useFullWidth, useShowUnits } from '@/lib/display'
 import { downloadRawDocumentData } from '@/lib/download-document'
+import { downloadExportFile } from '@/lib/exports/download'
+import { EXPORT_FORMAT_IDS, EXPORT_FORMATS } from '@/lib/exports/export-format'
 import { ShortcutsDialog } from './shortcuts-dialog'
 
 type DocumentHeaderProps = {
   document: Document
   documentData: DocumentData
   readOnly?: boolean
+  rdfAvailable: boolean
   annotationsCount: number
   onOpenAnnotations: () => void
   onCopyText: () => void
@@ -32,6 +38,7 @@ export function DocumentHeader({
   document,
   documentData,
   readOnly = false,
+  rdfAvailable,
   annotationsCount,
   onOpenAnnotations,
   onCopyText,
@@ -41,6 +48,9 @@ export function DocumentHeader({
   const [isPending, startTransition] = useTransition()
   const fullWidth = useFullWidth()
   const showUnits = useShowUnits()
+
+  const exportFormatIds = EXPORT_FORMAT_IDS
+    .filter(id => rdfAvailable || EXPORT_FORMATS[id].kind !== 'rdf')
 
   const toggleCompletion = () => {
     startTransition(async () => {
@@ -109,6 +119,22 @@ export function DocumentHeader({
                 <FileText className="size-4" />
                 Copy Whole Document
               </DropdownMenuItem>
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <FileDown className="size-4" />
+                  Export
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  {exportFormatIds.map(format => (
+                    <DropdownMenuItem
+                      key={format}
+                      onClick={() => void downloadExportFile(`/api/document/${document.id}/export?${EXPORT_FORMATS[format].query}`)}
+                    >
+                      {EXPORT_FORMATS[format].label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
               {!readOnly && (
                 <>
                   <DropdownMenuItem onClick={() => downloadRawDocumentData(document.id, document.title)}>

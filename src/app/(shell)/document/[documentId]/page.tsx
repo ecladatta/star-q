@@ -56,6 +56,7 @@ export default async function DocumentPage({ params }: { params: Promise<{ docum
       document={document}
       annotations={annotations}
       readOnly={!edit}
+      rdfAvailable={wikibase !== null}
       warningsSlot={showWarnings
         ? (
             <Suspense key={documentId} fallback={<WikibaseWarningsSkeleton compact />}>
