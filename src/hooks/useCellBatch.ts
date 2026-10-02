@@ -706,13 +706,6 @@ export function useCellBatch(options: UseCellBatchOptions) {
     }
   }, [isRowSelected, releaseCells, exitBatchMode, selectRow, setCellRole, openBatchMode, toggleRow, currentAnnotation])
 
-  const selectCell = useCallback((elementIndex: number, row: number, col: number) => {
-    dragRef.current = null
-    const cell = { elementIndex, row, col }
-    anchorRef.current = cell
-    commitCells([cell])
-  }, [commitCells])
-
   const handleSelectAll = useCallback((elementIndex: number, additive: boolean, originRect: CellBatchOriginRect | null = null) => {
     if (!additive && isAllSelected(elementIndex)) {
       // Clicking the button again on a fully selected table deselects all
@@ -1067,7 +1060,6 @@ export function useCellBatch(options: UseCellBatchOptions) {
     handleCellMouseUp,
     handleSelectColumn,
     handleSelectRow,
-    selectCell,
     handleSelectAll,
     createBatch,
     clearCells,

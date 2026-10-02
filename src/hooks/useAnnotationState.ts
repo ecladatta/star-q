@@ -643,18 +643,8 @@ export function useAnnotationState(
       cellBatch.releaseCells()
     }
 
-    if (popover.popoverState.isTableCell && selection.tableSelection && selection.currentElementIndex !== null) {
-      if (cellBatch.cells.length > 0 && cellBatch.cellRole !== type) {
-        addToCurrentAnnotation(type)
-        popover.hidePopover()
-        return
-      }
-
-      const { rowIndex, cellIndex } = selection.tableSelection
-      cellBatch.selectCell(selection.currentElementIndex, rowIndex, cellIndex)
-      cellBatch.setCellRole(type)
-      cellBatch.openBatchMode()
-      selection.clearSelection()
+    if (popover.popoverState.isTableCell && selection.tableSelection) {
+      addToCurrentAnnotation(type)
       popover.hidePopover()
       return
     }
