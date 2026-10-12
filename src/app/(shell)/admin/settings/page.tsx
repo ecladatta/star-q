@@ -13,7 +13,8 @@ export default async function AdminSettingsPage() {
         title="Instance settings"
       />
       <section className="max-w-2xl space-y-4">
-        <SettingRow title="Signup" description="Allow unknown OAuth identities and local users to register." enabled={settings.signupEnabled} action={updateAdminSettings.bind(null, { signupEnabled: !settings.signupEnabled })} />
+        <SettingRow title="Password signup" description="Allow new users to register with a username and password." enabled={settings.passwordSignupEnabled} action={updateAdminSettings.bind(null, { passwordSignupEnabled: !settings.passwordSignupEnabled })} />
+        <SettingRow title="OAuth signup" description="Allow unknown GitHub or Wikimedia identities to register." enabled={settings.oauthSignupEnabled} action={updateAdminSettings.bind(null, { oauthSignupEnabled: !settings.oauthSignupEnabled })} />
         <SettingRow title="Sign-in" description="Allow new user sessions. Existing sessions continue; administrators can always sign in." enabled={settings.signinEnabled} action={updateAdminSettings.bind(null, { signinEnabled: !settings.signinEnabled })} />
       </section>
     </Page>

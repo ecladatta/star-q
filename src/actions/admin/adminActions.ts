@@ -39,11 +39,14 @@ export async function getAdminSettings() {
   return getAppSettings()
 }
 
-export async function updateAdminSettings(input: { signupEnabled?: boolean, signinEnabled?: boolean }) {
+export async function updateAdminSettings(input: { passwordSignupEnabled?: boolean, oauthSignupEnabled?: boolean, signinEnabled?: boolean }) {
   const actor = await requireAdmin()
-  const patch: { signupEnabled?: boolean, signinEnabled?: boolean, updatedAt: Date } = { updatedAt: new Date() }
-  if (typeof input.signupEnabled === 'boolean') {
-    patch.signupEnabled = input.signupEnabled
+  const patch: { passwordSignupEnabled?: boolean, oauthSignupEnabled?: boolean, signinEnabled?: boolean, updatedAt: Date } = { updatedAt: new Date() }
+  if (typeof input.passwordSignupEnabled === 'boolean') {
+    patch.passwordSignupEnabled = input.passwordSignupEnabled
+  }
+  if (typeof input.oauthSignupEnabled === 'boolean') {
+    patch.oauthSignupEnabled = input.oauthSignupEnabled
   }
   if (typeof input.signinEnabled === 'boolean') {
     patch.signinEnabled = input.signinEnabled

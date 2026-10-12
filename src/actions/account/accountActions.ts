@@ -32,7 +32,7 @@ async function insertLocalUser(input: { username: string, name: string, password
 
 export async function signUpLocal(formData: FormData): Promise<void> {
   const settings = await getAppSettings()
-  if (!settings.setupCompletedAt || !settings.signupEnabled || !settings.signinEnabled) {
+  if (!settings.setupCompletedAt || !settings.passwordSignupEnabled || !settings.signinEnabled) {
     throw new ForbiddenError('Signup is disabled.')
   }
 
@@ -85,7 +85,8 @@ export async function setupLocalAdministrator(formData: FormData): Promise<void>
     await ensurePersonalTeam(trx, user.id)
     await trx.update(appSettings).set({
       setupCompletedAt: new Date(),
-      signupEnabled: true,
+      passwordSignupEnabled: true,
+      oauthSignupEnabled: true,
       signinEnabled: true,
       updatedAt: new Date(),
     }).where(eq(appSettings.id, APP_SETTINGS_ID))
@@ -118,7 +119,8 @@ export async function completeSetupWithOAuth(formData: FormData): Promise<void> 
     await ensurePersonalTeam(trx, currentUser.id)
     await trx.update(appSettings).set({
       setupCompletedAt: new Date(),
-      signupEnabled: true,
+      passwordSignupEnabled: true,
+      oauthSignupEnabled: true,
       signinEnabled: true,
       updatedAt: new Date(),
     }).where(eq(appSettings.id, APP_SETTINGS_ID))

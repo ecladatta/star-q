@@ -20,7 +20,10 @@ export default async function SignUpPage() {
   if (!settings.setupCompletedAt) {
     redirect('/setup')
   }
-  if (!settings.signupEnabled || !settings.signinEnabled) {
+  if (!settings.signinEnabled) {
+    redirect('/sign-in')
+  }
+  if (!settings.passwordSignupEnabled && !settings.oauthSignupEnabled) {
     redirect('/sign-in')
   }
   if ((await auth())?.user?.valid) {
@@ -30,7 +33,7 @@ export default async function SignUpPage() {
   const oauth = providers
     .map(provider => provider as { id?: string, name?: string })
     .filter((provider): provider is { id: string, name: string } => Boolean(provider.id && provider.name && provider.id !== 'credentials'))
-  const localEnabled = isLocalCredentialsEnabled()
+  const localEnabled = isLocalCredentialsEnabled() && settings.passwordSignupEnabled
 
   return (
     <main className="mx-auto w-full max-w-md px-4 py-10">
@@ -60,11 +63,11 @@ export default async function SignUpPage() {
             <Button type="submit" className="h-9 w-full">Create account</Button>
           </ServerActionForm>
         )}
-        {localEnabled && oauth.length > 0 && <Separator />}
-        {oauth.length > 0 && (
+        {localEnabled && settings.oauthSignupEnabled && oauth.length > 0 && <Separator />}
+        {settings.oauthSignupEnabled && oauth.length > 0 && (
           <div className="flex flex-col gap-2"><OAuthProviderButtons providers={oauth} action="Sign up" redirectTo="/onboarding" /></div>
         )}
-        {!localEnabled && oauth.length === 0 && (
+        {!localEnabled && (!settings.oauthSignupEnabled || oauth.length === 0) && (
           <p className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
             No signup method is configured. Ask a deployment administrator to enable local credentials or an OAuth provider.
           </p>

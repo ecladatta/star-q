@@ -122,7 +122,8 @@ export const authenticators = pgTable(
 export const appSettings = pgTable('app_settings', {
   id: text('id').primaryKey().default('default'),
   setupCompletedAt: timestamp('setup_completed_at', { mode: 'date' }),
-  signupEnabled: boolean('signup_enabled').notNull().default(true),
+  passwordSignupEnabled: boolean('password_signup_enabled').notNull().default(true),
+  oauthSignupEnabled: boolean('oauth_signup_enabled').notNull().default(true),
   signinEnabled: boolean('signin_enabled').notNull().default(true),
   updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
 })

@@ -20,7 +20,7 @@ const guardedAdapter: Adapter = {
     if (!settings) {
       throw new Error('Application settings are missing. Run database migrations.')
     }
-    if (settings.setupCompletedAt && (!settings.signupEnabled || !settings.signinEnabled)) {
+    if (settings.setupCompletedAt && (!settings.oauthSignupEnabled || !settings.signinEnabled)) {
       throw new Error('Signup is disabled.')
     }
     return createUser(user)

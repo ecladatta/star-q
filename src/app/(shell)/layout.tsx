@@ -39,7 +39,7 @@ export default async function ShellLayout({ children }: { children: ReactNode })
         : (
             <GuestBar
               setupCompleted={Boolean(settings.setupCompletedAt)}
-              signupEnabled={settings.signupEnabled}
+              signupEnabled={settings.passwordSignupEnabled || settings.oauthSignupEnabled}
               signinEnabled={settings.signinEnabled}
             />
           )}

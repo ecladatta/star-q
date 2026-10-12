@@ -232,6 +232,13 @@
       "when": 1790858741805,
       "tag": "0032_wikibase_settings_keys",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1791798599915,
+      "tag": "0033_remarkable_vargas",
+      "breakpoints": true
     }
   ]
 }

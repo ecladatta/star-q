@@ -77,7 +77,7 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
                     No sign-in method is configured. Ask a deployment administrator to enable local credentials or an OAuth provider.
                   </p>
                 )}
-                {settings.signupEnabled && settings.signinEnabled && (
+                {settings.signinEnabled && (settings.passwordSignupEnabled || settings.oauthSignupEnabled) && (
                   <p className="text-center text-sm text-muted-foreground">
                     Need an account?
                     {' '}
