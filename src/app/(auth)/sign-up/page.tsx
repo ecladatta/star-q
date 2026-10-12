@@ -40,7 +40,7 @@ export default async function SignUpPage() {
       <div className="space-y-6 rounded-xl border border-border bg-card p-6 sm:p-8">
         <div className="space-y-2 text-center">
           <h1 className="text-lg font-semibold tracking-[-0.01em]">Create an account</h1>
-          <p className="text-sm text-muted-foreground">Your unique username is how other users invite you.</p>
+          {localEnabled && <p className="text-sm text-muted-foreground">Your unique username is how other users invite you.</p>}
         </div>
         {localEnabled && (
           <ServerActionForm action={signUpLocal} className="space-y-4">
