@@ -30,6 +30,7 @@ import { AnnotationsSidebar } from './annotations-sidebar'
 import CombinedElement from './combined-element'
 import { DocumentHeader } from './document-header'
 import { DocumentSidebar } from './document-sidebar'
+import { MarkHoverProvider } from './mark-hover-context'
 import { ReadOnlyAnnotationDetail } from './readonly-annotation-detail'
 import { SelectionPopover } from './selection-popover'
 
@@ -202,6 +203,11 @@ export function DocumentViewer({
       mentionData: null,
     }
   }, [annotationBatch.anchorRect])
+
+  const batchAnchorPopoverVisible = annotationBatch.anchorRect !== null
+    && !annotationBatch.batchMode
+    && !annotationBatch.dragging
+  const sharedPopoverOpen = popover.popoverState.visible || batchAnchorPopoverVisible
 
   const handleCellSelectionAssociation = useCallback((type: EntityType) => {
     annotationBatch.setBatchRole(type)
@@ -473,32 +479,39 @@ export function DocumentViewer({
 
               <Card className="mb-6 min-w-0 rounded-none border-none shadow-none">
                 <CardContent className="min-w-0 p-0">
-                  {combinedElements.map(element => (
-                    <CombinedElement
-                      key={`element-${element.elementIndex}`}
-                      {...element}
-                      handleSplitClick={handleSplitClick}
-                      handleTableSelection={handleTableSelection}
-                      handleTableCellPointerDown={(index, row, col, event) =>
-                        annotationBatch.handleCellPointerDown({ kind: 'cell', elementIndex: index, row, col }, event)}
-                      handleTableCellDragOver={(index, row, col) =>
-                        annotationBatch.handleCellDragOver({ kind: 'cell', elementIndex: index, row, col })}
-                      handleTableCellMouseUp={handleTableCellMouseUp}
-                      handleTextSelection={handleTextSelection}
-                      documentElements={documentElements}
-                      currentAnnotation={currentAnnotation}
-                      mentionKeySet={annotationBatch.mentionKeySet}
-                      stagedComponentIds={annotationBatch.stagedSpanIds}
-                      cellRole={annotationBatch.batchMode ? annotationBatch.batchRole : undefined}
-                      onSelectColumn={(col, additive, originRect) =>
-                        annotationBatch.handleSelectColumn(element.elementIndex, col, additive, originRect)}
-                      onSelectRow={(row, additive, originRect) =>
-                        annotationBatch.handleSelectRow(element.elementIndex, row, additive, originRect)}
-                      onSelectAll={(additive, originRect) =>
-                        annotationBatch.handleSelectAll(element.elementIndex, additive, originRect)}
-                      readOnly={readOnly}
-                    />
-                  ))}
+                  <MarkHoverProvider
+                    documentAnnotations={documentAnnotations}
+                    documentElements={documentElements}
+                    sharedPopoverOpen={sharedPopoverOpen}
+                    onEditAnnotation={readOnly ? undefined : handleEditAnnotation}
+                  >
+                    {combinedElements.map(element => (
+                      <CombinedElement
+                        key={`element-${element.elementIndex}`}
+                        {...element}
+                        handleSplitClick={handleSplitClick}
+                        handleTableSelection={handleTableSelection}
+                        handleTableCellPointerDown={(index, row, col, event) =>
+                          annotationBatch.handleCellPointerDown({ kind: 'cell', elementIndex: index, row, col }, event)}
+                        handleTableCellDragOver={(index, row, col) =>
+                          annotationBatch.handleCellDragOver({ kind: 'cell', elementIndex: index, row, col })}
+                        handleTableCellMouseUp={handleTableCellMouseUp}
+                        handleTextSelection={handleTextSelection}
+                        documentElements={documentElements}
+                        currentAnnotation={currentAnnotation}
+                        mentionKeySet={annotationBatch.mentionKeySet}
+                        stagedComponentIds={annotationBatch.stagedSpanIds}
+                        cellRole={annotationBatch.batchMode ? annotationBatch.batchRole : undefined}
+                        onSelectColumn={(col, additive, originRect) =>
+                          annotationBatch.handleSelectColumn(element.elementIndex, col, additive, originRect)}
+                        onSelectRow={(row, additive, originRect) =>
+                          annotationBatch.handleSelectRow(element.elementIndex, row, additive, originRect)}
+                        onSelectAll={(additive, originRect) =>
+                          annotationBatch.handleSelectAll(element.elementIndex, additive, originRect)}
+                        readOnly={readOnly}
+                      />
+                    ))}
+                  </MarkHoverProvider>
                 </CardContent>
               </Card>
             </>
@@ -599,9 +612,7 @@ export function DocumentViewer({
 
           {/* Same fresh-selection popup for multi-cell selections */}
           {!readOnly
-            && annotationBatch.anchorRect
-            && !annotationBatch.batchMode
-            && !annotationBatch.dragging
+            && batchAnchorPopoverVisible
             && anchorPopoverState && (
             <SelectionPopover
               popoverState={anchorPopoverState}
