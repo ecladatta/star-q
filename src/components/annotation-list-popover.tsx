@@ -1,55 +1,16 @@
-import type { LucideIcon } from 'lucide-react'
 import type { AnnotationMention, DocumentAnnotation, EntityType } from '@/types/types'
 
-import { BoxIcon, CopyIcon, EditIcon, EyeIcon, LinkIcon, Loader2Icon, Trash2Icon, UserIcon } from 'lucide-react'
+import { CopyIcon, EditIcon, EyeIcon, Loader2Icon, Trash2Icon } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { getAnnotationComponentDisplayText, getAnnotationComponentTitle } from '@/lib/annotation-roles'
 import { cn } from '@/lib/utils'
+import { AnnotationChips, ENTITY_META, ENTITY_ORDER } from './annotation-chips'
 import { DocumentPopoverAnchor } from './document-popover-anchor'
 import { QualifierSummary } from './qualifier-summary'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip'
-
-const ENTITY_ORDER: EntityType[] = ['subject', 'predicate', 'object']
-
-type EntityMeta = {
-  icon: LucideIcon
-  chipClass: string
-  buttonClass: string
-  tooltip: string
-  hotkey: string
-  label: string
-}
-
-const ENTITY_META: Record<EntityType, EntityMeta> = {
-  subject: {
-    icon: UserIcon,
-    chipClass: 'bg-subject-soft text-subject-fg',
-    buttonClass: 'border-subject/50 text-subject-fg hover:bg-subject-soft/50 focus-visible:ring-subject',
-    tooltip: 'New subject from this mention (S)',
-    hotkey: 'S',
-    label: 'Subject',
-  },
-  predicate: {
-    icon: LinkIcon,
-    chipClass: 'bg-predicate-soft text-predicate-fg',
-    buttonClass: 'border-predicate/50 text-predicate-fg hover:bg-predicate-soft/50 focus-visible:ring-predicate',
-    tooltip: 'New predicate from this mention (P)',
-    hotkey: 'P',
-    label: 'Predicate',
-  },
-  object: {
-    icon: BoxIcon,
-    chipClass: 'bg-object-soft text-object-fg',
-    buttonClass: 'border-object/50 text-object-fg hover:bg-object-soft/50 focus-visible:ring-object',
-    tooltip: 'New object from this mention (O)',
-    hotkey: 'O',
-    label: 'Object',
-  },
-}
 
 type AnnotationListPopoverProps = {
   visible: boolean
@@ -195,34 +156,7 @@ export function AnnotationListPopover({
                         <CardContent className="p-3">
                           <div className="grid grid-cols-[1fr_auto] gap-2">
                             <div className="flex min-w-0 flex-col gap-1">
-                              {ENTITY_ORDER.map((entityType) => {
-                                const component = annotation[entityType]
-                                if (!component)
-                                  return null
-
-                                const meta = ENTITY_META[entityType]
-                                const Icon = meta.icon
-
-                                return (
-                                  <span
-                                    key={entityType}
-                                    className={cn('flex min-w-0 items-center gap-1 rounded-sm px-1.5 py-0.5 text-[11px] font-medium', meta.chipClass)}
-                                  >
-                                    <Icon className="size-3 shrink-0" />
-                                    <span
-                                      className="min-w-0 flex-1 truncate"
-                                      title={getAnnotationComponentTitle(component)}
-                                    >
-                                      {getAnnotationComponentDisplayText(component)}
-                                    </span>
-                                    {component.unit && (
-                                      <span className="shrink-0 rounded-sm bg-background/50 px-1 text-[10px] font-normal opacity-80">
-                                        {component.unit.label}
-                                      </span>
-                                    )}
-                                  </span>
-                                )
-                              })}
+                              <AnnotationChips annotation={annotation} />
                               <QualifierSummary qualifiers={annotation.qualifiers} className="mt-1 pt-1.5" />
                             </div>
                             {readOnly
