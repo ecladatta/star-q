@@ -1,4 +1,4 @@
-import type { Dispatch, ReactNode, SetStateAction } from 'react'
+import type { ReactNode } from 'react'
 import type { QuantityState } from '@/components/entity-selector'
 import type { BatchMention, BatchMentionQuantity, BatchMentionRow } from '@/lib/batch-mentions'
 import type { ConstraintEntityCheck, ConstraintSide, PropertyConstraints } from '@/lib/wikibase-constraints'
@@ -6,6 +6,7 @@ import type {
   AnnotationComponentRole,
   CurrentAnnotation,
   DocumentAnnotationComponent,
+  EditCurrentAnnotation,
   Entity,
   EntityType,
   UnitRef,
@@ -92,9 +93,10 @@ const ROLE_SOFT: Record<AnnotationComponentRole, string> = {
 
 type AnnotationFormProps = {
   currentAnnotation: CurrentAnnotation | null
-  setCurrentAnnotation: Dispatch<SetStateAction<CurrentAnnotation | null>>
+  editCurrentAnnotation: EditCurrentAnnotation
   onSave: () => void
   onDelete: (annotationId: string) => void
+  onClone: () => void
   annotationFormLoading: boolean
   isDeletingAnnotation: boolean
   corpusId: string
@@ -133,58 +135,11 @@ type AnnotationFormProps = {
   onBatchRoleChange?: (role: EntityType) => void
   onBatchMentionEntityChange?: (unit: BatchMention, entity: Entity | null) => void
   scrollToMentions?: () => void
-  onBatchExit?: () => void
-}
-
-function normalizeComponentForDirtyCheck(
-  component: DocumentAnnotationComponent | undefined,
-) {
-  if (!component) {
-    return null
-  }
-
-  return {
-    id: component.id,
-    entityLabel: component.entityLabel ?? null,
-    entityValue: component.entityValue ?? null,
-    entityCustom: component.entityCustom ?? null,
-    entityCustomId: component.entityCustomId ?? null,
-    entityDatatype: component.entityDatatype ?? null,
-    unit: component.unit ?? null,
-    quantityLowerBound: component.quantityLowerBound ?? null,
-    quantityUpperBound: component.quantityUpperBound ?? null,
-    annotationStart: component.annotationStart,
-    annotationEnd: component.annotationEnd,
-    annotationRow: component.annotationRow,
-    annotationCell: component.annotationCell,
-    annotationValue: component.annotationValue,
-    annotationType: component.annotationType,
-    annotationTag: component.annotationTag,
-    elementIndex: component.elementIndex,
-  }
-}
-
-function serializeAnnotationForDirtyCheck(
-  annotation: CurrentAnnotation | null,
-) {
-  if (!annotation) {
-    return null
-  }
-
-  return JSON.stringify({
-    id: annotation.id ?? null,
-    subject: normalizeComponentForDirtyCheck(annotation.subject),
-    predicate: normalizeComponentForDirtyCheck(annotation.predicate),
-    object: normalizeComponentForDirtyCheck(annotation.object),
-    qualifiers: (annotation.qualifiers ?? [])
-      .map(qualifier => ({
-        id: qualifier.id,
-        position: qualifier.position,
-        predicate: normalizeComponentForDirtyCheck(qualifier.predicate),
-        value: normalizeComponentForDirtyCheck(qualifier.value),
-      }))
-      .sort((a, b) => a.position - b.position),
-  })
+  hasUnsavedChanges: boolean
+  discardDialogOpen: boolean
+  onRequestDiscard: () => void
+  onConfirmDiscard: () => void
+  onCancelDiscard: () => void
 }
 
 const ROLE_LABEL: Record<EntityType, string> = {
@@ -381,9 +336,10 @@ function SlotField({
 
 export function AnnotationForm({
   currentAnnotation,
-  setCurrentAnnotation,
+  editCurrentAnnotation,
   onSave,
   onDelete,
+  onClone,
   annotationFormLoading,
   isDeletingAnnotation,
   corpusId,
@@ -412,7 +368,11 @@ export function AnnotationForm({
   onBatchRoleChange,
   onBatchMentionEntityChange,
   scrollToMentions,
-  onBatchExit,
+  hasUnsavedChanges,
+  discardDialogOpen,
+  onRequestDiscard,
+  onConfirmDiscard,
+  onCancelDiscard,
 }: AnnotationFormProps) {
   const subjectTag = currentAnnotation?.subject
   const predicateTag = currentAnnotation?.predicate
@@ -547,9 +507,6 @@ export function AnnotationForm({
   // undefined auto-opens the first useful row; null means the user collapsed all qualifier editors.
   const [expandedQualifierId, setExpandedQualifierId] = useState<string | null | undefined
   >(undefined)
-  const [discardDialogOpen, setDiscardDialogOpen] = useState(false)
-  const initialAnnotationIdRef = useRef<string | null>(null)
-  const initialAnnotationSnapshotRef = useRef<string | null>(null)
 
   const firstIncompleteQualifierId = useMemo(() => {
     return (
@@ -593,46 +550,17 @@ export function AnnotationForm({
     : expandedQualifierId === null
       ? null
       : (firstIncompleteQualifierId ?? qualifiers[0]?.id ?? null)
-  const currentAnnotationSnapshot = useMemo(
-    () => serializeAnnotationForDirtyCheck(currentAnnotation),
-    [currentAnnotation],
-  )
-  const hasUnsavedChanges = Boolean(
-    currentAnnotation
-    && (!currentAnnotation.id
-      || (initialAnnotationSnapshotRef.current !== null
-        && currentAnnotationSnapshot !== initialAnnotationSnapshotRef.current)),
-  )
 
   useEffect(() => {
     onActiveQualifierChange(activeQualifierId)
   }, [activeQualifierId, onActiveQualifierChange])
-
-  useEffect(() => {
-    if (!currentAnnotation) {
-      initialAnnotationIdRef.current = null
-      initialAnnotationSnapshotRef.current = null
-      return
-    }
-
-    if (!currentAnnotation.id) {
-      initialAnnotationIdRef.current = null
-      initialAnnotationSnapshotRef.current = null
-      return
-    }
-
-    if (initialAnnotationIdRef.current !== currentAnnotation.id) {
-      initialAnnotationIdRef.current = currentAnnotation.id
-      initialAnnotationSnapshotRef.current = currentAnnotationSnapshot
-    }
-  }, [currentAnnotation, currentAnnotationSnapshot])
 
   // Tracks which components the editor bumped to decimal, so clearing the
   // quantity can revert the datatype.
   const quantityDatatypeBumpRef = useRef<Set<string>>(new Set())
 
   const handleEntityChange = (type: EntityType, newValue: Entity | null) => {
-    setCurrentAnnotation((prev) => {
+    editCurrentAnnotation((prev) => {
       if (!prev?.[type])
         return prev
       const updated = {
@@ -670,7 +598,7 @@ export function AnnotationForm({
   }
 
   const handleUnitChange = (type: EntityType, unit: UnitRef | null) => {
-    setCurrentAnnotation((prev) => {
+    editCurrentAnnotation((prev) => {
       const component = prev?.[type]
       if (!component) {
         return prev
@@ -698,7 +626,7 @@ export function AnnotationForm({
   }
 
   const handleQuantityChange = (type: EntityType, quantity: QuantityState) => {
-    setCurrentAnnotation((prev) => {
+    editCurrentAnnotation((prev) => {
       const component = prev?.[type]
       if (!component) {
         return prev
@@ -735,7 +663,7 @@ export function AnnotationForm({
   const handleSwapSubjectObject = () => {
     if (batchMode && (batchRole === 'subject' || batchRole === 'object')) {
       const otherRole: EntityType = batchRole === 'subject' ? 'object' : 'subject'
-      setCurrentAnnotation((prev) => {
+      editCurrentAnnotation((prev) => {
         if (!prev)
           return prev
 
@@ -750,7 +678,7 @@ export function AnnotationForm({
       return
     }
 
-    setCurrentAnnotation((prev) => {
+    editCurrentAnnotation((prev) => {
       if (!prev)
         return prev
 
@@ -770,7 +698,7 @@ export function AnnotationForm({
   }
 
   const removeTag = (type: EntityType) => {
-    setCurrentAnnotation((prev: CurrentAnnotation | null) => {
+    editCurrentAnnotation((prev: CurrentAnnotation | null) => {
       if (!prev)
         return prev
       return { ...prev, [type]: undefined }
@@ -963,24 +891,6 @@ export function AnnotationForm({
     onSave()
   }, [firstIncompleteQualifierId, firstQualifierValidationError, onSave])
 
-  const discardCurrentAnnotation = useCallback(() => {
-    setDiscardDialogOpen(false)
-    if (batchMode && onBatchExit) {
-      onBatchExit()
-      return
-    }
-    setCurrentAnnotation(null)
-  }, [batchMode, onBatchExit, setCurrentAnnotation])
-
-  const handleDiscard = useCallback(() => {
-    if (hasUnsavedChanges) {
-      setDiscardDialogOpen(true)
-      return
-    }
-
-    discardCurrentAnnotation()
-  }, [discardCurrentAnnotation, hasUnsavedChanges])
-
   useEffect(() => {
     if (!discardDialogOpen) {
       return
@@ -993,18 +903,18 @@ export function AnnotationForm({
 
       e.preventDefault()
       e.stopImmediatePropagation()
-      setDiscardDialogOpen(false)
+      onCancelDiscard()
     }
 
     window.addEventListener('keydown', handleDialogEscape, true)
     return () =>
       window.removeEventListener('keydown', handleDialogEscape, true)
-  }, [discardDialogOpen])
+  }, [discardDialogOpen, onCancelDiscard])
 
   const handleAddQualifier = useCallback(() => {
     const qualifierId = uuidv4()
     setExpandedQualifierId(qualifierId)
-    setCurrentAnnotation((prev) => {
+    editCurrentAnnotation((prev) => {
       if (!prev) {
         return prev
       }
@@ -1018,46 +928,14 @@ export function AnnotationForm({
         ],
       }
     })
-  }, [setCurrentAnnotation])
+  }, [editCurrentAnnotation])
 
   const handleCloneAnnotation = useCallback(() => {
     if (!currentAnnotation)
       return
 
-    // Create a copy without the id to make it a new annotation with new component IDs
-    const cloneComponent = (
-      comp: DocumentAnnotationComponent | undefined,
-    ): DocumentAnnotationComponent | undefined => {
-      if (!comp) {
-        return undefined
-      }
-      return {
-        ...comp,
-        id: uuidv4(),
-      }
-    }
-
-    const clonedAnnotation: CurrentAnnotation = {
-      subject: cloneComponent(currentAnnotation.subject),
-      predicate: cloneComponent(currentAnnotation.predicate),
-      object: cloneComponent(currentAnnotation.object),
-    }
-    if (currentAnnotation.qualifiers !== undefined) {
-      clonedAnnotation.qualifiers = currentAnnotation.qualifiers.map(
-        (qualifier, position) => ({
-          id: uuidv4(),
-          position,
-          predicate: cloneComponent(qualifier.predicate),
-          value: cloneComponent(qualifier.value),
-        }),
-      )
-    }
-
-    setCurrentAnnotation(clonedAnnotation)
-    toast.success(
-      'Annotation cloned! Edit and save to create a new annotation.',
-    )
-  }, [currentAnnotation, setCurrentAnnotation])
+    onClone()
+  }, [currentAnnotation, onClone])
 
   // Keyboard shortcuts for saving (Ctrl+S / Cmd+S), cloning (C), and deleting (Delete)
   useEffect(() => {
@@ -1204,7 +1082,7 @@ export function AnnotationForm({
                         e.preventDefault()
                         if (currentAnnotation?.id) {
                           await onDelete(currentAnnotation.id)
-                          setCurrentAnnotation(null)
+                          editCurrentAnnotation(null)
                         }
                       }}
                     >
@@ -1270,14 +1148,17 @@ export function AnnotationForm({
             </Tooltip>
             <AlertDialog
               open={discardDialogOpen && hasUnsavedChanges}
-              onOpenChange={setDiscardDialogOpen}
+              onOpenChange={(open) => {
+                if (!open) {
+                  onCancelDiscard()
+                }
+              }}
             >
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
                     variant="ghost"
-                    onClick={handleDiscard}
-                    data-discard-annotation-trigger
+                    onClick={onRequestDiscard}
                   >
                     ✕
                   </Button>
@@ -1296,13 +1177,16 @@ export function AnnotationForm({
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel type="button">
+                  <AlertDialogCancel
+                    type="button"
+                    onClick={onCancelDiscard}
+                  >
                     Keep editing
                   </AlertDialogCancel>
                   <AlertDialogAction
                     type="button"
                     variant="destructive"
-                    onClick={discardCurrentAnnotation}
+                    onClick={onConfirmDiscard}
                   >
                     Discard
                   </AlertDialogAction>

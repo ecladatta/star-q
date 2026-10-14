@@ -1,3 +1,4 @@
+import type { SetStateAction } from 'react'
 import type {
   AnnotationComponentRole,
   AnnotationMention,
@@ -7,10 +8,12 @@ import type {
   DocumentAnnotation,
   DocumentAnnotationComponent,
   DocumentElement,
+  EditCurrentAnnotation,
   Entity,
   EntityType,
   TextOrTableElement,
 } from '@/types/types'
+import { useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { v4 as uuidv4 } from 'uuid'
@@ -21,6 +24,8 @@ import {
   getAnnotationById,
   updateAnnotation,
 } from '@/actions/annotation/annotationActions'
+import { clearIfStillCurrent, cloneAsNewAnnotation, computeHasUnsavedChanges, resolveSwitchOutcome, serializeAnnotationForDirtyCheck } from '@/lib/annotation-dirty'
+import { decideParamTransition } from '@/lib/annotation-param-sync'
 import { createEntityFromComponent, getAnnotationComponents } from '@/lib/annotation-roles'
 import { validateAnnotationComponent, validateAnnotationQualifiers, validateAnnotationTriple } from '@/lib/annotation-validation'
 import { useAnnotationBatch } from './useAnnotationBatch'
@@ -28,6 +33,16 @@ import { useKeyboardShortcuts } from './useKeyboardShortcuts'
 import { usePopoverState, useSelectionState } from './useSelectionState'
 
 type QualifierSide = 'predicate' | 'value'
+
+type SwitchOptions = {
+  onApplied?: () => void
+  revert?: () => void
+}
+
+type PendingSwitch = {
+  apply: () => void
+  revert?: () => void
+}
 
 class AnnotationError extends Error {
   constructor(message: string, public code?: string) {
@@ -158,9 +173,68 @@ export function useAnnotationState(
   combinedElements: TextOrTableElement[],
   showAnnotations: boolean,
   setShowAnnotations: (show: boolean) => void,
+  readOnly = false,
+  scrollToAnnotation?: (annotation: DocumentAnnotation) => void,
 ) {
   const [documentAnnotations, setDocumentAnnotations] = useState<DocumentAnnotation[]>(initialAnnotations)
-  const [currentAnnotation, setCurrentAnnotation] = useState<CurrentAnnotation | null>(null)
+  const [currentAnnotationState, setCurrentAnnotationState] = useState<CurrentAnnotation | null>(null)
+  const [pendingSwitch, setPendingSwitch] = useState<PendingSwitch | null>(null)
+  const pendingSwitchRef = useRef<PendingSwitch | null>(null)
+  const initialAnnotationSnapshotRef = useRef<string | null>(null)
+  const currentAnnotation = currentAnnotationState
+  const currentAnnotationRef = useRef<CurrentAnnotation | null>(null)
+
+  const searchParams = useSearchParams()
+  const annotationParam = searchParams.get('annotation')
+  const handledParamRef = useRef<string | null>(null)
+
+  // Shallow history write, not router.replace. A search-param navigation is a
+  // full App Router transition (RSC round trip included) and commits late,
+  // late enough for the user to close the editor before it lands, which used
+  // to resurrect the annotation. replaceState applies synchronously, and
+  // useSearchParams still picks it up.
+  const writeUrl = useCallback((next: string | null) => {
+    const params = new URLSearchParams(window.location.search)
+    if (next) {
+      params.set('annotation', next)
+    } else {
+      params.delete('annotation')
+    }
+    const query = params.toString()
+    if (query === window.location.search.slice(1)) {
+      return
+    }
+    window.history.replaceState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}`)
+  }, [])
+
+  const stashPendingSwitch = useCallback((pending: PendingSwitch | null) => {
+    pendingSwitchRef.current = pending
+    setPendingSwitch(pending)
+  }, [])
+
+  const setCurrentAnnotation = useCallback((update: SetStateAction<CurrentAnnotation | null>) => {
+    const previous = currentAnnotationRef.current
+    const next = typeof update === 'function' ? update(previous) : update
+    if (next?.id !== previous?.id) {
+      initialAnnotationSnapshotRef.current = next
+        ? serializeAnnotationForDirtyCheck(next)
+        : null
+      const nextId = next?.id ?? null
+      writeUrl(nextId)
+      handledParamRef.current = nextId
+    }
+    currentAnnotationRef.current = next
+    setCurrentAnnotationState(next)
+
+    if (pendingSwitchRef.current !== null && !computeHasUnsavedChanges(next, initialAnnotationSnapshotRef.current)) {
+      stashPendingSwitch(null)
+    }
+  }, [stashPendingSwitch, writeUrl])
+
+  const editCurrentAnnotation = useCallback<EditCurrentAnnotation>((update) => {
+    setCurrentAnnotation(prev => (typeof update === 'function' ? update(prev) : null))
+  }, [setCurrentAnnotation])
+
   const [selectedAnnotations, setSelectedAnnotations] = useState<Set<string>>(() => new Set())
   const [loadingStates, setLoadingStates] = useState({
     annotationForm: false,
@@ -197,10 +271,130 @@ export function useAnnotationState(
     rawElements: combinedElements,
     documentAnnotations,
     currentAnnotation,
-    setCurrentAnnotation,
+    editCurrentAnnotation,
     setDocumentAnnotations,
     popover,
   })
+
+  const hasUnsavedChanges = computeHasUnsavedChanges(
+    currentAnnotation,
+    initialAnnotationSnapshotRef.current,
+  )
+
+  const isDirtyNow = useCallback(() => computeHasUnsavedChanges(
+    currentAnnotationRef.current,
+    initialAnnotationSnapshotRef.current,
+  ), [])
+
+  const applySwitch = useCallback((next: CurrentAnnotation | null, options?: SwitchOptions) => {
+    const finish = () => {
+      initialAnnotationSnapshotRef.current = next
+        ? serializeAnnotationForDirtyCheck(next)
+        : null
+      setCurrentAnnotation(next)
+      options?.onApplied?.()
+    }
+
+    const outcome = resolveSwitchOutcome({
+      readOnly,
+      hasUnsavedChanges: isDirtyNow(),
+    })
+    if (outcome === 'apply') {
+      finish()
+      return
+    }
+
+    stashPendingSwitch({ apply: finish, revert: options?.revert })
+  }, [isDirtyNow, readOnly, setCurrentAnnotation, stashPendingSwitch])
+
+  const restoreUrlFromState = useCallback(() => {
+    const currentId = currentAnnotationRef.current?.id ?? null
+    writeUrl(currentId)
+    handledParamRef.current = currentId
+  }, [writeUrl])
+
+  const openAnnotation = useCallback((annotation: DocumentAnnotation, options?: { scroll?: boolean, onApplied?: () => void }) => {
+    const scroll = options?.scroll !== false && scrollToAnnotation
+      ? () => scrollToAnnotation(annotation)
+      : undefined
+    const onApplied = options?.onApplied || scroll
+      ? () => {
+          options?.onApplied?.()
+          scroll?.()
+        }
+      : undefined
+
+    applySwitch(annotation, { onApplied })
+  }, [applySwitch, scrollToAnnotation])
+
+  const closeAnnotation = useCallback(() => {
+    applySwitch(null)
+  }, [applySwitch])
+
+  const toggleAnnotation = useCallback((annotation: DocumentAnnotation) => {
+    if (annotation.id === currentAnnotationRef.current?.id) {
+      closeAnnotation()
+    } else {
+      openAnnotation(annotation)
+    }
+  }, [closeAnnotation, openAnnotation])
+
+  const requestCloseCurrentAnnotation = useCallback(() => {
+    const close = () => annotationBatch.batchMode
+      ? annotationBatch.exitBatchMode()
+      : setCurrentAnnotation(null)
+
+    const outcome = resolveSwitchOutcome({
+      readOnly,
+      hasUnsavedChanges: isDirtyNow(),
+    })
+    if (outcome === 'apply') {
+      close()
+      return
+    }
+
+    stashPendingSwitch({ apply: close })
+  }, [annotationBatch, isDirtyNow, readOnly, setCurrentAnnotation, stashPendingSwitch])
+
+  const confirmPendingSwitch = useCallback(() => {
+    const pending = pendingSwitchRef.current
+    stashPendingSwitch(null)
+    pending?.apply()
+  }, [stashPendingSwitch])
+
+  const cancelPendingSwitch = useCallback(() => {
+    const pending = pendingSwitchRef.current
+    stashPendingSwitch(null)
+    pending?.revert?.()
+  }, [stashPendingSwitch])
+
+  useEffect(() => {
+    const paramFound = annotationParam !== null
+      && documentAnnotations.some(annotation => annotation.id === annotationParam)
+    const { decision, handledParam } = decideParamTransition({
+      param: annotationParam,
+      live: new URLSearchParams(window.location.search).get('annotation'),
+      handledParam: handledParamRef.current,
+      currentId: currentAnnotationRef.current?.id ?? null,
+      paramFound,
+      annotationsLoaded: documentAnnotations.length > 0,
+    })
+    handledParamRef.current = handledParam
+
+    if (decision.kind === 'close') {
+      applySwitch(null, { revert: restoreUrlFromState })
+    } else if (decision.kind === 'open') {
+      const target = documentAnnotations.find(annotation => annotation.id === decision.annotationId)
+      if (target) {
+        applySwitch(target, {
+          onApplied: scrollToAnnotation ? () => scrollToAnnotation(target) : undefined,
+          revert: restoreUrlFromState,
+        })
+      }
+    } else if (decision.kind === 'clear') {
+      writeUrl(null)
+    }
+  }, [annotationParam, applySwitch, documentAnnotations, restoreUrlFromState, scrollToAnnotation, writeUrl])
 
   const annotationComponentsMap = useMemo(() => {
     const componentsMap = new Map<number, DocumentAnnotationComponent[]>()
@@ -277,6 +471,7 @@ export function useAnnotationState(
     object: DocumentAnnotationComponent,
   ) => {
     setLoadingState('annotationForm', true)
+    const savingAnnotation = currentAnnotation
 
     try {
       const validationError = validateAnnotationTriple(subject, predicate, object)
@@ -340,7 +535,7 @@ export function useAnnotationState(
         toast.success('Annotation created!')
       }
 
-      setCurrentAnnotation(null)
+      setCurrentAnnotation(prev => clearIfStillCurrent(prev, savingAnnotation))
       popover.hidePopover()
     } catch (error) {
       const message = error instanceof AnnotationError
@@ -350,7 +545,7 @@ export function useAnnotationState(
     } finally {
       setLoadingState('annotationForm', false)
     }
-  }, [currentAnnotation, popover, setLoadingState, documentAnnotations])
+  }, [currentAnnotation, popover, setCurrentAnnotation, setLoadingState, documentAnnotations])
 
   const handleAnnotationSelect = useCallback((annotationId: string, selected: boolean) => {
     setSelectedAnnotations((prev) => {
@@ -390,7 +585,7 @@ export function useAnnotationState(
     } finally {
       setLoadingState('batchDeleting', false)
     }
-  }, [selectedAnnotations, currentAnnotation, setLoadingState])
+  }, [selectedAnnotations, currentAnnotation, setCurrentAnnotation, setLoadingState])
 
   const deleteAnnotationById = useCallback(async (annotationId: string) => {
     setLoadingState('deletingAnnotation', true)
@@ -421,7 +616,7 @@ export function useAnnotationState(
     } finally {
       setLoadingState('deletingAnnotation', false)
     }
-  }, [currentAnnotation, setLoadingState, popover])
+  }, [currentAnnotation, setCurrentAnnotation, setLoadingState, popover])
 
   const createAnnotationComponent = useCallback((role: AnnotationComponentRole): DocumentAnnotationComponent | null => {
     if (!selection.hasSelection()) {
@@ -519,7 +714,7 @@ export function useAnnotationState(
     }))
 
     popover.hidePopover()
-  }, [popover])
+  }, [popover, setCurrentAnnotation])
 
   const addToCurrentAnnotation = useCallback((type: EntityType) => {
     const newComponent = createAnnotationComponent(type)
@@ -532,7 +727,7 @@ export function useAnnotationState(
     }))
 
     selection.clearSelection()
-  }, [createAnnotationComponent, selection])
+  }, [createAnnotationComponent, selection, setCurrentAnnotation])
 
   const removeQualifier = useCallback((qualifierId: string) => {
     setCurrentAnnotation((prev) => {
@@ -545,7 +740,7 @@ export function useAnnotationState(
         qualifiers: reindexQualifiers(prev.qualifiers.filter(qualifier => qualifier.id !== qualifierId)),
       }
     })
-  }, [])
+  }, [setCurrentAnnotation])
 
   const assignSelectionToQualifier = useCallback((qualifierId: string, side: QualifierSide) => {
     const role: AnnotationComponentRole = side === 'predicate'
@@ -575,7 +770,7 @@ export function useAnnotationState(
 
     selection.clearSelection()
     popover.hidePopover()
-  }, [createAnnotationComponent, popover, selection])
+  }, [createAnnotationComponent, popover, selection, setCurrentAnnotation])
 
   const assignSelectionToNextQualifier = useCallback((side: QualifierSide) => {
     const role: AnnotationComponentRole = side === 'predicate'
@@ -596,7 +791,7 @@ export function useAnnotationState(
 
     selection.clearSelection()
     popover.hidePopover()
-  }, [createAnnotationComponent, popover, selection])
+  }, [createAnnotationComponent, popover, selection, setCurrentAnnotation])
 
   const updateQualifierEntity = useCallback((qualifierId: string, side: QualifierSide, newValue: Entity | null) => {
     setCurrentAnnotation((prev) => {
@@ -622,7 +817,7 @@ export function useAnnotationState(
         }),
       }
     })
-  }, [])
+  }, [setCurrentAnnotation])
 
   const clearQualifierSide = useCallback((qualifierId: string, side: QualifierSide) => {
     setCurrentAnnotation((prev) => {
@@ -643,9 +838,13 @@ export function useAnnotationState(
         }),
       }
     })
-  }, [])
+  }, [setCurrentAnnotation])
 
   const handleSelectionMentionAssociation = useCallback((type: EntityType, modifiers?: { shift?: boolean }) => {
+    if (readOnly) {
+      return
+    }
+
     if (
       modifiers?.shift
       && selection.hasSelection()
@@ -697,40 +896,21 @@ export function useAnnotationState(
       addToCurrentAnnotation(type)
     }
     popover.hidePopover()
-  }, [addToCurrentAnnotation, handleMentionAssociation, popover, selection, annotationBatch, combinedElements, createAnnotationComponent, currentAnnotation])
+  }, [addToCurrentAnnotation, handleMentionAssociation, popover, readOnly, selection, annotationBatch, combinedElements, createAnnotationComponent, currentAnnotation, setCurrentAnnotation])
 
-  const handleCloneAnnotation = useCallback((annotation?: DocumentAnnotation) => {
+  const handleCloneAnnotation = useCallback((annotation?: CurrentAnnotation | DocumentAnnotation) => {
     const annotationToClone = annotation || popover.popoverState.annotation
     if (!annotationToClone) {
       return
     }
 
-    // Create cloned components with new IDs
-    const cloneComponent = (comp: DocumentAnnotationComponent | undefined): DocumentAnnotationComponent | undefined => {
-      if (!comp) {
-        return undefined
-      }
-      return {
-        ...comp,
-        id: uuidv4(),
-      }
-    }
-
-    setCurrentAnnotation({
-      subject: cloneComponent(annotationToClone.subject),
-      predicate: cloneComponent(annotationToClone.predicate),
-      object: cloneComponent(annotationToClone.object),
-      qualifiers: annotationToClone.qualifiers.map((qualifier, position) => ({
-        id: uuidv4(),
-        position,
-        predicate: cloneComponent(qualifier.predicate),
-        value: cloneComponent(qualifier.value),
-      })),
+    applySwitch(cloneAsNewAnnotation(annotationToClone), {
+      onApplied: () => {
+        popover.hidePopover()
+        toast.success('Annotation cloned! Edit and save to create a new annotation.')
+      },
     })
-
-    popover.hidePopover()
-    toast.success('Annotation cloned! Edit and save to create a new annotation.')
-  }, [popover])
+  }, [applySwitch, popover])
 
   useKeyboardShortcuts({
     popoverVisible: popover.popoverState.visible,
@@ -755,18 +935,15 @@ export function useAnnotationState(
       handleSelectionMentionAssociation(type, modifiers)
     },
     onEditCurrentAnnotation: () => {
-      if (popover.popoverState.annotation) {
-        setCurrentAnnotation(popover.popoverState.annotation)
-        popover.hidePopover()
+      const target = popover.popoverState.annotation
+      if (target) {
+        openAnnotation(target, { scroll: false, onApplied: popover.hidePopover })
       }
     },
     onClearAnnotation: () => {
       if (currentAnnotation) {
-        const discardButton = document.querySelector('[data-discard-annotation-trigger]') as HTMLButtonElement | null
-        if (discardButton) {
-          discardButton.click()
-          return
-        }
+        requestCloseCurrentAnnotation()
+        return
       }
 
       setCurrentAnnotation(null)
@@ -793,7 +970,7 @@ export function useAnnotationState(
     // State
     documentAnnotations,
     currentAnnotation,
-    setCurrentAnnotation,
+    editCurrentAnnotation,
     selectedAnnotations,
     documentElements,
 
@@ -804,6 +981,14 @@ export function useAnnotationState(
 
     // Validation
     currentAnnotationValidation,
+
+    hasUnsavedChanges,
+    discardDialogOpen: pendingSwitch !== null,
+    openAnnotation,
+    toggleAnnotation,
+    requestCloseCurrentAnnotation,
+    confirmPendingSwitch,
+    cancelPendingSwitch,
 
     // Actions
     handleAnnotationSelect,

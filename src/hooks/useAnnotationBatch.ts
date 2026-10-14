@@ -1,7 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react'
 import type { usePopoverState } from './useSelectionState'
 import type { BatchAnnotationItem, BatchCellRef, BatchMention, BatchMentionQuantity, BatchPreview, BatchPreviewRow } from '@/lib/batch-mentions'
-import type { CurrentAnnotation, DocumentAnnotation, DocumentAnnotationComponent, Entity, EntityType, TextOrTableElement, UnitRef } from '@/types/types'
+import type { CurrentAnnotation, DocumentAnnotation, DocumentAnnotationComponent, EditCurrentAnnotation, Entity, EntityType, TextOrTableElement, UnitRef } from '@/types/types'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import {
@@ -41,7 +41,7 @@ type UseAnnotationBatchOptions = {
   rawElements: TextOrTableElement[]
   documentAnnotations: DocumentAnnotation[]
   currentAnnotation: CurrentAnnotation | null
-  setCurrentAnnotation: Dispatch<SetStateAction<CurrentAnnotation | null>>
+  editCurrentAnnotation: EditCurrentAnnotation
   setDocumentAnnotations: Dispatch<SetStateAction<DocumentAnnotation[]>>
   popover: ReturnType<typeof usePopoverState>
 }
@@ -116,7 +116,7 @@ export function useAnnotationBatch(options: UseAnnotationBatchOptions) {
     rawElements,
     documentAnnotations,
     currentAnnotation,
-    setCurrentAnnotation,
+    editCurrentAnnotation,
     setDocumentAnnotations,
     popover,
   } = options
@@ -264,8 +264,8 @@ export function useAnnotationBatch(options: UseAnnotationBatchOptions) {
     setBatchMode(false)
     setSelectedRole('subject')
     clearMentions()
-    setCurrentAnnotation(null)
-  }, [clearMentions, setCurrentAnnotation])
+    editCurrentAnnotation(null)
+  }, [clearMentions, editCurrentAnnotation])
 
   const releaseMentions = useCallback(() => {
     setBatchMode(false)
@@ -276,8 +276,8 @@ export function useAnnotationBatch(options: UseAnnotationBatchOptions) {
 
   const setBatchRole = useCallback((type: EntityType) => {
     setSelectedRole(type)
-    setCurrentAnnotation(prev => (prev?.[type] ? { ...prev, [type]: undefined } : prev))
-  }, [setCurrentAnnotation])
+    editCurrentAnnotation(prev => (prev?.[type] ? { ...prev, [type]: undefined } : prev))
+  }, [editCurrentAnnotation])
 
   const openBatchMode = useCallback(() => {
     setBatchMode(true)
@@ -339,12 +339,12 @@ export function useAnnotationBatch(options: UseAnnotationBatchOptions) {
     setMentionQuantities(seededQuantities)
     setMentions(nextMentions)
     setSelectedRole(input.role)
-    setCurrentAnnotation(prev => (prev?.[input.role] ? { ...prev, [input.role]: undefined } : prev))
+    editCurrentAnnotation(prev => (prev?.[input.role] ? { ...prev, [input.role]: undefined } : prev))
     setBatchMode(true)
     // Spans highlight inline through the components map; no floating anchor.
     setAnchorRect(null)
     popover.hidePopover()
-  }, [creating, rawElements, batchMode, selectedRole, resetMentionValues, setCurrentAnnotation, popover])
+  }, [creating, rawElements, batchMode, selectedRole, resetMentionValues, editCurrentAnnotation, popover])
 
   const toggleCell = useCallback((cell: BatchCellRef) => {
     const key = mentionKey(cell)

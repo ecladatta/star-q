@@ -16,7 +16,6 @@ import { useCallback, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { Card, CardContent } from '@/components/ui/card'
 import { useAnnotationState } from '@/hooks/useAnnotationState'
-import { useAnnotationUrlSync } from '@/hooks/useAnnotationUrlSync'
 import { useDocumentElements } from '@/hooks/useDocumentElements'
 import { useSelectionHandlers } from '@/hooks/useSelectionState'
 import { useWikibaseInstance } from '@/hooks/useWikibaseInstance'
@@ -141,16 +140,27 @@ export function DocumentViewer({
   const documentData = document?.raw as DocumentData | undefined
   const combinedElements = useDocumentElements(documentData)
 
+  const scrollToAnnotation = useCallback((annotation: DocumentAnnotation) => {
+    const element = window.document.getElementById(
+      `element-${annotation.subject.elementIndex}`,
+    )
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }, [])
+
   const annotationState = useAnnotationState(
     annotations,
     combinedElements,
     showAnnotations,
     setShowAnnotations,
+    readOnly,
+    scrollToAnnotation,
   )
   const {
     documentAnnotations,
     currentAnnotation,
-    setCurrentAnnotation,
+    editCurrentAnnotation,
     annotationFormLoading,
     isDeletingAnnotation,
     isBatchDeleting,
@@ -167,6 +177,13 @@ export function DocumentViewer({
     assignSelectionToNextQualifier,
     updateQualifierEntity,
     clearQualifierSide,
+    hasUnsavedChanges,
+    discardDialogOpen,
+    openAnnotation,
+    toggleAnnotation,
+    requestCloseCurrentAnnotation,
+    confirmPendingSwitch,
+    cancelPendingSwitch,
     selection,
     popover,
     annotationBatch,
@@ -248,15 +265,6 @@ export function DocumentViewer({
     return map
   }, [documentElements])
 
-  const scrollToAnnotation = (annotation: DocumentAnnotation) => {
-    const element = window.document.getElementById(
-      `element-${annotation.subject.elementIndex}`,
-    )
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    }
-  }
-
   const scrollToSelectedMentions = useCallback(() => {
     const selected = annotationBatch.mentions
     if (selected.length === 0) {
@@ -329,18 +337,6 @@ export function DocumentViewer({
     })
   }
 
-  const { openAnnotation, toggleAnnotation } = useAnnotationUrlSync({
-    annotations: documentAnnotations,
-    currentAnnotationId: currentAnnotation?.id ?? null,
-    onOpen: (annotation, scroll = true) => {
-      setCurrentAnnotation(annotation)
-      if (scroll) {
-        scrollToAnnotation(annotation)
-      }
-    },
-    onClose: () => setCurrentAnnotation(null),
-  })
-
   const handleAnnotationClick = toggleAnnotation
 
   const handleSaveAnnotation = async () => {
@@ -364,8 +360,14 @@ export function DocumentViewer({
   }
 
   const handleEditAnnotation = (annotation: DocumentAnnotation) => {
-    openAnnotation(annotation, false)
+    openAnnotation(annotation, { scroll: false })
     popover.hidePopover()
+  }
+
+  const handleCloneCurrentAnnotation = () => {
+    if (currentAnnotation) {
+      handleCloneAnnotation(currentAnnotation)
+    }
   }
 
   const copyTextOnly = () => {
@@ -520,9 +522,10 @@ export function DocumentViewer({
           {!readOnly && (
             <AnnotationForm
               currentAnnotation={currentAnnotation}
-              setCurrentAnnotation={setCurrentAnnotation}
+              editCurrentAnnotation={editCurrentAnnotation}
               onSave={handleSaveAnnotation}
               onDelete={deleteAnnotationById}
+              onClone={handleCloneCurrentAnnotation}
               annotationFormLoading={annotationFormLoading}
               isDeletingAnnotation={isDeletingAnnotation}
               corpusId={corpus.id}
@@ -548,6 +551,11 @@ export function DocumentViewer({
               onBatchMentionQuantityUnitChange={annotationBatch.setMentionQuantityUnit}
               onBatchRoleChange={annotationBatch.setBatchRole}
               onBatchMentionEntityChange={annotationBatch.setMentionEntity}
+              hasUnsavedChanges={hasUnsavedChanges}
+              discardDialogOpen={discardDialogOpen}
+              onRequestDiscard={requestCloseCurrentAnnotation}
+              onConfirmDiscard={confirmPendingSwitch}
+              onCancelDiscard={cancelPendingSwitch}
               batchReady={Boolean(
                 CONSTANT_ROLES[annotationBatch.batchRole].every(role => currentAnnotation?.[role])
                 && (annotationBatch.preview?.createCount ?? 0) > 0,
@@ -557,7 +565,6 @@ export function DocumentViewer({
                 : annotationBatch.preview
                   ? `Create ${annotationBatch.preview.createCount} annotation${annotationBatch.preview.createCount === 1 ? '' : 's'}`
                   : null}
-              onBatchExit={annotationBatch.exitBatchMode}
               scrollToMentions={scrollToSelectedMentions}
             />
           )}
@@ -565,7 +572,7 @@ export function DocumentViewer({
           {readOnly && currentAnnotation?.id && (
             <ReadOnlyAnnotationDetail
               annotation={currentAnnotation as DocumentAnnotation}
-              onClose={() => setCurrentAnnotation(null)}
+              onClose={() => editCurrentAnnotation(null)}
               onLocate={scrollToAnnotationComponent}
             />
           )}
@@ -584,7 +591,7 @@ export function DocumentViewer({
               onEdit={handleEditAnnotation}
               onClone={handleCloneAnnotation}
               onDelete={deleteAnnotationById}
-              onView={annotation => setCurrentAnnotation(annotation)}
+              onView={annotation => openAnnotation(annotation, { scroll: false })}
               isDeletingAnnotation={isDeletingAnnotation}
               onCreateMention={handleSelectionMentionAssociation}
               mentionData={popover.popoverState.mentionData ?? null}

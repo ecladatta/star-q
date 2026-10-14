@@ -207,6 +207,9 @@ export type CurrentAnnotation = {
   object?: DocumentAnnotationComponent
   qualifiers?: CurrentAnnotationQualifier[]
 }
+export type EditCurrentAnnotation = (
+  update: ((prev: CurrentAnnotation | null) => CurrentAnnotation | null) | null,
+) => void
 
 export type AnnotationExport = {
   id?: string
