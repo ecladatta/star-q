@@ -308,23 +308,27 @@ export function DocumentViewer({
     if (!clickedComponent)
       return
 
-    const matchingAnnotations = documentAnnotations.filter(annotation =>
-      getAnnotationComponents(annotation).some(component =>
-        annotationComponentsShareSegment(component, clickedComponent),
-      ),
-    )
-
-    if (matchingAnnotations.length === 0)
+    if (readOnly) {
+      const matchingAnnotation = documentAnnotations.find(annotation =>
+        getAnnotationComponents(annotation).some(component =>
+          annotationComponentsShareSegment(component, clickedComponent),
+        ),
+      )
+      if (matchingAnnotation) {
+        openAnnotation(matchingAnnotation, { scroll: false })
+      }
       return
+    }
 
     if (!anchorRect)
       return
 
+    selection.clearSelection()
     popover.showPopover({
       ...getPopoverAnchorFromRect(anchorRect),
       annotation: null,
       componentId,
-      annotations: matchingAnnotations,
+      annotations: [],
       mentionData: {
         start: clickedComponent.annotationStart,
         end: clickedComponent.annotationEnd,
