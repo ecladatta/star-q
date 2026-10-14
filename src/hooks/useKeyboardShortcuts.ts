@@ -1,19 +1,19 @@
-import type { DocumentAnnotation, EntityType } from '@/types/types'
+import type { CurrentAnnotation, DocumentAnnotation, EntityType } from '@/types/types'
 import { useLayoutEffect } from 'react'
 
 type KeyboardShortcutsConfig = {
-  popoverVisible: boolean
-  hasSelection: boolean
-  currentAnnotation: DocumentAnnotation | null
   batchHasMentions: boolean
   hasInProgressAnnotation: boolean
+  /** Saved annotations on the clicked mention, listed in the visible popover. */
+  popoverAnnotations: readonly DocumentAnnotation[]
+  currentAnnotation: CurrentAnnotation | DocumentAnnotation | null
+  cloneDisabled: boolean
   onAnnotationAction: (type: EntityType, modifiers?: { shift?: boolean }) => void
-  onEditCurrentAnnotation: () => void
+  onEditAnnotation: (annotation: DocumentAnnotation) => void
+  onCloneAnnotation: (annotation: CurrentAnnotation | DocumentAnnotation) => void
   onClearAnnotation: () => void
   onHidePopover: () => void
   onToggleAnnotations: () => void
-  onCloneAnnotation: () => void
-  onDeleteAnnotation: () => void
   onCancelBatchDrag: () => void
   onExitBatchMode: () => void
 }
@@ -28,18 +28,17 @@ export function resolveEscapeAction(input: { batchHasMentions: boolean, hasInPro
 }
 
 export function useKeyboardShortcuts({
-  popoverVisible,
-  hasSelection,
-  currentAnnotation,
   batchHasMentions,
   hasInProgressAnnotation,
+  popoverAnnotations,
+  currentAnnotation,
+  cloneDisabled,
   onAnnotationAction,
-  onEditCurrentAnnotation,
+  onEditAnnotation,
+  onCloneAnnotation,
   onClearAnnotation,
   onHidePopover,
   onToggleAnnotations,
-  onCloneAnnotation,
-  onDeleteAnnotation,
   onCancelBatchDrag,
   onExitBatchMode,
 }: KeyboardShortcutsConfig) {
@@ -89,25 +88,17 @@ export function useKeyboardShortcuts({
         onAnnotationAction(annotationKeyMap[key], { shift: e.shiftKey })
       }
 
-      // Edit key (e) - only when popover is visible with annotation
-      if (key === 'e' && popoverVisible && currentAnnotation) {
+      if (key === 'e' && popoverAnnotations.length > 0) {
         e.preventDefault()
-        onEditCurrentAnnotation()
+        onEditAnnotation(popoverAnnotations[0])
       }
 
-      // Clone key (c) - only when popover is visible with annotation
-      if (key === 'c' && popoverVisible && currentAnnotation) {
+      const cloneTarget = popoverAnnotations[0] ?? (currentAnnotation?.id ? currentAnnotation : null)
+      if (key === 'c' && cloneTarget && !cloneDisabled) {
         e.preventDefault()
-        onCloneAnnotation()
+        onCloneAnnotation(cloneTarget)
       }
 
-      // Delete key - only when popover is visible with annotation
-      if (key === 'delete' && popoverVisible && currentAnnotation) {
-        e.preventDefault()
-        onDeleteAnnotation()
-      }
-
-      // Toggle annotations visibility (h)
       if (key === 'h') {
         e.preventDefault()
         onToggleAnnotations()
@@ -117,18 +108,17 @@ export function useKeyboardShortcuts({
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [
-    popoverVisible,
-    hasSelection,
-    currentAnnotation,
     batchHasMentions,
     hasInProgressAnnotation,
+    popoverAnnotations,
+    currentAnnotation,
+    cloneDisabled,
     onAnnotationAction,
-    onEditCurrentAnnotation,
+    onEditAnnotation,
+    onCloneAnnotation,
     onClearAnnotation,
     onHidePopover,
     onToggleAnnotations,
-    onCloneAnnotation,
-    onDeleteAnnotation,
     onCancelBatchDrag,
     onExitBatchMode,
   ])

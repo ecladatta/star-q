@@ -24,7 +24,6 @@ import { CONSTANT_ROLES } from '@/lib/batch-mentions'
 import { isConstraintWarningsEnabled, isPredicateFilteringEnabled } from '@/lib/corpus-settings'
 import { annotationComponentsShareSegment, cn } from '@/lib/utils'
 import { AnnotationForm } from './annotation-form'
-import { AnnotationListPopover } from './annotation-list-popover'
 import { AnnotationsSidebar } from './annotations-sidebar'
 import CombinedElement from './combined-element'
 import { DocumentHeader } from './document-header'
@@ -172,6 +171,9 @@ export function DocumentViewer({
     deleteAnnotationById,
     handleSelectionMentionAssociation,
     handleCloneAnnotation,
+    handleEditAnnotation,
+    mentionAnnotations,
+    componentById,
     removeQualifier,
     assignSelectionToQualifier,
     assignSelectionToNextQualifier,
@@ -213,10 +215,7 @@ export function DocumentViewer({
       left: annotationBatch.anchorRect.left,
       anchorWidth: annotationBatch.anchorRect.width,
       anchorHeight: annotationBatch.anchorRect.height,
-      annotation: null,
-      componentId: null,
       visible: true,
-      annotations: [],
       mentionData: null,
     }
   }, [annotationBatch.anchorRect])
@@ -254,16 +253,6 @@ export function DocumentViewer({
       currentAnnotation?.qualifiers,
     ],
   )
-
-  const componentById = useMemo(() => {
-    const map = new Map<string, DocumentAnnotationComponent>()
-    for (const element of documentElements) {
-      for (const component of element.components) {
-        map.set(component.id, component)
-      }
-    }
-    return map
-  }, [documentElements])
 
   const scrollToSelectedMentions = useCallback(() => {
     const selected = annotationBatch.mentions
@@ -326,9 +315,7 @@ export function DocumentViewer({
     selection.clearSelection()
     popover.showPopover({
       ...getPopoverAnchorFromRect(anchorRect),
-      annotation: null,
       componentId,
-      annotations: [],
       mentionData: {
         start: clickedComponent.annotationStart,
         end: clickedComponent.annotationEnd,
@@ -361,11 +348,6 @@ export function DocumentViewer({
       return
     }
     await createAnnotation(document.id, subject, predicate, object)
-  }
-
-  const handleEditAnnotation = (annotation: DocumentAnnotation) => {
-    openAnnotation(annotation, { scroll: false })
-    popover.hidePopover()
   }
 
   const handleCloneCurrentAnnotation = () => {
@@ -581,43 +563,21 @@ export function DocumentViewer({
             />
           )}
 
-          {/* Show AnnotationListPopover when clicking on existing annotations with shared segments */}
-          {popover.popoverState.visible
-            && (popover.popoverState.annotations?.length ?? 0) > 0 && (
-            <AnnotationListPopover
-              visible={true}
-              top={popover.popoverState.top}
-              left={popover.popoverState.left}
-              anchorWidth={popover.popoverState.anchorWidth}
-              anchorHeight={popover.popoverState.anchorHeight}
-              annotations={popover.popoverState.annotations ?? []}
-              onClose={popover.hidePopover}
-              onEdit={handleEditAnnotation}
-              onClone={handleCloneAnnotation}
-              onDelete={deleteAnnotationById}
-              onView={annotation => openAnnotation(annotation, { scroll: false })}
-              isDeletingAnnotation={isDeletingAnnotation}
-              onCreateMention={handleSelectionMentionAssociation}
-              mentionData={popover.popoverState.mentionData ?? null}
-              readOnly={readOnly}
-            />
-          )}
-
-          {/* Show SelectionPopover when making a new text selection */}
           {!readOnly
-            && popover.popoverState.visible
-            && (popover.popoverState.annotations?.length ?? 0) === 0 && (
+            && popover.popoverState.visible && (
             <SelectionPopover
               popoverState={popover.popoverState}
+              annotations={mentionAnnotations}
               onClose={popover.hidePopover}
-              onDelete={deleteAnnotationById}
+              onEditAnnotation={handleEditAnnotation}
+              onCloneAnnotation={handleCloneAnnotation}
+              onDeleteAnnotation={deleteAnnotationById}
               isDeletingAnnotation={isDeletingAnnotation}
               onMentionAssociation={handleSelectionMentionAssociation}
               onQualifierSelectionAssociation={
                 handleQualifierSelectionAssociation
               }
               hasCurrentAnnotation={Boolean(currentAnnotation)}
-              onEditAnnotation={handleEditAnnotation}
             />
           )}
 
@@ -628,12 +588,13 @@ export function DocumentViewer({
             <SelectionPopover
               popoverState={anchorPopoverState}
               onClose={annotationBatch.clearMentions}
-              onDelete={deleteAnnotationById}
+              onEditAnnotation={handleEditAnnotation}
+              onCloneAnnotation={handleCloneAnnotation}
+              onDeleteAnnotation={deleteAnnotationById}
               isDeletingAnnotation={isDeletingAnnotation}
               onMentionAssociation={handleCellSelectionAssociation}
               onQualifierSelectionAssociation={() => {}}
               hasCurrentAnnotation={false}
-              onEditAnnotation={handleEditAnnotation}
               keepOnModifierOutside
               keepOnTriggerSelector="[data-batch-select-trigger]"
             />

@@ -2,8 +2,7 @@
 import type { ReactNode } from 'react'
 import type { DocumentAnnotation } from '@/types/types'
 import { cn } from '@/lib/utils'
-import { AnnotationChips } from './annotation-chips'
-import { QualifierSummary } from './qualifier-summary'
+import { AnnotationSummary } from './annotation-summary'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from './ui/hover-card'
 
 type AnnotationHoverCardProps = {
@@ -56,12 +55,7 @@ export function AnnotationHoverCard({ open, onOpenChange, annotations, children,
                   }
                 : undefined,
             }
-            const row = (
-              <>
-                <AnnotationChips annotation={annotation} direction="inline" />
-                <QualifierSummary qualifiers={annotation.qualifiers} className="mt-1 pt-1.5" />
-              </>
-            )
+            const row = <AnnotationSummary annotation={annotation} />
             return onEditAnnotation
               ? <button key={annotation.id} type="button" {...rowProps}>{row}</button>
               : <div key={annotation.id} {...rowProps}>{row}</div>

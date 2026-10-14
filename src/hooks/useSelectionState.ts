@@ -1,4 +1,4 @@
-import type { AnnotationMention, DocumentAnnotation, DocumentElement } from '@/types/types'
+import type { AnnotationMention, DocumentElement } from '@/types/types'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { selectionIsEmpty } from '@/lib/utils'
@@ -8,11 +8,10 @@ export type PopoverState = {
   left: number
   anchorWidth: number
   anchorHeight: number
-  annotation: DocumentAnnotation | null
-  componentId: string | undefined | null
   visible: boolean
-  annotations: DocumentAnnotation[]
   mentionData: AnnotationMention | null
+  /** Set only for a clicked mention: the component that resolved the click. */
+  componentId?: string
   isTableCell?: boolean
 }
 
@@ -21,10 +20,7 @@ const INITIAL_POPOVER_STATE: PopoverState = {
   left: 0,
   anchorWidth: 1,
   anchorHeight: 1,
-  annotation: null,
-  componentId: null,
   visible: false,
-  annotations: [],
   mentionData: null,
 }
 
@@ -229,9 +225,6 @@ function useTextSelectionHandler(
       const rect = getRectFromRange(range)
       popover.showPopover({
         ...getDocumentAnchorFromRect(rect),
-        annotation: null,
-        componentId: null,
-        annotations: [],
         mentionData: textSource && mentionValue
           ? {
               start: finalStart + leadingWhitespace,
@@ -289,9 +282,6 @@ function useTableSelectionHandler(
     const rect = getRectFromRange(range)
     popover.showPopover({
       ...getDocumentAnchorFromRect(rect),
-      annotation: null,
-      componentId: null,
-      annotations: [],
       mentionData: null,
     })
 
@@ -327,9 +317,6 @@ function useTableSelectionHandler(
         const rect = cellElement.getBoundingClientRect()
         popover.showPopover({
           ...getDocumentAnchorFromRect(rect),
-          annotation: null,
-          componentId: null,
-          annotations: [],
           mentionData: null,
           isTableCell: true,
         })

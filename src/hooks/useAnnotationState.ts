@@ -28,6 +28,7 @@ import { clearIfStillCurrent, cloneAsNewAnnotation, computeHasUnsavedChanges, re
 import { decideParamTransition } from '@/lib/annotation-param-sync'
 import { createEntityFromComponent, getAnnotationComponents } from '@/lib/annotation-roles'
 import { validateAnnotationComponent, validateAnnotationQualifiers, validateAnnotationTriple } from '@/lib/annotation-validation'
+import { annotationComponentsShareSegment } from '@/lib/utils'
 import { useAnnotationBatch } from './useAnnotationBatch'
 import { useKeyboardShortcuts } from './useKeyboardShortcuts'
 import { usePopoverState, useSelectionState } from './useSelectionState'
@@ -460,6 +461,35 @@ export function useAnnotationState(
     elementsRef.current = documentElements
   }, [documentElements])
 
+  const componentById = useMemo(() => {
+    const map = new Map<string, DocumentAnnotationComponent>()
+    for (const element of documentElements) {
+      for (const component of element.components) {
+        map.set(component.id, component)
+      }
+    }
+    return map
+  }, [documentElements])
+
+  const popoverComponentId = popover.popoverState.componentId
+
+  const mentionAnnotations = useMemo(() => {
+    const component = popoverComponentId ? componentById.get(popoverComponentId) : undefined
+    if (!component) {
+      return []
+    }
+    return documentAnnotations.filter(annotation =>
+      getAnnotationComponents(annotation).some(shared =>
+        annotationComponentsShareSegment(shared, component),
+      ),
+    )
+  }, [componentById, documentAnnotations, popoverComponentId])
+
+  const handleEditAnnotation = useCallback((annotation: DocumentAnnotation) => {
+    openAnnotation(annotation, { scroll: false })
+    popover.hidePopover()
+  }, [openAnnotation, popover])
+
   const setLoadingState = useCallback((key: keyof typeof loadingStates, value: boolean) => {
     setLoadingStates(prev => ({ ...prev, [key]: value }))
   }, [])
@@ -604,19 +634,13 @@ export function useAnnotationState(
         setCurrentAnnotation(null)
       }
 
-      // Update popover state to remove the deleted annotation
-      popover.setPopoverState(prev => ({
-        ...prev,
-        annotations: prev.annotations.filter(ann => ann.id !== annotationId),
-      }))
-
       toast.success('Annotation deleted!')
     } catch (error) {
       toast.error(`Failed to delete annotation: ${(error as Error)?.message || 'Unknown error'}`)
     } finally {
       setLoadingState('deletingAnnotation', false)
     }
-  }, [currentAnnotation, setCurrentAnnotation, setLoadingState, popover])
+  }, [currentAnnotation, setCurrentAnnotation, setLoadingState])
 
   const createAnnotationComponent = useCallback((role: AnnotationComponentRole): DocumentAnnotationComponent | null => {
     if (!selection.hasSelection()) {
@@ -680,41 +704,6 @@ export function useAnnotationState(
       elementIndex: currentElementIndex,
     }
   }, [selection, combinedElements])
-
-  const handleMentionAssociation = useCallback((type: EntityType) => {
-    if (!popover.popoverState.annotation || !popover.popoverState.componentId)
-      return
-
-    const { annotation, componentId } = popover.popoverState
-    const component = getAnnotationComponents(annotation).find(component => component.id === componentId)
-    if (!component)
-      return
-
-    setCurrentAnnotation(prev => ({
-      ...prev,
-      [type]: {
-        id: uuidv4(),
-        entityLabel: null,
-        entityValue: null,
-        entityCustom: null,
-        entityCustomId: null,
-        entityDatatype: null,
-        unit: null,
-        quantityLowerBound: null,
-        quantityUpperBound: null,
-        annotationStart: component.annotationStart,
-        annotationEnd: component.annotationEnd,
-        annotationRow: component.annotationRow,
-        annotationCell: component.annotationCell,
-        annotationValue: component.annotationValue,
-        annotationType: component.annotationType,
-        annotationTag: type,
-        elementIndex: component.elementIndex,
-      },
-    }))
-
-    popover.hidePopover()
-  }, [popover, setCurrentAnnotation])
 
   const addToCurrentAnnotation = useCallback((type: EntityType) => {
     const newComponent = createAnnotationComponent(type)
@@ -890,21 +879,12 @@ export function useAnnotationState(
       return
     }
 
-    if (popover.popoverState.annotation && popover.popoverState.componentId) {
-      handleMentionAssociation(type)
-    } else {
-      addToCurrentAnnotation(type)
-    }
+    addToCurrentAnnotation(type)
     popover.hidePopover()
-  }, [addToCurrentAnnotation, handleMentionAssociation, popover, readOnly, selection, annotationBatch, combinedElements, createAnnotationComponent, currentAnnotation, setCurrentAnnotation])
+  }, [addToCurrentAnnotation, popover, readOnly, selection, annotationBatch, combinedElements, createAnnotationComponent, currentAnnotation, setCurrentAnnotation])
 
-  const handleCloneAnnotation = useCallback((annotation?: CurrentAnnotation | DocumentAnnotation) => {
-    const annotationToClone = annotation || popover.popoverState.annotation
-    if (!annotationToClone) {
-      return
-    }
-
-    applySwitch(cloneAsNewAnnotation(annotationToClone), {
+  const handleCloneAnnotation = useCallback((annotation: CurrentAnnotation | DocumentAnnotation) => {
+    applySwitch(cloneAsNewAnnotation(annotation), {
       onApplied: () => {
         popover.hidePopover()
         toast.success('Annotation cloned! Edit and save to create a new annotation.')
@@ -913,12 +893,10 @@ export function useAnnotationState(
   }, [applySwitch, popover])
 
   useKeyboardShortcuts({
-    popoverVisible: popover.popoverState.visible,
-    hasSelection: selection.hasSelection(),
-    currentAnnotation: popover.popoverState.annotation,
+    popoverAnnotations: mentionAnnotations,
+    currentAnnotation,
+    cloneDisabled: loadingStates.annotationForm || loadingStates.deletingAnnotation,
     onAnnotationAction: (type, modifiers) => {
-      // A visible selection popover means the user just made a new text or
-      // cell selection: the keystroke refers to it, not to the docked batch.
       if (popover.popoverState.visible) {
         handleSelectionMentionAssociation(type, modifiers)
         return
@@ -934,12 +912,8 @@ export function useAnnotationState(
 
       handleSelectionMentionAssociation(type, modifiers)
     },
-    onEditCurrentAnnotation: () => {
-      const target = popover.popoverState.annotation
-      if (target) {
-        openAnnotation(target, { scroll: false, onApplied: popover.hidePopover })
-      }
-    },
+    onEditAnnotation: handleEditAnnotation,
+    onCloneAnnotation: handleCloneAnnotation,
     onClearAnnotation: () => {
       if (currentAnnotation) {
         requestCloseCurrentAnnotation()
@@ -954,16 +928,6 @@ export function useAnnotationState(
     hasInProgressAnnotation: currentAnnotation !== null,
     onHidePopover: popover.hidePopover,
     onToggleAnnotations: () => setShowAnnotations(!showAnnotations),
-    onCloneAnnotation: handleCloneAnnotation,
-    onDeleteAnnotation: () => {
-      if (popover.popoverState.annotation) {
-        // Trigger the delete button click to open the confirmation popover
-        const deleteButton = document.querySelector('[data-delete-annotation-popover-trigger]') as HTMLButtonElement
-        if (deleteButton) {
-          deleteButton.click()
-        }
-      }
-    },
   })
 
   return {
@@ -973,6 +937,8 @@ export function useAnnotationState(
     editCurrentAnnotation,
     selectedAnnotations,
     documentElements,
+    componentById,
+    mentionAnnotations,
 
     // Loading states
     annotationFormLoading: loadingStates.annotationForm,
@@ -995,7 +961,6 @@ export function useAnnotationState(
     handleBatchDelete,
     createAnnotation,
     deleteAnnotationById,
-    handleMentionAssociation,
     handleSelectionMentionAssociation,
     addToCurrentAnnotation,
     removeQualifier,
@@ -1004,6 +969,7 @@ export function useAnnotationState(
     updateQualifierEntity,
     clearQualifierSide,
     handleCloneAnnotation,
+    handleEditAnnotation,
 
     // Sub-hooks
     selection,

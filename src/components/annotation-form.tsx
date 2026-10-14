@@ -937,7 +937,7 @@ export function AnnotationForm({
     onClone()
   }, [currentAnnotation, onClone])
 
-  // Keyboard shortcuts for saving (Ctrl+S / Cmd+S), cloning (C), and deleting (Delete)
+  // Keyboard shortcuts for saving (Ctrl+S / Cmd+S) and deleting (Delete)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement
@@ -952,22 +952,6 @@ export function AnnotationForm({
         e.stopPropagation()
         if ((hasAllTags || (batchMode && batchReady)) && !annotationFormLoading && !isDeletingAnnotation && !batchCreating) {
           handleSave()
-        }
-      }
-
-      // C to clone
-      if (
-        e.key === 'c'
-        && currentAnnotation?.id
-        && !isInputField
-        && !e.ctrlKey
-        && !e.altKey
-        && !e.metaKey
-      ) {
-        e.preventDefault()
-        e.stopPropagation()
-        if (!annotationFormLoading && !isDeletingAnnotation) {
-          handleCloneAnnotation()
         }
       }
 

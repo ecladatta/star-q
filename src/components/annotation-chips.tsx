@@ -6,43 +6,25 @@ import { getAnnotationComponentDisplayText, getAnnotationComponentTitle } from '
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip'
 
-// eslint-disable-next-line react-refresh/only-export-components -- consumed by the list popover's create-mention buttons
-export const ENTITY_ORDER: EntityType[] = ['subject', 'predicate', 'object']
+const ENTITY_ORDER: EntityType[] = ['subject', 'predicate', 'object']
 
-export type EntityMeta = {
+type EntityMeta = {
   icon: LucideIcon
   chipClass: string
-  buttonClass: string
-  tooltip: string
-  hotkey: string
-  label: string
 }
 
-// eslint-disable-next-line react-refresh/only-export-components -- consumed by the list popover's create-mention buttons
-export const ENTITY_META: Record<EntityType, EntityMeta> = {
+const ENTITY_META: Record<EntityType, EntityMeta> = {
   subject: {
     icon: UserIcon,
     chipClass: 'bg-subject-soft text-subject-fg',
-    buttonClass: 'border-subject/50 text-subject-fg hover:bg-subject-soft/50 focus-visible:ring-subject',
-    tooltip: 'New subject from this mention (S)',
-    hotkey: 'S',
-    label: 'Subject',
   },
   predicate: {
     icon: LinkIcon,
     chipClass: 'bg-predicate-soft text-predicate-fg',
-    buttonClass: 'border-predicate/50 text-predicate-fg hover:bg-predicate-soft/50 focus-visible:ring-predicate',
-    tooltip: 'New predicate from this mention (P)',
-    hotkey: 'P',
-    label: 'Predicate',
   },
   object: {
     icon: BoxIcon,
     chipClass: 'bg-object-soft text-object-fg',
-    buttonClass: 'border-object/50 text-object-fg hover:bg-object-soft/50 focus-visible:ring-object',
-    tooltip: 'New object from this mention (O)',
-    hotkey: 'O',
-    label: 'Object',
   },
 }
 
