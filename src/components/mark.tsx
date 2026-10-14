@@ -1,6 +1,6 @@
 import type { ComponentPropsWithoutRef, KeyboardEvent, MouseEvent } from 'react'
 import type { AnnotationComponentRole } from '@/types/types'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import { AnnotationHoverCard } from './annotation-hover-card'
 import { useMarkHover } from './mark-hover-context'
@@ -31,11 +31,11 @@ type MarkSpanDOMProps = ComponentPropsWithoutRef<'span'> & {
   'data-end'?: number
 }
 
-// The span must be built as an explicit props object (not a component wrapper):
-// HoverCardTrigger's asChild Slot merges its trigger props onto the direct
-// child ELEMENT, and a component child would receive them without forwarding
-// them to the DOM. componentId/onActivate never enter this object, so they
-// cannot leak into HTML.
+// The span must be built as an explicit props object, not a component
+// wrapper. HoverCardTrigger's asChild Slot merges its trigger props onto the
+// direct child element, and a component child would receive them without
+// forwarding them to the DOM. componentId and onActivate never enter this
+// object, so they cannot leak into HTML.
 function markSpanProps(
   props: MarkProps,
   onActivate: (anchorRect?: DOMRect) => void,
@@ -95,23 +95,30 @@ function Mark(props: MarkProps) {
   const { getAnnotationsForComponent, sharedPopoverOpen, onEditAnnotation } = useMarkHover()
   const [hoverOpen, setHoverOpen] = useState(false)
   const [hoverSide, setHoverSide] = useState<'top' | 'bottom'>('top')
-  const pointerOverRef = useRef(false)
+  const [pointerOver, setPointerOver] = useState(false)
+  const [lastSharedPopoverOpen, setLastSharedPopoverOpen] = useState(sharedPopoverOpen)
+  // Radix schedules its open timer on pointerenter and cannot cancel it from
+  // pointerdown, so a press inside the openDelay window would otherwise open
+  // the card while the button is held. Open requests are ignored until the
+  // next pointerenter.
+  const pointerDownRef = useRef(false)
   const annotations = getAnnotationsForComponent(props.componentId ?? '')
 
-  // sharedPopoverOpen must actively close the card, not just gate the render:
-  // a controlled HoverCard left open would linger under the action popover.
-  // Conversely, when the popover closes while the pointer still rests on the
-  // mark (click → Escape), no pointerenter will ever fire again until the
-  // pointer leaves, so the card is reopened from here instead.
-  useEffect(() => {
+  if (lastSharedPopoverOpen !== sharedPopoverOpen) {
+    setLastSharedPopoverOpen(sharedPopoverOpen)
     if (sharedPopoverOpen) {
       setHoverOpen(false)
-      return
-    }
-    if (pointerOverRef.current) {
+    } else if (pointerOver) {
       setHoverOpen(true)
     }
-  }, [sharedPopoverOpen])
+  }
+
+  const handleHoverOpenChange = (open: boolean) => {
+    if (open && pointerDownRef.current) {
+      return
+    }
+    setHoverOpen(open)
+  }
 
   const markChildren = (
     <>
@@ -136,7 +143,7 @@ function Mark(props: MarkProps) {
   return (
     <AnnotationHoverCard
       open={hoverOpen && !sharedPopoverOpen}
-      onOpenChange={setHoverOpen}
+      onOpenChange={handleHoverOpenChange}
       annotations={annotations}
       side={hoverSide}
       onEditAnnotation={onEditAnnotation}
@@ -144,20 +151,21 @@ function Mark(props: MarkProps) {
       <span
         {...markSpanProps(
           props,
-          (anchorRect) => {
-            setHoverOpen(false)
-            props.onClick(anchorRect)
-          },
+          props.onClick,
           {
             enter: (rect) => {
-              pointerOverRef.current = true
+              setPointerOver(true)
+              pointerDownRef.current = false
               setHoverSide(rect.top >= window.innerHeight - rect.bottom ? 'top' : 'bottom')
             },
             leave: () => {
-              pointerOverRef.current = false
+              setPointerOver(false)
+              pointerDownRef.current = false
             },
           },
-          () => setHoverOpen(false),
+          () => {
+            pointerDownRef.current = true
+          },
         )}
       >
         {markChildren}
