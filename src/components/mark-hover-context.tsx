@@ -7,8 +7,7 @@ import { buildComponentHoverIndex, EMPTY_ANNOTATIONS } from '@/lib/annotation-ho
 type MarkHoverValue = {
   getAnnotationsForComponent: (componentId: string) => readonly DocumentAnnotation[]
   sharedPopoverOpen: boolean
-  /** Undefined in readOnly: rows are then display-only. */
-  onEditAnnotation?: (annotation: DocumentAnnotation) => void
+  onOpenAnnotation: (annotation: DocumentAnnotation) => void
 }
 
 const MarkHoverContext = createContext<MarkHoverValue | null>(null)
@@ -17,13 +16,13 @@ export function MarkHoverProvider({
   documentAnnotations,
   documentElements,
   sharedPopoverOpen,
-  onEditAnnotation,
+  onOpenAnnotation,
   children,
 }: {
   documentAnnotations: readonly DocumentAnnotation[]
   documentElements: readonly DocumentElement[]
   sharedPopoverOpen: boolean
-  onEditAnnotation?: (annotation: DocumentAnnotation) => void
+  onOpenAnnotation: (annotation: DocumentAnnotation) => void
   children: ReactNode
 }) {
   const index = useMemo(
@@ -34,8 +33,8 @@ export function MarkHoverProvider({
   const value = useMemo<MarkHoverValue>(() => ({
     getAnnotationsForComponent: componentId => index.get(componentId) ?? EMPTY_ANNOTATIONS,
     sharedPopoverOpen,
-    onEditAnnotation,
-  }), [index, sharedPopoverOpen, onEditAnnotation])
+    onOpenAnnotation,
+  }), [index, sharedPopoverOpen, onOpenAnnotation])
 
   return <MarkHoverContext value={value}>{children}</MarkHoverContext>
 }

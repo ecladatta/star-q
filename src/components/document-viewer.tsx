@@ -289,6 +289,10 @@ export function DocumentViewer({
     }
   }
 
+  const handleViewAnnotation = useCallback((annotation: DocumentAnnotation) => {
+    openAnnotation(annotation, { scroll: false })
+  }, [openAnnotation])
+
   const handleSplitClick = ({ componentId }: Offset, anchorRect?: DOMRect) => {
     if (!componentId)
       return
@@ -304,7 +308,7 @@ export function DocumentViewer({
         ),
       )
       if (matchingAnnotation) {
-        openAnnotation(matchingAnnotation, { scroll: false })
+        handleViewAnnotation(matchingAnnotation)
       }
       return
     }
@@ -471,7 +475,7 @@ export function DocumentViewer({
                     documentAnnotations={documentAnnotations}
                     documentElements={documentElements}
                     sharedPopoverOpen={sharedPopoverOpen}
-                    onEditAnnotation={readOnly ? undefined : handleEditAnnotation}
+                    onOpenAnnotation={readOnly ? handleViewAnnotation : handleEditAnnotation}
                   >
                     {combinedElements.map(element => (
                       <CombinedElement

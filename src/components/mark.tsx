@@ -92,7 +92,7 @@ function markSpanProps(
 }
 
 function Mark(props: MarkProps) {
-  const { getAnnotationsForComponent, sharedPopoverOpen, onEditAnnotation } = useMarkHover()
+  const { getAnnotationsForComponent, sharedPopoverOpen, onOpenAnnotation } = useMarkHover()
   const [hoverOpen, setHoverOpen] = useState(false)
   const [hoverSide, setHoverSide] = useState<'top' | 'bottom'>('top')
   const [pointerOver, setPointerOver] = useState(false)
@@ -146,7 +146,7 @@ function Mark(props: MarkProps) {
       onOpenChange={handleHoverOpenChange}
       annotations={annotations}
       side={hoverSide}
-      onEditAnnotation={onEditAnnotation}
+      onOpenAnnotation={onOpenAnnotation}
     >
       <span
         {...markSpanProps(
