@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.5.0](https://github.com/ecladatta/star-q/compare/v1.4.0...v1.5.0) (2026-10-15)
+
+
+### Features
+
+* **annotation:** guard unsaved edits across switches with URL state ([b457f68](https://github.com/ecladatta/star-q/commit/b457f68fb1f3b7eccf7d7a5fe395e4b8678a37fa))
+* **annotation:** hover preview card on mention marks ([f1d3be5](https://github.com/ecladatta/star-q/commit/f1d3be5d32e1755cbde51d704447965b2d0d9e8e))
+* **annotation:** list a mention's annotations in the role popover ([762b949](https://github.com/ecladatta/star-q/commit/762b949af47ec362087704fafa76936e55f32c07))
+* **annotation:** open the role popover when clicking a mention ([c0d78e0](https://github.com/ecladatta/star-q/commit/c0d78e0e3b8809c8404d3ae08524e290eee58df9))
+* **annotation:** open the viewer from read-only hover rows ([9565ac1](https://github.com/ecladatta/star-q/commit/9565ac103838b34da322c402b6ee736b77c500a5))
+* **auth:** demote password sign-in when password signup is off ([5de960a](https://github.com/ecladatta/star-q/commit/5de960af5c16e25ada4090d95224b86f5046e738))
+* **auth:** split signup setting into per-method flags ([81ec056](https://github.com/ecladatta/star-q/commit/81ec056ceb9680d85312da5c652ad7f2a1725c23))
+
+
+### Bug Fixes
+
+* **annotation:** hover preview interactions and chip row layout ([94de74c](https://github.com/ecladatta/star-q/commit/94de74c0c8c41e35f7f75fc9a1256a85ff937dcd))
+* **auth:** hide username hint on sign-up when local signup is off ([2e0a623](https://github.com/ecladatta/star-q/commit/2e0a6230e2dff9f3e3e3295fb831ce409d68869a))
+
 ## [1.4.0](https://github.com/ecladatta/star-q/compare/v1.3.1...v1.4.0) (2026-10-02)
 
 
