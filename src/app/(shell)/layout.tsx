@@ -3,6 +3,7 @@ import { getPendingInvitationCount } from '@/actions/collaboration/collaboration
 import { getMyCorpora } from '@/actions/corpus/corpusActions'
 import { auth } from '@/auth'
 import { GuestBar } from '@/components/shell/guest-bar'
+import { TempPasswordBar } from '@/components/shell/temp-password-bar'
 import { TopNav } from '@/components/shell/top-nav'
 import { getAppSettings } from '@/lib/app-settings'
 
@@ -36,13 +37,17 @@ export default async function ShellLayout({ children }: { children: ReactNode })
         ? (
             <TopNav user={user} />
           )
-        : (
-            <GuestBar
-              setupCompleted={Boolean(settings.setupCompletedAt)}
-              signupEnabled={settings.passwordSignupEnabled || settings.oauthSignupEnabled}
-              signinEnabled={settings.signinEnabled}
-            />
-          )}
+        : sessionUser?.valid && sessionUser.mustChangePassword
+          ? (
+              <TempPasswordBar />
+            )
+          : (
+              <GuestBar
+                setupCompleted={Boolean(settings.setupCompletedAt)}
+                signupEnabled={settings.passwordSignupEnabled || settings.oauthSignupEnabled}
+                signinEnabled={settings.signinEnabled}
+              />
+            )}
       <main>{children}</main>
     </div>
   )
