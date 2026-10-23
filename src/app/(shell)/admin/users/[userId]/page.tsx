@@ -1,6 +1,7 @@
 import type { UserRole } from '@/db/schema'
 import { deleteAdminManagedUser, getAdminUser, getUserDeletionImpact, resetUserPassword, setUserBlocked, updateAdminManagedUser } from '@/actions/admin/adminActions'
 import { ConfirmActionButton } from '@/components/confirm-action-button'
+import { FormSelect } from '@/components/form-select'
 import { Page, PageHeader } from '@/components/page'
 import { ServerActionForm } from '@/components/server-action-form'
 import { Button } from '@/components/ui/button'
@@ -51,10 +52,7 @@ export default async function AdminUserPage({ params }: { params: Promise<{ user
             <Input id="username" name="username" defaultValue={user.username ?? ''} required />
           </div>
           <div className="flex items-center gap-3">
-            <select name="role" defaultValue={user.role} className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-base md:text-sm">
-              <option value="user">User</option>
-              <option value="admin">Admin</option>
-            </select>
+            <FormSelect name="role" defaultValue={user.role} options={[{ value: 'user', label: 'User' }, { value: 'admin', label: 'Admin' }]} />
             <Button type="submit">Save</Button>
           </div>
         </ServerActionForm>

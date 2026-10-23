@@ -2,6 +2,7 @@ import type { UserRole } from '@/db/schema'
 import Link from 'next/link'
 import { createAdminManagedUser, getAdminUsers } from '@/actions/admin/adminActions'
 import { AdminUserActions } from '@/components/admin-user-actions'
+import { FormSelect } from '@/components/form-select'
 import { Page, PageHeader } from '@/components/page'
 import { ServerActionForm } from '@/components/server-action-form'
 import { Button } from '@/components/ui/button'
@@ -61,10 +62,7 @@ export default async function AdminUsersPage() {
               <Label htmlFor="temporaryPassword">Temporary password</Label>
               <Input id="temporaryPassword" name="temporaryPassword" type="password" minLength={4} required />
             </div>
-            <select name="role" className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-base md:text-sm">
-              <option value="user">User</option>
-              <option value="admin">Admin</option>
-            </select>
+            <FormSelect name="role" options={[{ value: 'user', label: 'User' }, { value: 'admin', label: 'Admin' }]} />
             <Button type="submit">Create</Button>
           </ServerActionForm>
         </section>

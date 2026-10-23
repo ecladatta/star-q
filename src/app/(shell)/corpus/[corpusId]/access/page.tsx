@@ -3,6 +3,7 @@ import { getCorpusCollaborations, inviteTeamToCorpus, inviteUserToCorpus, revoke
 import { getCorpus } from '@/actions/corpus/corpusActions'
 import { CorpusCollaboratorRoleSelect } from '@/components/corpus-collaborator-role-select'
 import { ForbiddenPage } from '@/components/forbidden-page'
+import { FormSelect } from '@/components/form-select'
 import { Page, PageHeader } from '@/components/page'
 import { ServerActionForm } from '@/components/server-action-form'
 import { Button } from '@/components/ui/button'
@@ -114,10 +115,7 @@ function InviteForm({ title, label, field, grantsImmediately, action }: { title:
           <Label htmlFor={field}>{label}</Label>
           <Input id={field} name={field} required />
         </div>
-        <select name="role" className="h-8 w-full rounded-md border border-border bg-background px-3 text-base md:text-sm">
-          <option value="viewer">Viewer</option>
-          <option value="editor">Editor</option>
-        </select>
+        <FormSelect name="role" className="w-full" options={[{ value: 'viewer', label: 'Viewer' }, { value: 'editor', label: 'Editor' }]} />
         <Button type="submit">{grantsImmediately ? 'Add' : 'Send invitation'}</Button>
       </ServerActionForm>
     </section>

@@ -1,5 +1,6 @@
 import { cancelTeamInvitation, deleteTeam, getTeamBySlug, inviteTeamMember, leaveTeam, removeTeamMember, updateTeamMemberRole } from '@/actions/team/teamActions'
 import { ConfirmActionButton } from '@/components/confirm-action-button'
+import { FormSelect } from '@/components/form-select'
 import { Page, PageHeader } from '@/components/page'
 import { ServerActionForm } from '@/components/server-action-form'
 import { Button } from '@/components/ui/button'
@@ -54,10 +55,7 @@ export default async function TeamPage({ params }: { params: Promise<{ slug: str
               <Label htmlFor="username">Exact username</Label>
               <Input id="username" name="username" required />
             </div>
-            <select name="role" className="h-8 rounded-md border border-input bg-background px-3 text-base md:text-sm">
-              <option value="member">Member</option>
-              <option value="owner">Owner</option>
-            </select>
+            <FormSelect name="role" options={[{ value: 'member', label: 'Member' }, { value: 'owner', label: 'Owner' }]} />
             <Button type="submit">Invite</Button>
           </ServerActionForm>
         </section>
