@@ -209,8 +209,21 @@ export async function changeOwnPassword(formData: FormData): Promise<void> {
       targetId: currentUser.id,
     })
   })
-  await signOut({ redirectTo: '/sign-in?password=changed', redirect: false })
-  redirect('/sign-in?password=changed')
+  // The sessionVersion bump above killed every existing session, including this one,
+  // so a fresh sign-in with the new password keeps the user signed in. Every ending
+  // is a redirect: responding normally would leave the post-action route refresh
+  // racing the cookie swap, bouncing through /sign-in with the dead session.
+  const freshSession = currentUser.username
+    ? await signIn('credentials', { username: currentUser.username, password: newPassword, redirect: false }).then(() => true, () => false)
+    : false
+  if (!freshSession) {
+    await signOut({ redirectTo: '/sign-in', redirect: false })
+    return redirect('/sign-in')
+  }
+  if (currentUser.mustChangePassword) {
+    return redirect('/')
+  }
+  return redirect('/account?password=saved')
 }
 
 export async function linkOAuthProvider(provider: 'github' | 'wikimedia'): Promise<void> {
