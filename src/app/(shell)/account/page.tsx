@@ -30,7 +30,7 @@ export default async function AccountPage() {
 
   return (
     <Page>
-      <PageHeader title="Account" description="Manage your public identity and sign-in methods." />
+      <PageHeader title="Settings" description="Manage your public identity and sign-in methods." />
       <section className="space-y-8">
         <section className="rounded-lg border border-border bg-card p-5">
           <h2 className="mb-4 text-sm font-medium">Profile</h2>
