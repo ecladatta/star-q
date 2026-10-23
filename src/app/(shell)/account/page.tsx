@@ -1,9 +1,10 @@
 import { eq } from 'drizzle-orm'
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { linkOAuthProvider, unlinkOAuthProvider, updateOwnProfile } from '@/actions/account/accountActions'
 import { providers } from '@/auth.config'
 import { Page, PageHeader } from '@/components/page'
+import { PasswordRow } from '@/components/password-row'
+import { PasswordSavedToast } from '@/components/password-saved-toast'
 import { ServerActionForm } from '@/components/server-action-form'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -30,6 +31,7 @@ export default async function AccountPage() {
 
   return (
     <Page>
+      <PasswordSavedToast />
       <PageHeader title="Settings" description="Manage your public identity and sign-in methods." />
       <section className="space-y-8">
         <section className="rounded-lg border border-border bg-card p-5">
@@ -51,9 +53,9 @@ export default async function AccountPage() {
         <section className="rounded-lg border border-border bg-card p-5">
           <div className="mb-4 flex items-center justify-between gap-3">
             <h2 className="text-sm font-medium">Sign-in methods</h2>
-            {isLocalCredentialsEnabled() && <Button variant="outline" asChild><Link href="/account/password">{user.passwordHash ? 'Change password' : 'Add password'}</Link></Button>}
           </div>
           <div className="space-y-3">
+            {isLocalCredentialsEnabled() && <PasswordRow hasPassword={Boolean(user.passwordHash)} />}
             {configuredOAuth.map(provider => (
               <div key={provider.id} className="flex items-center justify-between rounded-md border border-border p-3">
                 <span className="text-[13px] font-medium">{provider.name}</span>
@@ -78,7 +80,7 @@ export default async function AccountPage() {
                     )}
               </div>
             ))}
-            {!user.passwordHash && configuredOAuth.length === 0 && <p className="text-sm text-muted-foreground">No additional sign-in methods are configured.</p>}
+            {configuredOAuth.length === 0 && <p className="text-sm text-muted-foreground">No additional sign-in methods are configured.</p>}
           </div>
         </section>
       </section>
