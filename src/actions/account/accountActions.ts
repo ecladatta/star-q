@@ -187,7 +187,8 @@ export async function changeOwnPassword(formData: FormData): Promise<void> {
   if (newPassword !== getRequiredString(formData, 'passwordConfirmation')) {
     throw new Error('Passwords do not match.')
   }
-  if (currentUser.passwordHash) {
+  // In the forced state the user proved the current password at sign-in, so it is not re-verified.
+  if (currentUser.passwordHash && !currentUser.mustChangePassword) {
     const currentPassword = getRequiredString(formData, 'currentPassword')
     if (!await verifyPassword(currentPassword, currentUser.passwordHash)) {
       throw new ForbiddenError('Current password is incorrect.')

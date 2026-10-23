@@ -1,11 +1,7 @@
 import { redirect } from 'next/navigation'
-import { changeOwnPassword, signOutCurrentUser } from '@/actions/account/accountActions'
 import { auth } from '@/auth'
 import { Page, PageHeader } from '@/components/page'
-import { ServerActionForm } from '@/components/server-action-form'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { PasswordForm } from '@/components/password-form'
 import { isLocalCredentialsEnabled } from '@/lib/app-settings'
 import { getAuthenticatedUserForOnboarding } from '@/lib/auth-utils'
 
@@ -24,29 +20,7 @@ export default async function PasswordPage() {
   return (
     <Page>
       <PageHeader title={title} description="Keep your password strong and unique to this account." />
-      <ServerActionForm action={changeOwnPassword} className="max-w-lg space-y-4">
-        {user.passwordHash && (
-          <div className="space-y-2">
-            <Label htmlFor="currentPassword">Current password</Label>
-            <Input id="currentPassword" name="currentPassword" type="password" required autoComplete="current-password" />
-          </div>
-        )}
-        <div className="space-y-2">
-          <Label htmlFor="newPassword">New password</Label>
-          <Input id="newPassword" name="newPassword" type="password" minLength={4} maxLength={128} required autoComplete="new-password" />
-          <p className="text-xs text-muted-foreground">Between 4 and 128 characters.</p>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="passwordConfirmation">Confirm password</Label>
-          <Input id="passwordConfirmation" name="passwordConfirmation" type="password" minLength={4} maxLength={128} required autoComplete="new-password" />
-        </div>
-        <Button type="submit">Save password</Button>
-      </ServerActionForm>
-      {user.mustChangePassword && (
-        <form action={signOutCurrentUser} className="mt-6 max-w-lg">
-          <Button type="submit" variant="outline">Sign out</Button>
-        </form>
-      )}
+      <PasswordForm hasPassword={Boolean(user.passwordHash) && !user.mustChangePassword} />
     </Page>
   )
 }
