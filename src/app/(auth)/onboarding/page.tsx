@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { completeOnboarding } from '@/actions/account/accountActions'
+import { completeOnboarding, signOutCurrentUser } from '@/actions/account/accountActions'
 import { auth } from '@/auth'
 import { ServerActionForm } from '@/components/server-action-form'
 import { Button } from '@/components/ui/button'
@@ -40,6 +40,9 @@ export default async function OnboardingPage() {
           </div>
           <Button type="submit" className="h-9 w-full">Continue</Button>
         </ServerActionForm>
+        <form action={signOutCurrentUser}>
+          <Button type="submit" variant="outline" className="h-9 w-full">Sign out</Button>
+        </form>
       </div>
     </main>
   )

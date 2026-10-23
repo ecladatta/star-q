@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { changeOwnPassword } from '@/actions/account/accountActions'
+import { changeOwnPassword, signOutCurrentUser } from '@/actions/account/accountActions'
 import { auth } from '@/auth'
 import { Page, PageHeader } from '@/components/page'
 import { ServerActionForm } from '@/components/server-action-form'
@@ -42,6 +42,11 @@ export default async function PasswordPage() {
         </div>
         <Button type="submit">Save password</Button>
       </ServerActionForm>
+      {user.mustChangePassword && (
+        <form action={signOutCurrentUser} className="mt-6 max-w-lg">
+          <Button type="submit" variant="outline">Sign out</Button>
+        </form>
+      )}
     </Page>
   )
 }
