@@ -8,8 +8,6 @@ import { MAX_CUSTOM_ENTITIES_PER_CORPUS } from '@/lib/constants'
 import { loadCorpusWikibaseConfig } from '@/lib/wikibase-server'
 import { searchWikibaseUnits } from '@/lib/wikibase-sparql'
 
-export const WIKIBASE_ITEM_ID_PATTERN = /^Q\d+$/
-
 // Wikibase units are identified by their Q-id, corpus-local units by label.
 export async function findOrCreateUnit(executor: DbExecutor, corpusId: string, unitRef: UnitRef): Promise<string> {
   const isWikibaseLinked = unitRef.wikidataId !== null
