@@ -165,6 +165,9 @@ describe('buildDocumentExportModel', () => {
     raw,
     completedAt: null,
     order: 2,
+    wikidataId: 'Q42',
+    sourceUrls: ['https://example.org/doc'],
+    versionDate: '2024-02-01',
     createdAt: new Date('2024-02-01T00:00:00Z'),
     updatedAt: new Date('2024-02-02T00:00:00Z'),
   }
@@ -240,6 +243,9 @@ describe('buildDocumentExportModel', () => {
       updatedAt: '2024-02-02T00:00:00.000Z',
       completedAt: null,
       order: 2,
+      wikidataId: 'Q42',
+      sourceUrls: ['https://example.org/doc'],
+      versionDate: '2024-02-01',
       raw,
       annotations: [
         {

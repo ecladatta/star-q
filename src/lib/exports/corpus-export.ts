@@ -28,6 +28,9 @@ async function buildDocumentExport(doc: {
   updatedAt: Date | null
   completedAt: Date | null
   order: number
+  wikidataId: string | null
+  sourceUrls: string[] | null
+  versionDate: string | null
 }): Promise<DocumentExport> {
   const [docAnnotations, rawContent] = await Promise.all([
     getAnnotations(doc.id),
@@ -57,6 +60,9 @@ async function buildDocumentExport(doc: {
     updatedAt: doc.updatedAt ? doc.updatedAt.toISOString() : null,
     completedAt: doc.completedAt ? doc.completedAt.toISOString() : null,
     order: doc.order,
+    wikidataId: doc.wikidataId,
+    sourceUrls: doc.sourceUrls,
+    versionDate: doc.versionDate,
     raw: rawContent,
     annotations,
   }

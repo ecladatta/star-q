@@ -1,7 +1,6 @@
 'use client'
 import type { Document } from '@/db/schema'
-import type { DocumentData } from '@/types/types'
-import { Circle, CircleCheck, Download, FileDown, FileText, ListIcon, MoreHorizontal, Type } from 'lucide-react'
+import { Circle, CircleCheck, Copy, Download, FileDown, FileText, ListIcon, MoreHorizontal, PenLine, Type } from 'lucide-react'
 import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { markDocumentsAsCompleted } from '@/actions/document/documentActions'
@@ -21,11 +20,11 @@ import { setFullWidth, setShowUnits, useFullWidth, useShowUnits } from '@/lib/di
 import { downloadRawDocumentData } from '@/lib/download-document'
 import { downloadExportFile } from '@/lib/exports/download'
 import { EXPORT_FORMATS, visibleExportFormatIds } from '@/lib/exports/export-format'
+import { DocumentMetadataEditor } from './document-metadata-editor'
 import { ShortcutsDialog } from './shortcuts-dialog'
 
 type DocumentHeaderProps = {
   document: Document
-  documentData: DocumentData
   readOnly?: boolean
   rdfAvailable: boolean
   annotationsCount: number
@@ -36,7 +35,6 @@ type DocumentHeaderProps = {
 
 export function DocumentHeader({
   document,
-  documentData,
   readOnly = false,
   rdfAvailable,
   annotationsCount,
@@ -46,6 +44,8 @@ export function DocumentHeader({
 }: DocumentHeaderProps) {
   const [isCompleted, setIsCompleted] = useState(!!document.completedAt)
   const [isPending, startTransition] = useTransition()
+  const [editMetadataOpen, setEditMetadataOpen] = useState(false)
+  const [editMetadataCount, setEditMetadataCount] = useState(0)
   const fullWidth = useFullWidth()
   const showUnits = useShowUnits()
 
@@ -65,7 +65,7 @@ export function DocumentHeader({
     })
   }
 
-  const title = documentData._source.identificationMetadata.title
+  const title = document.title
 
   return (
     <div className="sticky top-0 z-30 border-b bg-background">
@@ -110,14 +110,35 @@ export function DocumentHeader({
                 Unit labels
               </DropdownMenuCheckboxItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={onCopyText}>
-                <Type className="size-4" />
-                Copy Text Only
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={onCopyWholeDocument}>
-                <FileText className="size-4" />
-                Copy Whole Document
-              </DropdownMenuItem>
+              {!readOnly && (
+                <>
+                  <DropdownMenuItem onClick={() => {
+                    setEditMetadataCount(count => count + 1)
+                    setEditMetadataOpen(true)
+                  }}
+                  >
+                    <PenLine className="size-4" />
+                    Edit metadata
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                </>
+              )}
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <Copy className="size-4" />
+                  Copy
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem onClick={onCopyText}>
+                    <Type className="size-4" />
+                    Copy Text Only
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={onCopyWholeDocument}>
+                    <FileText className="size-4" />
+                    Copy Whole Document
+                  </DropdownMenuItem>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>
                   <FileDown className="size-4" />
@@ -151,6 +172,16 @@ export function DocumentHeader({
           </DropdownMenu>
         </div>
       </div>
+      {/* Keyed per open so the form re-initializes from the current row; the
+          editor stays mounted while closed so the exit animation can play. */}
+      {!readOnly && (
+        <DocumentMetadataEditor
+          key={editMetadataCount}
+          document={document}
+          open={editMetadataOpen}
+          onOpenChange={setEditMetadataOpen}
+        />
+      )}
     </div>
   )
 }

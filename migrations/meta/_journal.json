@@ -239,6 +239,13 @@
       "when": 1791798599915,
       "tag": "0033_remarkable_vargas",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1795687016191,
+      "tag": "0034_document_metadata_columns",
+      "breakpoints": true
     }
   ]
 }

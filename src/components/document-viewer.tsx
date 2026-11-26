@@ -68,21 +68,20 @@ function getUrlLabel(url: string) {
   }
 }
 
-function DocumentMeta({ documentData }: { documentData: DocumentData }) {
+function DocumentMeta({ document }: { document: Document }) {
   const { wikiUrl } = useWikibaseInstance()
-  const { versionDate, wikidata, url } = documentData._source.identificationMetadata
-  const urls = Array.isArray(url) ? url : url ? [url] : []
-  const wikidataUrl = wikidata ? wikiUrl(wikidata) : null
+  const urls = document.sourceUrls ?? []
+  const wikidataUrl = document.wikidataId ? wikiUrl(document.wikidataId) : null
 
   return (
     <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
-      {versionDate && (
-        <span className="flex items-center gap-1.5" title={versionDate}>
+      {document.versionDate && (
+        <span className="flex items-center gap-1.5" title={document.versionDate}>
           <CalendarDays className="size-3.5 shrink-0" />
-          {formatVersionDate(versionDate)}
+          {formatVersionDate(document.versionDate)}
         </span>
       )}
-      {wikidata && (
+      {document.wikidataId && (
         <span className="flex items-center gap-1.5">
           <span>Wikidata</span>
           {wikidataUrl
@@ -94,10 +93,10 @@ function DocumentMeta({ documentData }: { documentData: DocumentData }) {
                   title="View on Wikidata"
                   className="text-accent hover:underline"
                 >
-                  {wikidata}
+                  {document.wikidataId}
                 </Link>
               )
-            : <span>{wikidata}</span>}
+            : <span>{document.wikidataId}</span>}
         </span>
       )}
       {urls.length > 0 && (
@@ -452,7 +451,6 @@ export function DocumentViewer({
         {documentData && document && (
           <DocumentHeader
             document={document}
-            documentData={documentData}
             readOnly={readOnly}
             rdfAvailable={rdfAvailable}
             annotationsCount={documentAnnotations.length}
@@ -465,7 +463,7 @@ export function DocumentViewer({
         <div className="document-container mx-auto w-full max-w-4xl px-5 py-6 lg:px-8">
           {documentData && document && (
             <>
-              <DocumentMeta documentData={documentData} />
+              <DocumentMeta document={document} />
 
               {warningsSlot}
 

@@ -226,6 +226,9 @@ export type DocumentExport = {
   updatedAt: string | null
   completedAt: string | null
   order: number
+  wikidataId: Document['wikidataId']
+  sourceUrls: Document['sourceUrls']
+  versionDate: Document['versionDate']
   raw: DocumentData
   annotations: AnnotationExport[]
 }

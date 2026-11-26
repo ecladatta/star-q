@@ -39,8 +39,13 @@ Each exported document follows this shape:
 - `updatedAt`: last update timestamp (ISO) or `null`
 - `completedAt`: completion timestamp (ISO) or `null`
 - `order`: numeric ordering for the document within the corpus
+- `wikidataId`: provenance Wikidata item ID (e.g. `Q7099`) or `null`
+- `sourceUrls`: provenance source URLs, or `null`
+- `versionDate`: provenance version date (free text) or `null`
 - `raw`: raw extracted document data (see `DocumentData` below)
 - `annotations`: list of annotation triples with optional qualifiers
+
+The three provenance fields are editable metadata stored on the document itself; imports seed them from `raw._source.identificationMetadata`, and exports read the stored values.
 
 Each annotation can include:
 
@@ -57,6 +62,9 @@ Example:
   "updatedAt": "<ISO 8601 timestamp>" | null,
   "completedAt": "<ISO 8601 timestamp>" | null,
   "order": <number>,
+  "wikidataId": "<wikidata id>" | null,
+  "sourceUrls": ["<url>", ...] | null,
+  "versionDate": "<version date>" | null,
   "raw": <DocumentData>,
   "annotations": [
     {

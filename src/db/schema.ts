@@ -310,9 +310,14 @@ export const document = pgTable('document', {
   raw: jsonb('raw').$type<DocumentData>().notNull(),
   completedAt: timestamp('completed_at'),
   order: integer('order').notNull(),
+  wikidataId: text('wikidata_id'),
+  sourceUrls: text('source_urls').array(),
+  versionDate: text('version_date'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
-})
+}, table => [
+  check('document_wikidata_id_check', sql`${table.wikidataId} IS NULL OR ${table.wikidataId} ~ '^Q[0-9]+$'`),
+])
 export type Document = InferSelectModel<typeof document>
 
 export const annotationComponent = pgTable('annotation_component', {
