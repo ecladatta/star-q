@@ -9,7 +9,7 @@ import { db } from '@/db/drizzle'
 import { annotation, corpus, document } from '@/db/schema'
 import { NotFoundError } from '@/lib/auth-utils'
 import { requireEditCorpus, requireEditDocument, requireViewCorpus, requireViewDocument } from '@/lib/corpus-access'
-import { isValidHttpUrl, normalizeSourceUrls, normalizeWikidataId } from '@/lib/document-metadata'
+import { isValidHttpUrl, normalizeSourceUrls, normalizeVersionDate, normalizeWikidataId } from '@/lib/document-metadata'
 
 export async function getDocumentsMetadata(corpusId: string): Promise<DocumentMetadata[]> {
   await requireViewCorpus(corpusId)
@@ -72,13 +72,13 @@ export type DocumentMetadataUpdate = {
 export async function updateDocumentMetadata(id: string, metadata: DocumentMetadataUpdate): Promise<void> {
   const corpusId = await requireEditDocument(id)
 
-  const title = metadata.title.trim()
+  const title = typeof metadata.title === 'string' ? metadata.title.trim() : ''
   if (!title) {
     throw new Error('Title cannot be empty.')
   }
 
   const wikidataId = normalizeWikidataId(metadata.wikidataId)
-  if (metadata.wikidataId?.trim() && !wikidataId) {
+  if (typeof metadata.wikidataId === 'string' && metadata.wikidataId.trim() && !wikidataId) {
     throw new Error('Wikidata ID must be a Q-id like Q123.')
   }
 
@@ -93,7 +93,7 @@ export async function updateDocumentMetadata(id: string, metadata: DocumentMetad
     title,
     wikidataId,
     sourceUrls,
-    versionDate: metadata.versionDate?.trim() || null,
+    versionDate: normalizeVersionDate(metadata.versionDate),
     updatedAt: new Date(),
   }).where(eq(document.id, id))
 

@@ -4,6 +4,7 @@ import {
   isValidHttpUrl,
   metadataColumnsFromDocumentData,
   normalizeSourceUrls,
+  normalizeVersionDate,
   normalizeWikidataId,
   restoredMetadataColumns,
   sourceUrlsEqual,
@@ -26,6 +27,27 @@ describe('normalizeWikidataId', () => {
     expect(normalizeWikidataId(null)).toBeNull()
     expect(normalizeWikidataId(undefined)).toBeNull()
   })
+
+  it('treats non-string values as absent', () => {
+    expect(normalizeWikidataId(42)).toBeNull()
+    expect(normalizeWikidataId({})).toBeNull()
+  })
+})
+
+describe('normalizeVersionDate', () => {
+  it('trims present values and nulls blank ones', () => {
+    expect(normalizeVersionDate(' 2024-01-01 ')).toBe('2024-01-01')
+    expect(normalizeVersionDate('2024-01-01')).toBe('2024-01-01')
+    expect(normalizeVersionDate('')).toBeNull()
+    expect(normalizeVersionDate('   ')).toBeNull()
+    expect(normalizeVersionDate(null)).toBeNull()
+    expect(normalizeVersionDate(undefined)).toBeNull()
+  })
+
+  it('treats non-string values as absent', () => {
+    expect(normalizeVersionDate(42)).toBeNull()
+    expect(normalizeVersionDate({})).toBeNull()
+  })
 })
 
 describe('normalizeSourceUrls', () => {
@@ -45,6 +67,12 @@ describe('normalizeSourceUrls', () => {
     expect(normalizeSourceUrls('   ')).toBeNull()
     expect(normalizeSourceUrls(null)).toBeNull()
     expect(normalizeSourceUrls(undefined)).toBeNull()
+  })
+
+  it('wraps a single string and treats non-string values as absent', () => {
+    expect(normalizeSourceUrls(42)).toBeNull()
+    expect(normalizeSourceUrls({})).toBeNull()
+    expect(normalizeSourceUrls([42, 'https://a.example'])).toEqual(['https://a.example'])
   })
 })
 
@@ -88,11 +116,28 @@ describe('restoredMetadataColumns', () => {
     }, fallback)).toEqual({ wikidataId: 'Q42', sourceUrls: ['https://export.example'], versionDate: '2025-06-01' })
   })
 
-  it('falls back to raw-derived values for missing columns and normalizes hand-edited ones', () => {
-    expect(restoredMetadataColumns({ wikidataId: null, sourceUrls: undefined, versionDate: '  ' }, fallback))
-      .toEqual({ wikidataId: 'Q7099', sourceUrls: ['https://raw.example'], versionDate: '2024-01-01' })
-    expect(restoredMetadataColumns({ wikidataId: ' Q11573 ', sourceUrls: [' https://x.example ', ''] }, fallback))
-      .toEqual({ wikidataId: 'Q11573', sourceUrls: ['https://x.example'], versionDate: '2024-01-01' })
+  it('falls back to raw-derived values only for fields the export omits', () => {
+    expect(restoredMetadataColumns({}, fallback)).toEqual(fallback)
+    expect(restoredMetadataColumns({ wikidataId: 'Q11573' }, fallback))
+      .toEqual({ wikidataId: 'Q11573', sourceUrls: ['https://raw.example'], versionDate: '2024-01-01' })
+  })
+
+  it('lets explicitly cleared fields survive re-import instead of resurrecting from raw', () => {
+    expect(restoredMetadataColumns({ wikidataId: null, sourceUrls: null, versionDate: null }, fallback))
+      .toEqual({ wikidataId: null, sourceUrls: null, versionDate: null })
+    expect(restoredMetadataColumns({ sourceUrls: [] }, fallback))
+      .toEqual({ wikidataId: 'Q7099', sourceUrls: null, versionDate: '2024-01-01' })
+  })
+
+  it('normalizes present values and treats wrong-typed ones as cleared', () => {
+    expect(restoredMetadataColumns(
+      { wikidataId: ' Q11573 ', sourceUrls: [' https://x.example ', ''], versionDate: ' 2025-06-01 ' },
+      fallback,
+    )).toEqual({ wikidataId: 'Q11573', sourceUrls: ['https://x.example'], versionDate: '2025-06-01' })
+    expect(restoredMetadataColumns(
+      { wikidataId: 42 as unknown as string | null, sourceUrls: 42 as unknown as string[] | null },
+      fallback,
+    )).toEqual({ wikidataId: null, sourceUrls: null, versionDate: '2024-01-01' })
   })
 })
 
