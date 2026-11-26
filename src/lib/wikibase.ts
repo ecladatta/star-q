@@ -1,6 +1,7 @@
 import type { CorpusSettings } from './corpus-settings'
 import type { WikibaseInstance } from '@/db/schema'
 import { WIKIBASE_INSTANCE_NONE } from './corpus-settings'
+import { normalizePropertyId } from './document-metadata'
 
 declare const conceptBaseUriBrand: unique symbol
 export type ConceptBaseUri = string & { readonly [conceptBaseUriBrand]: 'ConceptBaseUri' }
@@ -13,13 +14,16 @@ export type WikibaseConfig = {
   instance: string
   sparqlEndpoint: string
   conceptBaseUri: ConceptBaseUri
+  referenceUrlPropertyId: string | null
+  statedInPropertyId: string | null
+  retrievedPropertyId: string | null
 }
 
 export type ResolvedWikibase = WikibaseConfig & { label: string }
 
 export function resolveWikibase(
   settings: CorpusSettings | undefined | null,
-  entry: Pick<WikibaseInstance, 'label' | 'instanceUrl' | 'sparqlEndpoint' | 'conceptBaseUri' | 'enabled'> | null | undefined,
+  entry: Pick<WikibaseInstance, 'label' | 'instanceUrl' | 'sparqlEndpoint' | 'conceptBaseUri' | 'enabled' | 'referenceUrlPropertyId' | 'statedInPropertyId' | 'retrievedPropertyId'> | null | undefined,
 ): ResolvedWikibase | null {
   if (settings?.wikibaseInstanceId === WIKIBASE_INSTANCE_NONE) {
     return null
@@ -30,6 +34,9 @@ export function resolveWikibase(
       instance: entry.instanceUrl,
       sparqlEndpoint: entry.sparqlEndpoint,
       conceptBaseUri: asConceptBaseUri(entry.conceptBaseUri),
+      referenceUrlPropertyId: normalizePropertyId(entry.referenceUrlPropertyId),
+      statedInPropertyId: normalizePropertyId(entry.statedInPropertyId),
+      retrievedPropertyId: normalizePropertyId(entry.retrievedPropertyId),
     }
   }
   return null
@@ -40,6 +47,9 @@ export type WikibaseInstanceInput = {
   instanceUrl: string
   sparqlEndpoint: string
   conceptBaseUri?: string
+  referenceUrlPropertyId?: string | null
+  statedInPropertyId?: string | null
+  retrievedPropertyId?: string | null
 }
 
 const MAX_INSTANCE_LABEL_LENGTH = 120
@@ -102,7 +112,27 @@ export function parseWikibaseInstanceInput(input: WikibaseInstanceInput): Requir
     instanceUrl,
     sparqlEndpoint: parseInstanceUrl(input.sparqlEndpoint, 'sparqlEndpoint'),
     conceptBaseUri: input.conceptBaseUri?.trim() ? deriveConceptBaseUri(parseInstanceUrl(input.conceptBaseUri, 'conceptBaseUri')) : deriveConceptBaseUri(instanceUrl),
+    referenceUrlPropertyId: parsePropertyId(input.referenceUrlPropertyId, 'referenceUrlPropertyId'),
+    statedInPropertyId: parsePropertyId(input.statedInPropertyId, 'statedInPropertyId'),
+    retrievedPropertyId: parsePropertyId(input.retrievedPropertyId, 'retrievedPropertyId'),
   }
+}
+
+function parsePropertyId(raw: string | null | undefined, field: string): string | null {
+  if (raw === undefined || raw === null) {
+    return null
+  }
+  if (typeof raw !== 'string') {
+    throw new TypeError(`Invalid Wikibase instance "${field}": expected a property ID string or null`)
+  }
+  if (raw.trim() === '') {
+    return null
+  }
+  const normalized = normalizePropertyId(raw)
+  if (!normalized) {
+    throw new TypeError(`Invalid Wikibase instance "${field}": expected a property ID (e.g. P854) or null`)
+  }
+  return normalized
 }
 
 export function wikiUrl(instance: string, id: string): string | null {

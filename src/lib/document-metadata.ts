@@ -7,6 +7,13 @@ export function normalizeWikidataId(value: unknown): string | null {
   return trimmed && WIKIBASE_ITEM_ID_PATTERN.test(trimmed) ? trimmed : null
 }
 
+export const WIKIBASE_PROPERTY_ID_PATTERN = /^P\d+$/
+
+export function normalizePropertyId(value: unknown): string | null {
+  const trimmed = typeof value === 'string' ? value.trim() : ''
+  return trimmed && WIKIBASE_PROPERTY_ID_PATTERN.test(trimmed) ? trimmed : null
+}
+
 export function normalizeVersionDate(value: unknown): string | null {
   return typeof value === 'string' ? value.trim() || null : null
 }

@@ -206,6 +206,9 @@ describe('buildDocumentExportModel', () => {
       instance: 'https://wikibase.example',
       sparqlEndpoint: 'https://wikibase.example/query/sparql',
       conceptBaseUri: asConceptBaseUri('https://wikibase.example'),
+      referenceUrlPropertyId: null,
+      statedInPropertyId: null,
+      retrievedPropertyId: null,
       label: 'Example',
     })
   }
@@ -224,6 +227,9 @@ describe('buildDocumentExportModel', () => {
       instance: 'https://wikibase.example',
       sparqlEndpoint: 'https://wikibase.example/query/sparql',
       conceptBaseUri: asConceptBaseUri('https://wikibase.example'),
+      referenceUrlPropertyId: null,
+      statedInPropertyId: null,
+      retrievedPropertyId: null,
     })
     expect(model.units).toEqual([])
     expect(model.customEntities).toEqual([])

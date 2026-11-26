@@ -34,7 +34,11 @@ function model(overrides: Partial<ExportModel> = {}): ExportModel {
       instance: 'https://wikibase.example',
       sparqlEndpoint: 'https://wikibase.example/query/sparql',
       conceptBaseUri: asConceptBaseUri('https://wikibase.example'),
+      referenceUrlPropertyId: null,
+      statedInPropertyId: null,
+      retrievedPropertyId: null,
     },
+    statedInItemId: null,
     ...overrides,
   }
 }

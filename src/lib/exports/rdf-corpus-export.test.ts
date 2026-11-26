@@ -12,6 +12,9 @@ const wikibaseConfig = {
   instance: 'https://wikibase.example',
   sparqlEndpoint: 'https://wikibase.example/sparql',
   conceptBaseUri: asConceptBaseUri('https://wikibase.example'),
+  referenceUrlPropertyId: null,
+  statedInPropertyId: null,
+  retrievedPropertyId: null,
 }
 
 function component(overrides: Partial<DocumentAnnotationComponent> = {}): DocumentAnnotationComponent {
@@ -108,6 +111,7 @@ function model(annotations: AnnotationExport[], raw: ExportModel['documents'][nu
       raw,
       annotations,
     }],
+    statedInItemId: null,
   }
 }
 
@@ -233,6 +237,9 @@ describe('serializeRdfCorpusExport (truthy)', () => {
         instance: 'https://other.example',
         sparqlEndpoint: 'https://other.example/sparql',
         conceptBaseUri: asConceptBaseUri('https://concepts.other.example'),
+        referenceUrlPropertyId: null,
+        statedInPropertyId: null,
+        retrievedPropertyId: null,
       }),
       'truthy',
     )

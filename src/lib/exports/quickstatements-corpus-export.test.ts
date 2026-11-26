@@ -2,6 +2,7 @@ import type {
   AnnotationExport,
   DocumentAnnotationComponent,
   DocumentAnnotationQualifierExport,
+  DocumentExport,
   ExportModel,
 } from '@/types/types'
 import { expect, it } from 'vitest'
@@ -54,7 +55,16 @@ function annotation(overrides: Partial<AnnotationExport> = {}): AnnotationExport
   }
 }
 
-function model(annotations: AnnotationExport[]): ExportModel {
+type ReferenceOptions = {
+  statedInItemId?: string | null
+  wikibase?: Partial<NonNullable<ExportModel['wikibase']>>
+}
+
+function model(
+  annotations: AnnotationExport[],
+  document: Partial<DocumentExport> = {},
+  options: ReferenceOptions = {},
+): ExportModel {
   return {
     exportMeta: { version: '1.4', type: 'full-corpus-export' },
     id: 'corpus-1',
@@ -67,6 +77,10 @@ function model(annotations: AnnotationExport[]): ExportModel {
       instance: 'https://wikibase.example',
       sparqlEndpoint: 'https://wikibase.example/query/sparql',
       conceptBaseUri: asConceptBaseUri('https://wikibase.example'),
+      referenceUrlPropertyId: null,
+      statedInPropertyId: null,
+      retrievedPropertyId: null,
+      ...options.wikibase,
     },
     documents: [
       {
@@ -81,17 +95,27 @@ function model(annotations: AnnotationExport[]): ExportModel {
         versionDate: null,
         raw: {} as ExportModel['documents'][number]['raw'],
         annotations,
+        ...document,
       },
     ],
+    statedInItemId: options.statedInItemId ?? null,
   }
 }
 
-function body(annotations: AnnotationExport[]): string {
-  return serializeQuickStatementsCorpusExport(model(annotations)).body
+function body(
+  annotations: AnnotationExport[],
+  document: Partial<DocumentExport> = {},
+  options: ReferenceOptions = {},
+): string {
+  return serializeQuickStatementsCorpusExport(model(annotations, document, options)).body
 }
 
-function lines(annotations: AnnotationExport[]): string[] {
-  return body(annotations).trim().split('\n')
+function lines(
+  annotations: AnnotationExport[],
+  document: Partial<DocumentExport> = {},
+  options: ReferenceOptions = {},
+): string[] {
+  return body(annotations, document, options).trim().split('\n')
 }
 
 it('emits an entity statement', () => {
@@ -342,4 +366,108 @@ it('emits URL, boolean and free-text values as strings', () => {
     predicate: component({ entityValue: 'P1', annotationTag: 'predicate' }),
     object: component({ entityValue: 'Antoni Ignacy Mietelski', annotationTag: 'object' }),
   })])).toBe('Q1\tP1\t"Antoni Ignacy Mietelski"\n')
+})
+
+const WIKIDATA_REFERENCE_PROPERTIES = { referenceUrlPropertyId: 'P854', statedInPropertyId: 'P248', retrievedPropertyId: 'P813' }
+const FACTGRID_REFERENCE_PROPERTIES = { referenceUrlPropertyId: 'P887', statedInPropertyId: 'P129', retrievedPropertyId: 'P432' }
+
+it('appends a reference block using the instance reference properties', () => {
+  expect(body([annotation()], {
+    sourceUrls: ['https://example.com/page'],
+    versionDate: '2026-10-23',
+  }, { statedInItemId: 'Q999', wikibase: WIKIDATA_REFERENCE_PROPERTIES })).toBe(
+    'Q1\tP1\tQ2\tS854\t"https://example.com/page"\tS248\tQ999\tS813\t+2026-10-23T00:00:00Z/11\n',
+  )
+})
+
+it('emits the same reference block with another instance numbering', () => {
+  expect(body([annotation()], {
+    sourceUrls: ['https://example.com/page'],
+    versionDate: '2026-10-23',
+  }, { statedInItemId: 'Q999', wikibase: FACTGRID_REFERENCE_PROPERTIES })).toBe(
+    'Q1\tP1\tQ2\tS887\t"https://example.com/page"\tS129\tQ999\tS432\t+2026-10-23T00:00:00Z/11\n',
+  )
+})
+
+it('omits reference snaks when the instance maps no reference URL property', () => {
+  expect(body([annotation()], {
+    sourceUrls: ['https://example.com/page'],
+    versionDate: '2026-10-23',
+  }, { statedInItemId: 'Q999' })).toBe('Q1\tP1\tQ2\n')
+})
+
+it('omits the stated-in snak when the instance maps no stated-in property', () => {
+  expect(body([annotation()], {
+    sourceUrls: ['https://example.com/page'],
+    versionDate: '2026-10-23',
+  }, { statedInItemId: 'Q999', wikibase: { referenceUrlPropertyId: 'P854', retrievedPropertyId: 'P813' } })).toBe(
+    'Q1\tP1\tQ2\tS854\t"https://example.com/page"\tS813\t+2026-10-23T00:00:00Z/11\n',
+  )
+})
+
+it('omits the stated-in snak when the corpus has no stated-in item', () => {
+  expect(body([annotation()], {
+    sourceUrls: ['https://example.com/page'],
+    versionDate: '2026-10-23',
+  }, { wikibase: WIKIDATA_REFERENCE_PROPERTIES })).toBe(
+    'Q1\tP1\tQ2\tS854\t"https://example.com/page"\tS813\t+2026-10-23T00:00:00Z/11\n',
+  )
+})
+
+it('parses a year-only version date at year precision', () => {
+  expect(body([annotation()], {
+    sourceUrls: ['https://example.com/page'],
+    versionDate: '2020',
+  }, { wikibase: WIKIDATA_REFERENCE_PROPERTIES })).toBe(
+    'Q1\tP1\tQ2\tS854\t"https://example.com/page"\tS813\t+2020-00-00T00:00:00Z/9\n',
+  )
+})
+
+it('omits the retrieved snak for an unparseable version date', () => {
+  expect(body([annotation()], {
+    sourceUrls: ['https://example.com/page'],
+    versionDate: 'someday',
+  }, { statedInItemId: 'Q999', wikibase: WIKIDATA_REFERENCE_PROPERTIES })).toBe(
+    'Q1\tP1\tQ2\tS854\t"https://example.com/page"\tS248\tQ999\n',
+  )
+})
+
+it('starts a new reference block per source URL with a !-prefixed snak', () => {
+  expect(body([annotation()], {
+    sourceUrls: [
+      'https://example.com/one',
+      'https://example.com/two',
+    ],
+  }, { statedInItemId: 'Q999', wikibase: WIKIDATA_REFERENCE_PROPERTIES })).toBe(
+    'Q1\tP1\tQ2\tS854\t"https://example.com/one"\tS248\tQ999\t!S854\t"https://example.com/two"\tS248\tQ999\n',
+  )
+})
+
+it('repeats the stated-in item and retrieved date in every reference block', () => {
+  expect(body([annotation()], {
+    sourceUrls: [
+      'https://example.com/one',
+      'https://example.com/two',
+    ],
+    versionDate: '2026-10-23',
+  }, { statedInItemId: 'Q999', wikibase: WIKIDATA_REFERENCE_PROPERTIES })).toBe(
+    'Q1\tP1\tQ2\tS854\t"https://example.com/one"\tS248\tQ999\tS813\t+2026-10-23T00:00:00Z/11\t!S854\t"https://example.com/two"\tS248\tQ999\tS813\t+2026-10-23T00:00:00Z/11\n',
+  )
+})
+
+it('appends no reference snaks without source URLs', () => {
+  expect(body([annotation()], { versionDate: '2026-10-23' }, { statedInItemId: 'Q999', wikibase: WIKIDATA_REFERENCE_PROPERTIES })).toBe('Q1\tP1\tQ2\n')
+})
+
+it('places qualifiers before the reference block', () => {
+  expect(body([annotation({
+    qualifiers: [
+      qualifier({ entityValue: 'P585' }, { entityValue: '2000-08-01', entityDatatype: 'date' }, 0),
+    ],
+  })], {
+    sourceUrls: ['https://example.com/page'],
+    versionDate: '2026-10-23',
+  }, { statedInItemId: 'Q999', wikibase: WIKIDATA_REFERENCE_PROPERTIES })).toBe(
+    'Q1\tP1\tQ2\tP585\t+2000-08-01T00:00:00Z/11\tS854\t"https://example.com/page"\tS248\tQ999\tS813\t+2026-10-23T00:00:00Z/11\n',
+  )
 })

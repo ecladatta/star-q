@@ -246,4 +246,5 @@ export type ExportModel = {
   units: UnitRecord[]
   customEntities: CorpusCustomEntity[]
   wikibase: WikibaseConfig | null
+  statedInItemId: string | null
 }

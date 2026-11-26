@@ -20,9 +20,12 @@ type InstanceDraft = {
   instanceUrl: string
   sparqlEndpoint: string
   conceptBaseUri: string
+  referenceUrlPropertyId: string
+  statedInPropertyId: string
+  retrievedPropertyId: string
 }
 
-const EMPTY_DRAFT: InstanceDraft = { label: '', instanceUrl: '', sparqlEndpoint: '', conceptBaseUri: '' }
+const EMPTY_DRAFT: InstanceDraft = { label: '', instanceUrl: '', sparqlEndpoint: '', conceptBaseUri: '', referenceUrlPropertyId: '', statedInPropertyId: '', retrievedPropertyId: '' }
 
 function toDraft(instance: WikibaseInstance): InstanceDraft {
   return {
@@ -30,6 +33,9 @@ function toDraft(instance: WikibaseInstance): InstanceDraft {
     instanceUrl: instance.instanceUrl,
     sparqlEndpoint: instance.sparqlEndpoint,
     conceptBaseUri: instance.conceptBaseUri === deriveConceptBaseUri(instance.instanceUrl) ? '' : instance.conceptBaseUri,
+    referenceUrlPropertyId: instance.referenceUrlPropertyId ?? '',
+    statedInPropertyId: instance.statedInPropertyId ?? '',
+    retrievedPropertyId: instance.retrievedPropertyId ?? '',
   }
 }
 
@@ -128,53 +134,90 @@ export function WikibaseInstanceManager({ instances }: { instances: WikibaseInst
     <div className="space-y-8">
       <section className="rounded-md border p-5">
         <h2 className="mb-4 text-lg font-semibold">Register instance</h2>
-        <div className="grid gap-3 md:grid-cols-5 md:items-end">
-          <div className="space-y-2">
-            <Label htmlFor="wikibase-label">Label</Label>
-            <Input
-              id="wikibase-label"
-              value={newInstance.label}
-              onChange={e => setNewInstance(prev => ({ ...prev, label: e.target.value }))}
-              placeholder="e.g. Wikidata"
-            />
+        <div className="space-y-3">
+          <div className="grid gap-3 md:grid-cols-5 md:items-end">
+            <div className="space-y-2">
+              <Label htmlFor="wikibase-label">Label</Label>
+              <Input
+                id="wikibase-label"
+                value={newInstance.label}
+                onChange={e => setNewInstance(prev => ({ ...prev, label: e.target.value }))}
+                placeholder="e.g. Wikidata"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="wikibase-instance-url">Instance URL</Label>
+              <Input
+                id="wikibase-instance-url"
+                value={newInstance.instanceUrl}
+                onChange={e => setNewInstance(prev => ({ ...prev, instanceUrl: e.target.value }))}
+                placeholder="https://www.wikidata.org"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="wikibase-sparql-endpoint">SPARQL endpoint</Label>
+              <Input
+                id="wikibase-sparql-endpoint"
+                value={newInstance.sparqlEndpoint}
+                onChange={e => setNewInstance(prev => ({ ...prev, sparqlEndpoint: e.target.value }))}
+                placeholder="https://query.wikidata.org/sparql"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="wikibase-concept-base-uri">Concept base URI</Label>
+              <Input
+                id="wikibase-concept-base-uri"
+                value={newInstance.conceptBaseUri}
+                onChange={e => setNewInstance(prev => ({ ...prev, conceptBaseUri: e.target.value }))}
+                placeholder="Leave blank to use the instance URL"
+              />
+              {createConceptBasePreview && (
+                <p className="text-xs text-muted-foreground">
+                  Preview
+                  {' '}
+                  <code className="rounded-sm bg-muted px-1 py-0.5 text-xs">{`${createConceptBasePreview}/entity/Q1`}</code>
+                </p>
+              )}
+            </div>
+            <Button onClick={handleCreate} disabled={isCreating || !draftComplete(newInstance)}>
+              {isCreating ? 'Registering…' : 'Register'}
+            </Button>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="wikibase-instance-url">Instance URL</Label>
-            <Input
-              id="wikibase-instance-url"
-              value={newInstance.instanceUrl}
-              onChange={e => setNewInstance(prev => ({ ...prev, instanceUrl: e.target.value }))}
-              placeholder="https://www.wikidata.org"
-            />
+          <div className="space-y-3 border-t pt-4">
+            <div>
+              <p className="text-sm font-medium">Reference properties</p>
+              <p className="text-xs text-muted-foreground">Optional. Blank roles are omitted from QuickStatements exports.</p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <div className="w-44 space-y-2">
+                <Label htmlFor="wikibase-reference-url-property">Reference URL</Label>
+                <Input
+                  id="wikibase-reference-url-property"
+                  value={newInstance.referenceUrlPropertyId}
+                  onChange={e => setNewInstance(prev => ({ ...prev, referenceUrlPropertyId: e.target.value }))}
+                  placeholder="e.g. P854"
+                />
+              </div>
+              <div className="w-44 space-y-2">
+                <Label htmlFor="wikibase-stated-in-property">Stated-in</Label>
+                <Input
+                  id="wikibase-stated-in-property"
+                  value={newInstance.statedInPropertyId}
+                  onChange={e => setNewInstance(prev => ({ ...prev, statedInPropertyId: e.target.value }))}
+                  placeholder="e.g. P248"
+                />
+              </div>
+              <div className="w-44 space-y-2">
+                <Label htmlFor="wikibase-retrieved-property">Retrieved</Label>
+                <Input
+                  id="wikibase-retrieved-property"
+                  value={newInstance.retrievedPropertyId}
+                  onChange={e => setNewInstance(prev => ({ ...prev, retrievedPropertyId: e.target.value }))}
+                  placeholder="e.g. P813"
+                />
+              </div>
+            </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="wikibase-sparql-endpoint">SPARQL endpoint</Label>
-            <Input
-              id="wikibase-sparql-endpoint"
-              value={newInstance.sparqlEndpoint}
-              onChange={e => setNewInstance(prev => ({ ...prev, sparqlEndpoint: e.target.value }))}
-              placeholder="https://query.wikidata.org/sparql"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="wikibase-concept-base-uri">Concept base URI</Label>
-            <Input
-              id="wikibase-concept-base-uri"
-              value={newInstance.conceptBaseUri}
-              onChange={e => setNewInstance(prev => ({ ...prev, conceptBaseUri: e.target.value }))}
-              placeholder="Leave blank to use the instance URL"
-            />
-            {createConceptBasePreview && (
-              <p className="text-xs text-muted-foreground">
-                Preview
-                {' '}
-                <code className="rounded-sm bg-muted px-1 py-0.5 text-xs">{`${createConceptBasePreview}/entity/Q1`}</code>
-              </p>
-            )}
-          </div>
-          <Button onClick={handleCreate} disabled={isCreating || !draftComplete(newInstance)}>
-            {isCreating ? 'Registering…' : 'Register'}
-          </Button>
         </div>
       </section>
 
@@ -205,6 +248,15 @@ export function WikibaseInstanceManager({ instances }: { instances: WikibaseInst
                 {' '}
                 <code className="rounded-sm bg-muted px-1 py-0.5 text-xs">{instance.conceptBaseUri}</code>
               </p>
+              {(instance.referenceUrlPropertyId || instance.statedInPropertyId || instance.retrievedPropertyId) && (
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Reference properties
+                  {' '}
+                  <code className="rounded-sm bg-muted px-1 py-0.5 text-xs">
+                    {[instance.referenceUrlPropertyId, instance.statedInPropertyId, instance.retrievedPropertyId].filter(Boolean).join(' · ')}
+                  </code>
+                </p>
+              )}
             </div>
             <Button
               type="button"
@@ -300,6 +352,38 @@ export function WikibaseInstanceManager({ instances }: { instances: WikibaseInst
                   <code className="rounded-sm bg-muted px-1 py-0.5 text-xs">{`${editConceptBasePreview}/entity/Q1`}</code>
                 </p>
               )}
+            </div>
+            <div className="space-y-3">
+              <div>
+                <p className="text-sm font-medium">Reference properties</p>
+                <p className="text-xs text-muted-foreground">Optional. Blank roles are omitted from QuickStatements exports.</p>
+              </div>
+              <div className="grid grid-cols-[8.5rem_auto] items-center gap-x-3 gap-y-2">
+                <Label htmlFor="wikibase-edit-reference-url-property">Reference URL</Label>
+                <Input
+                  id="wikibase-edit-reference-url-property"
+                  className="w-36"
+                  value={editDraft.referenceUrlPropertyId}
+                  onChange={e => setEditDraft(prev => ({ ...prev, referenceUrlPropertyId: e.target.value }))}
+                  placeholder="e.g. P854"
+                />
+                <Label htmlFor="wikibase-edit-stated-in-property">Stated-in</Label>
+                <Input
+                  id="wikibase-edit-stated-in-property"
+                  className="w-36"
+                  value={editDraft.statedInPropertyId}
+                  onChange={e => setEditDraft(prev => ({ ...prev, statedInPropertyId: e.target.value }))}
+                  placeholder="e.g. P248"
+                />
+                <Label htmlFor="wikibase-edit-retrieved-property">Retrieved</Label>
+                <Input
+                  id="wikibase-edit-retrieved-property"
+                  className="w-36"
+                  value={editDraft.retrievedPropertyId}
+                  onChange={e => setEditDraft(prev => ({ ...prev, retrievedPropertyId: e.target.value }))}
+                  placeholder="e.g. P813"
+                />
+              </div>
             </div>
           </div>
           <DialogFooter>

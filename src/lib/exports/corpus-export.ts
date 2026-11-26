@@ -8,6 +8,7 @@ import { getDocument, getDocumentsMetadata, getRawDocumentData } from '@/actions
 import { db } from '@/db/drizzle'
 import { unit } from '@/db/schema'
 import { NotFoundError } from '@/lib/auth-utils'
+import { normalizeWikidataId } from '@/lib/document-metadata'
 import { unitOrdering } from '@/lib/units/server'
 import { loadCorpusWikibaseConfig } from '@/lib/wikibase-server'
 
@@ -17,6 +18,9 @@ function toWikibaseConfig(wikibase: ResolvedWikibase | null) {
         instance: wikibase.instance,
         sparqlEndpoint: wikibase.sparqlEndpoint,
         conceptBaseUri: wikibase.conceptBaseUri,
+        referenceUrlPropertyId: wikibase.referenceUrlPropertyId,
+        statedInPropertyId: wikibase.statedInPropertyId,
+        retrievedPropertyId: wikibase.retrievedPropertyId,
       }
     : null
 }
@@ -90,6 +94,7 @@ export async function buildCorpusExportModel(corpusId: string): Promise<ExportMo
     documents: await Promise.all(documents.map(document => buildDocumentExport(document))),
     units,
     customEntities,
+    statedInItemId: normalizeWikidataId(corpus.settings?.statedInItemId),
   }
 }
 
@@ -120,6 +125,7 @@ export async function buildDocumentExportModel(documentId: string): Promise<Expo
     documents: [documentExport],
     units,
     customEntities,
+    statedInItemId: normalizeWikidataId(corpus.settings?.statedInItemId),
   }
 }
 

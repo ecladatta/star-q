@@ -361,6 +361,9 @@ export const wikibaseInstances = pgTable('wikibase_instance', {
   conceptBaseUri: text('concept_base_uri').notNull(),
   enabled: boolean('enabled').notNull().default(true),
   isDefault: boolean('is_default').notNull().default(false),
+  referenceUrlPropertyId: text('reference_url_property_id'),
+  statedInPropertyId: text('stated_in_property_id'),
+  retrievedPropertyId: text('retrieved_property_id'),
   createdAt: timestamp('created_at', { mode: 'date' }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'date' }).notNull().defaultNow(),
 })

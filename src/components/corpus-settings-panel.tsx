@@ -38,6 +38,7 @@ export function CorpusSettingsPanel({ corpus, wikibaseInstances, onCorpusRenamed
   const { wikiUrl } = useWikibaseInstance()
   const [visibility, setVisibility] = useState<CorpusVisibility>(corpus.visibility ?? 'private')
   const [settings, setSettings] = useState<CorpusSettings>(corpus.settings ?? {})
+  const [statedInItemDraft, setStatedInItemDraft] = useState(corpus.settings?.statedInItemId ?? '')
   const [isSavingSettings, setIsSavingSettings] = useState(false)
   const [customEntities, setCustomEntities] = useState<CorpusCustomEntity[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -114,6 +115,43 @@ export function CorpusSettingsPanel({ corpus, wikibaseInstances, onCorpusRenamed
       toast.success(checked ? 'Wikibase setting enabled' : 'Wikibase setting disabled')
     } catch {
       setSettings(prev => ({ ...prev, [key]: previous }))
+      toast.error('Failed to update corpus settings')
+    } finally {
+      setIsSavingSettings(false)
+    }
+  }
+
+  const handleStatedInItemCommit = async () => {
+    const value = statedInItemDraft.trim()
+    const next = value === '' ? null : value
+    if (next === (settings.statedInItemId ?? null)) {
+      return
+    }
+
+    const previous = settings.statedInItemId ?? null
+    setSettings((prev) => {
+      const nextSettings = { ...prev }
+      if (next === null) {
+        delete nextSettings.statedInItemId
+      } else {
+        nextSettings.statedInItemId = next
+      }
+      return nextSettings
+    })
+    try {
+      setIsSavingSettings(true)
+      await updateCorpusSettings(corpus.id, { statedInItemId: next })
+      toast.success(next === null ? 'Stated-in item cleared' : 'Stated-in item updated')
+    } catch {
+      setSettings((prev) => {
+        const nextSettings = { ...prev }
+        if (previous === null) {
+          delete nextSettings.statedInItemId
+        } else {
+          nextSettings.statedInItemId = previous
+        }
+        return nextSettings
+      })
       toast.error('Failed to update corpus settings')
     } finally {
       setIsSavingSettings(false)
@@ -384,6 +422,30 @@ export function CorpusSettingsPanel({ corpus, wikibaseInstances, onCorpusRenamed
                 The Wikibase instance selected for this corpus is disabled; entity features are unavailable until an admin re-enables it or you pick another instance.
               </p>
             )}
+          </div>
+          <div className="flex items-start justify-between gap-4 rounded-lg border border-border bg-card p-4">
+            <div className="space-y-1">
+              <Label htmlFor="stated-in-item">
+                Stated-in item for exports
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Wikibase item identifying this corpus&apos;s source site, added as a reference to exported QuickStatements statements.
+              </p>
+            </div>
+            <Input
+              id="stated-in-item"
+              className="w-56"
+              placeholder="Q…"
+              value={statedInItemDraft}
+              disabled={!canEdit || isSavingSettings}
+              onChange={event => setStatedInItemDraft(event.target.value)}
+              onBlur={handleStatedInItemCommit}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.currentTarget.blur()
+                }
+              }}
+            />
           </div>
           <div className="flex items-start justify-between gap-4 rounded-lg border border-border bg-card p-4">
             <div className="space-y-1">

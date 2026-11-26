@@ -31,6 +31,9 @@ describe('wikibase config', () => {
       instanceUrl: 'https://wikibase.example',
       sparqlEndpoint: 'https://wikibase.example/query/sparql',
       conceptBaseUri: 'https://wikidata.example',
+      referenceUrlPropertyId: null,
+      statedInPropertyId: null,
+      retrievedPropertyId: null,
     })
     expect(parseWikibaseInstanceInput({
       label: 'Example',
@@ -88,6 +91,39 @@ describe('wikibase config', () => {
       sparqlEndpoint: 'https://wikibase.example/query/sparql',
       conceptBaseUri: 'not a url',
     })).toThrow(/conceptBaseUri/)
+  })
+
+  it('normalizes optional reference property ids and rejects malformed ones', async () => {
+    const { parseWikibaseInstanceInput } = await import('./wikibase')
+
+    const parsed = parseWikibaseInstanceInput({
+      label: 'Example',
+      instanceUrl: 'https://wikibase.example',
+      sparqlEndpoint: 'https://wikibase.example/query/sparql',
+      referenceUrlPropertyId: ' P854 ',
+      statedInPropertyId: null,
+      retrievedPropertyId: '',
+    })
+    expect(parsed.referenceUrlPropertyId).toBe('P854')
+    expect(parsed.statedInPropertyId).toBeNull()
+    expect(parsed.retrievedPropertyId).toBeNull()
+    expect(parseWikibaseInstanceInput({
+      label: 'Example',
+      instanceUrl: 'https://wikibase.example',
+      sparqlEndpoint: 'https://wikibase.example/query/sparql',
+    }).statedInPropertyId).toBeNull()
+    expect(() => parseWikibaseInstanceInput({
+      label: 'Example',
+      instanceUrl: 'https://wikibase.example',
+      sparqlEndpoint: 'https://wikibase.example/query/sparql',
+      statedInPropertyId: 'Q42',
+    })).toThrow(/statedInPropertyId/)
+    expect(() => parseWikibaseInstanceInput({
+      label: 'Example',
+      instanceUrl: 'https://wikibase.example',
+      sparqlEndpoint: 'https://wikibase.example/query/sparql',
+      retrievedPropertyId: 'P 813',
+    })).toThrow(/retrievedPropertyId/)
   })
 
   it('derives the canonical http base for newly registered wikidata instances, matching the migration backfill', async () => {
@@ -150,6 +186,9 @@ describe('resolveWikibase', () => {
     sparqlEndpoint: 'https://wikibase.example/query/sparql',
     conceptBaseUri: 'https://wikibase.example',
     enabled: true,
+    referenceUrlPropertyId: 'P854',
+    statedInPropertyId: 'P248',
+    retrievedPropertyId: 'P813',
   }
   const instanceId = '123e4567-e89b-12d3-a456-426614174000'
 
@@ -161,6 +200,9 @@ describe('resolveWikibase', () => {
       instance: 'https://wikibase.example',
       sparqlEndpoint: 'https://wikibase.example/query/sparql',
       conceptBaseUri: 'https://wikibase.example',
+      referenceUrlPropertyId: 'P854',
+      statedInPropertyId: 'P248',
+      retrievedPropertyId: 'P813',
     })
   })
 

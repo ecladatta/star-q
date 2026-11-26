@@ -1,6 +1,7 @@
 import type {
   AnnotationExport,
   DocumentAnnotationComponent,
+  DocumentExport,
   EntityDatatype,
   ExportModel,
 } from '@/types/types'
@@ -18,6 +19,16 @@ const TIME_DATATYPES = new Set<EntityDatatype>([
 const WIKIBASE_ENTITY_ID = /^[QP]\d+$/
 const WIKIBASE_PROPERTY_ID = /^P\d+$/
 
+// QuickStatements 3.0 reads trailing `S`-prefixed pairs as reference snaks;
+// every pair joins one reference block until a pair whose property is
+// prefixed with `!` starts a new one.
+type ReferenceSnaks = {
+  referenceUrlProperty: string
+  statedInProperty: string | null
+  statedInItem: string | null
+  retrievedProperty: string | null
+}
+
 export type QuickStatementsExport = {
   body: string
   skippedCount: number
@@ -29,9 +40,11 @@ export function serializeQuickStatementsCorpusExport(
   const lines = new Set<string>()
   let skippedCount = 0
 
+  const reference = referenceSnaks(corpusData)
+
   for (const document of corpusData.documents) {
     for (const annotation of document.annotations) {
-      const command = renderAnnotation(annotation)
+      const command = renderAnnotation(annotation, document, reference)
       if (command === null) {
         skippedCount++
         continue
@@ -45,7 +58,11 @@ export function serializeQuickStatementsCorpusExport(
   return { body, skippedCount }
 }
 
-function renderAnnotation(annotation: AnnotationExport): string | null {
+function renderAnnotation(
+  annotation: AnnotationExport,
+  document: DocumentExport,
+  reference: ReferenceSnaks | null,
+): string | null {
   if (!annotation.subject || !annotation.predicate || !annotation.object) {
     return null
   }
@@ -66,7 +83,67 @@ function renderAnnotation(annotation: AnnotationExport): string | null {
     }
   }
 
+  appendReferences(parts, document, reference)
+
   return parts.join('\t')
+}
+
+function referenceSnaks(corpusData: ExportModel): ReferenceSnaks | null {
+  const referenceUrlProperty = corpusData.wikibase?.referenceUrlPropertyId ?? null
+  if (referenceUrlProperty === null) {
+    return null
+  }
+
+  return {
+    referenceUrlProperty,
+    statedInProperty: corpusData.wikibase?.statedInPropertyId ?? null,
+    statedInItem: corpusData.statedInItemId,
+    retrievedProperty: corpusData.wikibase?.retrievedPropertyId ?? null,
+  }
+}
+
+function sourceSnak(propertyId: string): string {
+  return `S${propertyId.slice(1)}`
+}
+
+function appendReferences(
+  parts: string[],
+  document: DocumentExport,
+  reference: ReferenceSnaks | null,
+): void {
+  if (reference === null) {
+    return
+  }
+
+  const retrieved = retrievedTimeValue(document.versionDate)
+  let firstBlock = true
+
+  for (const sourceUrl of document.sourceUrls ?? []) {
+    const url = sourceUrl.trim()
+    if (url === '') {
+      continue
+    }
+
+    const urlSnak = sourceSnak(reference.referenceUrlProperty)
+    parts.push(firstBlock ? urlSnak : `!${urlSnak}`, stringValue(url))
+    firstBlock = false
+
+    if (reference.statedInProperty !== null && reference.statedInItem !== null) {
+      parts.push(sourceSnak(reference.statedInProperty), reference.statedInItem)
+    }
+
+    if (reference.retrievedProperty !== null && retrieved !== null) {
+      parts.push(sourceSnak(reference.retrievedProperty), retrieved)
+    }
+  }
+}
+
+function retrievedTimeValue(versionDate: string | null): string | null {
+  const trimmed = versionDate?.trim() ?? ''
+  return timeValue(trimmed, 'date')
+    ?? timeValue(trimmed, 'gYearMonth')
+    ?? timeValue(trimmed, 'gYear')
+    ?? timeValue(trimmed, 'dateTime')
 }
 
 function entityId(component: DocumentAnnotationComponent): string | null {

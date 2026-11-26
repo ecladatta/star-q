@@ -25,7 +25,8 @@ RDF exports have two modes:
   "updatedAt": "<ISO 8601 timestamp>",
   "documents": [ /* DocumentExport[] */ ],
   "units": [ /* UnitRecord[] */ ],
-  "customEntities": [ /* CorpusCustomEntity[] */ ]
+  "customEntities": [ /* CorpusCustomEntity[] */ ],
+  "statedInItemId": "<stated-in item ID>" | null
 }
 ```
 
@@ -271,6 +272,12 @@ Each line has the form `QID\tPID\tvalue\tPID\tvalue ...`, where the trailing `PI
 Q68550	P184	Q7099
 Q68550	P69	"University of Vienna"
 Q68550	P571	+1365-00-00T00:00:00Z/9	P585	+2019-01-01T00:00:00Z/11
+```
+
+Each command also appends reference snaks after the qualifiers, using the reference properties configured on the corpus's Wikibase instance in the admin instance registry: the instance's reference URL property carries the document's source URL (one reference block per URL), its stated-in property names the stated-in item configured on the corpus when one is set, and its retrieved property carries the document's version date at the parsed precision when it parses as a time value. Each Wikibase instance numbers its own properties, so the `S`-numbers follow that configuration; a role whose property is not mapped for the instance contributes no snak, and an instance with no mapped reference URL property produces no reference block at all. All `S`-pairs join a single reference until a block's first source property is prefixed with `!`, which starts a new reference. Commands for documents without a source URL carry no reference block:
+
+```text
+Q68550	P184	Q7099	S854	"https://example.org/wiki/Example"	S248	Q123	S813	+2026-10-23T00:00:00Z/11
 ```
 
 Numeric object values serialize as [QuickStatements 3.0 quantities](https://www.wikidata.org/wiki/Help:Data_type#Quantity): `amount`, `amountUunit` when a Wikibase unit is set, and `amount[lower,upper]Uunit` when both quantity bounds are also set, as in `12[12,15]U11573`. A custom corpus unit cannot be referenced in QuickStatements, so the amount exports without a unit. Quantity bounds export only as a pair: a missing or non-numeric bound drops the brackets rather than exporting one side.

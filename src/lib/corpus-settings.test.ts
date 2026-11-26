@@ -111,3 +111,37 @@ it('keeps wikibaseInstanceId when the patch does not mention it', () => {
     ),
   ).toEqual({ wikibaseInstanceId: '123e4567-e89b-12d3-a456-426614174000', wikibaseConstraintWarnings: true })
 })
+
+it('normalizes and accepts a stated-in item id', () => {
+  expect(sanitizeCorpusSettingsPatch({ statedInItemId: ' Q5 ' }))
+    .toEqual({ statedInItemId: 'Q5' })
+})
+
+it('rejects a malformed stated-in item id', () => {
+  expect(() => sanitizeCorpusSettingsPatch({ statedInItemId: 'nope' }))
+    .toThrow('Invalid corpus setting "statedInItemId": expected a Wikibase item ID or null')
+  expect(() => sanitizeCorpusSettingsPatch({ statedInItemId: '' }))
+    .toThrow('Invalid corpus setting "statedInItemId": expected a Wikibase item ID or null')
+})
+
+it('passes a null statedInItemId through as an explicit clear', () => {
+  expect(sanitizeCorpusSettingsPatch({ statedInItemId: null }))
+    .toEqual({ statedInItemId: null })
+})
+
+it('treats an explicit undefined for statedInItemId as no change', () => {
+  expect(sanitizeCorpusSettingsPatch({ statedInItemId: undefined }))
+    .toEqual({})
+})
+
+it('removes statedInItemId from the merged settings on a null patch value', () => {
+  const merged = mergeCorpusSettings({ statedInItemId: 'Q5', wikibaseConstraintWarnings: true }, { statedInItemId: null })
+  expect(merged).toEqual({ wikibaseConstraintWarnings: true })
+  expect(merged).not.toHaveProperty('statedInItemId')
+})
+
+it('keeps statedInItemId when the patch does not mention it', () => {
+  expect(
+    mergeCorpusSettings({ statedInItemId: 'Q5' }, { wikibaseConstraintWarnings: true }),
+  ).toEqual({ statedInItemId: 'Q5', wikibaseConstraintWarnings: true })
+})
