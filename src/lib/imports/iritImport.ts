@@ -11,6 +11,7 @@ import { db } from '@/db/drizzle'
 import { document } from '@/db/schema'
 import { MAX_IMPORT_UNCOMPRESSED_BYTES } from '@/lib/config'
 import { MAX_DOCUMENTS_PER_IMPORT } from '@/lib/constants'
+import { metadataColumnsFromDocumentData } from '@/lib/document-metadata'
 import {
   extractEntitiesFromTriplet,
   findEntityPositionsInTable,
@@ -364,6 +365,7 @@ async function createDocumentInDb(docData: ProcessedDocument, order: number): Pr
     title: docData.title,
     raw: documentPayload,
     order,
+    ...metadataColumnsFromDocumentData(documentPayload),
   }).returning({ id: document.id })
 
   if (!insertedDocument || !insertedDocument.id) {

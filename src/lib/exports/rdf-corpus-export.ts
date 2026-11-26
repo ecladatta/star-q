@@ -572,10 +572,7 @@ function documentElementIri(
 }
 
 function sourceTerms(document: DocumentExport): RdfTerm[] {
-  const source = document.raw._source.identificationMetadata.url
-  const sources = source ? (Array.isArray(source) ? source : [source]) : []
-
-  return sources.map(iriOrLiteral)
+  return (document.sourceUrls ?? []).map(iriOrLiteral)
 }
 
 function integerLiteral(value: number): Literal {

@@ -3,6 +3,7 @@ import type { DocumentData } from '@/types/types'
 import JSZip from 'jszip'
 import { db } from '@/db/drizzle'
 import { document } from '@/db/schema'
+import { metadataColumnsFromDocumentData } from '@/lib/document-metadata'
 import { buildTableDocumentData } from './csvDocumentData'
 import { classifyDocumentFile, DOCUMENT_FILE_EXTENSIONS } from './documentFileClassifier'
 import { buildTextDocumentData } from './textDocumentData'
@@ -18,6 +19,7 @@ async function insertDocument(
     title,
     raw,
     order,
+    ...metadataColumnsFromDocumentData(raw),
   }).returning({ id: document.id })
 
   return inserted.id

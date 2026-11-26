@@ -3,6 +3,7 @@ import type { DocumentData } from '@/types/types'
 import { db } from '@/db/drizzle'
 import { document } from '@/db/schema'
 import { MAX_DOCUMENTS_PER_IMPORT } from '@/lib/constants'
+import { metadataColumnsFromDocumentData } from '@/lib/document-metadata'
 
 /**
  * Imports documents from a Corpus Walker formatted JSON Lines file
@@ -33,6 +34,7 @@ export async function importCorpuswalkerDocuments(
         title: parsedJson._source.identificationMetadata.title || parsedJson._source.identificationMetadata.id,
         raw: parsedJson as DocumentData,
         order: index + 1,
+        ...metadataColumnsFromDocumentData(parsedJson),
       }).returning({ id: document.id })
 
       importedDocumentsIds.push(documentId.id)

@@ -6,6 +6,7 @@ import { db } from '@/db/drizzle'
 
 import { document } from '@/db/schema'
 import { MAX_DOCUMENTS_PER_IMPORT } from '@/lib/constants'
+import { metadataColumnsFromDocumentData } from '@/lib/document-metadata'
 
 /**
  * Imports documents from a Label Studio formatted JSON file
@@ -64,6 +65,7 @@ export async function importLabelStudioDocuments(
         title: item.id,
         raw,
         order: index + 1,
+        ...metadataColumnsFromDocumentData(raw),
       }).returning({ id: document.id })
 
       importedDocumentsIds.push(documentId.id)

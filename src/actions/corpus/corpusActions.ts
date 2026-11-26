@@ -330,6 +330,9 @@ export async function duplicateCorpus(id: string, owner: CorpusOwnerInput, newTi
               title: doc.title,
               raw: doc.raw,
               order: doc.order,
+              wikidataId: doc.wikidataId,
+              sourceUrls: doc.sourceUrls,
+              versionDate: doc.versionDate,
             })),
           )
           .returning()

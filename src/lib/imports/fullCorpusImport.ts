@@ -4,7 +4,8 @@ import { db } from '@/db/drizzle'
 import { annotation, annotationComponent, annotationQualifier, corpusCustomEntity, document } from '@/db/schema'
 import { MAX_DOCUMENTS_PER_IMPORT } from '@/lib/constants'
 import { ENTITY_DATATYPES, normalizeDatatype } from '@/lib/datatypes'
-import { findOrCreateUnit, WIKIBASE_ITEM_ID_PATTERN } from '@/lib/units/server'
+import { metadataColumnsFromDocumentData, restoredMetadataColumns, WIKIBASE_ITEM_ID_PATTERN } from '@/lib/document-metadata'
+import { findOrCreateUnit } from '@/lib/units/server'
 
 import { isUuid, normalizeCustomEntityFields, takeImportedUnitRef } from './corpusImportNormalization'
 import { isFullCorpusExport } from './fullCorpusExport'
@@ -233,6 +234,7 @@ export async function importFullCorpusExportDocuments(
 
         // Insert document with content
         const baseCreatedAt = doc.createdAt ? new Date(doc.createdAt) : new Date()
+        const rawDerivedMetadata = metadataColumnsFromDocumentData(doc.raw)
 
         const [documentId] = await tx.insert(document).values({
           corpusId,
@@ -242,6 +244,7 @@ export async function importFullCorpusExportDocuments(
           updatedAt: doc.updatedAt ? new Date(doc.updatedAt) : new Date(),
           completedAt: doc.completedAt ? new Date(doc.completedAt) : null,
           order: documentOrder,
+          ...restoredMetadataColumns(doc, rawDerivedMetadata),
         }).returning({ id: document.id })
 
         // Insert annotations for this document

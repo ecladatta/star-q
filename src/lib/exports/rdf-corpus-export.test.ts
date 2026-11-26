@@ -102,6 +102,9 @@ function model(annotations: AnnotationExport[], raw: ExportModel['documents'][nu
       updatedAt: null,
       completedAt: null,
       order: 0,
+      wikidataId: null,
+      sourceUrls: ['https://example.org/'],
+      versionDate: '2020',
       raw,
       annotations,
     }],
@@ -258,6 +261,13 @@ describe('serializeRdfCorpusExport (full)', () => {
     expect(output).toContain('document:doc-1 a foaf:Document;')
     expect(output).toContain('dcterms:isPartOf corpus:corpus-1;')
     expect(output).toContain('dcterms:source <https://example.org/>;')
+  })
+
+  it('takes provenance sources from the sourceUrls column, not the raw metadata', () => {
+    const withoutSources = model([annotation()], rawText())
+    withoutSources.documents[0].sourceUrls = null
+    const output = serializeRdfCorpusExport(withoutSources, 'full')
+    expect(output).not.toContain('dcterms:source')
   })
 
   it('projects text elements as NIF contexts', () => {
