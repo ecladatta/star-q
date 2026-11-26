@@ -8,7 +8,8 @@ import { revalidatePath } from 'next/cache'
 import { db } from '@/db/drizzle'
 import { annotation, corpus, document } from '@/db/schema'
 import { NotFoundError } from '@/lib/auth-utils'
-import { requireEditCorpus, requireViewCorpus, requireViewDocument } from '@/lib/corpus-access'
+import { requireEditCorpus, requireEditDocument, requireViewCorpus, requireViewDocument } from '@/lib/corpus-access'
+import { isValidHttpUrl, normalizeSourceUrls, normalizeWikidataId } from '@/lib/document-metadata'
 
 export async function getDocumentsMetadata(corpusId: string): Promise<DocumentMetadata[]> {
   await requireViewCorpus(corpusId)
@@ -59,6 +60,45 @@ export async function markDocumentsAsCompleted(ids: string[], value: Date | null
 
   ids.forEach(id => revalidatePath(`/document/${id}`))
   uniqueCorpusIds.forEach(id => revalidatePath(`/corpus/${id}`))
+}
+
+export type DocumentMetadataUpdate = {
+  title: string
+  versionDate: string | null
+  wikidataId: string | null
+  sourceUrls: string[] | null
+}
+
+export async function updateDocumentMetadata(id: string, metadata: DocumentMetadataUpdate): Promise<void> {
+  const corpusId = await requireEditDocument(id)
+
+  const title = metadata.title.trim()
+  if (!title) {
+    throw new Error('Title cannot be empty.')
+  }
+
+  const wikidataId = normalizeWikidataId(metadata.wikidataId)
+  if (metadata.wikidataId?.trim() && !wikidataId) {
+    throw new Error('Wikidata ID must be a Q-id like Q123.')
+  }
+
+  const sourceUrls = normalizeSourceUrls(metadata.sourceUrls)
+  for (const url of sourceUrls ?? []) {
+    if (!isValidHttpUrl(url)) {
+      throw new Error(`Invalid source URL: ${url}`)
+    }
+  }
+
+  await db.update(document).set({
+    title,
+    wikidataId,
+    sourceUrls,
+    versionDate: metadata.versionDate?.trim() || null,
+    updatedAt: new Date(),
+  }).where(eq(document.id, id))
+
+  revalidatePath(`/document/${id}`)
+  revalidatePath(`/corpus/${corpusId}`)
 }
 
 export async function deleteDocuments(ids: string[]) {
