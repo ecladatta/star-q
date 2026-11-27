@@ -104,6 +104,19 @@ describe('serializeAuditLogExport (csv)', () => {
     expect(body.split('\n')[4]).toBe('line2",instance,,{}')
   })
 
+  it('neutralizes formula-like cells with a leading single quote', () => {
+    const body = serializeAuditLogExport('csv', [
+      event({ id: 'event-1', targetId: '=HYPERLINK("https://evil.example","x")' }),
+      event({ id: 'event-2', targetId: '+1+2' }),
+      event({ id: 'event-3', targetId: '@x' }),
+      event({ id: 'event-4', targetId: '-1' }),
+    ]).body
+    expect(body.split('\n')[1]).toBe('event-1,2026-01-15T10:30:00.000Z,,instance.settings_updated,instance,"\'=HYPERLINK(""https://evil.example"",""x"")",{}')
+    expect(body.split('\n')[2]).toBe('event-2,2026-01-15T10:30:00.000Z,,instance.settings_updated,instance,\'+1+2,{}')
+    expect(body.split('\n')[3]).toBe('event-3,2026-01-15T10:30:00.000Z,,instance.settings_updated,instance,\'@x,{}')
+    expect(body.split('\n')[4]).toBe('event-4,2026-01-15T10:30:00.000Z,,instance.settings_updated,instance,\'-1,{}')
+  })
+
   it('serializes metadata as JSON in its cell with CSV escaping', () => {
     const body = serializeAuditLogExport('csv', [event({ metadata: { role: 'member', count: 2 } })]).body
     expect(body.split('\n')[1]).toBe('event-1,2026-01-15T10:30:00.000Z,,instance.settings_updated,instance,,"{""role"":""member"",""count"":2}"')
