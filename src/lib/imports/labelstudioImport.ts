@@ -1,4 +1,3 @@
-'use server'
 import type { DocumentAnnotationComponent, DocumentData } from '@/types/types'
 import { v4 as uuidv4 } from 'uuid'
 import { addAnnotation } from '@/actions/annotation/annotationActions'

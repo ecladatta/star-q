@@ -1,4 +1,3 @@
-'use server'
 import type { DocumentAnnotationComponent, DocumentData } from '@/types/types'
 import { Buffer } from 'node:buffer'
 import concat from 'concat-stream'

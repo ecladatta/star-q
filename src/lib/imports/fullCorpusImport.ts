@@ -1,4 +1,3 @@
-'use server'
 import type { AnnotationComponentRole, UnitRef } from '@/types/types'
 import { db } from '@/db/drizzle'
 import { annotation, annotationComponent, annotationQualifier, corpusCustomEntity, document } from '@/db/schema'

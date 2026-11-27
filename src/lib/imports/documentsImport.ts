@@ -1,4 +1,3 @@
-'use server'
 import type { UrlImportFormat } from './urlImportDetection'
 import type { FetchedResource } from './urlPageFetch'
 import type { DocumentData } from '@/types/types'
