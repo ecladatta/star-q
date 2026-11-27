@@ -17,9 +17,22 @@ const geistMono = localFont({
   weight: '100 900',
 })
 
+const APP_DESCRIPTION = 'A free and open source web-based tool for annotating texts and tables'
+
 export const metadata: Metadata = {
   title: APP_NAME,
-  description: 'A web-based tool for annotating texts and tables',
+  description: APP_DESCRIPTION,
+  openGraph: {
+    title: APP_NAME,
+    description: APP_DESCRIPTION,
+    siteName: APP_NAME,
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary',
+    title: APP_NAME,
+    description: APP_DESCRIPTION,
+  },
 }
 
 const themeScript = `(function(){try{var t=localStorage.getItem('starq-theme');var d=t?t==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;if(d){document.documentElement.classList.add('dark')}if(localStorage.getItem('starq-full-width')==='1'){document.documentElement.classList.add('doc-full-width')}if(localStorage.getItem('starq-show-units')==='0'){document.documentElement.classList.add('doc-units-hidden')}}catch(e){}})()`
