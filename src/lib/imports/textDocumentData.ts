@@ -1,6 +1,8 @@
 import type { HtmlToTextOptions } from 'html-to-text'
 import type { DocumentData } from '@/types/types'
+import { Defuddle } from 'defuddle/node'
 import { htmlToText } from 'html-to-text'
+import { parseHTML } from 'linkedom'
 import { documentTitleFromFileName } from './documentTitle'
 
 export function isHtmlFileName(fileName: string): boolean {
@@ -23,29 +25,57 @@ export function stripHtml(content: string): string {
   return htmlToText(content, HTML_TO_TEXT_OPTIONS).trim()
 }
 
-export function buildTextDocumentData(fileName: string, content: string): DocumentData {
-  const value = isHtmlFileName(fileName) ? stripHtml(content) : content
+export type BuiltDocumentData = {
+  data: DocumentData
+  warnings: string[]
+}
+
+async function extractMainContentHtml(html: string): Promise<string> {
+  try {
+    const { document } = parseHTML(html)
+    const result = await Defuddle(document, undefined, { useAsync: false })
+    return result.content ?? ''
+  } catch {
+    return ''
+  }
+}
+
+export async function buildTextDocumentData(fileName: string, content: string): Promise<BuiltDocumentData> {
+  const warnings: string[] = []
+  let value = content
+  if (isHtmlFileName(fileName)) {
+    const extractedText = stripHtml(await extractMainContentHtml(content))
+    if (extractedText !== '') {
+      value = extractedText
+    } else {
+      value = stripHtml(content)
+      warnings.push(`Could not extract the main content of "${fileName}"; imported the full page.`)
+    }
+  }
   const title = documentTitleFromFileName(fileName)
 
   return {
-    _source: {
-      identificationMetadata: {
-        id: fileName,
-        title,
-        versionDate: new Date().toISOString(),
-        hash: fileName,
-        wikidata: '',
-        url: [],
-      },
-      extractionMetadata: [{
-        technology: 'text',
-        texts: [{
-          startOffset: 0,
-          endOffset: value.length,
-          value,
+    data: {
+      _source: {
+        identificationMetadata: {
+          id: fileName,
+          title,
+          versionDate: new Date().toISOString(),
+          hash: fileName,
+          wikidata: '',
+          url: [],
+        },
+        extractionMetadata: [{
+          technology: 'text',
+          texts: [{
+            startOffset: 0,
+            endOffset: value.length,
+            value,
+          }],
+          tables: [],
         }],
-        tables: [],
-      }],
+      },
     },
+    warnings,
   }
 }

@@ -12,8 +12,8 @@ function singleExtraction(data: DocumentData): DocumentExtractionMetadata {
 }
 
 describe('buildTextDocumentData', () => {
-  it('keeps plain text content as a single text element', () => {
-    const data = buildTextDocumentData('intro.txt', 'Hello annotation tool.')
+  it('keeps plain text content as a single text element', async () => {
+    const { data, warnings } = await buildTextDocumentData('intro.txt', 'Hello annotation tool.')
     const extraction = singleExtraction(data)
 
     expect(data._source.identificationMetadata.id).toBe('intro.txt')
@@ -26,24 +26,66 @@ describe('buildTextDocumentData', () => {
       endOffset: 'Hello annotation tool.'.length,
       value: 'Hello annotation tool.',
     }])
+    expect(warnings).toEqual([])
   })
 
-  it('leaves markdown content untouched', () => {
+  it('leaves markdown content untouched', async () => {
     const markdown = '# Heading\n\nSome **bold** text.'
-    const data = buildTextDocumentData('notes.md', markdown)
+    const { data, warnings } = await buildTextDocumentData('notes.md', markdown)
 
     expect(singleExtraction(data).texts?.[0].value).toBe(markdown)
+    expect(warnings).toEqual([])
   })
 
-  it('strips markup from HTML files', () => {
-    const data = buildTextDocumentData('page.html', '<p>Hello <b>world</b></p>')
+  it('strips markup from HTML files', async () => {
+    const { data, warnings } = await buildTextDocumentData('page.html', '<p>Hello <b>world</b></p>')
 
     expect(singleExtraction(data).texts?.[0].value).toBe('Hello world')
+    expect(warnings).toHaveLength(1)
+    expect(warnings[0]).toContain('page.html')
   })
 
-  it('derives the title from the file name without the directory or extension', () => {
-    expect(buildTextDocumentData('docs/my_file.md', 'x')._source.identificationMetadata.title).toBe('my file')
-    expect(buildTextDocumentData('My File.txt', 'x')._source.identificationMetadata.title).toBe('My File')
+  it('extracts the article content from a page with boilerplate', async () => {
+    const html = `
+      <html>
+        <head><title>Article Heading - Example Site</title></head>
+        <body>
+          <nav><a href="/">Home</a> <a href="/about">About</a> <a href="/contact">Contact</a></nav>
+          <main>
+            <article>
+              <h1>Article Heading</h1>
+              <p>First paragraph of the article body.</p>
+              <p>Second paragraph with more detail.</p>
+            </article>
+          </main>
+          <footer><a href="/privacy">Privacy</a> <a href="/terms">Terms</a></footer>
+          <div class="cookie-banner">This site uses cookies to improve your experience.</div>
+        </body>
+      </html>
+    `
+    const { data, warnings } = await buildTextDocumentData('article.html', html)
+    const value = singleExtraction(data).texts?.[0].value ?? ''
+
+    expect(value).toContain('Article Heading')
+    expect(value).toContain('First paragraph of the article body.')
+    expect(value).not.toContain('Home')
+    expect(value).not.toContain('About')
+    expect(value).not.toContain('Contact')
+    expect(value).not.toContain('Privacy')
+    expect(value).not.toContain('Terms')
+    expect(warnings).toEqual([])
+  })
+
+  it('warns and imports the full page when extraction finds nothing', async () => {
+    const { data, warnings } = await buildTextDocumentData('empty.html', '<html><body><script>var x = 1</script></body></html>')
+
+    expect(singleExtraction(data).texts?.[0].value).toBe('')
+    expect(warnings).toEqual(['Could not extract the main content of "empty.html"; imported the full page.'])
+  })
+
+  it('derives the title from the file name without the directory or extension', async () => {
+    expect((await buildTextDocumentData('docs/my_file.md', 'x')).data._source.identificationMetadata.title).toBe('my file')
+    expect((await buildTextDocumentData('My File.txt', 'x')).data._source.identificationMetadata.title).toBe('My File')
   })
 })
 

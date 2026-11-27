@@ -31,7 +31,7 @@ export async function importTextDocument(
   fileName: string,
   content: string,
 ): Promise<{ ids: string[], errors: string[], warnings: string[] }> {
-  const documentData = buildTextDocumentData(fileName, content)
+  const { data: documentData, warnings } = await buildTextDocumentData(fileName, content)
   const id = await insertDocument(
     corpusId,
     documentData._source.identificationMetadata.title ?? fileName,
@@ -39,7 +39,7 @@ export async function importTextDocument(
     1,
   )
 
-  return { ids: [id], errors: [], warnings: [] }
+  return { ids: [id], errors: [], warnings }
 }
 
 export async function importWikitextDocument(
@@ -104,7 +104,9 @@ export async function importDocumentsZip(
       const content = await entry.async('string')
       let documentData: DocumentData
       if (kind === 'text') {
-        documentData = buildTextDocumentData(entry.name, content)
+        const { data, warnings: documentWarnings } = await buildTextDocumentData(entry.name, content)
+        documentData = data
+        warnings.push(...documentWarnings)
       } else if (kind === 'wikitext') {
         documentData = buildWikitextDocumentData(entry.name, content)
       } else {
