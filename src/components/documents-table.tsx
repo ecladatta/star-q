@@ -430,7 +430,8 @@ const columns: ColumnDef<typeof features, DocumentMetadata, any>[] = [
     cell: ({ row }) => (
       <Link
         href={`/document/${row.original.id}`}
-        className="block text-foreground hover:text-accent hover:underline"
+        title={row.original.title}
+        className="block max-w-[420px] truncate text-foreground hover:text-accent hover:underline"
       >
         {row.original.title}
       </Link>
