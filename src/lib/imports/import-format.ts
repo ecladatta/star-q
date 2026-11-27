@@ -52,6 +52,14 @@ export const CORPUS_IMPORT_FORMAT_IDS = Object.keys(
   CORPUS_IMPORT_FORMATS,
 ) as CorpusImportFormat[]
 
+// Extensions claimed by several formats, resolved to the format that wins by
+// default (importers may still pick any claiming format explicitly).
+export const DEFAULT_FORMAT_BY_EXTENSION: Record<string, CorpusImportFormat> = {
+  '.jsonl': 'corpuswalker',
+  '.json': 'labelstudio',
+  '.zip': 'documents-zip',
+}
+
 export function isCorpusImportFormat(value: unknown): value is CorpusImportFormat {
   return typeof value === 'string' && value in CORPUS_IMPORT_FORMATS
 }

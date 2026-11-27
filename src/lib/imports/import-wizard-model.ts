@@ -1,5 +1,6 @@
 import type { CorpusImportFormat } from './import-format'
-import { fileExtension } from './documentFileClassifier'
+import { classifyDocumentFile, fileExtension, isMacosMetadataFile } from './documentFileClassifier'
+import { DEFAULT_FORMAT_BY_EXTENSION } from './import-format'
 
 export type SourceId
   = | 'web-pages'
@@ -35,28 +36,15 @@ export type ImportItemOutcome = {
   message?: string
 }
 
-const TEXT_EXTENSIONS = ['.txt', '.md', '.markdown', '.html', '.htm']
-const WIKITEXT_EXTENSIONS = ['.wikitext', '.wt', '.mediawiki', '.mw', '.wiki']
-const TABLE_EXTENSIONS = ['.csv', '.tsv']
-const JSONL_EXTENSIONS = ['.jsonl']
-const JSON_EXTENSIONS = ['.json']
-const ZIP_EXTENSIONS = ['.zip']
-
-const FORMAT_BY_EXTENSION: Record<string, CorpusImportFormat> = Object.fromEntries([
-  ...TEXT_EXTENSIONS.map(extension => [extension, 'text'] as const),
-  ...WIKITEXT_EXTENSIONS.map(extension => [extension, 'wikitext'] as const),
-  ...TABLE_EXTENSIONS.map(extension => [extension, 'csv'] as const),
-  ...JSONL_EXTENSIONS.map(extension => [extension, 'corpuswalker'] as const),
-  ...JSON_EXTENSIONS.map(extension => [extension, 'labelstudio'] as const),
-  ...ZIP_EXTENSIONS.map(extension => [extension, 'documents-zip'] as const),
-])
-
 export function formatForFileName(fileName: string): CorpusImportFormat | null {
-  const base = fileName.split('/').pop() ?? ''
-  if (base.startsWith('._') || base === '.DS_Store') {
+  if (isMacosMetadataFile(fileName)) {
     return null
   }
-  return FORMAT_BY_EXTENSION[fileExtension(fileName)] ?? null
+  const kind = classifyDocumentFile(fileName)
+  if (kind !== null) {
+    return kind
+  }
+  return DEFAULT_FORMAT_BY_EXTENSION[fileExtension(fileName)] ?? null
 }
 
 export function splitUrlList(text: string): string[] {

@@ -1,7 +1,9 @@
+import type { CorpusImportFormat } from './import-format'
 import { describe, expect, it } from 'vitest'
 import {
   CORPUS_IMPORT_FORMAT_IDS,
   CORPUS_IMPORT_FORMATS,
+  DEFAULT_FORMAT_BY_EXTENSION,
   importFormatAccept,
   importFormatLabel,
   isCorpusImportFormat,
@@ -40,6 +42,30 @@ describe('importFormatLabel', () => {
       '.mw',
       '.wiki',
     ])
+  })
+})
+
+describe('default format by extension', () => {
+  const claimants = new Map<string, CorpusImportFormat[]>()
+  for (const format of CORPUS_IMPORT_FORMAT_IDS) {
+    for (const extension of CORPUS_IMPORT_FORMATS[format].extensions) {
+      claimants.set(extension, [...claimants.get(extension) ?? [], format])
+    }
+  }
+
+  it('resolves each default to a format that claims the extension', () => {
+    for (const [extension, format] of Object.entries(DEFAULT_FORMAT_BY_EXTENSION)) {
+      expect(claimants.get(extension), `no format claims ${extension}`).toContain(format)
+    }
+  })
+
+  it('gives every contested extension a default', () => {
+    for (const [extension, formats] of claimants) {
+      if (formats.length > 1) {
+        expect(Object.keys(DEFAULT_FORMAT_BY_EXTENSION), `${extension} is claimed by ${formats.join(', ')}`)
+          .toContain(extension)
+      }
+    }
   })
 })
 

@@ -34,9 +34,9 @@ describe('classifyDocumentFile', () => {
     expect(classifyDocumentFile('a.txt')).toBe('text')
   })
 
-  it('classifies CSV and TSV extensions as table', () => {
-    expect(classifyDocumentFile('data.csv')).toBe('table')
-    expect(classifyDocumentFile('data.tsv')).toBe('table')
+  it('classifies CSV and TSV extensions as csv', () => {
+    expect(classifyDocumentFile('data.csv')).toBe('csv')
+    expect(classifyDocumentFile('data.tsv')).toBe('csv')
   })
 
   it('returns null for unsupported files', () => {

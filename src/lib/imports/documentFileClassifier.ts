@@ -1,10 +1,20 @@
-export type DocumentFileKind = 'text' | 'table' | 'wikitext'
+import { CORPUS_IMPORT_FORMATS } from './import-format'
 
-const TEXT_EXTENSIONS = ['.txt', '.md', '.markdown', '.html', '.htm']
-const WIKITEXT_EXTENSIONS = ['.wikitext', '.wt', '.mediawiki', '.mw', '.wiki']
-const TABLE_EXTENSIONS = ['.csv', '.tsv']
+export type DocumentFileKind = 'text' | 'csv' | 'wikitext'
 
-export const DOCUMENT_FILE_EXTENSIONS = [...TEXT_EXTENSIONS, ...WIKITEXT_EXTENSIONS, ...TABLE_EXTENSIONS]
+const KIND_EXTENSIONS: Record<DocumentFileKind, string[]> = {
+  text: CORPUS_IMPORT_FORMATS.text.extensions,
+  csv: CORPUS_IMPORT_FORMATS.csv.extensions,
+  wikitext: CORPUS_IMPORT_FORMATS.wikitext.extensions,
+}
+
+const KIND_BY_EXTENSION = new Map<string, DocumentFileKind>(
+  Object.entries(KIND_EXTENSIONS).flatMap(([kind, extensions]) =>
+    extensions.map(extension => [extension, kind as DocumentFileKind] as const),
+  ),
+)
+
+export const DOCUMENT_FILE_EXTENSIONS = [...new Set(KIND_BY_EXTENSION.keys())]
 
 export function fileExtension(fileName: string): string {
   const lastSegment = fileName.split('/').pop() ?? ''
@@ -12,24 +22,15 @@ export function fileExtension(fileName: string): string {
   return dotIndex >= 0 ? lastSegment.slice(dotIndex).toLowerCase() : ''
 }
 
-export function classifyDocumentFile(fileName: string): DocumentFileKind | null {
+export function isMacosMetadataFile(fileName: string): boolean {
   const base = fileName.split('/').pop() ?? ''
-  if (base.startsWith('._') || base === '.DS_Store') {
-    return null
-  }
-  if (fileName.includes('/__MACOSX/')) {
+  return base.startsWith('._') || base === '.DS_Store' || fileName.includes('/__MACOSX/')
+}
+
+export function classifyDocumentFile(fileName: string): DocumentFileKind | null {
+  if (isMacosMetadataFile(fileName)) {
     return null
   }
 
-  const extension = fileExtension(fileName)
-  if (TEXT_EXTENSIONS.includes(extension)) {
-    return 'text'
-  }
-  if (WIKITEXT_EXTENSIONS.includes(extension)) {
-    return 'wikitext'
-  }
-  if (TABLE_EXTENSIONS.includes(extension)) {
-    return 'table'
-  }
-  return null
+  return KIND_BY_EXTENSION.get(fileExtension(fileName)) ?? null
 }
