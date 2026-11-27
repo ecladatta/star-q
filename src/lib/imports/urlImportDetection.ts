@@ -11,27 +11,32 @@ export type UrlImportFormat
     | 'corpuswalker'
     | 'full-corpus-export'
 
+export type UrlImportDetection = {
+  format: UrlImportFormat
+  parsedJson?: unknown
+}
+
 export function isHtmlMediaType(mediaType: string): boolean {
   return mediaType === '' || mediaType === 'text/html' || mediaType === 'application/xhtml+xml'
 }
 
-export function detectUrlImportFormat(mediaType: string, url: string, text: string): UrlImportFormat {
+export function detectUrlImportFormat(mediaType: string, url: string, text: string): UrlImportDetection {
   if (isHtmlMediaType(mediaType)) {
-    return 'text'
+    return { format: 'text' }
   }
   if (mediaType === 'text/csv') {
-    return 'csv'
+    return { format: 'csv' }
   }
   if (mediaType === 'application/json' || mediaType === 'text/plain') {
     const parsed = parseJson(text)
     if (parsed !== undefined) {
-      return detectJsonShape(parsed)
+      return { format: detectJsonShape(parsed), parsedJson: parsed }
     }
     if (startsAsCorpuswalkerJsonl(text)) {
-      return 'corpuswalker'
+      return { format: 'corpuswalker' }
     }
     if (mediaType === 'text/plain') {
-      return detectPlainTextByExtension(url)
+      return { format: detectPlainTextByExtension(url) }
     }
     throw new Error('The URL did not return a recognized JSON format.')
   }

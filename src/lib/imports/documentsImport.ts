@@ -1,4 +1,4 @@
-import type { UrlImportFormat } from './urlImportDetection'
+import type { UrlImportDetection } from './urlImportDetection'
 import type { FetchedResource } from './urlPageFetch'
 import type { DocumentData } from '@/types/types'
 import JSZip from 'jszip'
@@ -155,14 +155,14 @@ export async function importUrlDocument(corpusId: string, url: string): Promise<
     return { ids: [], errors: [error instanceof Error ? error.message : String(error)], warnings: [] }
   }
 
-  let format: UrlImportFormat
+  let detection: UrlImportDetection
   try {
-    format = detectUrlImportFormat(resource.mediaType, resource.url, resource.text)
+    detection = detectUrlImportFormat(resource.mediaType, resource.url, resource.text)
   } catch (error) {
     return { ids: [], errors: [error instanceof Error ? error.message : String(error)], warnings: [] }
   }
 
-  switch (format) {
+  switch (detection.format) {
     case 'text': {
       const { data, warnings } = await buildUrlDocumentData(resource.url, resource.text, isHtmlMediaType(resource.mediaType), new Date().toISOString())
       const id = await insertDocument(
@@ -181,14 +181,7 @@ export async function importUrlDocument(corpusId: string, url: string): Promise<
       return importLabelStudioDocuments(corpusId, resource.text)
     case 'corpuswalker':
       return importCorpuswalkerDocuments(corpusId, resource.text)
-    case 'full-corpus-export': {
-      let parsed: unknown
-      try {
-        parsed = JSON.parse(resource.text)
-      } catch {
-        return { ids: [], errors: ['Failed to parse the JSON file.'], warnings: [] }
-      }
-      return importFullCorpusExportDocuments(corpusId, parsed)
-    }
+    case 'full-corpus-export':
+      return importFullCorpusExportDocuments(corpusId, detection.parsedJson)
   }
 }
