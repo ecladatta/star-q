@@ -1,5 +1,49 @@
 # Changelog
 
+## [1.5.0](https://github.com/ecladatta/star-q/compare/v1.4.0...v1.5.0) (2026-11-27)
+
+
+### Features
+
+* **admin:** add audit log export with JSON and CSV formats ([4062c1a](https://github.com/ecladatta/star-q/commit/4062c1a9fdcaf5b07a461b835173a620fe79e560))
+* **admin:** enforce 180-day audit log retention ([423f0c7](https://github.com/ecladatta/star-q/commit/423f0c768ba79ccd0a9dedd1c7ff0a0d45b2a8ed))
+* **admin:** redesign the audit log page with filters, search and expandable events ([705445e](https://github.com/ecladatta/star-q/commit/705445e8e366e3867093ede8fc6d394a773fbf20))
+* **annotation:** guard unsaved edits across switches with URL state ([b457f68](https://github.com/ecladatta/star-q/commit/b457f68fb1f3b7eccf7d7a5fe395e4b8678a37fa))
+* **annotation:** hover preview card on mention marks ([f1d3be5](https://github.com/ecladatta/star-q/commit/f1d3be5d32e1755cbde51d704447965b2d0d9e8e))
+* **annotation:** list a mention's annotations in the role popover ([762b949](https://github.com/ecladatta/star-q/commit/762b949af47ec362087704fafa76936e55f32c07))
+* **annotation:** open the role popover when clicking a mention ([c0d78e0](https://github.com/ecladatta/star-q/commit/c0d78e0e3b8809c8404d3ae08524e290eee58df9))
+* **annotation:** open the viewer from read-only hover rows ([9565ac1](https://github.com/ecladatta/star-q/commit/9565ac103838b34da322c402b6ee736b77c500a5))
+* **auth:** demote password sign-in when password signup is off ([5de960a](https://github.com/ecladatta/star-q/commit/5de960af5c16e25ada4090d95224b86f5046e738))
+* **auth:** show a minimal header while a temporary password must be changed ([1588635](https://github.com/ecladatta/star-q/commit/158863533794b80372b54c64c066150a424967ff))
+* **auth:** sign the user back in with the new password after a change ([4e585e6](https://github.com/ecladatta/star-q/commit/4e585e6b7369eb3a132e11b520a06e4f7f0d3456))
+* **auth:** split signup setting into per-method flags ([81ec056](https://github.com/ecladatta/star-q/commit/81ec056ceb9680d85312da5c652ad7f2a1725c23))
+* **documents:** editable title, version date, Wikidata ID and source URLs ([#38](https://github.com/ecladatta/star-q/issues/38)) ([54838a2](https://github.com/ecladatta/star-q/commit/54838a28c8925444843e8130bb0abc7d11e10f53))
+* **export:** configure QuickStatements reference properties per Wikibase instance ([#37](https://github.com/ecladatta/star-q/issues/37)) ([08b6c28](https://github.com/ecladatta/star-q/commit/08b6c283aa6499f52d1ccb167d1f67703eab8fc2))
+* **imports:** extract only the main content when importing HTML ([#34](https://github.com/ecladatta/star-q/issues/34)) ([84105da](https://github.com/ecladatta/star-q/commit/84105da618f9e56ad5106ed28649000c9915d4bf))
+* **imports:** import documents from a URL with format auto-detection ([3a966b2](https://github.com/ecladatta/star-q/commit/3a966b24d14932a901c0614e5ee086bac97cbbab))
+* **imports:** import Wikitext documents ([#36](https://github.com/ecladatta/star-q/issues/36)) ([3c78b3e](https://github.com/ecladatta/star-q/commit/3c78b3e9fc4474921e0ca714e53b163739cc49b2))
+* **imports:** replace the import dialogs with a source-based wizard ([d176428](https://github.com/ecladatta/star-q/commit/d176428e7277d23952f540880a8be3f19952c0f6))
+* **settings:** fold password change into sign-in methods ([221c7f5](https://github.com/ecladatta/star-q/commit/221c7f51277d361c82980db6d113b2d3020d0891))
+* **settings:** rename account page to Settings ([f5b654b](https://github.com/ecladatta/star-q/commit/f5b654bacfc8998f0ae47e7cb22928fa678c86a0))
+* **ui:** add an open-source tagline to the explore page ([884d97f](https://github.com/ecladatta/star-q/commit/884d97fc12e4a4588ba7682b179638285dc455e7))
+* **ui:** add open graph and twitter card metadata ([7efddb6](https://github.com/ecladatta/star-q/commit/7efddb644cf499390632594955e9593a0817be87))
+* **ui:** drop the corpus name from the section page titles ([3cf1142](https://github.com/ecladatta/star-q/commit/3cf11422d3e0b33864117b2927bc560c5416d5ff))
+* **ui:** link the GitHub repository from the app headers ([1314c21](https://github.com/ecladatta/star-q/commit/1314c21d777524fde56aa28874fd1662b16598a7))
+
+
+### Bug Fixes
+
+* **admin:** neutralize formula-like cells in the audit CSV export ([605714c](https://github.com/ecladatta/star-q/commit/605714c4b6d6a4f595e102f8e8740ddbe4a4ffb8))
+* **annotation:** hover preview interactions and chip row layout ([94de74c](https://github.com/ecladatta/star-q/commit/94de74c0c8c41e35f7f75fc9a1256a85ff937dcd))
+* **auth:** hide username hint on sign-up when local signup is off ([2e0a623](https://github.com/ecladatta/star-q/commit/2e0a6230e2dff9f3e3e3295fb831ce409d68869a))
+* **auth:** let gated users sign out from password and onboarding pages ([7ac18fc](https://github.com/ecladatta/star-q/commit/7ac18fce565a4e551a0dc05e603593801c3bd138))
+* **auth:** skip current-password re-entry for forced temporary-password changes ([a2954b5](https://github.com/ecladatta/star-q/commit/a2954b5a15659be4ecae847f0b5d5b2e042aec05))
+* **security:** stop exposing the importer libraries as server actions ([2c19a1e](https://github.com/ecladatta/star-q/commit/2c19a1ec20020138a8fae7bb1bff0624a9bd9f23))
+* **settings:** show Add password for users without one ([b620801](https://github.com/ecladatta/star-q/commit/b620801187ecfe33c1c875e99a80b5fa7b0e9427))
+* **ui:** default the corpus invite role to editor ([267db97](https://github.com/ecladatta/star-q/commit/267db975353505bfc9e70d66a79036a38c9d46c0))
+* **ui:** stop long select values from blowing out dialog width ([33fbb60](https://github.com/ecladatta/star-q/commit/33fbb60cef7904ac2e6640983886a9652c301f45))
+* **ui:** truncate long document titles in the documents table ([7df06d9](https://github.com/ecladatta/star-q/commit/7df06d95b5a2bea61f1e0ec11656e5754def64b6))
+
 ## [1.4.0](https://github.com/ecladatta/star-q/compare/v1.3.1...v1.4.0) (2026-10-02)
 
 
