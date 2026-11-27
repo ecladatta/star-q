@@ -1,6 +1,7 @@
 import { withApiHandler } from '@/lib/api-utils'
+import { getAllAuditEvents } from '@/lib/audit-log-query'
 import { requireAdmin } from '@/lib/auth-utils'
-import { getAllAuditEvents, resolveAuditExportFormat, serializeAuditLogExport } from '@/lib/exports/audit-log-export'
+import { resolveAuditExportFormat, serializeAuditLogExport } from '@/lib/exports/audit-log-export'
 
 export async function GET(request: Request) {
   return withApiHandler(async () => {

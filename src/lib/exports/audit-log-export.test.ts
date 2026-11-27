@@ -1,7 +1,8 @@
-import type { getRecentAuditEvents } from './audit-log-export'
+import type { getRecentAuditEvents } from '@/lib/audit-log-query'
 import { describe, expect, it } from 'vitest'
+import { parseAuditSearch } from '@/lib/audit-log-query'
 import { relativeTime } from '../audit-log-display'
-import { parseAuditSearch, resolveAuditExportFormat, serializeAuditLogExport } from './audit-log-export'
+import { resolveAuditExportFormat, serializeAuditLogExport } from './audit-log-export'
 
 type AuditEventRow = Awaited<ReturnType<typeof getRecentAuditEvents>>[number]
 
