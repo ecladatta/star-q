@@ -120,7 +120,7 @@ function InviteForm({ title, label, field, grantsImmediately, action }: { title:
           <Label htmlFor={field}>{label}</Label>
           <Input id={field} name={field} required />
         </div>
-        <FormSelect name="role" className="w-full" options={[{ value: 'viewer', label: 'Viewer' }, { value: 'editor', label: 'Editor' }]} />
+        <FormSelect name="role" className="w-full" defaultValue="editor" options={[{ value: 'viewer', label: 'Viewer' }, { value: 'editor', label: 'Editor' }]} />
         <Button type="submit">{grantsImmediately ? 'Add' : 'Send invitation'}</Button>
       </ServerActionForm>
     </section>
