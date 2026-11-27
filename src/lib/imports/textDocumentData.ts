@@ -40,6 +40,21 @@ async function extractMainContent(html: string, url?: string): Promise<DefuddleR
   }
 }
 
+type HtmlExtraction = {
+  value: string
+  extracted: DefuddleResponse | null
+  usedFallback: boolean
+}
+
+async function extractHtmlText(html: string, url?: string): Promise<HtmlExtraction> {
+  const extracted = await extractMainContent(html, url)
+  const value = stripHtml(extracted?.content ?? '')
+  if (value !== '') {
+    return { value, extracted, usedFallback: false }
+  }
+  return { value: stripHtml(html), extracted, usedFallback: true }
+}
+
 function assembleTextDocumentData(fields: {
   id: string
   title: string
@@ -74,12 +89,9 @@ export async function buildTextDocumentData(fileName: string, content: string): 
   const warnings: string[] = []
   let value = content
   if (isHtmlFileName(fileName)) {
-    const result = await extractMainContent(content)
-    const extractedText = stripHtml(result?.content ?? '')
-    if (extractedText !== '') {
-      value = extractedText
-    } else {
-      value = stripHtml(content)
+    const extraction = await extractHtmlText(content)
+    value = extraction.value
+    if (extraction.usedFallback) {
       warnings.push(`Could not extract the main content of "${fileName}"; imported the full page.`)
     }
   }
@@ -99,20 +111,18 @@ export async function buildTextDocumentData(fileName: string, content: string): 
 
 export async function buildUrlDocumentData(url: string, content: string, isHtml: boolean, fetchedAt: string): Promise<BuiltDocumentData> {
   const warnings: string[] = []
-  let value: string
-  let result: DefuddleResponse | null = null
+  let value = content
+  let extracted: DefuddleResponse | null = null
   if (isHtml) {
-    result = await extractMainContent(content, url)
-    value = stripHtml(result?.content ?? '')
-    if (value === '') {
-      value = stripHtml(content)
+    const extraction = await extractHtmlText(content, url)
+    value = extraction.value
+    extracted = extraction.extracted
+    if (extraction.usedFallback) {
       warnings.push(`Could not extract the main content of ${url}; imported the full page.`)
     }
-  } else {
-    value = content
   }
-  const title = result?.title ? result.title : documentTitleFromUrl(url)
-  const versionDate = result?.published ? result.published : fetchedAt
+  const title = extracted?.title ? extracted.title : documentTitleFromUrl(url)
+  const versionDate = extracted?.published ? extracted.published : fetchedAt
 
   return {
     data: assembleTextDocumentData({
