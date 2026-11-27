@@ -9,13 +9,28 @@ export type SourceId
     | 'irit-zip'
     | 'full-corpus-export'
 
-export type ImportItem = {
+export type ImportItemStatus = 'queued' | 'importing' | 'imported' | 'error'
+
+type ImportItemFields = {
   id: string
-  kind: 'url' | 'file'
   label: string
-  file?: File
-  format: CorpusImportFormat | null
-  status: 'queued' | 'importing' | 'imported' | 'error'
+  status: ImportItemStatus
+  count?: number
+  message?: string
+}
+
+export type UrlImportItem = ImportItemFields & { kind: 'url' }
+
+export type FileImportItem = ImportItemFields & {
+  kind: 'file'
+  file: File
+  format: CorpusImportFormat
+}
+
+export type ImportItem = UrlImportItem | FileImportItem
+
+export type ImportItemOutcome = {
+  status: 'imported' | 'error'
   count?: number
   message?: string
 }

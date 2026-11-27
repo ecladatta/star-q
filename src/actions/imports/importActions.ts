@@ -20,7 +20,7 @@ import {
 import { importIritDocuments } from '@/lib/imports/iritImport'
 import { importLabelStudioDocuments } from '@/lib/imports/labelstudioImport'
 
-type ImportDocumentsResult = {
+export type ImportDocumentsResult = {
   count: number
   errors: string[]
   warnings: string[]
@@ -34,34 +34,36 @@ function importError(message: string): ImportDocumentsResult {
   }
 }
 
+export async function importDocumentsFromUrl(
+  corpusId: string,
+  url: string,
+): Promise<ImportDocumentsResult> {
+  await requireEditCorpus(corpusId)
+
+  const result = await importUrlDocument(corpusId, url.trim())
+  revalidatePath('/')
+
+  return {
+    count: result.ids.length,
+    errors: result.errors,
+    warnings: result.warnings,
+  }
+}
+
 export async function importDocuments(
   corpusId: string,
-  format: CorpusImportFormat | null,
+  format: CorpusImportFormat,
   formData: FormData,
 ): Promise<ImportDocumentsResult> {
   await requireEditCorpus(corpusId)
 
-  const url = typeof formData.get('url') === 'string' ? (formData.get('url') as string).trim() : ''
   const file = formData.get('file') as File | null
 
-  if (url !== '') {
-    if (file) {
-      return importError('Provide either a file or a URL, not both.')
-    }
-    const result = await importUrlDocument(corpusId, url)
-    revalidatePath('/')
-    return {
-      count: result.ids.length,
-      errors: result.errors,
-      warnings: result.warnings ?? [],
-    }
-  }
-
   if (!file) {
-    return importError('No file or URL was provided for import.')
+    return importError('No file was provided for import.')
   }
 
-  if (format === null || !isCorpusImportFormat(format)) {
+  if (!isCorpusImportFormat(format)) {
     return importError('Unknown import format.')
   }
 

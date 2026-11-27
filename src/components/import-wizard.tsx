@@ -1,7 +1,8 @@
 'use client'
 
+import type { ImportDocumentsResult } from '@/actions/imports/importActions'
 import type { CorpusImportFormat } from '@/lib/imports/import-format'
-import type { ImportItem, SourceId } from '@/lib/imports/import-wizard-model'
+import type { ImportItem, ImportItemOutcome, SourceId } from '@/lib/imports/import-wizard-model'
 import {
   ArchiveIcon,
   CheckIcon,
@@ -20,7 +21,7 @@ import {
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useRef, useState } from 'react'
-import { importDocuments } from '@/actions/imports/importActions'
+import { importDocuments, importDocumentsFromUrl } from '@/actions/imports/importActions'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -101,6 +102,17 @@ const SINGLE_FILE_SOURCE_FORMATS: Record<SingleFileSourceId, CorpusImportFormat>
 const ACCEPTED_EXTENSIONS = [...new Set(Object.values(CORPUS_IMPORT_FORMATS).flatMap(config => config.extensions))]
 
 const MAX_IMPORT_SIZE_MB = MAX_IMPORT_FILE_SIZE_BYTES / (1024 * 1024)
+
+function outcomeFromResult({ count, errors, warnings }: ImportDocumentsResult): ImportItemOutcome {
+  if (errors.length > 0) {
+    return { status: 'error', message: errors.join('\n') }
+  }
+  return {
+    status: 'imported',
+    count,
+    message: warnings.length > 0 ? warnings.join('\n') : undefined,
+  }
+}
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) {
@@ -227,23 +239,14 @@ export function ImportWizard({ corpusId, open, onOpenChange, onFinished }: Impor
     onOpenChange(false)
   }
 
-  const importOne = async (item: ImportItem): Promise<Partial<ImportItem>> => {
+  const importOne = async (item: ImportItem): Promise<ImportItemOutcome> => {
     try {
-      const formData = new FormData()
       if (item.kind === 'url') {
-        formData.append('url', item.label)
-      } else if (item.file) {
-        formData.append('file', item.file)
+        return outcomeFromResult(await importDocumentsFromUrl(corpusId, item.label))
       }
-      const { count, errors, warnings } = await importDocuments(corpusId, item.format, formData)
-      if (errors.length > 0) {
-        return { status: 'error', message: errors.join('\n') }
-      }
-      return {
-        status: 'imported',
-        count,
-        message: warnings.length > 0 ? warnings.join('\n') : undefined,
-      }
+      const formData = new FormData()
+      formData.append('file', item.file)
+      return outcomeFromResult(await importDocuments(corpusId, item.format, formData))
     } catch {
       return { status: 'error', message: 'Failed to import. Please try again.' }
     }
@@ -295,7 +298,6 @@ export function ImportWizard({ corpusId, open, onOpenChange, onFinished }: Impor
         id: crypto.randomUUID(),
         kind: 'url' as const,
         label: url,
-        format: null,
         status: 'queued' as const,
       })))
     } else if (source === 'files') {
