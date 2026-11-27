@@ -3,6 +3,7 @@
 import { Menu } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { GithubMark } from '@/components/github-mark'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Button } from '@/components/ui/button'
 import {
@@ -12,6 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { APP_GITHUB_URL } from '@/lib/config'
 import { CommandMenu } from './command-menu'
 import { HeaderShell, MainNav } from './header-shell'
 import { isActive, topNav } from './nav-items'
@@ -66,6 +68,16 @@ export function TopNav({ user }: { user: TopNavUser }) {
           invitationCount={user.invitationCount}
           corpora={user.corpora}
         />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="hover:bg-border dark:hover:bg-background"
+          asChild
+        >
+          <a href={APP_GITHUB_URL} target="_blank" rel="noopener noreferrer" aria-label="STAR-Q on GitHub" title="STAR-Q on GitHub">
+            <GithubMark />
+          </a>
+        </Button>
         <ThemeToggle />
         <UserMenu username={user.username} name={user.name} />
       </div>

@@ -1,7 +1,9 @@
 'use client'
 
 import Link from 'next/link'
+import { GithubMark } from '@/components/github-mark'
 import { Button } from '@/components/ui/button'
+import { APP_GITHUB_URL } from '@/lib/config'
 import { HeaderShell, MainNav } from './header-shell'
 import { guestNav } from './nav-items'
 
@@ -22,6 +24,12 @@ export function GuestBar({ setupCompleted, signupEnabled, signinEnabled }: Guest
             <div className="ml-auto flex items-center gap-2">
               <Button variant="ghost" size="sm" className="hover:bg-border md:hidden dark:hover:bg-background" asChild>
                 <Link href="/explore">Explore</Link>
+              </Button>
+              <Button variant="ghost" size="sm" className="hover:bg-border dark:hover:bg-background" asChild>
+                <a href={APP_GITHUB_URL} target="_blank" rel="noopener noreferrer" aria-label="STAR-Q on GitHub">
+                  <GithubMark />
+                  <span className="hidden md:inline">GitHub</span>
+                </a>
               </Button>
               {signupEnabled && signinEnabled && (
                 <Button variant="ghost" size="sm" className="hover:bg-border dark:hover:bg-background" asChild>

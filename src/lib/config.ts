@@ -1,5 +1,7 @@
 export const APP_NAME = process.env.APP_NAME || 'STAR-Q'
 
+export const APP_GITHUB_URL = 'https://github.com/ecladatta/star-q'
+
 export const RDF_NAMESPACE_BASE = process.env.RDF_NAMESPACE_BASE || 'https://ecladatta.eurecom.fr'
 
 function bytesFromEnv(raw: string | undefined, fallback: number, name: string): number {
