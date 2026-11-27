@@ -1,8 +1,13 @@
 # STAR-Q
 
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/ecladatta/star-q/blob/main/LICENSE)
+[![GitHub release](https://img.shields.io/github/v/release/ecladatta/star-q)](https://github.com/ecladatta/star-q/releases)
+
 ## Overview
 
 STAR-Q is a web-based application designed to facilitate the annotation of texts and tables.
+
+![STAR-Q's annotation interface in light mode: a Wi-Fi standards document showing annotated text spans above a table whose cells also carry annotations, the annotations panel on the right listing subject → predicate → object cards, and the editing form docked at the bottom showing the annotation "Fire Phone → incorporates → 802.11ac" with its linked entities](assets/annotation-ui.png)
 
 ## Prerequisites
 
