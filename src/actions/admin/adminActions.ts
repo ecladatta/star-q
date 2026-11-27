@@ -9,6 +9,7 @@ import { db } from '@/db/drizzle'
 import { appSettings, auditLog, corpus, team, teamMembership, users } from '@/db/schema'
 import { APP_SETTINGS_ID, getAppSettings, isLocalCredentialsEnabled } from '@/lib/app-settings'
 import { ForbiddenError, NotFoundError, requireAdmin } from '@/lib/auth-utils'
+import { getRecentAuditEvents } from '@/lib/exports/audit-log-export'
 import { validateDisplayName, validatePassword, validateUsername, validateUserRole, withUsernameTakenError } from '@/lib/identity'
 import { hashPassword } from '@/lib/password-auth'
 import { ensurePersonalTeam } from '@/lib/personal-team'
@@ -258,9 +259,9 @@ export async function deleteAdminManagedUser(userId: string, expectedImpact: Del
   redirect('/admin/users')
 }
 
-export async function getAdminAuditLog() {
+export async function getAdminAuditLog(filters?: { q?: string, action?: string }) {
   await requireAdmin()
-  return db.select().from(auditLog).orderBy(desc(auditLog.createdAt)).limit(500)
+  return getRecentAuditEvents(filters)
 }
 
 export async function deleteAdminTeam(teamId: string) {
