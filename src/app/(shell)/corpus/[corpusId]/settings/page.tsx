@@ -44,7 +44,7 @@ export default async function CorpusSettingsPage({ params }: { params: Promise<{
       <CorpusSettingsPanel
         corpus={corpus}
         wikibaseInstances={wikibaseInstances}
-        canManageVisibility={access === 'manager'}
+        canManage={access === 'manager'}
         canEdit={canEditCorpus(access, corpus.status)}
         dangerZone={dangerZone && (
           <>

@@ -1,13 +1,13 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type { Corpus, CorpusCustomEntity, CorpusVisibility, Unit, WikibaseInstance } from '@/db/schema'
+import type { Corpus, CorpusCustomEntity, Unit, WikibaseInstance } from '@/db/schema'
 import type { CorpusSettings } from '@/lib/corpus-settings'
 import type { EntityDatatype } from '@/types/types'
 import { EditIcon, FilterIcon, Loader2Icon, PlusIcon, SearchIcon, Trash2Icon } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { addCorpusCustomEntity, deleteCorpusCustomEntity, getCorpusCustomEntities, renameCorpus, updateCorpusCustomEntity, updateCorpusSettings, updateCorpusVisibility } from '@/actions/corpus/corpusActions'
+import { addCorpusCustomEntity, deleteCorpusCustomEntity, getCorpusCustomEntities, renameCorpus, updateCorpusCustomEntity, updateCorpusSettings } from '@/actions/corpus/corpusActions'
 import { createUnit, deleteUnit, listUnits, updateUnit } from '@/actions/units/unitsActions'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -25,7 +25,7 @@ type CorpusSettingsPanelProps = {
   corpus: Corpus
   wikibaseInstances: WikibaseInstance[]
   onCorpusRenamed?: (newTitle: string) => void
-  canManageVisibility?: boolean
+  canManage?: boolean
   canEdit?: boolean
   dangerZone?: ReactNode
 }
@@ -33,10 +33,9 @@ type CorpusSettingsPanelProps = {
 const SERVER_DEFAULT_WIKIBASE = 'server-default'
 const NONE_SENTINELS = new Set([WIKIBASE_INSTANCE_NONE, SERVER_DEFAULT_WIKIBASE])
 
-export function CorpusSettingsPanel({ corpus, wikibaseInstances, onCorpusRenamed, canManageVisibility = false, canEdit = true, dangerZone }: CorpusSettingsPanelProps) {
+export function CorpusSettingsPanel({ corpus, wikibaseInstances, onCorpusRenamed, canManage = false, canEdit = true, dangerZone }: CorpusSettingsPanelProps) {
   const [corpusTitle, setCorpusTitle] = useState(corpus.title)
   const { wikiUrl } = useWikibaseInstance()
-  const [visibility, setVisibility] = useState<CorpusVisibility>(corpus.visibility ?? 'private')
   const [settings, setSettings] = useState<CorpusSettings>(corpus.settings ?? {})
   const [statedInItemDraft, setStatedInItemDraft] = useState(corpus.settings?.statedInItemId ?? '')
   const [isSavingSettings, setIsSavingSettings] = useState(false)
@@ -196,21 +195,6 @@ export function CorpusSettingsPanel({ corpus, wikibaseInstances, onCorpusRenamed
     }
   }
 
-  const handleVisibilityChange = async (value: CorpusVisibility) => {
-    const previous = visibility
-    setVisibility(value)
-    try {
-      setIsSavingSettings(true)
-      await updateCorpusVisibility(corpus.id, value)
-      toast.success(value === 'public' ? 'Corpus is now public' : 'Corpus is now private')
-    } catch {
-      setVisibility(previous)
-      toast.error('Failed to update corpus visibility')
-    } finally {
-      setIsSavingSettings(false)
-    }
-  }
-
   const handleAddEntity = async () => {
     if (!newEntity.label.trim() || !newEntity.value.trim()) {
       toast.error('Please fill in all required fields')
@@ -349,42 +333,15 @@ export function CorpusSettingsPanel({ corpus, wikibaseInstances, onCorpusRenamed
               value={corpusTitle || ''}
               onChange={e => setCorpusTitle(e.target.value)}
               placeholder="Enter corpus name"
-              disabled={!canManageVisibility}
+              disabled={!canManage}
             />
             <Button
               onClick={handleSaveCorpusTitle}
-              disabled={!canManageVisibility || isSaving || !corpusTitle || !corpusTitle.trim() || corpusTitle === corpus.title}
+              disabled={!canManage || isSaving || !corpusTitle || !corpusTitle.trim() || corpusTitle === corpus.title}
             >
               {isSaving ? <Loader2Icon className="size-4 animate-spin" /> : <EditIcon className="size-4" />}
               Save
             </Button>
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          <h3 className="text-sm font-medium text-foreground">Visibility</h3>
-          <div className="flex items-start justify-between gap-4 rounded-lg border border-border bg-card p-4">
-            <div className="space-y-1">
-              <Label htmlFor="corpus-visibility">
-                Who can view this corpus?
-              </Label>
-              <p className="text-xs text-muted-foreground">
-                Public corpora are readable by anyone without signing in. Editing still requires explicit access.
-              </p>
-            </div>
-            <Select
-              value={visibility}
-              onValueChange={handleVisibilityChange}
-              disabled={!canManageVisibility || isSavingSettings}
-            >
-              <SelectTrigger id="corpus-visibility" className="w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="private">Private</SelectItem>
-                <SelectItem value="public">Public</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
         </div>
 

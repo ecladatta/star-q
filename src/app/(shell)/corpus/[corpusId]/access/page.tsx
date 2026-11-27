@@ -2,6 +2,7 @@ import type { CorpusCollaboratorRole } from '@/db/schema'
 import { getCorpusCollaborations, inviteTeamToCorpus, inviteUserToCorpus, revokeCorpusCollaboration } from '@/actions/collaboration/collaborationActions'
 import { getCorpus } from '@/actions/corpus/corpusActions'
 import { CorpusCollaboratorRoleSelect } from '@/components/corpus-collaborator-role-select'
+import { CorpusVisibilitySelect } from '@/components/corpus-visibility-select'
 import { ForbiddenPage } from '@/components/forbidden-page'
 import { FormSelect } from '@/components/form-select'
 import { Page, PageHeader } from '@/components/page'
@@ -36,7 +37,11 @@ export default async function CorpusAccessPage({ params }: { params: Promise<{ c
           ? 'Add existing users or teams. Access is granted immediately.'
           : 'Invite existing users or teams. Access begins after acceptance.'}
       />
-      <div className="grid gap-5 md:grid-cols-2">
+      <section className="space-y-3">
+        <h2 className="text-sm font-semibold text-foreground">Visibility</h2>
+        <CorpusVisibilitySelect corpusId={resource.id} visibility={resource.visibility} />
+      </section>
+      <div className="mt-5 grid gap-5 md:grid-cols-2">
         <InviteForm
           title={isAdmin ? 'Add a user' : 'Invite a user'}
           label="Exact username"
