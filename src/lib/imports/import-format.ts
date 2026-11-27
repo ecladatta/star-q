@@ -4,6 +4,7 @@ export type CorpusImportFormat
     | 'labelstudio'
     | 'irit-zip'
     | 'text'
+    | 'wikitext'
     | 'csv'
     | 'documents-zip'
 
@@ -32,6 +33,10 @@ export const CORPUS_IMPORT_FORMATS: Record<CorpusImportFormat, CorpusImportForma
   'text': {
     label: 'Text / Markdown / HTML',
     extensions: ['.txt', '.md', '.markdown', '.html', '.htm'],
+  },
+  'wikitext': {
+    label: 'Wikitext / MediaWiki',
+    extensions: ['.wikitext', '.wt', '.mediawiki', '.mw', '.wiki'],
   },
   'csv': {
     label: 'CSV / TSV',

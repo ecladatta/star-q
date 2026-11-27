@@ -6,6 +6,12 @@ import type {
 } from '@/types/types'
 import wtf from 'wtf_wikipedia'
 
+export const WIKITEXT_EXTRACTOR_TECHNOLOGY = 'WikitextExtractor'
+
+export function convertWikitextText(value: string): string {
+  return wtf(value).text()
+}
+
 // A text-span component anchors into the heading when its value slices the
 // title string but not the body string. Render placement and batch mention keys
 // must classify it identically, so this predicate is the single authority.
@@ -87,8 +93,8 @@ export function buildDocumentElements(
       type: 'text',
       startOffset: text.startOffset,
       endOffset: text.endOffset,
-      value: extractionMetadata.technology === 'WikitextExtractor'
-        ? wtf(value).text()
+      value: extractionMetadata.technology === WIKITEXT_EXTRACTOR_TECHNOLOGY
+        ? convertWikitextText(value)
         : value,
       data: { ...text },
     }

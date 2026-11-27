@@ -7,6 +7,7 @@ import { metadataColumnsFromDocumentData } from '@/lib/document-metadata'
 import { buildTableDocumentData } from './csvDocumentData'
 import { classifyDocumentFile, DOCUMENT_FILE_EXTENSIONS } from './documentFileClassifier'
 import { buildTextDocumentData } from './textDocumentData'
+import { buildWikitextDocumentData } from './wikitextDocumentData'
 
 async function insertDocument(
   corpusId: string,
@@ -31,6 +32,22 @@ export async function importTextDocument(
   content: string,
 ): Promise<{ ids: string[], errors: string[], warnings: string[] }> {
   const documentData = buildTextDocumentData(fileName, content)
+  const id = await insertDocument(
+    corpusId,
+    documentData._source.identificationMetadata.title ?? fileName,
+    documentData,
+    1,
+  )
+
+  return { ids: [id], errors: [], warnings: [] }
+}
+
+export async function importWikitextDocument(
+  corpusId: string,
+  fileName: string,
+  content: string,
+): Promise<{ ids: string[], errors: string[], warnings: string[] }> {
+  const documentData = buildWikitextDocumentData(fileName, content)
   const id = await insertDocument(
     corpusId,
     documentData._source.identificationMetadata.title ?? fileName,
@@ -85,9 +102,14 @@ export async function importDocumentsZip(
     foundSupported = true
     try {
       const content = await entry.async('string')
-      const documentData = kind === 'text'
-        ? buildTextDocumentData(entry.name, content)
-        : buildTableDocumentData(entry.name, content)
+      let documentData: DocumentData
+      if (kind === 'text') {
+        documentData = buildTextDocumentData(entry.name, content)
+      } else if (kind === 'wikitext') {
+        documentData = buildWikitextDocumentData(entry.name, content)
+      } else {
+        documentData = buildTableDocumentData(entry.name, content)
+      }
       const id = await insertDocument(
         corpusId,
         documentData._source.identificationMetadata.title ?? entry.name,

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   CORPUS_IMPORT_FORMAT_IDS,
+  CORPUS_IMPORT_FORMATS,
   importFormatAccept,
   importFormatLabel,
   isCorpusImportFormat,
@@ -27,6 +28,18 @@ describe('importFormatLabel', () => {
   it('includes the accepted extensions in the label', () => {
     expect(importFormatLabel('corpuswalker')).toContain('.jsonl')
     expect(importFormatLabel('irit-zip')).toContain('.zip')
+    expect(importFormatLabel('wikitext')).toContain('.wikitext')
+  })
+
+  it('registers the wikitext format', () => {
+    expect(CORPUS_IMPORT_FORMATS.wikitext.label).toBe('Wikitext / MediaWiki')
+    expect(CORPUS_IMPORT_FORMATS.wikitext.extensions).toEqual([
+      '.wikitext',
+      '.wt',
+      '.mediawiki',
+      '.mw',
+      '.wiki',
+    ])
   })
 })
 
@@ -34,5 +47,6 @@ describe('importFormatAccept', () => {
   it('joins the extensions for the file input accept attribute', () => {
     expect(importFormatAccept('irit-zip')).toBe('.zip')
     expect(importFormatAccept('corpuswalker')).toBe('.jsonl,.json')
+    expect(importFormatAccept('wikitext')).toBe('.wikitext,.wt,.mediawiki,.mw,.wiki')
   })
 })

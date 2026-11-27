@@ -10,7 +10,12 @@ import { MAX_IMPORT_FILE_SIZE_BYTES } from '@/lib/config'
 import { requireEditCorpus } from '@/lib/corpus-access'
 import { importCorpuswalkerDocuments } from '@/lib/imports/corpuswalkerImport'
 import { fileExtension } from '@/lib/imports/documentFileClassifier'
-import { importCsvDocument, importDocumentsZip, importTextDocument } from '@/lib/imports/documentsImport'
+import {
+  importCsvDocument,
+  importDocumentsZip,
+  importTextDocument,
+  importWikitextDocument,
+} from '@/lib/imports/documentsImport'
 import { importFullCorpusExportDocuments } from '@/lib/imports/fullCorpusImport'
 import {
   CORPUS_IMPORT_FORMATS,
@@ -107,6 +112,11 @@ export async function importDocuments(
     case 'text': {
       const content = await file.text()
       result = await importTextDocument(corpusId, file.name, content)
+      break
+    }
+    case 'wikitext': {
+      const content = await file.text()
+      result = await importWikitextDocument(corpusId, file.name, content)
       break
     }
     case 'csv': {

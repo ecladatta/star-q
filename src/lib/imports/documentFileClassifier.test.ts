@@ -27,6 +27,13 @@ describe('classifyDocumentFile', () => {
     }
   })
 
+  it('classifies wikitext extensions as wikitext', () => {
+    for (const name of ['a.wikitext', 'b.wt', 'c.mediawiki', 'd.mw', 'e.wiki']) {
+      expect(classifyDocumentFile(name)).toBe('wikitext')
+    }
+    expect(classifyDocumentFile('a.txt')).toBe('text')
+  })
+
   it('classifies CSV and TSV extensions as table', () => {
     expect(classifyDocumentFile('data.csv')).toBe('table')
     expect(classifyDocumentFile('data.tsv')).toBe('table')
@@ -47,6 +54,8 @@ describe('classifyDocumentFile', () => {
   it('lists every supported extension', () => {
     expect(DOCUMENT_FILE_EXTENSIONS).toContain('.txt')
     expect(DOCUMENT_FILE_EXTENSIONS).toContain('.html')
+    expect(DOCUMENT_FILE_EXTENSIONS).toContain('.wikitext')
+    expect(DOCUMENT_FILE_EXTENSIONS).toContain('.mediawiki')
     expect(DOCUMENT_FILE_EXTENSIONS).toContain('.csv')
     expect(DOCUMENT_FILE_EXTENSIONS).toContain('.tsv')
   })
