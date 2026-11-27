@@ -6,7 +6,7 @@ import type {
   ReactTable,
   SortingState,
 } from '@tanstack/react-table'
-import type { ChangeEvent, HTMLAttributes } from 'react'
+import type { ChangeEvent, HTMLAttributes, ReactNode } from 'react'
 import type { CorpusListItem, CorpusOwnerInput } from '@/actions/corpus/corpusActions'
 import type { CorpusImportFormat } from '@/lib/imports/import-format'
 import {
@@ -74,6 +74,7 @@ export type CorporaProps = {
   ownedTeams: { id: string, name: string, slug: string }[]
   title?: string
   description?: string
+  footer?: ReactNode
 }
 
 type CorpusWithCounts = CorpusListItem
@@ -407,7 +408,7 @@ function buildColumns(ownedTeams: { id: string, name: string, slug: string }[], 
   ]
 }
 
-export function Corpora({ corpora, canCreate, canCopy = true, ownedTeams, title = 'Corpus Management', description = 'Create and manage your document collections' }: CorporaProps) {
+export function Corpora({ corpora, canCreate, canCopy = true, ownedTeams, title = 'Corpus Management', description = 'Create and manage your document collections', footer }: CorporaProps) {
   const newCorpusFileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const [newCorpusName, setNewCorpusName] = useState('')
@@ -496,7 +497,7 @@ export function Corpora({ corpora, canCreate, canCopy = true, ownedTeams, title 
   const tableColumns = useMemo(() => buildColumns(ownedTeams, canCopy), [ownedTeams, canCopy])
 
   return (
-    <Page>
+    <Page className={footer ? 'flex flex-1 flex-col' : undefined}>
       <PageHeader title={title} description={description}>
         {canCreate && (
           <Button onClick={() => setShowNewCorpusDialog(true)}>
@@ -539,6 +540,8 @@ export function Corpora({ corpora, canCreate, canCopy = true, ownedTeams, title 
               )}
             </div>
           )}
+
+      {footer && <div className="mt-auto pt-6">{footer}</div>}
 
       {/* New Corpus Dialog */}
       <Dialog open={showNewCorpusDialog} onOpenChange={setShowNewCorpusDialog}>

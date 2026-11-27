@@ -48,7 +48,7 @@ export default async function ShellLayout({ children }: { children: ReactNode })
                 signinEnabled={settings.signinEnabled}
               />
             )}
-      <main>{children}</main>
+      <main className="flex flex-1 flex-col">{children}</main>
     </div>
   )
 }
