@@ -32,7 +32,7 @@ export default async function CorpusAccessPage({ params }: { params: Promise<{ c
   return (
     <Page>
       <PageHeader
-        title={`Access: ${resource.title}`}
+        title="Access"
         description={isAdmin
           ? 'Add existing users or teams. Access is granted immediately.'
           : 'Invite existing users or teams. Access begins after acceptance.'}

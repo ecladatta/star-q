@@ -37,7 +37,7 @@ export default async function AnalyticsPage({ params }: { params: Promise<{ corp
   return (
     <Page>
       <PageHeader
-        title={corpus.title ?? ''}
+        title="Analytics"
         description="Completion, annotation counts, type breakdown, and constraint warnings"
       >
         <Suspense fallback={<CompletionScoreSkeleton />}>
