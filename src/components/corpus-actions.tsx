@@ -1,11 +1,10 @@
 'use client'
 
-import type { ChangeEvent, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import type { CorpusOwnerInput } from '@/actions/corpus/corpusActions'
 import type { Corpus } from '@/db/schema'
 import type { CorpusAccess } from '@/lib/corpus-access'
 import type { ExportFormat } from '@/lib/exports/export-format'
-import type { CorpusImportFormat } from '@/lib/imports/import-format'
 import {
   BarChart3Icon,
   CopyIcon,
@@ -21,11 +20,11 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { toast } from 'sonner'
 import { deleteCorpus, duplicateCorpus, renameCorpus } from '@/actions/corpus/corpusActions'
-import { importDocuments } from '@/actions/imports/importActions'
 import { ConfirmActionButton } from '@/components/confirm-action-button'
+import { ImportWizard } from '@/components/import-wizard'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -60,12 +59,6 @@ import {
   EXPORT_FORMATS,
   visibleExportFormatIds,
 } from '@/lib/exports/export-format'
-import {
-  CORPUS_IMPORT_FORMAT_IDS,
-  importFormatAccept,
-  importFormatLabel,
-  isCorpusImportFormat,
-} from '@/lib/imports/import-format'
 
 type CorpusActionsProps = {
   corpus: Corpus & { documentsCount?: number, annotationsCount?: number }
@@ -81,75 +74,22 @@ export function CorpusActions({ corpus, showOpenAction = true, access, triggerBu
   const canEdit = canEditCorpus(access, corpus.status)
   const canManage = access === 'manager'
   const router = useRouter()
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const exportFormatIds = visibleExportFormatIds(rdfAvailable)
 
   const [isDuplicating, setIsDuplicating] = useState(false)
   const [isRenaming, setIsRenaming] = useState(false)
-  const [isImporting, setIsImporting] = useState(false)
 
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showDuplicateDialog, setShowDuplicateDialog] = useState(false)
   const [showRenameDialog, setShowRenameDialog] = useState(false)
-  const [showImportDialog, setShowImportDialog] = useState(false)
+  const [showImportWizard, setShowImportWizard] = useState(false)
 
   const [newDuplicateTitle, setNewDuplicateTitle] = useState('')
   const [newRenameTitle, setNewRenameTitle] = useState('')
-  const [selectedImportFormat, setSelectedImportFormat] = useState<CorpusImportFormat | null>(null)
-  const [selectedImportFile, setSelectedImportFile] = useState<File | null>(null)
-  const [hasImported, setHasImported] = useState(false)
-  const [uploadError, setUploadError] = useState<string | null>(null)
-  const [uploadWarning, setUploadWarning] = useState<string | null>(null)
-  const [importedCount, setImportedCount] = useState(0)
   const [ownerSelection, setOwnerSelection] = useState(ownedTeams[0]?.id ?? '')
 
   const selectedOwner = (): CorpusOwnerInput => ({ teamId: ownerSelection })
-
-  const handleImportClick = () => {
-    setUploadError(null)
-    setUploadWarning(null)
-    setHasImported(false)
-    setSelectedImportFile(null)
-    setShowImportDialog(true)
-  }
-
-  const handleImportFileChange = (event: ChangeEvent<HTMLInputElement>) => {
-    setSelectedImportFile(event.target.files?.[0] ?? null)
-  }
-
-  const handleImportSubmit = async () => {
-    if (!selectedImportFormat || !selectedImportFile) {
-      return
-    }
-
-    try {
-      setUploadError(null)
-      setUploadWarning(null)
-      setHasImported(false)
-      setIsImporting(true)
-      const formData = new FormData()
-      formData.append('file', selectedImportFile)
-      const { count, errors, warnings } = await importDocuments(corpus.id, selectedImportFormat, formData)
-      setImportedCount(count)
-      setHasImported(true)
-      if (errors && errors.length > 0) {
-        setUploadError(errors.join('\n'))
-      }
-      if (warnings && warnings.length > 0) {
-        setUploadWarning(warnings.join('\n'))
-      }
-      router.refresh()
-    } catch {
-      setUploadError('Failed to upload the file. Please try again.')
-    } finally {
-      setIsImporting(false)
-      if (fileInputRef.current) {
-        fileInputRef.current.value = ''
-      }
-      setSelectedImportFile(null)
-    }
-  }
 
   const handleExportClick = (format: ExportFormat) => {
     void downloadExportFile(`/api/corpus/${corpus.id}/export?${EXPORT_FORMATS[format].query}`)
@@ -245,7 +185,7 @@ export function CorpusActions({ corpus, showOpenAction = true, access, triggerBu
                   Settings
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleImportClick}>
+              <DropdownMenuItem onClick={() => setShowImportWizard(true)}>
                 <FileUpIcon className="mr-2 size-4" />
                 Import
               </DropdownMenuItem>
@@ -296,131 +236,11 @@ export function CorpusActions({ corpus, showOpenAction = true, access, triggerBu
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Import Documents</DialogTitle>
-            <DialogDescription>
-              {isImporting
-                ? 'Please wait while your documents are being imported. This may take a few moments.'
-                : hasImported
-                  ? 'Import complete.'
-                  : 'Select the dataset format and a file to import.'}
-            </DialogDescription>
-          </DialogHeader>
-          {isImporting
-            ? (
-                <div className="flex items-center space-x-2">
-                  <Loader2Icon className="size-8 animate-spin" />
-                  <span>Importing...</span>
-                </div>
-              )
-            : hasImported && uploadError
-              ? (
-                  <div className="mb-2 max-h-48 overflow-y-auto rounded-md border border-destructive/30 bg-destructive/10 p-2">
-                    <p className="whitespace-pre-line text-destructive">{uploadError}</p>
-                  </div>
-                )
-              : hasImported && uploadWarning
-                ? (
-                    <div className="mb-2 max-h-48 overflow-y-auto rounded-md border border-warning bg-warning/40 p-2">
-                      <p className="font-medium text-warning-foreground">Import completed with warnings:</p>
-                      <p className="whitespace-pre-line text-warning-foreground">{uploadWarning}</p>
-                    </div>
-                  )
-                : hasImported
-                  ? (
-                      <>
-                        {importedCount}
-                        {' '}
-                        documents imported successfully!
-                      </>
-                    )
-                  : (
-                      <div className="space-y-4">
-                        <div>
-                          <Label htmlFor="import-format">Dataset format</Label>
-                          <Select
-                            value={selectedImportFormat ?? ''}
-                            onValueChange={(value) => {
-                              setSelectedImportFormat(isCorpusImportFormat(value) ? value : null)
-                            }}
-                          >
-                            <SelectTrigger id="import-format" className="mt-1 w-full">
-                              <SelectValue placeholder="Select a format" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {CORPUS_IMPORT_FORMAT_IDS.map(format => (
-                                <SelectItem key={format} value={format}>
-                                  {importFormatLabel(format)}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div>
-                          <Label>File</Label>
-                          <div className="mt-1">
-                            {selectedImportFile
-                              ? (
-                                  <div className="flex items-center justify-between rounded-md border border-dashed border-gray-300 p-3">
-                                    <div className="flex items-center space-x-2">
-                                      <FileUpIcon className="size-4 text-gray-500" />
-                                      <span className="text-sm text-gray-700">{selectedImportFile.name}</span>
-                                    </div>
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => setSelectedImportFile(null)}
-                                    >
-                                      Remove
-                                    </Button>
-                                  </div>
-                                )
-                              : (
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    className="w-full"
-                                    disabled={!selectedImportFormat}
-                                    onClick={() => fileInputRef.current?.click()}
-                                  >
-                                    <FileUpIcon className="mr-2 size-4" />
-                                    Choose file
-                                  </Button>
-                                )}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-          <DialogFooter>
-            {isImporting
-              ? null
-              : hasImported
-                ? (
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        router.push(`/corpus/${corpus.id}`)
-                        setShowImportDialog(false)
-                      }}
-                    >
-                      View documents
-                    </Button>
-                  )
-                : (
-                    <Button
-                      onClick={handleImportSubmit}
-                      disabled={!selectedImportFormat || !selectedImportFile}
-                    >
-                      <FileUpIcon className="mr-2 size-4" />
-                      Import
-                    </Button>
-                  )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ImportWizard
+        corpusId={corpus.id}
+        open={showImportWizard}
+        onOpenChange={setShowImportWizard}
+      />
 
       <ConfirmActionButton
         open={showDeleteDialog}
@@ -559,14 +379,6 @@ export function CorpusActions({ corpus, showOpenAction = true, access, triggerBu
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      <input
-        type="file"
-        ref={fileInputRef}
-        style={{ display: 'none' }}
-        accept={selectedImportFormat ? importFormatAccept(selectedImportFormat) : undefined}
-        onChange={handleImportFileChange}
-      />
     </>
   )
 }

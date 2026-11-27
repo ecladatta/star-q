@@ -38,6 +38,7 @@ import {
   DownloadIcon,
   FileDownIcon,
   FilePenIcon,
+  FileUpIcon,
   Loader2Icon,
   MoreVerticalIcon,
   Trash2Icon,
@@ -49,6 +50,7 @@ import {
   deleteDocuments,
   markDocumentsAsCompleted,
 } from '@/actions/document/documentActions'
+import { ImportWizard } from '@/components/import-wizard'
 import { Button } from '@/components/ui/button'
 
 import { Checkbox } from '@/components/ui/checkbox'
@@ -110,6 +112,7 @@ type DataTableProps = {
   onSelectionChange: (docs: DocumentMetadata[]) => void
   onBulkMarkCompleted: () => void
   onBulkDelete: () => void
+  onImportDocuments?: () => void
 }
 
 type DataTablePaginationProps = {
@@ -153,6 +156,7 @@ function DataTable({
   onSelectionChange,
   onBulkMarkCompleted,
   onBulkDelete,
+  onImportDocuments,
 }: DataTableProps) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
@@ -288,7 +292,19 @@ function DataTable({
                       colSpan={columns.length}
                       className="h-24 px-3 py-2.5 text-center text-[13px]"
                     >
-                      No documents found.
+                      {table.getPreFilteredRowModel().rows.length === 0
+                        ? (
+                            <div className="flex flex-col items-center gap-3 py-4">
+                              <span className="text-muted-foreground">No documents yet.</span>
+                              {onImportDocuments && (
+                                <Button type="button" size="sm" onClick={onImportDocuments}>
+                                  <FileUpIcon className="mr-2 size-4" />
+                                  Import documents
+                                </Button>
+                              )}
+                            </div>
+                          )
+                        : 'No documents found.'}
                     </TableCell>
                   </TableRow>
                 )}
@@ -638,10 +654,12 @@ function DataTableColumnHeader<TValue>({
 }
 
 export default function DocumentsTable({
+  corpusId,
   documents,
   canEdit,
   rdfAvailable,
 }: {
+  corpusId?: string
   documents: DocumentMetadata[]
   canEdit?: boolean
   rdfAvailable: boolean
@@ -649,6 +667,7 @@ export default function DocumentsTable({
   const [documentToDelete, setDocumentToDelete]
     = useState<DocumentMetadata | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [showImportWizard, setShowImportWizard] = useState(false)
   const [selectedDocuments, setSelectedDocuments] = useState<
     DocumentMetadata[]
   >([])
@@ -738,7 +757,15 @@ export default function DocumentsTable({
         onSelectionChange={setSelectedDocuments}
         onBulkMarkCompleted={handleBulkMarkCompleted}
         onBulkDelete={confirmBulkDelete}
+        onImportDocuments={canEdit && corpusId !== undefined ? () => setShowImportWizard(true) : undefined}
       />
+      {corpusId !== undefined && (
+        <ImportWizard
+          corpusId={corpusId}
+          open={showImportWizard}
+          onOpenChange={setShowImportWizard}
+        />
+      )}
       <Dialog
         open={!!documentToDelete}
         onOpenChange={() => setDocumentToDelete(null)}
