@@ -1,11 +1,6 @@
 'use server'
-import type { CorpusOwnerInput } from '@/actions/corpus/corpusActions'
 import type { CorpusImportFormat } from '@/lib/imports/import-format'
-import { eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
-import { addCorpus } from '@/actions/corpus/corpusActions'
-import { db } from '@/db/drizzle'
-import { corpus } from '@/db/schema'
 import { MAX_IMPORT_FILE_SIZE_BYTES } from '@/lib/config'
 import { requireEditCorpus } from '@/lib/corpus-access'
 import { importCorpuswalkerDocuments } from '@/lib/imports/corpuswalkerImport'
@@ -14,6 +9,7 @@ import {
   importCsvDocument,
   importDocumentsZip,
   importTextDocument,
+  importUrlDocument,
   importWikitextDocument,
 } from '@/lib/imports/documentsImport'
 import { importFullCorpusExportDocuments } from '@/lib/imports/fullCorpusImport'
@@ -30,10 +26,6 @@ type ImportDocumentsResult = {
   warnings: string[]
 }
 
-type CreateCorpusWithDocumentsImportResult = ImportDocumentsResult & {
-  corpusId: string | null
-}
-
 function importError(message: string): ImportDocumentsResult {
   return {
     count: 0,
@@ -42,29 +34,35 @@ function importError(message: string): ImportDocumentsResult {
   }
 }
 
-async function removeCorpus(id: string) {
-  await db.delete(corpus).where(eq(corpus.id, id))
-  revalidatePath('/')
-}
-
-/**
- * Main import function that routes the file to the importer for the selected format
- */
 export async function importDocuments(
   corpusId: string,
-  format: CorpusImportFormat,
+  format: CorpusImportFormat | null,
   formData: FormData,
 ): Promise<ImportDocumentsResult> {
   await requireEditCorpus(corpusId)
 
-  if (!isCorpusImportFormat(format)) {
-    return importError('Unknown import format.')
+  const url = typeof formData.get('url') === 'string' ? (formData.get('url') as string).trim() : ''
+  const file = formData.get('file') as File | null
+
+  if (url !== '') {
+    if (file) {
+      return importError('Provide either a file or a URL, not both.')
+    }
+    const result = await importUrlDocument(corpusId, url)
+    revalidatePath('/')
+    return {
+      count: result.ids.length,
+      errors: result.errors,
+      warnings: result.warnings ?? [],
+    }
   }
 
-  const file = formData.get('file') as File
-
   if (!file) {
-    return importError('No file was provided for import.')
+    return importError('No file or URL was provided for import.')
+  }
+
+  if (format === null || !isCorpusImportFormat(format)) {
+    return importError('Unknown import format.')
   }
 
   if (file.size > MAX_IMPORT_FILE_SIZE_BYTES) {
@@ -137,34 +135,5 @@ export async function importDocuments(
     count: result.ids.length,
     errors: result.errors,
     warnings: [...warnings, ...(result.warnings ?? [])],
-  }
-}
-
-export async function createCorpusWithDocumentsImport(
-  title: string,
-  format: CorpusImportFormat,
-  owner: CorpusOwnerInput,
-  formData: FormData,
-): Promise<CreateCorpusWithDocumentsImportResult> {
-  const newCorpus = await addCorpus(title, owner)
-
-  try {
-    const result = await importDocuments(newCorpus.id, format, formData)
-
-    if (result.errors.length > 0) {
-      await removeCorpus(newCorpus.id)
-      return {
-        ...result,
-        corpusId: null,
-      }
-    }
-
-    return {
-      ...result,
-      corpusId: newCorpus.id,
-    }
-  } catch (error) {
-    await removeCorpus(newCorpus.id)
-    throw error
   }
 }

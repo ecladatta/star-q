@@ -1,9 +1,10 @@
+import type { DefuddleResponse } from 'defuddle/node'
 import type { HtmlToTextOptions } from 'html-to-text'
 import type { DocumentData } from '@/types/types'
 import { Defuddle } from 'defuddle/node'
 import { htmlToText } from 'html-to-text'
 import { parseHTML } from 'linkedom'
-import { documentTitleFromFileName } from './documentTitle'
+import { documentTitleFromFileName, documentTitleFromUrl } from './documentTitle'
 
 export function isHtmlFileName(fileName: string): boolean {
   return /\.html?$/i.test(fileName)
@@ -30,13 +31,42 @@ export type BuiltDocumentData = {
   warnings: string[]
 }
 
-async function extractMainContentHtml(html: string): Promise<string> {
+async function extractMainContent(html: string, url?: string): Promise<DefuddleResponse | null> {
   try {
     const { document } = parseHTML(html)
-    const result = await Defuddle(document, undefined, { useAsync: false })
-    return result.content ?? ''
+    return await Defuddle(document, url, { useAsync: false })
   } catch {
-    return ''
+    return null
+  }
+}
+
+function assembleTextDocumentData(fields: {
+  id: string
+  title: string
+  versionDate: string
+  urls: string[]
+  value: string
+}): DocumentData {
+  return {
+    _source: {
+      identificationMetadata: {
+        id: fields.id,
+        title: fields.title,
+        versionDate: fields.versionDate,
+        hash: fields.id,
+        wikidata: '',
+        url: fields.urls,
+      },
+      extractionMetadata: [{
+        technology: 'text',
+        texts: [{
+          startOffset: 0,
+          endOffset: fields.value.length,
+          value: fields.value,
+        }],
+        tables: [],
+      }],
+    },
   }
 }
 
@@ -44,7 +74,8 @@ export async function buildTextDocumentData(fileName: string, content: string): 
   const warnings: string[] = []
   let value = content
   if (isHtmlFileName(fileName)) {
-    const extractedText = stripHtml(await extractMainContentHtml(content))
+    const result = await extractMainContent(content)
+    const extractedText = stripHtml(result?.content ?? '')
     if (extractedText !== '') {
       value = extractedText
     } else {
@@ -55,27 +86,42 @@ export async function buildTextDocumentData(fileName: string, content: string): 
   const title = documentTitleFromFileName(fileName)
 
   return {
-    data: {
-      _source: {
-        identificationMetadata: {
-          id: fileName,
-          title,
-          versionDate: new Date().toISOString(),
-          hash: fileName,
-          wikidata: '',
-          url: [],
-        },
-        extractionMetadata: [{
-          technology: 'text',
-          texts: [{
-            startOffset: 0,
-            endOffset: value.length,
-            value,
-          }],
-          tables: [],
-        }],
-      },
-    },
+    data: assembleTextDocumentData({
+      id: fileName,
+      title,
+      versionDate: new Date().toISOString(),
+      urls: [],
+      value,
+    }),
+    warnings,
+  }
+}
+
+export async function buildUrlDocumentData(url: string, content: string, isHtml: boolean, fetchedAt: string): Promise<BuiltDocumentData> {
+  const warnings: string[] = []
+  let value: string
+  let result: DefuddleResponse | null = null
+  if (isHtml) {
+    result = await extractMainContent(content, url)
+    value = stripHtml(result?.content ?? '')
+    if (value === '') {
+      value = stripHtml(content)
+      warnings.push(`Could not extract the main content of ${url}; imported the full page.`)
+    }
+  } else {
+    value = content
+  }
+  const title = result?.title ? result.title : documentTitleFromUrl(url)
+  const versionDate = result?.published ? result.published : fetchedAt
+
+  return {
+    data: assembleTextDocumentData({
+      id: url,
+      title,
+      versionDate,
+      urls: [url],
+      value,
+    }),
     warnings,
   }
 }

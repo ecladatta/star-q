@@ -6,9 +6,8 @@ import type {
   ReactTable,
   SortingState,
 } from '@tanstack/react-table'
-import type { ChangeEvent, HTMLAttributes, ReactNode } from 'react'
+import type { HTMLAttributes, ReactNode } from 'react'
 import type { CorpusListItem, CorpusOwnerInput } from '@/actions/corpus/corpusActions'
-import type { CorpusImportFormat } from '@/lib/imports/import-format'
 import {
   columnFilteringFeature,
   columnVisibilityFeature,
@@ -32,7 +31,6 @@ import {
   ChevronsLeftIcon,
   ChevronsRightIcon,
   ChevronsUpDownIcon,
-  FileUpIcon,
   Globe,
   Loader2Icon,
   MoreVerticalIcon,
@@ -40,9 +38,8 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { addCorpus } from '@/actions/corpus/corpusActions'
-import { createCorpusWithDocumentsImport } from '@/actions/imports/importActions'
 import { CorpusActions } from '@/components/corpus-actions'
 import { Page, PageHeader } from '@/components/page'
 import { Badge } from '@/components/ui/badge'
@@ -59,12 +56,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import {
-  CORPUS_IMPORT_FORMAT_IDS,
-  importFormatAccept,
-  importFormatLabel,
-  isCorpusImportFormat,
-} from '@/lib/imports/import-format'
 import { cn } from '@/lib/utils'
 
 export type CorporaProps = {
@@ -409,47 +400,13 @@ function buildColumns(ownedTeams: { id: string, name: string, slug: string }[], 
 }
 
 export function Corpora({ corpora, canCreate, canCopy = true, ownedTeams, title = 'Corpus Management', description = 'Create and manage your document collections', footer }: CorporaProps) {
-  const newCorpusFileInputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const [newCorpusName, setNewCorpusName] = useState('')
   const [isAdding, setIsAdding] = useState(false)
   const [showNewCorpusDialog, setShowNewCorpusDialog] = useState(false)
-  const [newCorpusFile, setNewCorpusFile] = useState<File | null>(null)
-  const [newCorpusFormat, setNewCorpusFormat] = useState<CorpusImportFormat | null>(null)
-  const [uploadError, setUploadError] = useState<string | null>(null)
-  const [uploadWarning, setUploadWarning] = useState<string | null>(null)
-  const [isImporting, setIsImporting] = useState(false)
-  const [showImportDialog, setShowImportDialog] = useState(false)
-  const [importedCount, setImportedCount] = useState(0)
-  const [newCorpusId, setNewCorpusId] = useState<string | null>(null)
   const [ownerSelection, setOwnerSelection] = useState(ownedTeams[0]?.id ?? '')
 
   const selectedOwner = (): CorpusOwnerInput => ({ teamId: ownerSelection })
-
-  const handleCreateCorpusWithFileImport = async (file: File, format: CorpusImportFormat) => {
-    try {
-      setUploadError(null)
-      setUploadWarning(null)
-      setShowImportDialog(true)
-      setIsImporting(true)
-      setNewCorpusId(null)
-      const formData = new FormData()
-      formData.append('file', file)
-      const { count, errors, warnings, corpusId } = await createCorpusWithDocumentsImport(newCorpusName, format, selectedOwner(), formData)
-      setImportedCount(count)
-      setNewCorpusId(corpusId)
-      if (errors && errors.length > 0) {
-        setUploadError(errors.join('\n'))
-      }
-      if (warnings && warnings.length > 0) {
-        setUploadWarning(warnings.join('\n'))
-      }
-    } catch {
-      setUploadError('Failed to upload the file. Please try again.')
-    } finally {
-      setIsImporting(false)
-    }
-  }
 
   const handleCreateCorpus = async () => {
     if (!newCorpusName.trim()) {
@@ -457,40 +414,14 @@ export function Corpora({ corpora, canCreate, canCopy = true, ownedTeams, title 
     }
     try {
       setIsAdding(true)
-
-      if (newCorpusFile && newCorpusFormat) {
-        await handleCreateCorpusWithFileImport(newCorpusFile, newCorpusFormat)
-      } else {
-        await addCorpus(newCorpusName, selectedOwner())
-      }
-
+      const created = await addCorpus(newCorpusName, selectedOwner())
       setNewCorpusName('')
-      setNewCorpusFile(null)
       setShowNewCorpusDialog(false)
-      router.refresh()
+      router.push(`/corpus/${created.id}`)
     } catch (error) {
       console.error('Create corpus failed:', error)
     } finally {
       setIsAdding(false)
-    }
-  }
-
-  const handleNewCorpusFileSelect = () => {
-    if (newCorpusFileInputRef.current) {
-      newCorpusFileInputRef.current.value = ''
-      newCorpusFileInputRef.current.click()
-    }
-  }
-
-  const handleNewCorpusFileChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    setNewCorpusFile(file || null)
-  }
-
-  const removeNewCorpusFile = () => {
-    setNewCorpusFile(null)
-    if (newCorpusFileInputRef.current) {
-      newCorpusFileInputRef.current.value = ''
     }
   }
 
@@ -549,7 +480,7 @@ export function Corpora({ corpora, canCreate, canCopy = true, ownedTeams, title 
           <DialogHeader>
             <DialogTitle>Create New Corpus</DialogTitle>
             <DialogDescription>
-              Enter a name for your new document collection. Optionally, you can import documents during creation.
+              Enter a name for your new document collection.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -585,60 +516,6 @@ export function Corpora({ corpora, canCreate, canCopy = true, ownedTeams, title 
                 }}
               />
             </div>
-
-            <div>
-              <Label>Import documents (optional)</Label>
-              <div className="mt-1 space-y-2">
-                <div>
-                  <Select
-                    value={newCorpusFormat ?? ''}
-                    onValueChange={(value) => {
-                      setNewCorpusFormat(isCorpusImportFormat(value) ? value : null)
-                    }}
-                  >
-                    <SelectTrigger id="new-corpus-import-format" className="mt-1 w-full">
-                      <SelectValue placeholder="Select a format" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CORPUS_IMPORT_FORMAT_IDS.map(format => (
-                        <SelectItem key={format} value={format}>
-                          {importFormatLabel(format)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                {newCorpusFile
-                  ? (
-                      <div className="flex items-center justify-between rounded-md border border-dashed border-gray-300 p-3">
-                        <div className="flex items-center space-x-2">
-                          <FileUpIcon className="size-4 text-gray-500" />
-                          <span className="text-sm text-gray-700">{newCorpusFile.name}</span>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={removeNewCorpusFile}
-                        >
-                          Remove
-                        </Button>
-                      </div>
-                    )
-                  : (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full"
-                        disabled={!newCorpusFormat}
-                        onClick={handleNewCorpusFileSelect}
-                      >
-                        <FileUpIcon className="mr-2 size-4" />
-                        Select file to import
-                      </Button>
-                    )}
-              </div>
-            </div>
           </div>
           <DialogFooter>
             <Button
@@ -646,7 +523,6 @@ export function Corpora({ corpora, canCreate, canCopy = true, ownedTeams, title 
               onClick={() => {
                 setShowNewCorpusDialog(false)
                 setNewCorpusName('')
-                setNewCorpusFile(null)
               }}
             >
               Cancel
@@ -661,65 +537,6 @@ export function Corpora({ corpora, canCreate, canCopy = true, ownedTeams, title 
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Import Status Dialog - Only for new corpus creation */}
-      <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Import Documents</DialogTitle>
-            <DialogDescription>
-              {isImporting && <>Please wait while your documents are being imported. This may take a few moments.</>}
-            </DialogDescription>
-          </DialogHeader>
-          <div>
-            {isImporting && (
-              <div className="flex items-center space-x-2">
-                <Loader2Icon className="size-8 animate-spin" />
-                <span>Importing...</span>
-              </div>
-            )}
-            {!isImporting && uploadError && (
-              <div className="mb-2 max-h-48 overflow-y-auto rounded-sm border border-red-200 bg-red-50 p-2">
-                <p className="whitespace-pre-line text-red-500">{uploadError}</p>
-              </div>
-            )}
-            {!isImporting && uploadWarning && (
-              <div className="mb-2 max-h-48 overflow-y-auto rounded-sm border border-yellow-200 bg-yellow-50 p-2">
-                <p className="font-medium text-yellow-700">Import completed with warnings:</p>
-                <p className="whitespace-pre-line text-yellow-700">{uploadWarning}</p>
-              </div>
-            )}
-            {!isImporting && !uploadError && (
-              <>
-                {importedCount}
-                {' '}
-                documents imported successfully!
-              </>
-            )}
-          </div>
-          <DialogFooter>
-            {!isImporting && newCorpusId && (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  router.push(`/corpus/${newCorpusId}`)
-                }}
-              >
-                View documents
-              </Button>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Hidden file input for new corpus creation */}
-      <input
-        type="file"
-        ref={newCorpusFileInputRef}
-        style={{ display: 'none' }}
-        accept={newCorpusFormat ? importFormatAccept(newCorpusFormat) : undefined}
-        onChange={handleNewCorpusFileChange}
-      />
     </Page>
   )
 }

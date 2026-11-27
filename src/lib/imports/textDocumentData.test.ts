@@ -2,6 +2,7 @@ import type { DocumentData, DocumentExtractionMetadata } from '@/types/types'
 import { describe, expect, it } from 'vitest'
 import {
   buildTextDocumentData,
+  buildUrlDocumentData,
   isHtmlFileName,
   stripHtml,
 } from './textDocumentData'
@@ -86,6 +87,62 @@ describe('buildTextDocumentData', () => {
   it('derives the title from the file name without the directory or extension', async () => {
     expect((await buildTextDocumentData('docs/my_file.md', 'x')).data._source.identificationMetadata.title).toBe('my file')
     expect((await buildTextDocumentData('My File.txt', 'x')).data._source.identificationMetadata.title).toBe('My File')
+  })
+})
+
+describe('buildUrlDocumentData', () => {
+  const url = 'https://starwars.fandom.com/wiki/Corellia'
+  const fetchedAt = '2026-01-01T00:00:00.000Z'
+
+  it('maps the Defuddle title, published date and source URL', async () => {
+    const html = `
+      <html>
+        <head>
+          <meta property="og:title" content="Corellia"/>
+          <meta property="article:published_time" content="2007-04-17T00:41:05Z"/>
+          <title>Corellia - Wookieepedia</title>
+        </head>
+        <body>
+          <nav>Site navigation Home About</nav>
+          <article>
+            <h1>Corellia</h1>
+            <p>Corellia was a planet located in the Core Worlds.</p>
+          </article>
+          <footer>Footer links</footer>
+        </body>
+      </html>
+    `
+    const { data, warnings } = await buildUrlDocumentData(url, html, true, fetchedAt)
+    const identification = data._source.identificationMetadata
+
+    expect(identification.id).toBe(url)
+    expect(identification.hash).toBe(url)
+    expect(identification.title).toBe('Corellia')
+    expect(identification.versionDate).toBe('2007-04-17T00:41:05Z')
+    expect(identification.url).toEqual([url])
+    expect(singleExtraction(data).texts?.[0].value).toBe('Corellia was a planet located in the Core Worlds.')
+    expect(warnings).toEqual([])
+  })
+
+  it('warns and imports the whole page when extraction finds nothing', async () => {
+    const { data, warnings } = await buildUrlDocumentData(url, '<html><body><script>var x = 1</script></body></html>', true, fetchedAt)
+
+    expect(singleExtraction(data).texts?.[0].value).toBe('')
+    expect(data._source.identificationMetadata.title).toBe('Corellia')
+    expect(data._source.identificationMetadata.versionDate).toBe(fetchedAt)
+    expect(data._source.identificationMetadata.url).toEqual([url])
+    expect(warnings).toEqual([`Could not extract the main content of ${url}; imported the full page.`])
+  })
+
+  it('passes non-HTML content through untouched with the fetch date', async () => {
+    const content = 'Plain text with <angle> brackets kept.'
+    const { data, warnings } = await buildUrlDocumentData(url, content, false, fetchedAt)
+
+    expect(singleExtraction(data).texts?.[0].value).toBe(content)
+    expect(data._source.identificationMetadata.title).toBe('Corellia')
+    expect(data._source.identificationMetadata.versionDate).toBe(fetchedAt)
+    expect(data._source.identificationMetadata.url).toEqual([url])
+    expect(warnings).toEqual([])
   })
 })
 

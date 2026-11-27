@@ -1,13 +1,26 @@
 'use server'
+import type { UrlImportFormat } from './urlImportDetection'
+import type { FetchedResource } from './urlPageFetch'
 import type { DocumentData } from '@/types/types'
 import JSZip from 'jszip'
 import { db } from '@/db/drizzle'
 import { document } from '@/db/schema'
 import { metadataColumnsFromDocumentData } from '@/lib/document-metadata'
+import { importCorpuswalkerDocuments } from './corpuswalkerImport'
 import { buildTableDocumentData } from './csvDocumentData'
 import { classifyDocumentFile, DOCUMENT_FILE_EXTENSIONS } from './documentFileClassifier'
-import { buildTextDocumentData } from './textDocumentData'
+import { importFullCorpusExportDocuments } from './fullCorpusImport'
+import { importLabelStudioDocuments } from './labelstudioImport'
+import { buildTextDocumentData, buildUrlDocumentData } from './textDocumentData'
+import { detectUrlImportFormat, isHtmlMediaType, URL_MEDIA_TYPES } from './urlImportDetection'
+import { fetchResourceFromUrl } from './urlPageFetch'
 import { buildWikitextDocumentData } from './wikitextDocumentData'
+
+export type ImporterResult = {
+  ids: string[]
+  errors: string[]
+  warnings: string[]
+}
 
 async function insertDocument(
   corpusId: string,
@@ -30,7 +43,7 @@ export async function importTextDocument(
   corpusId: string,
   fileName: string,
   content: string,
-): Promise<{ ids: string[], errors: string[], warnings: string[] }> {
+): Promise<ImporterResult> {
   const { data: documentData, warnings } = await buildTextDocumentData(fileName, content)
   const id = await insertDocument(
     corpusId,
@@ -46,7 +59,7 @@ export async function importWikitextDocument(
   corpusId: string,
   fileName: string,
   content: string,
-): Promise<{ ids: string[], errors: string[], warnings: string[] }> {
+): Promise<ImporterResult> {
   const documentData = buildWikitextDocumentData(fileName, content)
   const id = await insertDocument(
     corpusId,
@@ -62,7 +75,7 @@ export async function importCsvDocument(
   corpusId: string,
   fileName: string,
   content: string,
-): Promise<{ ids: string[], errors: string[], warnings: string[] }> {
+): Promise<ImporterResult> {
   const documentData = buildTableDocumentData(fileName, content)
   const id = await insertDocument(
     corpusId,
@@ -77,7 +90,7 @@ export async function importCsvDocument(
 export async function importDocumentsZip(
   corpusId: string,
   zipBuffer: ArrayBuffer,
-): Promise<{ ids: string[], errors: string[], warnings: string[] }> {
+): Promise<ImporterResult> {
   const ids: string[] = []
   const errors: string[] = []
   const warnings: string[] = []
@@ -133,4 +146,50 @@ export async function importDocumentsZip(
   }
 
   return { ids, errors, warnings }
+}
+
+export async function importUrlDocument(corpusId: string, url: string): Promise<ImporterResult> {
+  let resource: FetchedResource
+  try {
+    resource = await fetchResourceFromUrl(url, { acceptedMediaTypes: URL_MEDIA_TYPES, wikiFallback: true })
+  } catch (error) {
+    return { ids: [], errors: [error instanceof Error ? error.message : String(error)], warnings: [] }
+  }
+
+  let format: UrlImportFormat
+  try {
+    format = detectUrlImportFormat(resource.mediaType, resource.url, resource.text)
+  } catch (error) {
+    return { ids: [], errors: [error instanceof Error ? error.message : String(error)], warnings: [] }
+  }
+
+  switch (format) {
+    case 'text': {
+      const { data, warnings } = await buildUrlDocumentData(resource.url, resource.text, isHtmlMediaType(resource.mediaType), new Date().toISOString())
+      const id = await insertDocument(
+        corpusId,
+        data._source.identificationMetadata.title ?? url,
+        data,
+        1,
+      )
+      return { ids: [id], errors: [], warnings }
+    }
+    case 'csv':
+      return importCsvDocument(corpusId, resource.url, resource.text)
+    case 'wikitext':
+      return importWikitextDocument(corpusId, resource.url, resource.text)
+    case 'labelstudio':
+      return importLabelStudioDocuments(corpusId, resource.text)
+    case 'corpuswalker':
+      return importCorpuswalkerDocuments(corpusId, resource.text)
+    case 'full-corpus-export': {
+      let parsed: unknown
+      try {
+        parsed = JSON.parse(resource.text)
+      } catch {
+        return { ids: [], errors: ['Failed to parse the JSON file.'], warnings: [] }
+      }
+      return importFullCorpusExportDocuments(corpusId, parsed)
+    }
+  }
 }

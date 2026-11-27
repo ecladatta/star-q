@@ -48,8 +48,6 @@ export const CORPUS_IMPORT_FORMATS: Record<CorpusImportFormat, CorpusImportForma
   },
 }
 
-export type CorpusImportFormatId = keyof typeof CORPUS_IMPORT_FORMATS
-
 export const CORPUS_IMPORT_FORMAT_IDS = Object.keys(
   CORPUS_IMPORT_FORMATS,
 ) as CorpusImportFormat[]
