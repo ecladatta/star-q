@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.6.0](https://github.com/ecladatta/star-q/compare/v1.5.0...v1.6.0) (2026-11-28)
+
+
+### Features
+
+* **config:** add PRIVACY_URL and a Privacy link in the admin sidebar ([1b8bb99](https://github.com/ecladatta/star-q/commit/1b8bb997ad79313777a6564c89bd2fe603f98ed3))
+* **layout:** replace the instance tagline with a shared site footer ([65a8b1b](https://github.com/ecladatta/star-q/commit/65a8b1bba0d16c6aa0b45303018811b2bc1511d0))
+
+
+### Bug Fixes
+
+* **layout:** align site footer items ([9fa5450](https://github.com/ecladatta/star-q/commit/9fa5450a7e738c52d42f6e114b9759887acd84b8))
+
 ## [1.5.0](https://github.com/ecladatta/star-q/compare/v1.4.0...v1.5.0) (2026-11-27)
 
 
