@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { Logo } from '@/components/logo'
+import { SiteFooter } from '@/components/site-footer'
 import { APP_NAME } from '@/lib/config'
 
 export default function AuthLayout({ children }: { children: ReactNode }) {
@@ -13,6 +14,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
       <div className="flex flex-1 items-center justify-center py-4">
         {children}
       </div>
+      <SiteFooter />
     </div>
   )
 }

@@ -2,9 +2,11 @@ import type { ReactNode } from 'react'
 import { getPendingInvitationCount } from '@/actions/collaboration/collaborationActions'
 import { getMyCorpora } from '@/actions/corpus/corpusActions'
 import { auth } from '@/auth'
+import { ShellFooter } from '@/components/shell-footer'
 import { GuestBar } from '@/components/shell/guest-bar'
 import { TempPasswordBar } from '@/components/shell/temp-password-bar'
 import { TopNav } from '@/components/shell/top-nav'
+import { SiteFooter } from '@/components/site-footer'
 import { getAppSettings } from '@/lib/app-settings'
 
 export default async function ShellLayout({ children }: { children: ReactNode }) {
@@ -49,6 +51,9 @@ export default async function ShellLayout({ children }: { children: ReactNode })
               />
             )}
       <main className="flex flex-1 flex-col">{children}</main>
+      <ShellFooter>
+        <SiteFooter />
+      </ShellFooter>
     </div>
   )
 }
