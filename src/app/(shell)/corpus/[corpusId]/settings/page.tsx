@@ -39,7 +39,6 @@ export default async function CorpusSettingsPage({ params }: { params: Promise<{
     <Page>
       <PageHeader
         title="Settings"
-        description="Manage corpus settings and custom entities."
       />
       <CorpusSettingsPanel
         corpus={corpus}

@@ -74,8 +74,6 @@ export default async function CorpusPage({ params }: { params: Promise<{ corpusI
         )}
         description={(
           <>
-            Select a document to start annotating
-            <br />
             Owner:
             {' '}
             {owner.name ?? owner.identifier ?? 'Setup pending'}
