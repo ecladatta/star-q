@@ -4,6 +4,7 @@ import { ForbiddenPage } from '@/components/forbidden-page'
 import { AdminNav } from '@/components/shell/admin-nav'
 import { getAppSettings } from '@/lib/app-settings'
 import { requirePageUser } from '@/lib/auth-utils'
+import { PRIVACY_URL } from '@/lib/config'
 import { getUpdateInfo } from '@/lib/update-check'
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
@@ -16,7 +17,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   }
   const updateInfo = await getUpdateInfo()
   return (
-    <AdminNav label="Administration" updateInfo={updateInfo}>
+    <AdminNav label="Administration" updateInfo={updateInfo} privacyUrl={PRIVACY_URL || undefined}>
       {children}
     </AdminNav>
   )

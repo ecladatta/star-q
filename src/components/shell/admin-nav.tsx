@@ -11,10 +11,11 @@ import { adminNav, isActive } from './nav-items'
 type AdminNavProps = {
   label: string
   updateInfo: UpdateInfo
+  privacyUrl?: string
   children: ReactNode
 }
 
-export function AdminNav({ label, updateInfo, children }: AdminNavProps) {
+export function AdminNav({ label, updateInfo, privacyUrl, children }: AdminNavProps) {
   const pathname = usePathname()
   const items = adminNav()
 
@@ -73,10 +74,19 @@ export function AdminNav({ label, updateInfo, children }: AdminNavProps) {
                 </Link>
               )
             : null}
-          <span className="px-1.5">
-            v
-            {updateInfo.currentVersion}
-          </span>
+          <div className="flex items-center justify-between">
+            <span className="px-1.5">
+              v
+              {updateInfo.currentVersion}
+            </span>
+            {privacyUrl
+              ? (
+                  <a href={privacyUrl} target="_blank" rel="noopener noreferrer" className="px-1.5 underline-offset-2 hover:underline">
+                    Privacy
+                  </a>
+                )
+              : null}
+          </div>
         </div>
       </aside>
 
